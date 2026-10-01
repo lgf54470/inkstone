@@ -262,17 +262,23 @@
     - `scripts/check-comments.mjs`, `scripts/check-size.baseline.json`
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
   - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台（URL 带 `?presenter=1`，由独立 `PresenterRoute` 轻量挂载，绕过编辑器启动），主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
-  - 验证：
+  - 验证与加固：
+    - 加固修复（二次审查）：
+      - 修复计时器暂停/恢复时间漂移（wall clock 直接相减导致暂停时间被计入耗时且重置被后续 interval 冲刷覆盖）：重构为 `accumulatedMs` 与 `lastResumeAt` 增量累计模型，暂停停止累计，重置清零。
+      - 修复 BroadcastChannel 随每次渲染重建及断连闪烁：分离 Channel 生命周期（仅随 `open` 挂载/卸载）与状态同步 effect（`statePayload` 更新时单独 `postMessage`）。
+      - 修复多子页下一页预览错误：当前页有多子页且未到尾页时，下一页预览展示当前页的下一个子页（透传 `nextPlan`, `nextSubPage`, `proseFont`）。
+      - 修复按键穿透与焦点陷阱：控制台内按钮（暂停/重置）获得焦点时按空格/回车不触发幻灯片切页；演讲者备注区域获得焦点时纵向滚动键（`ArrowDown/Up`, `PageDown/Up`, `Home/End`, `Space`）优先滚动备注面板。
+      - 遵循 AGENTS.md 规范消除长函数：重构拆分 `PresenterScaledSlide`, `useTimerInterval`, `dispatchPresenterKey`, `useBroadcasterChannel`，全量消除 `presenter-view` 4 个文件中的所有超 50 行长函数，完全从 `scripts/check-size.baseline.json` 中移除。
     - 单测覆盖：
-      - `use-presenter-channel.test.ts`：4 例测试覆盖广播者与接收者挂载握手、状态双向同步、控制命令反向派发、广播者卸载关闭信号。
-      - `presenter-window.test.ts`：12 例测试覆盖控制台挂载、未连接状态、当前页与下一页渲染、演讲者备注提取渲染、倒计时/计时器启动暂停重置、键盘导航与全屏退出。
+      - `use-presenter-channel.test.ts`：5 例测试覆盖广播者与接收者挂载握手、状态双向同步、控制命令反向派发、广播者卸载关闭信号、连接稳定性（无多余销毁/闪烁）、多子页与尾页下一页预览推导。
+      - `presenter-window.test.ts`：16 例测试覆盖控制台挂载、未连接状态、当前页与下一页渲染、演讲者备注提取渲染、倒计时/计时器启动暂停重置与时间累计、按键导航防穿透与全屏退出。
       - `presentation-keys.test.ts`：补充 `P` 键触发 `presenter` 命令及表单输入守卫测试。
       - `presentation-controls.test.ts`：测试悬浮工具栏演讲者模式按钮渲染与触发。
     - 门禁与全量：
-      - 20 个 presentation 测试文件全绿（281 例）。
+      - 20 个 presentation 测试文件全绿（290 例）。
       - `npm run typecheck` 通过。
-      - 静态门禁全部通过（`style`, `tokens`, `vendor`, `escape`, `empty-catch`, `module-state`, `deep-imports`, `surfaces`, `hardcoded`, `i18n`）。
-      - Pre-commit 全量测试 409 个文件、3474 例全绿。
+      - 静态门禁全部通过（`style`, `tokens`, `vendor`, `escape`, `empty-catch`, `module-state`, `deep-imports`, `surfaces`, `hardcoded`, `i18n`, `comments:check`, `size:check`）。
+
 
 - [ ] **B4-06** `P-25 (FEAT-04) 后半`: 聚光灯（Spotlight）
   - 目标：把大屏其余部分压暗、只留一块跟随指针的亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。

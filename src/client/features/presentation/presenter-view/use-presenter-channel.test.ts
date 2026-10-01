@@ -2,6 +2,7 @@ import { act, createElement, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../lib/test-render'
 import {
+  buildPresenterSlideState,
   formatClock,
   formatElapsed,
   openPresenterWindow,
@@ -11,6 +12,35 @@ import {
   type PresenterInboundCommand,
   type PresenterSlideState,
 } from './use-presenter-channel'
+
+let mockChannels = new Set<MockBroadcastChannel>()
+
+class MockBroadcastChannel {
+  name: string
+  onmessage: ((event: MessageEvent) => void) | null = null
+  closed = false
+
+  constructor(name: string) {
+    this.name = name
+    mockChannels.add(this)
+  }
+
+  postMessage(data: unknown) {
+    if (this.closed) return
+    for (const ch of mockChannels) {
+      if (ch !== this && ch.name === this.name && !ch.closed && ch.onmessage) {
+        queueMicrotask(() => {
+          if (!ch.closed && ch.onmessage) ch.onmessage({ data } as MessageEvent)
+        })
+      }
+    }
+  }
+
+  close() {
+    this.closed = true
+    mockChannels.delete(this)
+  }
+}
 
 describe('use-presenter-channel — formatElapsed and formatClock', () => {
   it('formats elapsed time correctly for seconds, minutes and hours', () => {
@@ -47,55 +77,70 @@ describe('openPresenterWindow', () => {
   })
 })
 
-describe('usePresenterBroadcaster and usePresenterReceiver sync protocol', () => {
-  let mockChannels: Set<MockBroadcastChannel>
+function setupPresenterHarness(broadcasterProps: PresenterBroadcasterOptions) {
+  let receivedState: PresenterSlideState | null = null
+  let isConnected = false
+  let triggerCommand: ((cmd: PresenterInboundCommand) => void) | null = null
 
-  class MockBroadcastChannel {
-    name: string
-    onmessage: ((event: MessageEvent) => void) | null = null
-    closed = false
-
-    constructor(name: string) {
-      this.name = name
-      mockChannels.add(this)
-    }
-
-    postMessage(data: unknown) {
-      if (this.closed) return
-      // Broadcast to other channels with the same name
-      for (const ch of mockChannels) {
-        if (ch !== this && ch.name === this.name && !ch.closed && ch.onmessage) {
-          queueMicrotask(() => {
-            if (!ch.closed && ch.onmessage) {
-              ch.onmessage({ data } as MessageEvent)
-            }
-          })
-        }
-      }
-    }
-
-    close() {
-      this.closed = true
-      mockChannels.delete(this)
-    }
+  function BroadcasterHarness(props: PresenterBroadcasterOptions) {
+    usePresenterBroadcaster(props)
+    return null
   }
 
-  beforeEach(() => {
-    mockChannels = new Set()
-    vi.stubGlobal('BroadcastChannel', MockBroadcastChannel)
+  function ReceiverHarness() {
+    const { state, connected, sendCommand } = usePresenterReceiver()
+    useEffect(() => {
+      receivedState = state
+      isConnected = connected
+      triggerCommand = sendCommand
+    }, [state, connected, sendCommand])
+    return null
+  }
+
+  const broadcaster = renderElement(createElement(BroadcasterHarness, broadcasterProps))
+  const receiver = renderElement(createElement(ReceiverHarness))
+
+  return {
+    broadcaster,
+    receiver,
+    getState: () => receivedState,
+    getConnected: () => isConnected,
+    sendCommand: (cmd: PresenterInboundCommand) => triggerCommand!(cmd),
+  }
+}
+
+function TestBroadcaster({ slide }: { slide: number }) {
+  usePresenterBroadcaster({
+    open: true,
+    noteTitle: 'Channel Test',
+    slideIndex: slide,
+    subPage: 0,
+    slideCount: 3,
+    pageCount: 1,
+    deck: ['# A', '# B', '# C'],
+    notes: ['', '', ''],
+    plans: {},
+    startedAt: 1000,
+    goNext: vi.fn(),
+    goPrev: vi.fn(),
+    jumpTo: vi.fn(),
   })
+  return null
+}
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    document.body.innerHTML = ''
-  })
+beforeEach(() => {
+  mockChannels = new Set()
+  vi.stubGlobal('BroadcastChannel', MockBroadcastChannel)
+})
 
-  it('broadcasts state to receiver and handles bidirectional commands', async () => {
-    const goNext = vi.fn()
-    const goPrev = vi.fn()
-    const jumpTo = vi.fn()
+afterEach(() => {
+  vi.unstubAllGlobals()
+  document.body.innerHTML = ''
+})
 
-    const broadcasterProps: PresenterBroadcasterOptions = {
+describe('usePresenterBroadcaster — sync and unmount', () => {
+  it('broadcasts slide state and unmount close signal', async () => {
+    const h = setupPresenterHarness({
       open: true,
       noteTitle: 'Keynote Demo',
       slideIndex: 1,
@@ -106,82 +151,173 @@ describe('usePresenterBroadcaster and usePresenterReceiver sync protocol', () =>
       notes: ['note 1', 'note 2', 'note 3'],
       plans: {},
       startedAt: 1000000,
+      goNext: vi.fn(),
+      goPrev: vi.fn(),
+      jumpTo: vi.fn(),
+    })
+
+    await vi.waitFor(() => {
+      expect(h.getConnected()).toBe(true)
+      expect(h.getState()).toEqual(expect.objectContaining({ noteTitle: 'Keynote Demo', slideIndex: 1 }))
+    })
+
+    act(() => h.broadcaster.unmount())
+    await vi.waitFor(() => expect(h.getConnected()).toBe(false))
+    act(() => h.receiver.unmount())
+  })
+})
+
+describe('usePresenterReceiver — inbound commands', () => {
+  it('relays remote inbound navigation commands to host session', async () => {
+    const goNext = vi.fn()
+    const goPrev = vi.fn()
+    const jumpTo = vi.fn()
+
+    const h = setupPresenterHarness({
+      open: true,
+      noteTitle: 'Demo',
+      slideIndex: 1,
+      subPage: 0,
+      slideCount: 3,
+      pageCount: 1,
+      deck: ['# 1', '# 2', '# 3'],
+      notes: ['', '', ''],
+      plans: {},
+      startedAt: 1000,
       goNext,
       goPrev,
       jumpTo,
-    }
-
-    function BroadcasterHarness(props: PresenterBroadcasterOptions) {
-      usePresenterBroadcaster(props)
-      return null
-    }
-
-    let receivedState: PresenterSlideState | null = null
-    let isConnected = false
-    let triggerCommand: ((cmd: PresenterInboundCommand) => void) | null = null
-
-    function ReceiverHarness() {
-      const { state, connected, sendCommand } = usePresenterReceiver()
-      useEffect(() => {
-        receivedState = state
-        isConnected = connected
-        triggerCommand = sendCommand
-      }, [state, connected, sendCommand])
-      return null
-    }
-
-    // Mount Broadcaster
-    const broadcaster = renderElement(createElement(BroadcasterHarness, broadcasterProps))
-
-    // Mount Receiver
-    const receiver = renderElement(createElement(ReceiverHarness))
-
-    // Wait for microtask broadcast
-    await vi.waitFor(() => {
-      expect(isConnected).toBe(true)
-      expect(receivedState).toEqual(
-        expect.objectContaining({
-          noteTitle: 'Keynote Demo',
-          slideIndex: 1,
-          slideCount: 3,
-          currentSlideSource: '# Slide 2',
-          notes: 'note 2',
-          startedAt: 1000000,
-        }),
-      )
     })
 
-    // Receiver sends commands back to broadcaster
-    act(() => {
-      triggerCommand!('next')
-    })
+    await vi.waitFor(() => expect(h.getConnected()).toBe(true))
+
+    act(() => h.sendCommand('next'))
     await vi.waitFor(() => expect(goNext).toHaveBeenCalledTimes(1))
 
-    act(() => {
-      triggerCommand!('prev')
-    })
+    act(() => h.sendCommand('prev'))
     await vi.waitFor(() => expect(goPrev).toHaveBeenCalledTimes(1))
 
-    act(() => {
-      triggerCommand!('first')
-    })
+    act(() => h.sendCommand('first'))
     await vi.waitFor(() => expect(jumpTo).toHaveBeenCalledWith(0))
 
-    act(() => {
-      triggerCommand!('last')
-    })
+    act(() => h.sendCommand('last'))
     await vi.waitFor(() => expect(jumpTo).toHaveBeenCalledWith(2))
 
-    // Unmount broadcaster should send close signal
     act(() => {
-      broadcaster.unmount()
+      h.broadcaster.unmount()
+      h.receiver.unmount()
     })
-    await vi.waitFor(() => {
-      expect(isConnected).toBe(false)
-    })
+  })
+})
+
+describe('usePresenterReceiver — channel stability', () => {
+
+  it('keeps BroadcastChannel open and avoids close flicker on state updates', async () => {
+    let isConnected = false
+    let receivedSlide = -1
+
+    function ReceiverHarness() {
+      const { state, connected } = usePresenterReceiver()
+      useEffect(() => {
+        if (state) receivedSlide = state.slideIndex
+        isConnected = connected
+      }, [state, connected])
+      return null
+    }
+
+    const broadcaster = renderElement(createElement(TestBroadcaster, { slide: 0 }))
+    const receiver = renderElement(createElement(ReceiverHarness))
+
+    await vi.waitFor(() => expect(isConnected).toBe(true))
+    expect(receivedSlide).toBe(0)
+    const initialChannelsCount = mockChannels.size
 
     act(() => {
+      broadcaster.rerender(createElement(TestBroadcaster, { slide: 1 }))
+    })
+
+    await vi.waitFor(() => expect(receivedSlide).toBe(1))
+    expect(isConnected).toBe(true)
+    expect(mockChannels.size).toBe(initialChannelsCount)
+
+    act(() => {
+      broadcaster.unmount()
       receiver.unmount()
     })
+  })
+})
+
+const subpageTestPlans = {
+  0: {
+    pages: [{ from: 0, to: 2, top: 0 }, { from: 2, to: 4, top: 300 }],
+    scales: [1, 1, 1, 1],
+  },
+}
+
+describe('buildPresenterSlideState — subpage calculation', () => {
+
+  it('previews next subpage when current slide has remaining subpages', () => {
+    const state = buildPresenterSlideState({
+      open: true,
+      noteTitle: 'Multi-page Deck',
+      slideIndex: 0,
+      subPage: 0,
+      slideCount: 2,
+      pageCount: 2,
+      deck: ['# Page 1\n\nPart 1\n\nPart 2', '# Page 2'],
+      notes: ['note 1', 'note 2'],
+      plans: subpageTestPlans,
+      startedAt: 5000,
+      goNext: vi.fn(),
+      goPrev: vi.fn(),
+      jumpTo: vi.fn(),
+    })
+
+    expect(state.nextSlideSource).toBe('# Page 1\n\nPart 1\n\nPart 2')
+    expect(state.nextSubPage).toBe(1)
+    expect(state.nextPlan).toBe(subpageTestPlans[0])
+  })
+
+  it('previews next slide when on the last subpage of current slide', () => {
+    const state = buildPresenterSlideState({
+      open: true,
+      noteTitle: 'Multi-page Deck',
+      slideIndex: 0,
+      subPage: 1,
+      slideCount: 2,
+      pageCount: 2,
+      deck: ['# Page 1\n\nPart 1\n\nPart 2', '# Page 2'],
+      notes: ['note 1', 'note 2'],
+      plans: subpageTestPlans,
+      startedAt: 5000,
+      goNext: vi.fn(),
+      goPrev: vi.fn(),
+      jumpTo: vi.fn(),
+    })
+
+    expect(state.nextSlideSource).toBe('# Page 2')
+    expect(state.nextSubPage).toBe(0)
+  })
+})
+
+describe('buildPresenterSlideState — end of deck', () => {
+  it('sets nextSlideSource to null on the final slide and subpage', () => {
+    const state = buildPresenterSlideState({
+      open: true,
+      noteTitle: 'End Deck',
+      slideIndex: 1,
+      subPage: 0,
+      slideCount: 2,
+      pageCount: 1,
+      deck: ['# First', '# Final'],
+      notes: ['', ''],
+      plans: {},
+      startedAt: 5000,
+      goNext: vi.fn(),
+      goPrev: vi.fn(),
+      jumpTo: vi.fn(),
+    })
+
+    expect(state.nextSlideSource).toBeNull()
   })
 })

@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../lib/i18n'
 import { renderElement } from '../../../lib/test-render'
-import { PresenterWindow, type PresenterWindowProps } from './presenter-window'
+import { PresenterWindow, usePresenterTimer, type PresenterWindowProps } from './presenter-window'
 import type { PresenterSlideState } from './use-presenter-channel'
 
 beforeAll(async () => {
@@ -32,7 +32,7 @@ const mockSlideState: PresenterSlideState = {
   currentSlideSource: '# Core Pillars\n\n- Security\n- Performance',
   nextSlideSource: '# Roadmap\n\nQ4 Deliverables',
   notes: 'Emphasize zero overhead and deterministic fallbacks.',
-  startedAt: Date.now() - 65000, // 1m 05s ago
+  startedAt: Date.now() - 65000,
 }
 
 describe('PresenterWindow — layout and rendering', () => {
@@ -53,26 +53,30 @@ describe('PresenterWindow — layout and rendering', () => {
   })
 
   it('renders fallback when current slide has no speaker notes', () => {
-    const emptyNotesState: PresenterSlideState = {
-      ...mockSlideState,
-      notes: '',
-    }
+    const emptyNotesState: PresenterSlideState = { ...mockSlideState, notes: '' }
     const { container } = renderPresenter({ initialState: emptyNotesState })
     expect(container.textContent).toContain(t('workspace.presentation_no_notes'))
   })
 
   it('renders end-of-deck notice when on the final slide', () => {
-    const finalSlideState: PresenterSlideState = {
-      ...mockSlideState,
-      slideIndex: 3,
-      nextSlideSource: null,
-    }
+    const finalSlideState: PresenterSlideState = { ...mockSlideState, slideIndex: 3, nextSlideSource: null }
     const { container } = renderPresenter({ initialState: finalSlideState })
     expect(container.textContent).toContain(t('workspace.presentation_end_of_deck'))
   })
+
+  it('renders next subpage preview when current slide has subsequent subpage', () => {
+    const multiPageState: PresenterSlideState = {
+      ...mockSlideState,
+      nextSlideSource: '# Core Pillars',
+      nextSubPage: 1,
+      nextPlan: { pages: [{ from: 0, to: 1, top: 0 }, { from: 1, to: 2, top: 200 }], scales: [1, 1] },
+    }
+    const { container } = renderPresenter({ initialState: multiPageState })
+    expect(container.textContent).toContain(t('workspace.presentation_next_slide'))
+  })
 })
 
-describe('PresenterWindow — navigation controls and shortcuts', () => {
+describe('PresenterWindow — button controls', () => {
   it('triggers onCommand on Prev and Next button clicks', () => {
     const onCommand = vi.fn()
     const { container } = renderPresenter({ initialState: mockSlideState, onCommand })
@@ -90,30 +94,22 @@ describe('PresenterWindow — navigation controls and shortcuts', () => {
   })
 
   it('disables prev button at the start of presentation', () => {
-    const startState: PresenterSlideState = {
-      ...mockSlideState,
-      slideIndex: 0,
-      subPage: 0,
-    }
+    const startState: PresenterSlideState = { ...mockSlideState, slideIndex: 0, subPage: 0 }
     const { container } = renderPresenter({ initialState: startState })
     const prevBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_prev')}"]`)
     expect(prevBtn?.disabled).toBe(true)
   })
 
   it('disables next button at the end of presentation', () => {
-    const endState: PresenterSlideState = {
-      ...mockSlideState,
-      slideIndex: 3,
-      slideCount: 4,
-      subPage: 0,
-      pageCount: 1,
-    }
+    const endState: PresenterSlideState = { ...mockSlideState, slideIndex: 3, slideCount: 4, subPage: 0, pageCount: 1 }
     const { container } = renderPresenter({ initialState: endState })
     const nextBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_next')}"]`)
     expect(nextBtn?.disabled).toBe(true)
   })
+})
 
-  it('responds to keyboard navigation shortcuts', () => {
+describe('PresenterWindow — keyboard shortcuts', () => {
+  it('responds to global navigation shortcuts', () => {
     const onCommand = vi.fn()
     renderPresenter({ initialState: mockSlideState, onCommand })
 
@@ -126,31 +122,11 @@ describe('PresenterWindow — navigation controls and shortcuts', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }))
     expect(onCommand).toHaveBeenCalledWith('next')
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown' }))
-    expect(onCommand).toHaveBeenCalledWith('next')
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp' }))
-    expect(onCommand).toHaveBeenCalledWith('prev')
-
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }))
     expect(onCommand).toHaveBeenCalledWith('first')
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }))
     expect(onCommand).toHaveBeenCalledWith('last')
-  })
-
-  it('leaves arrow keys to speaker notes pane when focused so presenter can scroll', () => {
-    const onCommand = vi.fn()
-    const { container } = renderPresenter({ initialState: mockSlideState, onCommand })
-
-    const notesPane = container.querySelector('[data-speaker-notes]')
-    expect(notesPane).toBeTruthy()
-
-    notesPane?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-    expect(onCommand).not.toHaveBeenCalledWith('next')
-
-    notesPane?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
-    expect(onCommand).not.toHaveBeenCalledWith('prev')
   })
 
   it('closes window on Escape', () => {
@@ -159,8 +135,40 @@ describe('PresenterWindow — navigation controls and shortcuts', () => {
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(closeSpy).toHaveBeenCalledTimes(1)
-
     closeSpy.mockRestore()
+  })
+})
+
+describe('PresenterWindow — keyboard focus guards', () => {
+  it('leaves Space and Enter to focused buttons instead of moving slides', () => {
+    const onCommand = vi.fn()
+    const { container } = renderPresenter({ initialState: mockSlideState, onCommand })
+
+    const pauseBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_timer_pause')}"]`)
+    pauseBtn?.focus()
+
+    pauseBtn?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    expect(onCommand).not.toHaveBeenCalledWith('next')
+
+    pauseBtn?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(onCommand).not.toHaveBeenCalledWith('next')
+  })
+
+  it('leaves vertical scrolling keys to speaker notes pane when focused', () => {
+    const onCommand = vi.fn()
+    const { container } = renderPresenter({ initialState: mockSlideState, onCommand })
+
+    const notesPane = container.querySelector('[data-speaker-notes]')
+    for (const key of ['PageDown', 'PageUp', 'Home', 'End', ' ', 'ArrowDown', 'ArrowUp']) {
+      notesPane?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+      expect(onCommand).not.toHaveBeenCalled()
+    }
+
+    notesPane?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    expect(onCommand).toHaveBeenCalledWith('next')
+
+    notesPane?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+    expect(onCommand).toHaveBeenCalledWith('prev')
   })
 })
 
@@ -170,17 +178,11 @@ describe('PresenterWindow — timer interactions', () => {
     const pauseBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_timer_pause')}"]`)
     expect(pauseBtn).toBeTruthy()
 
-    act(() => {
-      pauseBtn?.click()
-    })
-
+    act(() => pauseBtn?.click())
     const resumeBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_timer_resume')}"]`)
     expect(resumeBtn).toBeTruthy()
 
-    act(() => {
-      resumeBtn?.click()
-    })
-
+    act(() => resumeBtn?.click())
     expect(container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_timer_pause')}"]`)).toBeTruthy()
   })
 
@@ -189,10 +191,70 @@ describe('PresenterWindow — timer interactions', () => {
     const resetBtn = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_timer_reset')}"]`)
     expect(resetBtn).toBeTruthy()
 
-    act(() => {
-      resetBtn?.click()
-    })
-
+    act(() => resetBtn?.click())
     expect(container.textContent).toContain('00:00')
+  })
+})
+
+describe('usePresenterTimer — pause logic', () => {
+  it('correctly pauses without jumping ahead upon resumption', () => {
+    vi.useFakeTimers()
+    const startTime = 100000
+    vi.setSystemTime(startTime)
+
+    let timerResult!: ReturnType<typeof usePresenterTimer>
+    function TimerHarness({ startedAt }: { startedAt: number }) {
+      timerResult = usePresenterTimer(startedAt)
+      return null
+    }
+
+    const { unmount } = renderElement(createElement(TimerHarness, { startedAt: startTime }))
+
+    act(() => vi.advanceTimersByTime(10000))
+    expect(timerResult.elapsedSeconds).toBe(10)
+
+    act(() => timerResult.togglePause())
+    expect(timerResult.isPaused).toBe(true)
+
+    act(() => vi.advanceTimersByTime(20000))
+    expect(timerResult.elapsedSeconds).toBe(10)
+
+    act(() => timerResult.togglePause())
+    expect(timerResult.isPaused).toBe(false)
+    expect(timerResult.elapsedSeconds).toBe(10)
+
+    act(() => vi.advanceTimersByTime(5000))
+    expect(timerResult.elapsedSeconds).toBe(15)
+
+    unmount()
+    vi.useRealTimers()
+  })
+})
+
+describe('usePresenterTimer — reset logic', () => {
+  it('resets elapsed time to zero and continues counting from zero', () => {
+    vi.useFakeTimers()
+    const startTime = 100000
+    vi.setSystemTime(startTime)
+
+    let timerResult!: ReturnType<typeof usePresenterTimer>
+    function TimerHarness({ startedAt }: { startedAt: number }) {
+      timerResult = usePresenterTimer(startedAt)
+      return null
+    }
+
+    const { unmount } = renderElement(createElement(TimerHarness, { startedAt: startTime }))
+
+    act(() => vi.advanceTimersByTime(15000))
+    expect(timerResult.elapsedSeconds).toBe(15)
+
+    act(() => timerResult.resetTimer())
+    expect(timerResult.elapsedSeconds).toBe(0)
+
+    act(() => vi.advanceTimersByTime(4000))
+    expect(timerResult.elapsedSeconds).toBe(4)
+
+    unmount()
+    vi.useRealTimers()
   })
 })

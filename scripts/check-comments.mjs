@@ -6880,20 +6880,11 @@ const allowed = new Map([
     '// Theme flips must reach the slide canvas and its diagrams without going through',
     '// the store, because the canvas renders sanitized markup outside the editor tree.',
   ]],
-  ['src/client/features/presentation/presenter-view/presenter-window.test.ts', [
-    '// 1m 05s ago',
-  ]],
-  ['src/client/features/presentation/presenter-view/use-presenter-channel.test.ts', [
-    '// Broadcast to other channels with the same name',
-    '// Mount Broadcaster',
-    '// Mount Receiver',
-    '// Wait for microtask broadcast',
-    '// Receiver sends commands back to broadcaster',
-    '// Unmount broadcaster should send close signal',
-  ]],
   ['src/client/features/presentation/presenter-view/use-presenter-channel.ts', [
     '// Best-effort channel post',
+    '// Best-effort channel post',
     '// Channel already closed',
+    '// Best-effort channel post',
     '// Best-effort broadcast',
     '// Channel initialization',
   ]],

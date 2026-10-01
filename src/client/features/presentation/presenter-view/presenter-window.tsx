@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, FileText, Pause, Play, Presentation, RotateCcw } from 'lucide-react'
+import type { ProseFont } from '@shared/types'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { IconButton, Spinner } from '../../../components/primitives'
@@ -46,7 +47,13 @@ export function PresenterWindow({ initialState, onCommand }: PresenterWindowProp
       <div className='flex min-h-0 flex-1 gap-[var(--sp-3)] p-[var(--sp-3)]'>
         <PresenterCurrentSlidePane state={state} />
         <div className='flex flex-[2] min-w-0 flex-col gap-[var(--sp-3)]'>
-          <PresenterNextSlidePane nextSource={state.nextSlideSource} nextLayout={state.nextLayout} />
+          <PresenterNextSlidePane
+            nextSource={state.nextSlideSource}
+            nextLayout={state.nextLayout}
+            nextPlan={state.nextPlan}
+            nextSubPage={state.nextSubPage}
+            font={state.proseFont}
+          />
           <PresenterSpeakerNotesPane notes={state.notes} />
         </div>
       </div>
@@ -69,6 +76,7 @@ function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
           layout={state.currentLayout}
           plan={state.currentPlan}
           sub={state.subPage}
+          font={state.proseFont}
         />
       </div>
     </div>
@@ -78,9 +86,15 @@ function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
 function PresenterNextSlidePane({
   nextSource,
   nextLayout,
+  nextPlan,
+  nextSubPage,
+  font,
 }: {
   nextSource: string | null
   nextLayout?: SlideLayout
+  nextPlan?: SlidePlan
+  nextSubPage?: number
+  font?: ProseFont
 }) {
   return (
     <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
@@ -89,7 +103,13 @@ function PresenterNextSlidePane({
       </div>
       <div className='flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[var(--bg-editor)] p-[var(--sp-2)]'>
         {nextSource ? (
-          <PresenterSlidePreview source={nextSource} layout={nextLayout} />
+          <PresenterSlidePreview
+            source={nextSource}
+            layout={nextLayout}
+            plan={nextPlan}
+            sub={nextSubPage}
+            font={font}
+          />
         ) : (
           <div className='text-[length:var(--text-14)] italic text-[var(--text-tertiary)]'>
             {t('workspace.presentation_end_of_deck')}
@@ -268,20 +288,62 @@ function useStageAutoMetrics(containerRef: React.RefObject<HTMLDivElement | null
   return metrics
 }
 
+function PresenterScaledSlide({
+  metrics,
+  html,
+  font,
+  layout,
+}: {
+  metrics: StageMetrics
+  html: string
+  font: ProseFont
+  layout?: SlideLayout
+}) {
+  return (
+    <div
+      className='relative shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-editor)]'
+      style={{
+        width: metrics.designWidth * metrics.scale,
+        height: metrics.designHeight * metrics.scale,
+      }}
+    >
+      <div
+        className='ink-slide absolute top-0 left-0'
+        style={{
+          width: metrics.designWidth,
+          height: metrics.designHeight,
+          transform: `scale(${metrics.scale})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <div
+          className='absolute inset-x-0'
+          style={{ top: SLIDE_PAD_Y, left: SLIDE_PAD_X, right: SLIDE_PAD_X }}
+        >
+          <SlideProse html={html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={layout} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function PresenterSlidePreview({
   source,
   layout,
   plan,
   sub = 0,
+  font,
 }: {
   source: string
   layout?: SlideLayout
   plan?: SlidePlan
   sub?: number
+  font?: ProseFont
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const metrics = useStageAutoMetrics(containerRef)
-  const proseFont = useSession((s) => s.settings.appearance.proseFont) ?? 'sans'
+  const defaultFont = useSession((s) => s.settings.appearance.proseFont) ?? 'sans'
+  const proseFont = font ?? defaultFont
 
   const html = useMemo(() => {
     if (!source) return ''
@@ -296,34 +358,7 @@ export function PresenterSlidePreview({
 
   return (
     <div ref={containerRef} className='relative flex h-full w-full items-center justify-center overflow-hidden'>
-      <div
-        className='relative shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-editor)]'
-        style={{
-          width: metrics.designWidth * metrics.scale,
-          height: metrics.designHeight * metrics.scale,
-        }}
-      >
-        <div
-          className='ink-slide absolute top-0 left-0'
-          style={{
-            width: metrics.designWidth,
-            height: metrics.designHeight,
-            transform: `scale(${metrics.scale})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          <div
-            className='absolute inset-x-0'
-            style={{
-              top: SLIDE_PAD_Y,
-              left: SLIDE_PAD_X,
-              right: SLIDE_PAD_X,
-            }}
-          >
-            <SlideProse html={html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={proseFont} layout={effectiveLayout} />
-          </div>
-        </div>
-      </div>
+      <PresenterScaledSlide metrics={metrics} html={html} font={proseFont} layout={effectiveLayout} />
     </div>
   )
 }
@@ -337,35 +372,87 @@ function usePresenterClock() {
   return clock
 }
 
-function usePresenterTimer(startedAt: number) {
-  const [isPaused, setIsPaused] = useState(false)
-  const [pausedElapsed, setPausedElapsed] = useState(0)
-  const [now, setNow] = useState(() => Date.now())
-
+function useTimerInterval(isPaused: boolean, setNow: React.Dispatch<React.SetStateAction<number>>) {
   useEffect(() => {
     if (isPaused) return
     const id = window.setInterval(() => setNow(Date.now()), 500)
     return () => window.clearInterval(id)
-  }, [isPaused])
+  }, [isPaused, setNow])
+}
+
+export function usePresenterTimer(startedAt: number) {
+  const [isPaused, setIsPaused] = useState(false)
+  const [accumulatedMs, setAccumulatedMs] = useState(0)
+  const [lastResumeAt, setLastResumeAt] = useState(() => startedAt)
+  const [now, setNow] = useState(() => Date.now())
+
+  const prevStartedAtRef = useRef(startedAt)
+  useEffect(() => {
+    if (prevStartedAtRef.current !== startedAt) {
+      prevStartedAtRef.current = startedAt
+      setAccumulatedMs(0)
+      setLastResumeAt(startedAt)
+      setIsPaused(false)
+      setNow(Date.now())
+    }
+  }, [startedAt])
+
+  useTimerInterval(isPaused, setNow)
 
   const togglePause = useCallback(() => {
-    setIsPaused((prev) => {
-      if (!prev) {
-        setPausedElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)))
+    setIsPaused((currentlyPaused) => {
+      const currentTime = Date.now()
+      if (currentlyPaused) {
+        setLastResumeAt(currentTime)
+        setNow(currentTime)
+        return false
       }
-      return !prev
+      if (lastResumeAt !== null) {
+        setAccumulatedMs((prev) => prev + Math.max(0, currentTime - lastResumeAt))
+      }
+      return true
     })
-  }, [startedAt])
+  }, [lastResumeAt])
 
   const resetTimer = useCallback(() => {
+    const currentTime = Date.now()
     setIsPaused(false)
-    setPausedElapsed(0)
-    setNow(startedAt)
-  }, [startedAt])
+    setAccumulatedMs(0)
+    setLastResumeAt(currentTime)
+    setNow(currentTime)
+  }, [])
 
-  const elapsedSeconds = isPaused ? pausedElapsed : Math.max(0, Math.floor((now - startedAt) / 1000))
+  const runningElapsedMs = !isPaused && lastResumeAt !== null ? Math.max(0, now - lastResumeAt) : 0
+  const elapsedSeconds = Math.max(0, Math.floor((accumulatedMs + runningElapsedMs) / 1000))
 
   return { elapsedSeconds, isPaused, togglePause, resetTimer }
+}
+
+function dispatchPresenterKey(key: string, sendCommand: (cmd: PresenterInboundCommand) => void): boolean {
+  switch (key) {
+    case 'ArrowRight':
+    case 'PageDown':
+    case ' ':
+    case 'ArrowDown':
+      sendCommand('next')
+      return true
+    case 'ArrowLeft':
+    case 'PageUp':
+    case 'ArrowUp':
+      sendCommand('prev')
+      return true
+    case 'Home':
+      sendCommand('first')
+      return true
+    case 'End':
+      sendCommand('last')
+      return true
+    case 'Escape':
+      window.close()
+      return true
+    default:
+      return false
+  }
 }
 
 function usePresenterKeyNav(sendCommand: (command: PresenterInboundCommand) => void) {
@@ -376,40 +463,16 @@ function usePresenterKeyNav(sendCommand: (command: PresenterInboundCommand) => v
       const isInput = Boolean(el?.closest('input, textarea, select, [contenteditable="true"]'))
       if (isInput) return
 
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'PageDown':
-        case ' ':
-          event.preventDefault()
-          sendCommand('next')
-          break
-        case 'ArrowLeft':
-        case 'PageUp':
-          event.preventDefault()
-          sendCommand('prev')
-          break
-        case 'ArrowDown':
-          if (el?.closest('[data-speaker-notes]')) return
-          event.preventDefault()
-          sendCommand('next')
-          break
-        case 'ArrowUp':
-          if (el?.closest('[data-speaker-notes]')) return
-          event.preventDefault()
-          sendCommand('prev')
-          break
-        case 'Home':
-          event.preventDefault()
-          sendCommand('first')
-          break
-        case 'End':
-          event.preventDefault()
-          sendCommand('last')
-          break
-        case 'Escape':
-          event.preventDefault()
-          window.close()
-          break
+      const isControl = Boolean(el?.closest('button, a'))
+      if (isControl && (event.key === ' ' || event.key === 'Enter')) return
+
+      const inSpeakerNotes = Boolean(el?.closest('[data-speaker-notes]'))
+      if (inSpeakerNotes && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) {
+        return
+      }
+
+      if (dispatchPresenterKey(event.key, sendCommand)) {
+        event.preventDefault()
       }
     }
     window.addEventListener('keydown', onKeyDown)

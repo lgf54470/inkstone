@@ -88,7 +88,7 @@ export interface PresentationSession {
   notes: string[]
 }
 
-function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[]) {
+function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[], proseFont?: ProseFont) {
   const startedAt = useRef(Date.now()).current
   const openPresenter = useCallback(() => openPresenterWindow(), [])
   usePresenterBroadcaster({
@@ -102,6 +102,7 @@ function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<t
     notes,
     plans: nav.plans,
     startedAt,
+    proseFont,
     goNext: nav.goNext,
     goPrev: nav.goPrev,
     jumpTo: nav.jumpTo,
@@ -125,7 +126,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes)
+  const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes, proseFont)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview })
   useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })

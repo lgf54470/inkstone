@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ProseFont } from '@shared/types'
 import type { SlideLayout } from '../slides'
 import type { SlidePlan } from '../slide-pagination'
 
@@ -17,8 +18,11 @@ export interface PresenterSlideState {
   nextSlideSource: string | null
   nextLayout?: SlideLayout
   currentPlan?: SlidePlan
+  nextPlan?: SlidePlan
+  nextSubPage?: number
   notes: string
   startedAt: number
+  proseFont?: ProseFont
 }
 
 export type PresenterSyncMessage =
@@ -66,14 +70,33 @@ export interface PresenterBroadcasterOptions {
   notes: string[]
   plans: Record<number, SlidePlan>
   startedAt: number
+  proseFont?: ProseFont
   goNext: () => void
   goPrev: () => void
   jumpTo: (index: number) => void
 }
 
-function buildPresenterSlideState(options: PresenterBroadcasterOptions): PresenterSlideState {
-  const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt } = options
+export function buildPresenterSlideState(options: PresenterBroadcasterOptions): PresenterSlideState {
+  const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = options
   const currentPlan = plans[slideIndex]
+
+  let nextSlideSource: string | null = null
+  let nextLayout: SlideLayout | undefined
+  let nextPlan: SlidePlan | undefined
+  let nextSubPage = 0
+
+  if (subPage + 1 < pageCount) {
+    nextSlideSource = deck[slideIndex] ?? null
+    nextLayout = currentPlan?.layout
+    nextPlan = currentPlan
+    nextSubPage = subPage + 1
+  } else if (slideIndex + 1 < deck.length) {
+    nextSlideSource = deck[slideIndex + 1] ?? null
+    nextLayout = plans[slideIndex + 1]?.layout
+    nextPlan = plans[slideIndex + 1]
+    nextSubPage = 0
+  }
+
   return {
     noteTitle,
     slideIndex,
@@ -82,29 +105,23 @@ function buildPresenterSlideState(options: PresenterBroadcasterOptions): Present
     pageCount,
     currentSlideSource: deck[slideIndex] ?? '',
     currentLayout: currentPlan?.layout,
-    nextSlideSource: slideIndex + 1 < deck.length ? (deck[slideIndex + 1] ?? null) : null,
-    nextLayout: plans[slideIndex + 1]?.layout,
+    nextSlideSource,
+    nextLayout,
+    nextPlan,
+    nextSubPage,
     currentPlan,
     notes: notes[slideIndex] ?? '',
     startedAt,
+    proseFont,
   }
 }
 
-export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): void {
-  const { open, slideCount, goNext, goPrev, jumpTo } = options
+function useBroadcasterChannel(
+  open: boolean,
+  stateRef: React.RefObject<PresenterSlideState>,
+  navRef: React.RefObject<{ goNext: () => void; goPrev: () => void; jumpTo: (i: number) => void; slideCount: number }>,
+) {
   const channelRef = useRef<BroadcastChannel | null>(null)
-  const navRef = useRef({ goNext, goPrev, jumpTo, slideCount })
-  navRef.current = { goNext, goPrev, jumpTo, slideCount }
-
-  const statePayload = buildPresenterSlideState(options)
-
-  const broadcastState = useCallback((channel: BroadcastChannel) => {
-    try {
-      channel.postMessage({ type: 'sync', state: statePayload })
-    } catch {
-      // Best-effort channel post
-    }
-  }, [statePayload])
 
   useEffect(() => {
     if (!open || typeof BroadcastChannel === 'undefined') return
@@ -115,13 +132,21 @@ export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): v
       const msg = event.data
       if (!msg) return
       if (msg.type === 'ready') {
-        broadcastState(channel)
+        try {
+          channel.postMessage({ type: 'sync', state: stateRef.current })
+        } catch {
+          // Best-effort channel post
+        }
       } else if (msg.type === 'command') {
         handleInboundCommand(msg.command, navRef.current)
       }
     }
 
-    broadcastState(channel)
+    try {
+      channel.postMessage({ type: 'sync', state: stateRef.current })
+    } catch {
+      // Best-effort channel post
+    }
 
     return () => {
       try {
@@ -132,7 +157,30 @@ export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): v
       channel.close()
       channelRef.current = null
     }
-  }, [open, broadcastState])
+  }, [open, stateRef, navRef])
+
+  return channelRef
+}
+
+export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): void {
+  const { open, slideCount, goNext, goPrev, jumpTo } = options
+  const navRef = useRef({ goNext, goPrev, jumpTo, slideCount })
+  navRef.current = { goNext, goPrev, jumpTo, slideCount }
+
+  const statePayload = buildPresenterSlideState(options)
+  const stateRef = useRef(statePayload)
+  stateRef.current = statePayload
+
+  const channelRef = useBroadcasterChannel(open, stateRef, navRef)
+
+  useEffect(() => {
+    if (!open || !channelRef.current) return
+    try {
+      channelRef.current.postMessage({ type: 'sync', state: statePayload })
+    } catch {
+      // Best-effort channel post
+    }
+  }, [open, statePayload, channelRef])
 }
 
 function handleInboundCommand(command: PresenterInboundCommand, nav: { goNext: () => void; goPrev: () => void; jumpTo: (i: number) => void; slideCount: number }) {
