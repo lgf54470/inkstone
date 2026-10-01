@@ -27,8 +27,8 @@
 | **2. 性能与计算管线 (Performance Pipeline)** | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06 | 6 项 | ✅ 全部已提交 (`cef97815`, `2744cec7`, `029f252b`, `24157e33`) |
 | **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 全部已提交 (`cec83ccb`, `83d212a9`, `7946bb73`, `24157e33`) |
 | **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 全部已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`, `24157e33`) |
-| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 3 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`), ⏳ 2 项待推进 (FEAT-04、FEAT-05) |
-| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱侧 6 个测试文件 / 41 条断言随 `8d6b5542` 全绿） |
+| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 3 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`), ⏳ 2 项待推进 (FEAT-04 已落地排除过滤语法 `ac3a7fb7`，剩颜色分组规则；FEAT-05) |
+| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 7 个测试文件 / 53 条用例随 `ac3a7fb7` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/features/graph`） |
 | **总计** | **全维度覆盖** | **29 项** | **26 项已提交完成，3 项待推进 (FEAT-04, FEAT-05, TEST-01)** |
 
 ---
@@ -208,9 +208,17 @@
   - **状态**：已完成并验证通过（pre-commit 钩子内 403 个测试文件 / 3409 条断言全绿；图例数据源与标签配色派生两条新行为各由具名断言在变异测试中杀死）
 
 - [ ] **16. 【FEAT-04】缺失高级排除过滤语法与自定义颜色规则 (Filter Exclusion Syntax & Color Rules)**
-  - **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/settings.tsx`, `helpers.ts`
+  - **涉及文件**：`src/shared/graph-filter-expression.ts`, `src/worker/routes/search/graph.ts`, `src/client/demo/backend/routes/search.ts`, `src/client/features/graph/graph-panel/settings.tsx`, `helpers.ts`
   - **修改要点**：支持 `-path:` 或 `-tag:` 高级排除语法；设置抽屉支持添加颜色分组规则并展示在图例中。
-  - **提交哈希**：`待提交`
+  - **进度（A 已完成）**：过滤行语法
+    1. 新增 `src/shared/graph-filter-expression.ts`：`parseGraphFilter()` 把过滤行切成自由文本 + `tag:`/`path:` 限定项（各可带前导 `-` 表示排除，引号值可含空格，超出 `GRAPH_FILTER_TERM_LIMIT = 8` 或解析失败的记作回落到文本，宁可少显示也不静默放宽）；`graphFilterMatches()` 是同一语法在客户端的求值，供 demo 后端与后续颜色规则复用；
+    2. `src/worker/routes/search/graph.ts`：`buildGraphFilters` 改用解析结果，新增 `appendFilterTerm()` 把限定项编译成 `EXISTS/NOT EXISTS`（标签按名精确匹配、`COLLATE NOCASE`）与 `folders` 上的 `LIKE ... ESCAPE`（排除分支 `COALESCE(f.name,'')` 让没有目录的笔记不被 `-path:` 误杀）；
+    3. 两条溢出 `COUNT` 回退查询补上与分页同一 `LEFT JOIN folders f`，否则 `path:` 条件在结果超出 `limit` 时会让接口 500；
+    4. demo 后端 `filterGraphNotes` 改结构体传参并复用 `graphFilterMatches`，查询串解析抽为 `graphNoteFilter()` 以守住 50 行函数上限；
+    5. 图谱过滤框加 `title` 提示（新增 `graph.filter_syntax_hint` 双语言键），使语法可被发现。
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && node scripts/check-visual-labels.mjs && npm run typecheck && npx vitest run src/shared/graph-filter-expression.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`
+  - **提交哈希**：`ac3a7fb7`（A：排除语法；B 颜色分组规则待提交）
+  - **状态**：A 部分已完成并验证通过（新增真实 D1 语法分组 4 条 + demo 后端 2 条 + 解析/匹配单测 8 条；worker 侧 M1/M2/M3 与 demo 侧 M4/M5 五个变异各由具名断言杀死，其中 M3 专防 `COUNT` 回退缺失 `folders` 联表）；B 部分（颜色分组规则）待推进
 
 - [ ] **17. 【FEAT-05】缺失节点坐标固定 (Pin) 与高清图片/矢量导出 (Pin Nodes & Export PNG/SVG)**
   - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `index.tsx`, `canvas-draw.ts`
