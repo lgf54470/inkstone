@@ -241,21 +241,27 @@ export const api = {
     }
   },
 
-  async getCategories(): Promise<BlogCategory[]> {
+  /**
+   * A page can render around a missing list, so the fallback is an empty one; a sitemap cannot —
+   * there an empty list means "these pages do not exist", and it asks for the error instead.
+   */
+  async getCategories(options?: { strict?: boolean }): Promise<BlogCategory[]> {
     try {
       const data = asRecord(await requestJsonCached('/api/blog/public/categories', 60))
       return asArray(data.categories).map(normalizeCategory)
     } catch (err) {
+      if (options?.strict) throw err
       console.warn('[api.getCategories] request failed:', err)
       return []
     }
   },
 
-  async getTags(): Promise<BlogTag[]> {
+  async getTags(options?: { strict?: boolean }): Promise<BlogTag[]> {
     try {
       const data = asRecord(await requestJsonCached('/api/blog/public/tags', 60))
       return asArray(data.tags).map(normalizeTag)
     } catch (err) {
+      if (options?.strict) throw err
       console.warn('[api.getTags] request failed:', err)
       return []
     }

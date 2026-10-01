@@ -68,6 +68,7 @@ function useSettingsFields({
   const [email, setEmail] = useState('')
   const [website, setWebsite] = useState('')
   const [frontendUrl, setFrontendUrl] = useState('')
+  const [websubHubUrl, setWebsubHubUrl] = useState('')
   const [requireCommentApproval, setRequireCommentApproval] = useState(true)
   const [commentWebhookUrl, setCommentWebhookUrl] = useState('')
   const [spamKeywords, setSpamKeywords] = useState('')
@@ -78,7 +79,7 @@ function useSettingsFields({
   const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
   const [isSaving, setIsSaving] = useState(false)
   const [isCleanBusy, setIsCleanBusy] = useState(false)
-  return { siteName, setSiteName, subtitle, setSubtitle, bio, setBio, authorName, setAuthorName, authorAvatar, setAuthorAvatar, github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite, frontendUrl, setFrontendUrl, requireCommentApproval, setRequireCommentApproval, commentWebhookUrl, setCommentWebhookUrl, spamKeywords, setSpamKeywords, postsPerPage, setPostsPerPage, bots, setBots, selfRef, setSelfRef, owner, setOwner, retentionDays, setRetentionDays, isSaving, setIsSaving, isCleanBusy, setIsCleanBusy }
+  return { siteName, setSiteName, subtitle, setSubtitle, bio, setBio, authorName, setAuthorName, authorAvatar, setAuthorAvatar, github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite, frontendUrl, setFrontendUrl, websubHubUrl, setWebsubHubUrl, requireCommentApproval, setRequireCommentApproval, commentWebhookUrl, setCommentWebhookUrl, spamKeywords, setSpamKeywords, postsPerPage, setPostsPerPage, bots, setBots, selfRef, setSelfRef, owner, setOwner, retentionDays, setRetentionDays, isSaving, setIsSaving, isCleanBusy, setIsCleanBusy }
 }
 
 interface SettingsFormSetters {
@@ -92,6 +93,7 @@ interface SettingsFormSetters {
   setEmail: (v: string) => void
   setWebsite: (v: string) => void
   setFrontendUrl: (v: string) => void
+  setWebsubHubUrl: (v: string) => void
   setRequireCommentApproval: (v: boolean) => void
   setCommentWebhookUrl: (v: string) => void
   setSpamKeywords: (v: string) => void
@@ -114,6 +116,7 @@ function applySettingsToForm(ctx: SettingsFormCtx & SettingsFormSetters): void {
   ctx.setEmail(ctx.settings.socialLinks?.email || '')
   ctx.setWebsite(ctx.settings.socialLinks?.website || '')
   ctx.setFrontendUrl(ctx.settings.frontendUrl || DEFAULT_BLOG_FRONTEND_URL)
+  ctx.setWebsubHubUrl(ctx.settings.websubHubUrl || '')
   ctx.setRequireCommentApproval(ctx.settings.requireCommentApproval !== false)
   ctx.setCommentWebhookUrl(ctx.settings.commentWebhookUrl || '')
   ctx.setSpamKeywords((ctx.settings.commentSpamKeywords || []).join(', '))
@@ -143,6 +146,7 @@ interface SaveSettingsCtx {
   authorName: string
   authorAvatar: string
   frontendUrl: string
+  websubHubUrl: string
   requireCommentApproval: boolean
   commentWebhookUrl: string
   spamKeywords: string
@@ -178,6 +182,7 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
       authorName: ctx.authorName.trim(),
       authorAvatar: ctx.authorAvatar.trim(),
       frontendUrl: ctx.frontendUrl.trim() || DEFAULT_BLOG_FRONTEND_URL,
+      websubHubUrl: ctx.websubHubUrl.trim(),
       requireCommentApproval: ctx.requireCommentApproval,
       commentWebhookUrl: ctx.commentWebhookUrl.trim(),
       commentSpamKeywords: parseSpamKeywords(ctx.spamKeywords),

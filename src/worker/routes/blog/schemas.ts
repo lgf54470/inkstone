@@ -172,6 +172,9 @@ export const blogSettingsSchema = z.object({
   // author does not want one; a value must still be an address this app would render as a link.
   commentWebhookUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   commentSpamKeywords: z.array(z.string().min(1).max(50)).max(50).optional(),
+  // The hub the feed's subscribers poll (FEA-08). Empty is the default and means "do not ping"; a
+  // value has to be an address this app would call, which is the shared allowlist.
+  websubHubUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   postsPerPage: z.number().optional(),
   frontendUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   appearance: z.object({

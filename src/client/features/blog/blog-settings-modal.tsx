@@ -116,6 +116,8 @@ interface SettingsFormBundle {
   setWebsite: (v: string) => void
   frontendUrl: string
   setFrontendUrl: (v: string) => void
+  websubHubUrl: string
+  setWebsubHubUrl: (v: string) => void
   requireCommentApproval: boolean
   setRequireCommentApproval: (v: boolean) => void
   commentWebhookUrl: string
@@ -275,6 +277,11 @@ function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
 
       <Field label={t('blog.frontend_url')} hint={t('blog.frontend_url_hint')}>
         <Input value={form.frontendUrl} onChange={(e) => form.setFrontendUrl(e.target.value)} placeholder={DEFAULT_BLOG_FRONTEND_URL} />
+      </Field>
+
+      {/* FEA-08: where subscribers are told to refetch, next to the front-end URL the ping is about. */}
+      <Field label={t('blog.websub_hub_url')} hint={t('blog.websub_hub_hint')}>
+        <Input value={form.websubHubUrl} onChange={(e) => form.setWebsubHubUrl(e.target.value)} placeholder={t('blog.websub_hub_placeholder')} />
       </Field>
     </div>
   )

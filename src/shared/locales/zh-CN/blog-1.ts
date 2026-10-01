@@ -91,6 +91,10 @@ export const messages = {
 'blog.require_approval': '新评论需博主审核后显示',
 'blog.frontend_url': '博客前台地址',
 'blog.frontend_url_hint': '用于预览文章与复制链接（如 http://localhost:4321 或您的绑定域名）',
+// FEA-08: where the feed's subscribers are told to refetch from.
+'blog.websub_hub_url': 'WebSub 集线器',
+'blog.websub_hub_hint': 'feed 会声明该集线器，已发布文章变化时我们向它发 ping，订阅者据此重新抓取；留空则不启用。',
+'blog.websub_hub_placeholder': 'https://hub.example.com/',
 'blog.save_settings': '保存博客配置',
 'blog.settings_saved': '博客配置已成功保存',
 'blog.blog_hub': '博客管理中心',

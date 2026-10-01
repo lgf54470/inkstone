@@ -14,6 +14,8 @@ import { resolvedPublishedAt } from './publish-moment'
 import { blogBatchStatements, chunkPostIds } from './posts-batch'
 import { assertSlugFree, claimSlugStatements, slugMoveStatements } from './slug-history'
 import { patchTouchesPostContent, registerBlogRevisionsRoutes, snapshotRevisionStatements } from './revisions'
+import { pingBlogFeed, postVisibleInFeed } from './feed-ping'
+import { waitUntilOf } from './background'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
@@ -93,22 +95,26 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
       const renamed = slug !== existingPost.slug
       if (renamed) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
       const now = Date.now()
+      const publishedAt = resolvedPublishedAt(body, existingPost, now)
       const statements = [
         // The publish dialog rewrites every field it owns, so the state it replaces is history.
         ...snapshotRevisionStatements(c.env.DB, existingPost, now),
-        updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, now)),
+        updateBlogPost(c.env.DB, existingPost.id, postInput, publishedAt),
         ...slugMoveStatements({ db: c.env.DB, userId, postId: existingPost.id, from: existingPost.slug, to: slug, now }),
       ]
       await c.env.DB.batch(statements)
+      if (postVisibleInFeed(postInput.isPublished === 1, publishedAt, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
       return c.json({ ok: true, id: existingPost.id, slug })
     }
 
     await assertSlugFree(c.env.DB, userId, slug)
     const id = newId()
+    const now = Date.now()
     await c.env.DB.batch([
       insertBlogPost(c.env.DB, { ...postInput, id, noteId: body.noteId, userId }),
       ...claimSlugStatements({ db: c.env.DB, userId, slug }),
     ])
+    if (postVisibleInFeed(postInput.isPublished === 1, postInput.publishedAt ?? now, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
     return c.json({ ok: true, id, slug })
   })
 }
@@ -314,8 +320,38 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     statements.push(blogPostPatchStatement(c.env.DB, body, current, id, now))
     statements.push(...slugMoveStatements({ db: c.env.DB, userId, postId: id, from: previousSlug, to: current.slug, now }))
     await c.env.DB.batch(statements)
+    pingIfFeedChanged({
+      db: c.env.DB,
+      userId,
+      waitUntil: waitUntilOf(c),
+      wasVisible: postVisibleInFeed(current.is_published === 1, current.published_at, now),
+      willBeVisible: postVisibleInFeed(
+        body.isPublished !== undefined ? body.isPublished : current.is_published === 1,
+        resolvedPublishedAt(body, current, now),
+        now,
+      ),
+      contentRewritten: patchTouchesPostContent(body),
+    })
     return c.json({ ok: true })
   })
+}
+
+/**
+ * A ping tells subscribers to refetch; it is owed when their next read would differ. That is a post
+ * appearing or disappearing from the feed, or its text changing while it is in the feed — a pin or a
+ * comment toggle moves the same bytes around, and a draft being edited is not in the feed at all.
+ */
+function pingIfFeedChanged(params: {
+  db: D1Database
+  userId: string
+  waitUntil: ((task: Promise<void>) => void) | undefined
+  wasVisible: boolean
+  willBeVisible: boolean
+  contentRewritten: boolean
+}): void {
+  const { wasVisible, willBeVisible, contentRewritten } = params
+  if (wasVisible === willBeVisible && !(willBeVisible && contentRewritten)) return
+  void pingBlogFeed(params.db, params.userId, params.waitUntil)
 }
 
 function blogPostPatchStatement(
@@ -422,6 +458,7 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
         WHERE id = ?6
       `).bind(note.title, note.content, note.excerpt, coverUrl, now, id),
     ])
+    if (postVisibleInFeed(post.is_published === 1, post.published_at, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
 
     return c.json({ ok: true, syncedAt: now })
   })
@@ -448,6 +485,11 @@ function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void 
       const statements = blogBatchStatements(userId, body.action, group, body, now)
         .map((stmt) => c.env.DB.prepare(stmt.sql).bind(...stmt.binds))
       if (statements.length > 0) await c.env.DB.batch(statements)
+    }
+
+    // These three actions change what the feed lists; setCategory/setFolder/setPinned do not.
+    if (body.action === 'publish' || body.action === 'unpublish' || body.action === 'delete') {
+      void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
     }
 
     return c.json({ ok: true, count: body.postIds.length })

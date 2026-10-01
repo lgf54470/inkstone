@@ -13,7 +13,8 @@ import { getBlogSettings } from './settings'
 import { publicPostVisibleSql } from './publish-moment'
 import { blogOwnerOf } from './owner'
 import { COMMENT_SPAM_THRESHOLD, scoreComment } from './comment-spam'
-import { commentWaitUntil, dispatchCommentNotification } from './comment-notify'
+import { dispatchCommentNotification } from './comment-notify'
+import { waitUntilOf } from './background'
 
 export function registerBlogPublicCommentsRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogPublicCommentsListRoute(blogPublicRoutes)
@@ -244,7 +245,7 @@ async function announcePublicComment(
       createdAt: params.now,
       siteName: params.settings.siteName,
     },
-    commentWaitUntil(c),
+    waitUntilOf(c),
   )
 }
 

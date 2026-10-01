@@ -59,12 +59,3 @@ export function dispatchCommentNotification(
   if (waitUntil) waitUntil(task)
 }
 
-/** The runtime's `waitUntil`, or nothing when this context has none. */
-export function commentWaitUntil(c: { executionCtx: { waitUntil(task: Promise<unknown>): void } }): ((task: Promise<void>) => void) | undefined {
-  try {
-    return (task) => c.executionCtx.waitUntil(task)
-  } catch {
-    // Hono's test transport has no execution context; the send still runs, nothing waits for it.
-    return undefined
-  }
-}

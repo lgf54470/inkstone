@@ -91,6 +91,10 @@ export const messages = {
 'blog.require_approval': 'Require approval before comments are visible',
 'blog.frontend_url': 'Blog Frontend URL',
 'blog.frontend_url_hint': 'For previewing and sharing links (e.g. http://localhost:4321 or your domain)',
+// FEA-08: where the feed's subscribers are told to refetch from.
+'blog.websub_hub_url': 'WebSub hub',
+'blog.websub_hub_hint': 'The feed declares this hub and we ping it when published posts change, so subscribers refetch. Empty disables it.',
+'blog.websub_hub_placeholder': 'https://hub.example.com/',
 'blog.save_settings': 'Save Blog Settings',
 'blog.settings_saved': 'Blog settings saved successfully',
 'blog.blog_hub': 'Blog Hub',

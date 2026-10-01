@@ -155,6 +155,7 @@ export function normalizeSiteInfo(value: unknown): BlogSiteInfo {
     },
     postsPerPage: toNumber(settings.postsPerPage) || POSTS_PER_PAGE_DEFAULT,
     requireCommentApproval: Boolean(settings.requireCommentApproval),
+    websubHubUrl: asString(settings.websubHubUrl) || undefined,
   }
 }
 
@@ -196,6 +197,8 @@ export function normalizeTimelineGroup(value: unknown): TimelineGroup {
             title: asString(post.title),
             slug: asString(post.slug),
             publishedAt: toTimestamp(post.publishedAt) || toTimestamp(post.published_at) || Date.now(),
+            updatedAt: toTimestamp(post.updatedAt) || undefined,
+            noindex: post.noindex === true,
             coverUrl: extractCoverUrl(asString(post.coverUrl) || asString(post.cover_url)),
             views: toNumber(post.views),
           }

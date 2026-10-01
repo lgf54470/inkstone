@@ -3350,6 +3350,7 @@ const allowed = new Map([
     '/** Loading / failed-with-retry / empty / list: a failed question must not read as "no history". */',
   ]],
   ['src/client/features/blog/blog-settings-modal.tsx', [
+    '/* FEA-08: where subscribers are told to refetch, next to the front-end URL the ping is about. */',
     '/**\n * Where a new comment is announced and what the rules park on arrival (FEA-06). Both are the\n * author\'s own gates on reader input, which is why they sit next to the approval switch rather\n * than in the traffic tab.\n */',
   ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
@@ -12813,6 +12814,7 @@ const allowed = new Map([
     '/**\n * Widens a binary body to `BodyInit` for the shared DOM/undici request types.\n *\n * Workers and undici accept `Uint8Array` and `ReadableStream` bodies at\n * runtime, but the DOM `BodyInit` union models them through `BufferSource`\n * parameterizations that reject the exact `Uint8Array`/stream shapes used\n * here, so every backup call site would otherwise repeat a double-cast. This\n * helper is the single point where that widening happens.\n */',
   ]],
   ['src/shared/locales/en-US/blog-1.ts', [
+    '// FEA-08: where the feed\'s subscribers are told to refetch from.',
     '// FEA-06 comment replies, the notification webhook, and the spam rules the settings dialog edits.',
     '// FEA-07 media library: the cover field\'s picker, its upload and delete actions.',
   ]],
@@ -12850,6 +12852,7 @@ const allowed = new Map([
     '// does (the last one touches the collection and nothing else).',
   ]],
   ['src/shared/locales/zh-CN/blog-1.ts', [
+    '// FEA-08: where the feed\'s subscribers are told to refetch from.',
     '// FEA-06 comment replies, the notification webhook, and the spam rules the settings dialog edits.',
     '// FEA-07 media library: the cover field\'s picker, its upload and delete actions.',
   ]],
@@ -12978,6 +12981,7 @@ const allowed = new Map([
     '/** How many posts wait in the recycle bin; the sidebar badges the trash tab with it. */',
     '/**\n   * Where the author\'s own service is told that a comment arrived (FEA-06). Empty means nowhere;\n   * the instance has no mail transport, so this is how a notification leaves the worker.\n   */',
     '/** Words the spam rules look for in a submission, matched case-insensitively. */',
+    '/**\n   * The WebSub hub the feed advertises and this instance pings when published content changes\n   * (FEA-08). Empty means no hub: the feed then declares none and no ping is sent.\n   */',
     '/**\n * One post\'s own slice of the analytics window (FEA-09): the dashboard\'s range and its same-shaped\n * breakdowns, scoped to a single post the author asked about from the ranking.\n */',
     '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
@@ -13689,6 +13693,10 @@ const allowed = new Map([
     '/** The previous window\'s totals, for the delta badges; scoped to one post when one is given. */',
     '/** The visit tail both surfaces list; the drilldown\'s copy is the same rows for one post. */',
   ]],
+  ['src/worker/routes/blog/background.ts', [
+    '/**\n * Best-effort work a route starts but must not wait for. The runtime\'s `waitUntil` keeps the isolate\n * alive until the task lands; in Hono\'s test transport there is no execution context, and the task\n * still starts, nothing waits for it.\n */',
+    '// No execution context (the test transport): the work still starts, nothing keeps the isolate.',
+  ]],
   ['src/worker/routes/blog/comment-notify.ts', [
     '/**\n * Telling the author that a comment arrived (FEA-06). This is a Webhook because the instance has no\n * mail transport of its own: the author points it at their own service (which may forward to mail,\n * chat or anything else), the payload is JSON, and delivery is best-effort — a failing endpoint is\n * logged and never blocks or fails the reader\'s submission, which is already stored by then.\n */',
     '/** Delivery is bounded: a slow endpoint must not hold the request\'s context open. */',
@@ -13696,8 +13704,6 @@ const allowed = new Map([
     '// Best-effort by design: the comment is stored and the reader\'s submission must not fail',
     '// because a third-party endpoint is down. The miss is reported here so it is not invisible.',
     '/**\n * Starts the send, and hands it to the runtime when it offers an execution context so a Worker\n * keeps the isolate alive until it lands. A context that is absent (Hono\'s `app.request` in tests)\n * changes nothing about the request itself — the send still starts.\n */',
-    '/** The runtime\'s `waitUntil`, or nothing when this context has none. */',
-    '// Hono\'s test transport has no execution context; the send still runs, nothing waits for it.',
   ]],
   ['src/worker/routes/blog/comment-spam.ts', [
     '/**\n * What the spam rules make of a reader\'s comment (FEA-06). The rules are deliberately simple and\n * pure — they run before the row exists, and the score they produce is stored with it so the\n * moderation list can say why a submission was parked instead of leaving the author to guess.\n */',
@@ -13727,6 +13733,16 @@ const allowed = new Map([
     '// two for the update (status, owner). Numbering them from a shared offset made `?2` mean both',
     '// the owner and the first id, which the platform answers with a parameter-count error on every',
     '// call — the update branch had never been asked to change a single comment.',
+  ]],
+  ['src/worker/routes/blog/feed-ping.ts', [
+    '/**\n * Telling subscribers that the blog changed (FEA-08). WebSub splits this in two halves: the feed\n * advertises a hub (`<atom:link rel="hub">`, which the front end renders when this setting is filled\n * in), and the publisher posts `hub.mode=publish` there after a write. Delivery is best-effort like\n * the comment webhook: the write is stored and answered whether or not the hub answers, and a miss is\n * logged rather than retried.\n */',
+    '/** Delivery is bounded: a slow hub must not hold the request\'s context open. */',
+    '/**\n * A post reaches the feed only while it is published and its moment has passed; a scheduled post is\n * invisible to readers, so pinging for one would tell subscribers to refetch the same bytes.\n */',
+    '/** The body a WebSub hub reads: `hub.mode` names the action, `hub.url` the feed that changed. */',
+    '// Best-effort by design: the post is stored, and a third-party hub being down must not fail the',
+    '// author\'s write. The miss is reported here so it is not invisible.',
+    '/**\n * The blog\'s own feed address, derived from the front-end URL its settings carry. A blog that has not\n * said where its front end lives cannot point a hub at a feed, so the ping is skipped rather than sent\n * to a guessed address.\n */',
+    '/**\n * Reads the blog\'s hub settings and pings them. Never throws, so a write path can fire and forget: the\n * settings read failing is a reason to stay quiet, not to fail the write that already succeeded.\n */',
   ]],
   ['src/worker/routes/blog/helpers.ts', [
     '/** The body-free shape every list and index answer shares; `toBlogPost` adds the body on top of it. */',
@@ -13870,6 +13886,7 @@ const allowed = new Map([
     '// gone until it is restored.',
     '// A patch that only moves presentation (pin, publish, comments, publish moment) does not rewrite',
     '// text, so it records no version; one that can change what the post says snapshots what it said.',
+    '/**\n * A ping tells subscribers to refetch; it is owed when their next read would differ. That is a post\n * appearing or disappearing from the feed, or its text changing while it is in the feed — a pin or a\n * comment toggle moves the same bytes around, and a draft being edited is not in the feed at all.\n */',
     '// FEA-04: deleting moves the post to the recycle bin instead of erasing it, and the row keeps',
     '// everything it owned — comments, retired addresses, visit history — so a restore puts the post',
     '// back exactly as it was. The row is only really erased from the trash routes.',
@@ -13877,6 +13894,7 @@ const allowed = new Map([
     '// is a version like any other patch.',
     '// One group at a time: D1 rejects a statement that binds more than 100 variables, and the group\'s',
     '// statements go in one batch so a delete cannot stop between the rows it has to take together.',
+    '// These three actions change what the feed lists; setCategory/setFolder/setPinned do not.',
   ]],
   ['src/worker/routes/blog/public-comments.ts', [
     '/**\n * The post a comment page is about, scoped to the addressed blog: another account\'s post with the\n * same slug is a different post, and answering with it would be the cross-tenant read this module\n * was missing.\n */',
@@ -13925,6 +13943,7 @@ const allowed = new Map([
     '// draws meta tags needs them, a list that draws cards does not (FEA-02).',
     '/**\n * Where a reader asking for a retired address should be sent (FEA-03). The answer is the post\'s\n * current slug, or null when nothing readable owns that address — the front end keeps the request a\n * 404 in that case instead of inventing a destination.\n */',
     '/**\n * The archive endpoints answer with the whole published blog by design — a timeline or a calendar is\n * only useful complete — so their bound is a ceiling far above a personal blog\'s post count rather\n * than a page size, and every one of them keeps the newest rows: past the ceiling the oldest posts\n * fall out of the archive views, never the recent ones.\n */',
+    '// What a sitemap needs to date a post and to leave a noindex one out of the index (FEA-08).',
     '// The inner order picks which posts the ceiling keeps (the newest), the outer one keeps the',
     '// order the calendar renders in (a day\'s posts oldest first).',
   ]],
@@ -13941,6 +13960,7 @@ const allowed = new Map([
     '/**\n * The insert plus the retention trim, in that order: the write that snapshots and the write that\n * prunes ride the same batch, so a post can never hold more than the limit. `rowid` orders snapshots\n * written in the same millisecond, which is also the order the list and the trim keep.\n */',
     '/** The list answers "what versions are there" with no bodies, like the notes sidebar\'s own list. */',
     '/**\n * Restoring writes the revision\'s content-bearing fields back onto the post and snapshots the state\n * it replaces, so the restore itself can be undone. The presentation flags (`is_published`,\n * `allow_comments`, `is_pinned`) and the counters stay as they are: they are decisions about the\n * post today, not text that a version preserves (ADR-0008). A revision whose slug another post has\n * taken since is refused rather than silently renamed.\n */',
+    '// The restored text is what the feed shows, so a live post\'s subscribers are told to refetch.',
     '/** Revisions are only offered on a post the author can edit — the recycle bin is not that place. */',
   ]],
   ['src/worker/routes/blog/schemas.ts', [
@@ -13960,6 +13980,8 @@ const allowed = new Map([
     '/**\n * What a page-view beacon carries. The view itself is what is being reported, so the body is only\n * the post it happened on and where the reader came from; everything else (address, user-agent,\n * country) is read off the request rather than trusted from the page.\n */',
     '// Where a notification about a new comment goes (FEA-06). Empty is the default and means the',
     '// author does not want one; a value must still be an address this app would render as a link.',
+    '// The hub the feed\'s subscribers poll (FEA-08). Empty is the default and means "do not ping"; a',
+    '// value has to be an address this app would call, which is the shared allowlist.',
     '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
     '// current password travels in the body rather than the query string (SH-47).',
   ]],
@@ -15012,6 +15034,17 @@ const allowed = new Map([
     '// Same id and same prose as the item the rule sets aside, a different target: axe\'s message is',
     '// what a reader sees in the log, never what decides the outcome.',
     '// Neither of the gate\'s global categories covers it either, so nothing rescues a drifted target.',
+  ]],
+  ['tests/blog-feeds.test.ts', [
+    '/**\n * FEA-08: the feed is told when it changed, and the public archive views an aggregator reads carry\n * enough to date and filter what they see. The ping is best-effort like the comment webhook, so the\n * observable is the request it makes (and the fact that a failing hub never fails the write).\n */',
+    '// A post the reader-facing queries treat as live: scheduling hides anything with a future moment.',
+    '/** Lets the settings read and the ping run to completion; the write route itself does not wait. */',
+    '// A pin changes the order of a page, not the feed: pinging for it tells subscribers to refetch',
+    '// the same bytes.',
+    '// A content patch keeps the previous state as a version; restoring it is a write like any other.',
+    '// A scheduled post is not in the feed yet, so there is nothing for a subscriber to refetch.',
+    '// The same write after the hub is cleared must not reach the network either.',
+    '// The post is stored whatever the hub answered.',
   ]],
   ['tests/blog-links-routes.test.ts', [
     '/** One published post, so a comment submission has something to be filed under. */',

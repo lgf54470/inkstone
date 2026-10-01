@@ -6,6 +6,8 @@ import { utf8ByteLength } from '@shared/text-utils'
 import type { BlogPostRow, BlogRevisionRow } from '../../db/rows'
 import { BLOG_REVISION_LIMIT } from '../../db/schema'
 import { assertSlugFree, slugMoveStatements } from './slug-history'
+import { pingBlogFeed, postVisibleInFeed } from './feed-ping'
+import { waitUntilOf } from './background'
 
 /**
  * Post history (FEA-05, ADR-0008). The current post row is the newest state; `blog_revisions` holds
@@ -158,6 +160,8 @@ function registerBlogRevisionRestoreRoute(blogManageRoutes: Hono<AppBindings>): 
       ...slugMoveStatements({ db: c.env.DB, userId, postId, from: current.slug, to: revision.slug, now }),
     ]
     await c.env.DB.batch(statements)
+    // The restored text is what the feed shows, so a live post's subscribers are told to refetch.
+    if (postVisibleInFeed(current.is_published === 1, current.published_at, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
     return c.json({ ok: true })
   })
 }

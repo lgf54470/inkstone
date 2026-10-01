@@ -286,6 +286,8 @@ export interface BlogTimelineRow {
   cover_url: string
   tags: string
   views: number
+  updated_at: number
+  seo_noindex: number
 }
 
 export interface BlogCalendarRow {

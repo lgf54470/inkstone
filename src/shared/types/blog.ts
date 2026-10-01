@@ -260,6 +260,11 @@ export interface BlogSettings {
   commentWebhookUrl: string
   /** Words the spam rules look for in a submission, matched case-insensitively. */
   commentSpamKeywords: string[]
+  /**
+   * The WebSub hub the feed advertises and this instance pings when published content changes
+   * (FEA-08). Empty means no hub: the feed then declares none and no ping is sent.
+   */
+  websubHubUrl: string
   postsPerPage: number
   frontendUrl: string
   appearance: {

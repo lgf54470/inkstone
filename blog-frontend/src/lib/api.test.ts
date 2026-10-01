@@ -82,6 +82,23 @@ describe('api.getPosts payload mapping', () => {
   })
 })
 
+// FEA-08: the sitemap reads the timeline through this normalization, so the moment a post was last
+// edited and whether it asked to be left out of the index have to survive it.
+describe('api.getTimeline mapping', () => {
+  it('carries the last edit moment and the noindex flag', async () => {
+    stubFetch({
+      timeline: {
+        2024: {
+          9: [{ id: 'p1', title: 'T', slug: 't', publishedAt: 1725148800000, updatedAt: 1725235200000, noindex: true, views: 3 }],
+        },
+      },
+    })
+    const groups = await api.getTimeline()
+    const post = groups.flatMap((group) => group.months).flatMap((month) => month.posts)[0]
+    expect(post).toMatchObject({ updatedAt: 1725235200000, noindex: true })
+  })
+})
+
 describe('api failure propagation', () => {
   beforeEach(() => {
     clearApiMemoryCache()
@@ -103,6 +120,27 @@ describe('api failure propagation', () => {
 
   it('rejects getCalendar rather than returning a fabricated day', async () => {
     await expect(api.getCalendar()).rejects.toThrow('down')
+  })
+})
+
+// FEA-08: the sitemap cannot tell "server has no categories" from "the read failed" if the fallback
+// swallows the difference, so list reads take a strict mode that answers with the error instead.
+describe('api list reads with strict mode', () => {
+  beforeEach(() => {
+    clearApiMemoryCache()
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+  })
+
+  it('keeps the empty-list fallback by default', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(api.getCategories()).resolves.toEqual([])
+    await expect(api.getTags()).resolves.toEqual([])
+    expect(warn).toHaveBeenCalled()
+  })
+
+  it('rejects in strict mode so a crawler gets 503 rather than an empty index', async () => {
+    await expect(api.getCategories({ strict: true })).rejects.toThrow('down')
+    await expect(api.getTags({ strict: true })).rejects.toThrow('down')
   })
 })
 

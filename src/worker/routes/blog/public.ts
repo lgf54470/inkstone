@@ -327,7 +327,7 @@ function registerBlogPublicTimelineRoute(blogPublicRoutes: Hono<AppBindings>): v
   blogPublicRoutes.get('/timeline', async (c) => {
     const { results } = await c.env.DB
       .prepare(`
-        SELECT id, slug, title, published_at, cover_url, tags, views
+        SELECT id, slug, title, published_at, cover_url, tags, views, updated_at, seo_noindex
         FROM blog_posts
         WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?1
         ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
@@ -344,6 +344,9 @@ interface BlogTimelineEntry {
   slug: string
   title: string
   publishedAt: number
+  // What a sitemap needs to date a post and to leave a noindex one out of the index (FEA-08).
+  updatedAt: number
+  noindex: boolean
   coverUrl: string
   tags: unknown[]
   views: number
@@ -362,6 +365,8 @@ function buildBlogTimelineMap(rows: BlogTimelineRow[]): Record<number, Record<nu
       slug: row.slug,
       title: row.title,
       publishedAt: row.published_at,
+      updatedAt: row.updated_at,
+      noindex: row.seo_noindex === 1,
       coverUrl: row.cover_url,
       tags: JSON.parse(row.tags || '[]'),
       views: row.views || 0,

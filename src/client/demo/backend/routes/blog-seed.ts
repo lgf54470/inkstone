@@ -246,6 +246,7 @@ function defaultBlogSettings(): BlogSettings {
     requireCommentApproval: true,
     commentWebhookUrl: '',
     commentSpamKeywords: [],
+    websubHubUrl: '',
     postsPerPage: 10,
     frontendUrl: DEFAULT_BLOG_FRONTEND_URL,
     appearance: { theme: 'system', accent: 'vermilion', background: 'paper', density: 'comfortable', language: 'zh-CN' },

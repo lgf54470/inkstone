@@ -76,6 +76,11 @@ export interface BlogSiteInfo {
   }
   postsPerPage: number
   requireCommentApproval: boolean
+  /**
+   * The WebSub hub the feed declares (`atom:link rel="hub"`), set by the author in the blog
+   * settings. Absent means the feed has no hub and nothing pings it (FEA-08).
+   */
+  websubHubUrl?: string
 }
 
 export interface TimelineGroup {
@@ -87,6 +92,10 @@ export interface TimelineGroup {
       title: string
       slug: string
       publishedAt: number
+      /** The last edit moment; a sitemap dates a post by it (FEA-08). */
+      updatedAt?: number
+      /** The post asked not to be indexed, so a sitemap leaves it out (FEA-08). */
+      noindex?: boolean
       coverUrl?: string | null
       views: number
     }[]
