@@ -8,6 +8,7 @@ import { loadSession } from '../src/worker/middleware/auth'
 import { createSession } from '../src/worker/lib/session-store'
 import { errorResponse } from '../src/worker/lib/errors'
 import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
+import { GRAPH_TAG_EDGE_LIMIT } from '../src/shared/graph-tag-nodes'
 
 const NOW = 2_000_000_000_000
 
@@ -396,8 +397,11 @@ describe('graph route tag nodes (FEAT-03, real D1)', () => {
 
     const body = await graphBody('/api/search/graph?tagNodes=1&limit=600', userId)
     const tagNodes = (body.nodes as TopologyNode[]).filter((node) => node.kind === 'tag')
+    const edges = body.edges as Array<{ source: string, target: string }>
     expect(tagNodes).toHaveLength(60)
     expect(tagNodes.some((node) => node.id === 'tag:topic-61')).toBe(false)
+    expect(edges).toHaveLength(60)
+    expect(edges.length).toBeLessThanOrEqual(GRAPH_TAG_EDGE_LIMIT)
     // 61 notes, 60 tag nodes, and the one tag that did not make the cut still counts as hidden.
     expect(body.meta).toMatchObject({ totalNodes: 122, truncated: true })
   })

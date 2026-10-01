@@ -4,6 +4,7 @@ import type { GraphEdge, GraphNode } from './types'
 
 /** Tag nodes are the densest source of edges, so only the widest clusters get one. */
 export const GRAPH_TAG_NODE_LIMIT = 60
+export const GRAPH_TAG_EDGE_LIMIT = 2_000
 
 export interface GraphTagNodeResult {
   added: number
@@ -43,7 +44,12 @@ export function applyTagNodes(
   const ordered = [...collectTagClusters(tagsByNote).values()]
     .sort((a, b) => b.noteIds.length - a.noteIds.length || a.name.localeCompare(b.name))
   const kept = ordered.slice(0, GRAPH_TAG_NODE_LIMIT)
+  let members = 0
+  let added = 0
   for (const cluster of kept) {
+    if (members + cluster.noteIds.length > GRAPH_TAG_EDGE_LIMIT) continue
+    members += cluster.noteIds.length
+    added++
     const name = truncateText(cluster.name, LIMITS.tagNameMaxLength)
     nodes.push({
       id: `tag:${name}`,
@@ -59,5 +65,5 @@ export function applyTagNodes(
     })
     for (const noteId of cluster.noteIds) edges.push({ source: noteId, target: `tag:${name}` })
   }
-  return { added: kept.length, dropped: ordered.length - kept.length }
+  return { added, dropped: ordered.length - added }
 }

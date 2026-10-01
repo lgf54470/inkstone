@@ -12692,6 +12692,9 @@ const allowed = new Map([
     '/**\n * Splits a graph filter line into free text plus `tag:` / `path:` terms, each optionally negated with a\n * leading `-`. A quoted value may contain a space. One unparseable qualifier is kept as text rather than\n * dropped, so a typo hides notes the way the old title-only search did instead of silently widening the\n * graph.\n */',
     '/** Client-side evaluation of the same grammar, used by the color groups of the graph panel. */',
   ]],
+  ['src/shared/graph-tag-nodes.test.ts', [
+    '/**\n * Tag clusters are the densest source of edges one response can fan out into, so the budget that keeps\n * a request finite lives here: clusters are expanded largest-first, and one that does not fit stays\n * unexpanded rather than half-connected, which is what keeps a tag node\'s degree equal to its edges.\n */',
+  ]],
   ['src/shared/graph-tag-nodes.ts', [
     '/** Tag nodes are the densest source of edges, so only the widest clusters get one. */',
     '/**\n * Adds one node per tag plus an edge from every note carrying it, so notes that share a tag but link\n * to nothing of each other end up in the same cluster. The link degrees of the notes stay untouched:\n * a tag membership is not a wiki link, and the read-out counts links.\n *\n * Shared by the Worker route and the demo backend so both answer `tagNodes=1` the same way.\n */',
