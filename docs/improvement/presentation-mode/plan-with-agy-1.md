@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[x]` 已完成（P-01 ~ P-28 全 28 项核心审查问题全部闭环；B4-01 ~ B4-05 全部提交，余后续维护台账 B4-06 ~ B4-13） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28, P-29 | `[x]` 已完成（P-01 ~ P-29 全核心审查问题全部闭环；B4-01 ~ B4-05 全部提交，余后续维护台账 B4-06 ~ B4-14） |
 
 ---
 
@@ -334,6 +334,39 @@
     2. 提供 `ThumbRootContext` 上下文机制，`SlideRailList` 与 `SlideOverviewGrid` 分别通过 Provider 透传容器 DOM 引用（`containerRef`/`rootRef`），卡片无需逐层手动传递参数。
     3. 完善生命周期闭环：容器内所有订阅卡片卸载时自动 `observer.disconnect()` 并从 Map 中彻底删除记录，无 DOM 泄漏风险。
   - 验证：`slide-thumb.test.ts` 补充容器 root 选项传递与 320px margin 校验（1 例）、跨滚动容器隔离与单例复用及容器级清理卸载测试（1 例），全量 21 文件 / 318 例放映测试全绿，全量静态门禁全通过。
+
+- [x] **B4-14** `演说增强 (P-29)`: 演示模式专用右键菜单与原生右键深度拦截 — 已完成 (`88c7a174`)
+  - 涉及文件：
+    - `src/shared/locales/zh-CN/workspace.ts`
+    - `src/shared/locales/en-US/workspace.ts`
+    - `src/client/components/overlay/menu.tsx`
+    - `src/client/components/overlay/index.ts`
+    - `src/client/features/presentation/presentation-keys.ts`
+    - `src/client/features/presentation/presentation-keys.test.ts`
+    - `src/client/features/presentation/use-presentation-keys.ts`
+    - `src/client/features/presentation/use-presentation-keys.test.ts`
+    - `src/client/features/presentation/presentation-stage.tsx`
+    - `src/client/features/presentation/slide-stage.test.ts`
+    - `src/client/features/presentation/use-presentation-session.ts`
+    - `src/client/features/presentation/presentation-overlay.tsx`
+    - `src/client/features/presentation/presentation-context-menu.tsx`
+    - `src/client/features/presentation/presentation-context-menu.test.ts`
+    - `src/client/features/presentation/presentation-overlay.test.ts`
+    - `scripts/check-comments.mjs`
+  - 现象与需求：演示放映时右键点击会唤出浏览器原生系统菜单破坏演说沉浸感；且全屏顶层（Top Layer）会遮蔽挂在 `document.body` 上的传统浮层；需要专属右键菜单支持翻页、全览、大纲、演讲者视图、激光笔、聚光灯、黑白屏、全屏、退出及超链接复制与新标签打开，并解决方向键穿透与点击穿透舞台切页问题。
+  - 方案：
+    1. 顶层全面拦截：在 `PresentationDialog` 根节点监听 `onContextMenu` 调用 `preventDefault()`，彻底消除原生菜单泄漏；黑白屏覆盖层 `ScreenCover` 同样阻止右键原生菜单。
+    2. 上下文命令构建：纯函数 `buildPresentationMenuItems` 派生选项，支持识别 `<a>` 标签抽取「在新标签页打开链接」与「复制链接地址」，以及上一页/下一页（边缘自动禁用）、大纲展开、全览网格、双屏演讲者视图、激光笔、聚光灯、黑屏/白屏、全屏与退出。
+    3. 全屏 Top Layer 穿透解决：通用 `Menu` 组件扩展 `container?: HTMLElement | null` 属性，`PresentationContextMenu` 挂载至全屏容器 `panelRef.current`，杜绝被浏览器全屏 Top Layer 隐藏。
+    4. 键盘事件与切页防穿透：`PresentationKeyContext` 扩充 `onMenu`，当上下文菜单打开或焦点在菜单元素内时，阻断背景翻页与工具键；菜单底层透明遮罩拦截 `onMouseDown` 和 `onClick` 冒泡并 `preventDefault()`，杜绝背景穿透翻页。
+    5. 指针可见性保障：激光笔激活时光标隐藏，菜单与遮罩显式声明 `cursor-default`，保证唤出右键菜单时鼠标光标清晰可见。
+  - 验证：
+    - `presentation-context-menu.test.ts`：13 例单元测试覆盖菜单结构、外链动作、翻页禁用、选项状态、回调触发、遮罩防穿透与重新定位。
+    - `presentation-overlay.test.ts`：3 例单元测试验证右键原生拦截、菜单挂载、遮罩关闭防穿透与位置重定位。
+    - `presentation-keys.test.ts` 与 `use-presentation-keys.test.ts`：覆盖 `onMenu` 键盘隔离与辅助方法。
+    - `slide-stage.test.ts`：验证覆盖层右键原生拦截。
+    - 23 个 presentation 测试文件全绿（341 例）。
+    - 13 项门禁全部通过（`typecheck`, `vendor`, `i18n`, `escape`, `hardcoded`, `empty-catch`, `module-state`, `style`, `deep-imports`, `surfaces`, `size`, `tokens`, `comments`）。
 
 ---
 
