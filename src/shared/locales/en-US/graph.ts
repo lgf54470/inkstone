@@ -72,6 +72,8 @@ export const messages = {
 'graph.color_groups': 'Color groups',
 'graph.add_color_rule': 'Add color rule',
 'graph.color_rule_query': 'Query (e.g. tag:todo or -path:archive)',
+'graph.color_rule_hint': 'Notes matching a rule are drawn in its colour, and the first matching rule wins.',
+'graph.color_rule_remove': 'Remove rule',
 'graph.export_png': 'Export as PNG',
 'graph.export_svg': 'Export as SVG',
 }

@@ -290,6 +290,14 @@ function useGraphPreviewAndA11y(
   return { preview, liveAnnouncement }
 }
 
+/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */
+function useGraphLegends(data: GraphResponse, prefs: GraphPreferences) {
+  return useMemo(
+    () => buildColorLegends(data.nodes, prefs.groupBy, prefs.colorGroups),
+    [data, prefs.groupBy, prefs.colorGroups],
+  )
+}
+
 function useGraphCanvasController(props: GraphCanvasProps) {
   const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
   const [hover, setHover] = useState<CanvasNode | null>(null)
@@ -328,8 +336,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
 
   const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
   useGraphControls(controlsRef, stateRef, fitGraph)
-  // The legend describes the response, not the physics copy of it, so it must not read stateRef here.
-  const colorLegends = useMemo(() => buildColorLegends(data.nodes, prefs.groupBy), [data, prefs.groupBy])
+  const colorLegends = useGraphLegends(data, prefs)
 
   const handlers: CanvasHandlers = {
     stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,

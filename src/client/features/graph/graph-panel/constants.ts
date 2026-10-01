@@ -8,6 +8,7 @@ export const FALLBACK_BG_COLOR = '#18181b'
 
 export const PHYSICS_FRAME_LIMIT = 360
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
+export const COLOR_GROUP_QUERY_MAX = 120
 
 export const DEFAULT_PREFERENCES: GraphPreferences = {
   mode: 'global',
@@ -18,6 +19,7 @@ export const DEFAULT_PREFERENCES: GraphPreferences = {
   arrows: true,
   labels: true,
   groupBy: 'none',
+  colorGroups: [],
   folderId: '',
   tag: '',
   tagsMatch: 'any',

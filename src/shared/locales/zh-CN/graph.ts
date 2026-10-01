@@ -72,6 +72,8 @@ export const messages = {
 'graph.color_groups': '颜色分组规则',
 'graph.add_color_rule': '添加颜色规则',
 'graph.color_rule_query': '过滤规则（如 tag:todo 或 -path:archive）',
+'graph.color_rule_hint': '匹配规则的笔记按其颜色绘制，排在前面的规则优先生效。',
+'graph.color_rule_remove': '删除规则',
 'graph.export_png': '导出为 PNG',
 'graph.export_svg': '导出为 SVG',
 }

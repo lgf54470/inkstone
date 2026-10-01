@@ -13,6 +13,7 @@ import { Button, IconButton } from '../../../components/primitives'
 import { Select, Switch } from '../../../components/form'
 import { Tooltip, useEscape } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
+import { GraphColorRules } from './settings-color-rules'
 
 interface GraphSettingsPanelProps {
   prefs: GraphPreferences
@@ -60,6 +61,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
         </GraphSection>
         <GraphSection icon={<Network size={13}/>} title={t('graph.appearance')}>
           <GraphSelect label={t('graph.group_by')} value={prefs.groupBy} onChange={(value) => onChange('groupBy', value as GroupBy)} options={[['none', t('graph.group_none')], ['folder', t('graph.folder')], ['tag', t('graph.tag')]]}/>
+          <GraphColorRules groups={prefs.colorGroups} onChange={(value) => onChange('colorGroups', value)}/>
           {GRAPH_APPEARANCE_TOGGLES.map((control) => (
             <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
           ))}

@@ -12,6 +12,8 @@ export interface CanvasNode extends GraphNode {
   pinned?: boolean
   /** Resolved from the notes carrying the tag, stamped when the layout is built. */
   tagColor: string | null
+  /** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */
+  colorGroup: string | null
 }
 
 export interface CanvasState {

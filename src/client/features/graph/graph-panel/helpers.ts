@@ -1,8 +1,9 @@
-import type { GraphResponse } from '@shared/types'
+import type { GraphNode, GraphResponse } from '@shared/types'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
-import { type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
-import { DEFAULT_PREFERENCES, GRAPH_PREFS_KEY } from './constants'
+import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
+import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
+import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_PREFS_KEY } from './constants'
 import type { CanvasNode } from './types'
 
 export function graphScaleAfterWheel(scale: number, deltaY: number): number {
@@ -29,6 +30,7 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       arrows: booleanPreference(stored.arrows, DEFAULT_PREFERENCES.arrows),
       labels: booleanPreference(stored.labels, DEFAULT_PREFERENCES.labels),
       groupBy: stored.groupBy === 'folder' || stored.groupBy === 'tag' ? stored.groupBy : 'none',
+      colorGroups: colorGroupsPreference(stored.colorGroups),
       folderId: typeof stored.folderId === 'string' && /^[0-9a-hjkmnp-tv-z]{26}$/.test(stored.folderId)
         ? stored.folderId
         : '',
@@ -53,6 +55,19 @@ function boundedPreference(value: unknown, fallback: number, min: number, max: n
 
 function booleanPreference(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */
+function colorGroupsPreference(value: unknown): GraphColorGroup[] {
+  const candidates = Array.isArray(value) ? value as Array<Partial<GraphColorGroup>> : []
+  const groups: GraphColorGroup[] = []
+  for (const item of candidates) {
+    const color = organizerColorOrNull(item.color)
+    const query = typeof item.query === 'string' ? truncateText(item.query.trim(), COLOR_GROUP_QUERY_MAX) : ''
+    if (color && query && typeof item.id === 'string') groups.push({ id: item.id, query, color })
+    if (groups.length >= GRAPH_COLOR_GROUP_LIMIT) break
+  }
+  return groups
 }
 
 const TAG_FALLBACK_PALETTE = [
@@ -98,7 +113,37 @@ function tagNodeColor(name: string, color: string | null): string {
   return organizerColorOrNull(color) ?? tagHashColor(name)
 }
 
+/**
+ * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches
+ * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped
+ * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.
+ * Tag nodes keep their own palette: their colour is what a tag looks like everywhere else in the app.
+ */
+export function colorGroupsByNodeId(
+  nodes: readonly GraphNode[],
+  groups: readonly GraphColorGroup[],
+): Map<string, { label: string; color: string }> {
+  const rules = groups.flatMap((group) => {
+    const color = organizerColorOrNull(group.color)
+    const expression = parseGraphFilter(group.query)
+    return color && (expression.text || expression.terms.length) ? [{ color, label: group.query, expression }] : []
+  })
+  const byId = new Map<string, { label: string; color: string }>()
+  if (!rules.length) return byId
+  for (const node of nodes) {
+    if (node.kind === 'tag') continue
+    const matched = rules.find((rule) => graphFilterMatches({
+      title: node.title,
+      folderName: node.folderName,
+      tags: node.tags,
+    }, rule.expression))
+    if (matched) byId.set(node.id, { label: matched.label, color: matched.color })
+  }
+  return byId
+}
+
 export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string): string {
+  if (node.colorGroup) return node.colorGroup
   if (node.kind === 'tag') return tagNodeColor(node.title, node.tagColor)
   if (groupBy === 'folder') return organizerColorOrNull(node.folderColor) ?? fallback
   if (groupBy === 'tag') {
@@ -128,10 +173,18 @@ function extractNodeLegend(
   return null
 }
 
-export function buildColorLegends(nodes: GraphResponse['nodes'], groupBy: GroupBy): Array<{ label: string; color: string }> {
-  if (groupBy === 'none' && !nodes.some((node) => node.kind === 'tag')) return []
+export function buildColorLegends(
+  nodes: GraphResponse['nodes'],
+  groupBy: GroupBy,
+  colorGroups: readonly GraphColorGroup[] = [],
+): Array<{ label: string; color: string }> {
+  const ruleColors = colorGroupsByNodeId(nodes, colorGroups)
+  if (groupBy === 'none' && !ruleColors.size && !nodes.some((node) => node.kind === 'tag')) return []
   const tagColors = tagColorsByName(nodes)
   const map = new Map<string, string>()
+  for (const entry of ruleColors.values()) {
+    if (!map.has(entry.label)) map.set(entry.label, entry.color)
+  }
   for (const node of nodes) {
     const entry = extractNodeLegend(node, groupBy, tagColors)
     if (entry && !map.has(entry.label)) map.set(entry.label, entry.color)

@@ -254,3 +254,28 @@ describe('tag nodes (FEAT-03)', () => {
     restoreContext()
   })
 })
+
+describe('color group rules (FEAT-04)', () => {
+  it('stamps each node the layout builds with the colour of the rule it matches', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: false, media: query })))
+    const prefs = {
+      ...DEFAULT_PREFERENCES,
+      colorGroups: [{ id: 'r1', query: 'tag:work', color: '#4f46e5' }],
+    }
+    const state = createInitialState()
+    buildInitialLayout(tagData, prefs, state)
+    expect(state.nodes.find((node) => node.id === 'note-1')!.colorGroup).toBe('#4f46e5')
+    expect(state.nodes.find((node) => node.kind === 'tag')!.colorGroup).toBeNull()
+  })
+
+  it('leaves every node unpainted by rules when no rule matches the response', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: false, media: query })))
+    const prefs = {
+      ...DEFAULT_PREFERENCES,
+      colorGroups: [{ id: 'r1', query: 'tag:none-of-these', color: '#4f46e5' }],
+    }
+    const state = createInitialState()
+    buildInitialLayout(tagData, prefs, state)
+    expect(state.nodes.every((node) => node.colorGroup === null)).toBe(true)
+  })
+})

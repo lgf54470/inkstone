@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { GRAPH_PREFS_KEY } from './constants'
+import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup } from '../../../lib/graph-settings'
+import { COLOR_GROUP_QUERY_MAX, GRAPH_PREFS_KEY } from './constants'
 import {
   buildColorLegends,
+  colorGroupsByNodeId,
   countWikiLinkEdges,
   graphPrefsStorageKey,
   graphScaleAfterWheel,
@@ -31,6 +33,7 @@ function createTestNode() {
     vy: 0,
     r: 4,
     tagColor: null,
+    colorGroup: null,
   }
 }
 
@@ -126,5 +129,77 @@ describe('tag nodes (FEAT-03)', () => {
       { source: 'note-1', target: 'tag:work' },
     ])
     expect(countWikiLinkEdges(withTags)).toBe(1)
+  })
+})
+
+function colorRule(overrides: Partial<GraphColorGroup> = {}): GraphColorGroup {
+  return { id: 'r1', query: 'tag:urgent', color: '#4f46e5', ...overrides }
+}
+
+describe('color group rules (FEAT-04)', () => {
+  it('maps each rule onto the notes its filter line matches, with the first rule winning', () => {
+    const urgent = { ...createTestNode(), id: 'a' }
+    const untagged = { ...createTestNode(), id: 'b', tags: [] }
+    const index = colorGroupsByNodeId([urgent, untagged], [
+      colorRule(),
+      colorRule({ id: 'r2', query: 'path:work', color: '#059669' }),
+    ])
+    expect(index.get('a')).toEqual({ label: 'tag:urgent', color: '#4f46e5' })
+    expect(index.get('b')).toEqual({ label: 'path:work', color: '#059669' })
+  })
+
+  it('skips a rule that is blank or off-palette, and leaves tag nodes alone', () => {
+    const urgent = { ...createTestNode(), id: 'a' }
+    const tagNode = asTagNode({ id: 'tag:note', title: 'Note 1' })
+    expect(colorGroupsByNodeId([urgent], [colorRule({ query: '  ' })]).size).toBe(0)
+    expect(colorGroupsByNodeId([urgent], [colorRule({ color: '#123456' })]).size).toBe(0)
+    expect([...colorGroupsByNodeId([urgent, tagNode], [colorRule({ query: 'note' })]).keys()]).toEqual(['a'])
+  })
+
+  it('paints the matched rule over the folder and tag groupings', () => {
+    const ruled = { ...createTestNode(), colorGroup: '#4f46e5' }
+    expect(nodeColor(ruled, 'folder', '#cccccc')).toBe('#4f46e5')
+    expect(nodeColor(ruled, 'tag', '#cccccc')).toBe('#4f46e5')
+    expect(nodeColor(ruled, 'none', '#cccccc')).toBe('#4f46e5')
+  })
+})
+
+describe('color group rules legend and storage (FEAT-04)', () => {
+
+  it('lists the rules on screen in the legend ahead of the grouping, and drops those with no match', () => {
+    const node = createTestNode()
+    expect(buildColorLegends([node], 'none', [colorRule()])).toEqual([{ label: 'tag:urgent', color: '#4f46e5' }])
+    expect(buildColorLegends([node], 'folder', [colorRule()])).toEqual([
+      { label: 'tag:urgent', color: '#4f46e5' },
+      { label: 'Work', color: '#dc2626' },
+    ])
+    expect(buildColorLegends([{ ...node, tags: [] }], 'none', [colorRule()])).toEqual([])
+  })
+
+  it('reads rules back from storage trimmed, palette-checked and capped', () => {
+    const key = `${GRAPH_PREFS_KEY}.color-user`
+    localStorage.setItem(key, JSON.stringify({
+      colorGroups: [
+        { id: 'a', query: '  tag:one  ', color: '#4f46e5' },
+        { id: 'b', query: '', color: '#4f46e5' },
+        { id: 'c', query: 'tag:three', color: 'red' },
+        { id: 'd', query: 'tag:four', color: '#059669' },
+        { id: 'e', query: 'tag:fifty', color: '#059669' },
+        { id: 'f', query: 'tag:' + 'x'.repeat(200), color: '#0891b2' },
+      ],
+    }))
+    const groups = loadPreferences('color-user').colorGroups
+    expect(groups.map((group) => group.id)).toEqual(['a', 'd', 'e', 'f'])
+    expect(groups[0]?.query).toBe('tag:one')
+    expect(groups[3]?.query).toHaveLength(COLOR_GROUP_QUERY_MAX)
+  })
+
+  it('drops rules past the cap instead of storing a longer list than the panel can show', () => {
+    const key = `${GRAPH_PREFS_KEY}.many-user`
+    const many = Array.from({ length: GRAPH_COLOR_GROUP_LIMIT + 3 }, (_, index) => ({
+      id: `r${index}`, query: `tag:t${index}`, color: '#059669',
+    }))
+    localStorage.setItem(key, JSON.stringify({ colorGroups: many }))
+    expect(loadPreferences('many-user').colorGroups).toHaveLength(GRAPH_COLOR_GROUP_LIMIT)
   })
 })

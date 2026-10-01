@@ -3344,11 +3344,19 @@ const allowed = new Map([
   ['src/client/features/command/shortcuts-panel.tsx', [
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-color-groups.test.ts', [
+    '/**\n * Colour rules are edited while the graph is already on screen, so an edit has to reach the nodes the\n * ticker is drawing. Rebuilding the layout would throw away the dragged positions and the physics run,\n * so a dedicated effect re-stamps the live nodes instead — which is what these cases pin.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
+    '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
-    '// The legend describes the response, not the physics copy of it, so it must not read stateRef here.',
+    '/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */',
   ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
+    '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
     '/**\n * The colour each tag carries, read off the notes that hold it: a tag node and the notes linked to it\n * arrive in the same response, so the palette never has to ask for the colour separately.\n */',
+    '/**\n * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches\n * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped\n * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.\n * Tag nodes keep their own palette: their colour is what a tag looks like everywhere else in the app.\n */',
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
   ]],
   ['src/client/features/graph/graph-panel/index.tsx', [
@@ -3357,8 +3365,12 @@ const allowed = new Map([
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
   ]],
+  ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
+    '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
+    '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
@@ -8462,6 +8474,8 @@ const allowed = new Map([
     '/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */',
   ]],
   ['src/client/lib/graph-settings.ts', [
+    '/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */',
+    '/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */',
     '/** Draw each tag as a node of its own, pulling notes that share it into one cluster. */',
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',

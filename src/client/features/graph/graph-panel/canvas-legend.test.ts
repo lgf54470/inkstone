@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GraphResponse } from '@shared/types'
+import type { GraphPreferences } from '../../../lib/graph-settings'
 import { renderElement } from '../../../lib/test-render'
 import { GraphCanvas } from './canvas'
 import { DEFAULT_PREFERENCES } from './constants'
@@ -40,7 +41,7 @@ function response(nodes: GraphResponse['nodes'], edges: GraphResponse['edges']):
   }
 }
 
-function graphElement(data: GraphResponse, canvas: HTMLCanvasElement): ReactNode {
+function graphElement(data: GraphResponse, canvas: HTMLCanvasElement, prefs: GraphPreferences = DEFAULT_PREFERENCES): ReactNode {
   const state: CanvasState = {
     nodes: [],
     edges: [],
@@ -58,7 +59,7 @@ function graphElement(data: GraphResponse, canvas: HTMLCanvasElement): ReactNode
   }
   return createElement(GraphCanvas, {
     data,
-    prefs: DEFAULT_PREFERENCES,
+    prefs,
     activeNoteId: null,
     canvasRef: { current: canvas },
     stateRef: { current: state },
@@ -101,35 +102,83 @@ function stubCanvasPainting(): () => void {
   return () => Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', original)
 }
 
+function prepareGraph(): () => void {
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })))
+  vi.stubGlobal('requestAnimationFrame', () => 1)
+  vi.stubGlobal('cancelAnimationFrame', () => {})
+  return stubCanvasPainting()
+}
+
+function legendSwatches(container: HTMLElement, label: string): HTMLElement[] {
+  return [...container.querySelectorAll('span')]
+    .filter((span) => span.textContent === label)
+    .map((span) => span.previousElementSibling as HTMLElement)
+}
+
+/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */
+function mountLegend(element: (canvas: HTMLCanvasElement) => ReactNode): { canvas: HTMLCanvasElement, container: HTMLElement, rerender: (node: ReactNode) => void, close: () => void } {
+  const restoreContext = prepareGraph()
+  const canvas = document.createElement('canvas')
+  canvas.width = 600
+  canvas.height = 400
+  const rendered = renderElement(element(canvas))
+  return {
+    canvas,
+    container: rendered.container,
+    rerender: rendered.rerender,
+    close: () => { rendered.unmount(); restoreContext() },
+  }
+}
+
 describe('graph color legend', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
   it('names the tag groups of the response on screen, not of the one before it', () => {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    })))
-    vi.stubGlobal('requestAnimationFrame', () => 1)
-    vi.stubGlobal('cancelAnimationFrame', () => {})
-    const restoreContext = stubCanvasPainting()
-    const canvas = document.createElement('canvas')
-    canvas.width = 600
-    canvas.height = 400
+    const graph = mountLegend((canvas) => graphElement(response([note], []), canvas))
+    expect(graph.container.textContent).not.toContain('work')
 
-    const rendered = renderElement(graphElement(response([note], []), canvas))
-    expect(rendered.container.textContent).not.toContain('work')
-
-    rendered.rerender(graphElement(response([note, tag], [{ source: 'note-1', target: 'tag:work' }]), canvas))
-    const swatches = [...rendered.container.querySelectorAll('span')]
-      .filter((span) => span.textContent === 'work')
-      .map((span) => span.previousElementSibling)
+    graph.rerender(graphElement(response([note, tag], [{ source: 'note-1', target: 'tag:work' }]), graph.canvas))
+    const swatches = legendSwatches(graph.container, 'work')
     expect(swatches).toHaveLength(1)
     expect(swatches[0]?.getAttribute('style')).toContain('background-color: rgb(5, 150, 105)')
-    rendered.unmount()
-    restoreContext()
+    graph.close()
+  })
+})
+
+describe('graph color rule legend', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const withRule = (canvas: HTMLCanvasElement, data: GraphResponse = response([note], [])): ReactNode => graphElement(data, canvas, {
+    ...DEFAULT_PREFERENCES,
+    colorGroups: [{ id: 'r1', query: 'tag:work', color: '#4f46e5' }],
+  })
+
+  it('names a colour rule by its own filter line, in the colour it paints', () => {
+    const graph = mountLegend((canvas) => withRule(canvas))
+    const swatches = legendSwatches(graph.container, 'tag:work')
+    expect(swatches).toHaveLength(1)
+    expect(swatches[0]?.getAttribute('style')).toContain('background-color: rgb(79, 70, 229)')
+    graph.close()
+  })
+
+  it('redraws the legend when a rule is edited without new data', () => {
+    const data = response([note], [])
+    const graph = mountLegend((canvas) => graphElement(data, canvas))
+    expect(legendSwatches(graph.container, 'tag:work')).toHaveLength(0)
+
+    graph.rerender(withRule(graph.canvas, data))
+    const swatches = legendSwatches(graph.container, 'tag:work')
+    expect(swatches).toHaveLength(1)
+    expect(swatches[0]?.getAttribute('style')).toContain('background-color: rgb(79, 70, 229)')
+    graph.close()
   })
 })

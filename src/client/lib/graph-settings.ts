@@ -2,6 +2,16 @@ import type { MessageKey } from '@shared/locales/en-US'
 
 export type GroupBy = 'none' | 'folder' | 'tag'
 
+/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */
+export interface GraphColorGroup {
+  id: string
+  query: string
+  color: string
+}
+
+/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */
+export const GRAPH_COLOR_GROUP_LIMIT = 5
+
 export interface GraphPreferences {
   mode: 'global' | 'local'
   depth: number
@@ -12,6 +22,7 @@ export interface GraphPreferences {
   arrows: boolean
   labels: boolean
   groupBy: GroupBy
+  colorGroups: GraphColorGroup[]
   folderId: string
   tag: string
   /** How the tag filter combines: any tag (union) or all tags (intersection). */

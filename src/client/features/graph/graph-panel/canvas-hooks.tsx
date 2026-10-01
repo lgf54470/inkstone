@@ -5,6 +5,7 @@ import { t } from '../../../lib/i18n'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { PHYSICS_FRAME_LIMIT } from './constants'
+import { colorGroupsByNodeId } from './helpers'
 import type { CanvasNode, CanvasState, GraphDragOptions } from './types'
 
 export interface GraphControls {
@@ -85,6 +86,13 @@ export function useDynamicGraphPrefs(stateRef: RefObject<CanvasState>, prefs: Gr
   useEffect(() => {
     stateRef.current.schedule?.()
   }, [prefs.arrows, prefs.labels, prefs.groupBy, stateRef])
+  useEffect(() => {
+    const state = stateRef.current
+    if (!state || state.nodes.length === 0) return
+    const ruleColors = colorGroupsByNodeId(state.nodes, prefs.colorGroups)
+    for (const node of state.nodes) node.colorGroup = ruleColors.get(node.id)?.color ?? null
+    state.schedule?.()
+  }, [prefs.colorGroups, stateRef])
 }
 
 export function useGraphControls(controlsRef: MutableRefObject<GraphControls | null>, stateRef: RefObject<CanvasState>, fitGraph: () => void) {
