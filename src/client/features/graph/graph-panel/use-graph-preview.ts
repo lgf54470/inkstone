@@ -19,6 +19,12 @@ function computeAnchor(
 function usePreviewTimers(onHover: () => void, onHide: () => void) {
   const hoverTimerRef = useRef<number>(0)
   const hideTimerRef = useRef<number>(0)
+  // The two callbacks are written inline by every caller, so the timers read them through a ref: arming a
+  // timer must not depend on the render that armed it, or each render would re-create the arm itself.
+  const onHoverRef = useRef(onHover)
+  const onHideRef = useRef(onHide)
+  onHoverRef.current = onHover
+  onHideRef.current = onHide
   const clearTimers = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
@@ -26,13 +32,13 @@ function usePreviewTimers(onHover: () => void, onHide: () => void) {
   const armHover = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    hoverTimerRef.current = window.setTimeout(onHover, 300)
-  }, [onHover])
+    hoverTimerRef.current = window.setTimeout(() => onHoverRef.current(), 300)
+  }, [])
   const armHide = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = window.setTimeout(onHide, 200)
-  }, [onHide])
+    hideTimerRef.current = window.setTimeout(() => onHideRef.current(), 200)
+  }, [])
   return { clearTimers, armHover, armHide, pauseHide: () => window.clearTimeout(hideTimerRef.current) }
 }
 

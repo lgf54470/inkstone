@@ -3356,11 +3356,21 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-selection-loop.test.ts', [
+    '/**\n * Selecting a node asks the panel for two things it holds in state: the announcement and the preview card.\n * Both used to be handed an object whose identity changed on every render, and because the effect that\n * writes them listed that object as a dependency, each write scheduled the next one: the panel never came\n * back. These cases count the paints one selection costs.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
+    '// `preview` is a fresh object on every render: listing it as a dependency would make this effect write',
+    '// the state that schedules the next render, and the panel would never stop painting.',
     '/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */',
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
     '/** A title is cut to this many characters, however it is drawn. */',
+  ]],
+  ['src/client/features/graph/graph-panel/graph-canvas-mount.test-helpers.ts', [
+    '/**\n * Mounting the graph surface needs a canvas that paints, a physics state the test can read, and the\n * callbacks the panel calls back into. Tests that drive the panel by hand share this scaffolding; what\n * each of them asserts stays in its own file.\n */',
+    '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
+    '/** Releases every canvas mounted by the current test, so a stray effect cannot reach the next one. */',
   ]],
   ['src/client/features/graph/graph-panel/graph-export.test.ts', [
     '/**\n * An export has to put the whole graph, and only the graph, into a file: the box is computed from the\n * nodes rather than the viewport, the vector emitter draws what the canvas draws, and the raster path\n * hands the browser a picture it can actually allocate. These cases pin the box, the file, and the\n * promise that a picture the reader asked for either arrives or says why it did not.\n */',
@@ -3395,6 +3405,9 @@ const allowed = new Map([
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
   ]],
+  ['src/client/features/graph/graph-panel/preview-stub.test-helpers.ts', [
+    '/**\n * Selection is the one interaction that can make the panel repaint itself, and a preview whose identity\n * changes on every render turns that into a loop that never returns. The stub counts those paints and\n * throws once a single selection has passed the cap, so the suite goes red instead of hanging.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
     '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
   ]],
@@ -3407,6 +3420,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/use-graph-export.ts', [
     '/** A picture is painted off-screen and handed to the browser as a file, so the doors stay shut until it lands. */',
+  ]],
+  ['src/client/features/graph/graph-panel/use-graph-preview.ts', [
+    '// The two callbacks are written inline by every caller, so the timers read them through a ref: arming a',
+    '// timer must not depend on the render that armed it, or each render would re-create the arm itself.',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',

@@ -276,7 +276,9 @@ function useGraphPreviewAndA11y(
         preview.showPreview(node)
       }
     }
-  }, [selectedId, stateRef, preview])
+    // `preview` is a fresh object on every render: listing it as a dependency would make this effect write
+    // the state that schedules the next render, and the panel would never stop painting.
+  }, [selectedId, stateRef, preview.showPreview])
 
   useEffect(() => subscribeLinkHoverTarget((noteId) => {
     const state = stateRef.current
@@ -285,7 +287,7 @@ function useGraphPreviewAndA11y(
     setHover(node)
     preview.onHoverNode(node)
     state.schedule?.()
-  }), [hoverRef, setHover, preview, stateRef])
+  }), [hoverRef, setHover, stateRef, preview.onHoverNode])
 
   return { preview, liveAnnouncement }
 }
