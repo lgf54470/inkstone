@@ -15,7 +15,7 @@
 | **准备工作** | 环境配置 | 创建 Worktree、软连 `node_modules`、编写深度审查报告与推进计划 | ✅ 已完成 |
 | **第一阶段 (Sprint 1)** | PERF-01, UX-01, UX-02, UX-03, UI-01 | 修复核心阻断 Bug：滑块白屏/请求风暴、单击强退、减少动画死锁、ESC 误杀、Canvas 主题跟随 | ✅ 已完成 |
 | **第二阶段 (Sprint 2)** | PERF-02, UI-02, UI-03, PERF-03, PERF-04, SEC-01, SEC-02, SEC-03, SEC-04, SPEC-01, SPEC-02, SPEC-03 | 消除 Layout Thrashing、邻居高亮矛盾、微光晕、D1 batch、冗余 COUNT、安全与隔离、规范重构与 i18n | ✅ 已完成 |
-| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：9 / 12 项已提交，剩 FEAT-04、FEAT-05、TEST-01 |
+| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：10 / 12 项已提交，剩 FEAT-05、TEST-01 |
 
 ---
 
@@ -27,9 +27,9 @@
 | **2. 性能与计算管线 (Performance Pipeline)** | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06 | 6 项 | ✅ 全部已提交 (`cef97815`, `2744cec7`, `029f252b`, `24157e33`) |
 | **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 全部已提交 (`cec83ccb`, `83d212a9`, `7946bb73`, `24157e33`) |
 | **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 全部已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`, `24157e33`) |
-| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 3 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`), ⏳ 2 项待推进 (FEAT-04 已落地排除过滤语法 `ac3a7fb7`，剩颜色分组规则；FEAT-05) |
-| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 7 个测试文件 / 53 条用例随 `ac3a7fb7` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/features/graph`） |
-| **总计** | **全维度覆盖** | **29 项** | **26 项已提交完成，3 项待推进 (FEAT-04, FEAT-05, TEST-01)** |
+| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 4 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`, `ac3a7fb7` + `b1b8314b`), ⏳ 1 项待推进 (FEAT-05 节点固定已在 `8d6b5542` 落地，剩 PNG/SVG 导出) |
+| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 10 个测试文件 / 80 条用例随 `b1b8314b` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`） |
+| **总计** | **全维度覆盖** | **29 项** | **27 项已提交完成，2 项待推进 (FEAT-05, TEST-01)** |
 
 ---
 
@@ -207,7 +207,7 @@
   - **提交哈希**：`8d6b5542`
   - **状态**：已完成并验证通过（pre-commit 钩子内 403 个测试文件 / 3409 条断言全绿；图例数据源与标签配色派生两条新行为各由具名断言在变异测试中杀死）
 
-- [ ] **16. 【FEAT-04】缺失高级排除过滤语法与自定义颜色规则 (Filter Exclusion Syntax & Color Rules)**
+- [x] **16. 【FEAT-04】缺失高级排除过滤语法与自定义颜色规则 (Filter Exclusion Syntax & Color Rules)**
   - **涉及文件**：`src/shared/graph-filter-expression.ts`, `src/worker/routes/search/graph.ts`, `src/client/demo/backend/routes/search.ts`, `src/client/features/graph/graph-panel/settings.tsx`, `helpers.ts`
   - **修改要点**：支持 `-path:` 或 `-tag:` 高级排除语法；设置抽屉支持添加颜色分组规则并展示在图例中。
   - **进度（A 已完成）**：过滤行语法
@@ -216,9 +216,15 @@
     3. 两条溢出 `COUNT` 回退查询补上与分页同一 `LEFT JOIN folders f`，否则 `path:` 条件在结果超出 `limit` 时会让接口 500；
     4. demo 后端 `filterGraphNotes` 改结构体传参并复用 `graphFilterMatches`，查询串解析抽为 `graphNoteFilter()` 以守住 50 行函数上限；
     5. 图谱过滤框加 `title` 提示（新增 `graph.filter_syntax_hint` 双语言键），使语法可被发现。
-  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && node scripts/check-visual-labels.mjs && npm run typecheck && npx vitest run src/shared/graph-filter-expression.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`
-  - **提交哈希**：`ac3a7fb7`（A：排除语法；B 颜色分组规则待提交）
-  - **状态**：A 部分已完成并验证通过（新增真实 D1 语法分组 4 条 + demo 后端 2 条 + 解析/匹配单测 8 条；worker 侧 M1/M2/M3 与 demo 侧 M4/M5 五个变异各由具名断言杀死，其中 M3 专防 `COUNT` 回退缺失 `folders` 联表）；B 部分（颜色分组规则）待推进
+  - **进度（B 已完成）**：自定义颜色分组规则
+    1. `src/client/lib/graph-settings.ts`：新增 `GraphColorGroup { id, query, color }` 与 `GRAPH_COLOR_GROUP_LIMIT = 5`，偏好结构加 `colorGroups`（随 `inkstone.graph.preferences.v1[.<userId>]` 持久化）；
+    2. `graph-panel/helpers.ts`：新增 `colorGroupsByNodeId()` 复用 A 部分的 `graphFilterMatches()` 把规则映射到节点——首条命中的规则优先生效（用户设定的顺序即优先级），空过滤行不按通配处理（否则刚加一行就把整图重绘），标签节点保留自身配色（它的颜色就是标签在应用里的样子）；`nodeColor()` 先取规则色再回落 `groupBy`；`buildColorLegends()` 把规则条目排在分组条目之前、按标签去重仍限 10 条，且只有规则（`groupBy='none'`）时也出图例；`colorGroupsPreference()` 回读存储时逐条校验颜色在 AA 调色板内、过滤行非空、`query` 截到 `COLOR_GROUP_QUERY_MAX`、总数截到上限；
+    3. 绘制路径：`CanvasNode` 加 `colorGroup` 字段，`canvas-draw.ts` 在 `buildInitialLayout` 建节点时打戳；`canvas-hooks.tsx` 新增专门 effect 在规则编辑后就地重打戳并重绘（不重建布局，保留拖拽坐标、相机与已跑的物理迭代）；`canvas.tsx` 的图例计算抽为 `useGraphLegends()`（原函数加 4 行会越过 50 行上限）并把 `colorGroups` 纳入 memo 依赖；
+    4. `graph-panel/settings-color-rules.tsx`：外观区新增规则编辑器——`role='group'` 命名、Add/删除按 id 而非位置、过滤行 `Input`（`maxLength` 与存储截断同值，避免写进去被静默截短）、10 色 AA 调色板色块用 `aria-pressed` 表示当前色，对勾取 `--swatch-white` 令牌而非裸 `text-white`；`settings.tsx` 接入并写回 `colorGroups`；
+    5. 新增 `graph.color_rule_hint`、`graph.color_rule_remove` 双语言键，复用已有的 `graph.color_groups`/`graph.add_color_rule`/`graph.color_rule_query`。
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && node scripts/check-visual-labels.mjs && node scripts/check-hardcoded.mjs && npm run typecheck && npx vitest run src/shared/graph-filter-expression.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`
+  - **提交哈希**：`ac3a7fb7`（A：排除过滤语法）、`b1b8314b`（B：自定义颜色分组规则）
+  - **状态**：A、B 均已完成并验证通过。A：新增真实 D1 语法分组 4 条 + demo 后端 2 条 + 解析/匹配单测 8 条；worker 侧 M1/M2/M3 与 demo 侧 M4/M5 五个变异各由具名断言杀死，其中 M3 专防 `COUNT` 回退缺失 `folders` 联表。B：新增 18 条用例（`helpers.test.ts` 规则命中/配色/图例/存储 6 条、`canvas-draw.test.ts` 建布局打戳 2 条、`canvas-color-groups.test.ts` 实时重绘且不重建布局 2 条、`settings-color-rules.test.ts` 面板写回与控件语义 6 条、`canvas-legend.test.ts` 规则图例 2 条）；B01–B24 共 24 个变异全部由具名断言杀死、无存活，其中 B12/B13 专防「改规则不重绘」、B24 专防图例 memo 漏掉 `colorGroups` 依赖；pre-commit 钩子内 402 个测试文件 / 3394 条用例全绿，`npm run build` 通过。
 
 - [ ] **17. 【FEAT-05】缺失节点坐标固定 (Pin) 与高清图片/矢量导出 (Pin Nodes & Export PNG/SVG)**
   - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `index.tsx`, `canvas-draw.ts`
