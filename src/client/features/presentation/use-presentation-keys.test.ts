@@ -138,4 +138,14 @@ describe('usePresentationKeys — the slide overview', () => {
     expect(state(view.container).overview).toBe('true')
     view.unmount()
   })
+
+  it('does not throw when key event targets document or window', () => {
+    const props = options()
+    const view = renderElement(createElement(Host, { props }))
+    expect(() => press('ArrowRight', document)).not.toThrow()
+    expect(props.goNext).toHaveBeenCalledTimes(1)
+    expect(() => press('c', window)).not.toThrow()
+    expect(state(view.container).laser).toBe('true')
+    view.unmount()
+  })
 })

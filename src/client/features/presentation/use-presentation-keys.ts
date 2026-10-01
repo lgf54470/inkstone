@@ -118,7 +118,7 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
       clearCover()
       return
     }
-    const target = event.target as HTMLElement | null
+    const target = event.target instanceof Element ? event.target : null
     const command = presentationCommand(event.key, {
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
       // Both slide lists walk their own arrows: the rail vertically, the overview grid across rows.
