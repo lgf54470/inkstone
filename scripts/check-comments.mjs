@@ -3344,6 +3344,9 @@ const allowed = new Map([
   ['src/client/features/command/shortcuts-panel.tsx', [
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-a11y.test.ts', [
+    '/**\n * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it\n * answers to has a keyboard equivalent. These cases mount the real panel surface, drive it with keys\n * instead of a mouse, and read the end state a reader would hear: the canvas name, the announcement of\n * the node that got selected, the badge drawn for it, and the note opened from it.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-color-groups.test.ts', [
     '/**\n * Colour rules are edited while the graph is already on screen, so an edit has to reach the nodes the\n * ticker is drawing. Rebuilding the layout would throw away the dragged positions and the physics run,\n * so a dedicated effect re-stamps the live nodes instead — which is what these cases pin.\n */',
   ]],
@@ -3353,11 +3356,25 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-draw.ts', [
     '/** The three corners of an arrow head: the tip sits just outside the node it points at. */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-dynamic-prefs.test.ts', [
+    '/**\n * Forces are what a reader tunes against a graph that is already on screen, so changing one has to restart\n * the animation on the nodes that are already there — while a preference that only changes how the picture\n * looks must leave that animation alone. These cases drive the same hook the canvas uses, on a settled\n * layout whose third node the reader has dragged somewhere the physics never put it.\n */',
+    '// The canvas hands the hook one ref for the life of the panel; a fresh object per render would itself',
+    '// look like a changed preference.',
+    '// The mount already anneals once; a reader tunes the forces after the picture has come to rest.',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-physics.test.ts', [
+    '/**\n * The force layout is the one part of the panel that runs on its own after the reader stops touching it,\n * so these cases drive the frame source by hand and read three promises: the layout converges and the\n * loop stops asking for frames, a node the reader pinned or is holding never drifts, and the camera is\n * fitted once the graph has spread out rather than on the frame that still holds the starting spiral.\n */',
+    '/** A frame source the test drives one tick at a time, so a layout that never converges is counted instead of hanging the run. */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-selection-loop.test.ts', [
     '/**\n * Selecting a node asks the panel for two things it holds in state: the announcement and the preview card.\n * Both used to be handed an object whose identity changed on every render, and because the effect that\n * writes them listed that object as a dependency, each write scheduled the next one: the panel never came\n * back. These cases count the paints one selection costs.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-theme.test.ts', [
+    '/**\n * A canvas paints colours it reads itself, so nothing in the browser notices a theme flip for it: the\n * panel has to re-read the tokens and redraw. These cases read the two halves of that promise — the\n * colours come from the document, and a flip reaches the pixels that are already on screen.\n */',
+    '/**\n * Frames are queued rather than run inline: a synchronous `requestAnimationFrame` would make the physics\n * loop re-enter itself, and the id it hands back would be written after the loop had already cleared it,\n * leaving the panel looking like a frame was still in flight.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '// `preview` is a fresh object on every render: listing it as a dependency would make this effect write',
@@ -3387,6 +3404,15 @@ const allowed = new Map([
     '/** Two decimals place a node exactly and keep the file readable. */',
     '/** A colour or a font name arrives from CSS, so it goes into an attribute only after escaping. */',
   ]],
+  ['src/client/features/graph/graph-panel/graph-panel-mount.test-helpers.ts', [
+    '/**\n * The panel is the surface a reader actually uses: the drawer, the header buttons and the canvas all\n * live inside one portal, and its state is written by preferences effects rather than by props. Tests\n * that need that whole wiring mount the real panel here and press the controls by their accessible\n * names; what each of them proves stays in its own file.\n */',
+    '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
+    '/** Lets the graph request that is already in flight land, which is when the canvas appears. */',
+    '/** Mounts the panel with its graph already on screen. */',
+    '/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */',
+    '/** React only sees a value the browser itself wrote, so a test types through the native setter. */',
+    '/** Escape as a reader presses it: from whatever the dialog holds focus on. */',
+  ]],
   ['src/client/features/graph/graph-panel/header-export.test.ts', [
     '/**\n * The export buttons are the one part of the graph whose result leaves the app, so they are read here\n * the way a reader uses them: the real panel is mounted, the header control is pressed with a real\n * pointer, and either a named file has been handed to the browser or the button was never reachable.\n * What those buttons draw is the subject of `graph-export.test.ts`; this file holds the wiring.\n */',
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the drawing is stubbed, the state it fills is real. */',
@@ -3404,6 +3430,12 @@ const allowed = new Map([
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
+    '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
+    '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
   ]],
   ['src/client/features/graph/graph-panel/preview-stub.test-helpers.ts', [
     '/**\n * Selection is the one interaction that can make the panel repaint itself, and a preview whose identity\n * changes on every render turns that into a loop that never returns. The stub counts those paints and\n * throws once a single selection has passed the cap, so the suite goes red instead of hanging.\n */',
