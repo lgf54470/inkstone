@@ -124,9 +124,8 @@ function handleCanvasPointerDown(event: React.PointerEvent<HTMLCanvasElement>, h
   } else if (state.pointers.size === 2) {
     const [a, b] = [...state.pointers.values()]
     state.dragging = null
-    const rect = event.currentTarget.getBoundingClientRect()
-    const cx = (a!.x + b!.x) / 2 - rect.left
-    const cy = (a!.y + b!.y) / 2 - rect.top
+    const cx = (a!.x + b!.x) / 2 - state.viewLeft
+    const cy = (a!.y + b!.y) / 2 - state.viewTop
     state.pinch = { distance: Math.hypot(b!.x - a!.x, b!.y - a!.y), scale: state.scale, centerX: cx, centerY: cy }
   }
 }
@@ -138,9 +137,8 @@ function handleCanvasPointerMove(event: React.PointerEvent<HTMLCanvasElement>, h
   if (state.pointers.size >= 2 && state.pinch) {
     const [a, b] = [...state.pointers.values()]
     const distance = Math.hypot(b!.x - a!.x, b!.y - a!.y)
-    const rect = event.currentTarget.getBoundingClientRect()
-    const cx = (a!.x + b!.x) / 2 - rect.left
-    const cy = (a!.y + b!.y) / 2 - rect.top
+    const cx = (a!.x + b!.x) / 2 - state.viewLeft
+    const cy = (a!.y + b!.y) / 2 - state.viewTop
     const nextScale = Math.min(4, Math.max(0.2, (state.pinch.scale * distance) / Math.max(1, state.pinch.distance)))
     const worldX = (state.pinch.centerX - state.offsetX) / state.scale
     const worldY = (state.pinch.centerY - state.offsetY) / state.scale
@@ -355,7 +353,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   useDynamicGraphPrefs(stateRef, prefs)
   const fitGraph = useGraphFit(canvasRef, stateRef)
   useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph })
-  const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
+  const { toWorld, nodeAt } = useGraphWorldMath(stateRef)
 
   const { beginDrag: origBeginDrag, moveDrag, endDrag: origEndDrag } = useGraphDrag({
     stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote,

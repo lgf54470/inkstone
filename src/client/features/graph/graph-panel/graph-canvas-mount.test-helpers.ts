@@ -53,7 +53,7 @@ export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountO
   const local = vi.fn()
   const filterByTag = vi.fn()
   const state: CanvasState = {
-    nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600,
+    nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
     dragging: null, pointers: new Map(), pinch: null,
     frame: 0, raf: 0, schedule: null,
   }

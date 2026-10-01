@@ -22,7 +22,7 @@ export function useGraphCanvasRefs(activeNoteId: string | null = null) {
   const lastPointerEventAtRef = useRef(Number.NEGATIVE_INFINITY)
   const stateRef = useRef<CanvasState>({
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0,
-    width: 0, height: 0,
+    width: 0, height: 0, viewLeft: 0, viewTop: 0,
     dragging: null, pointers: new Map(), pinch: null,
     frame: 0, raf: 0, schedule: null,
   })
@@ -49,12 +49,14 @@ export function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stat
   }, [canvasRef, stateRef])
 }
 
-export function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObject<HTMLCanvasElement | null>) {
+export function useGraphWorldMath(stateRef: RefObject<CanvasState>) {
   const toWorld = useCallback((clientX: number, clientY: number) => {
     const state = stateRef.current
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: (clientX - rect.left - state.offsetX) / state.scale, y: (clientY - rect.top - state.offsetY) / state.scale }
-  }, [canvasRef, stateRef])
+    return {
+      x: (clientX - state.viewLeft - state.offsetX) / state.scale,
+      y: (clientY - state.viewTop - state.offsetY) / state.scale,
+    }
+  }, [stateRef])
   const nodeAt = useCallback((x: number, y: number): CanvasNode | null => {
     const nodes = stateRef.current.nodes
     for (let index = nodes.length - 1; index >= 0; index--) {

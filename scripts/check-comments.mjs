@@ -3354,9 +3354,17 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas-draw.test.ts', [
     '/**\n * The head a link is drawn with is the one piece of geometry that has to agree between the panel and an\n * exported picture, so its two rules are read off here: the tip stops short of the node it arrives at,\n * and the arms shrink as the reader zooms in so the head keeps the same size on screen.\n */',
+    '// The resizer measures as it is built — the observer\'s first callback is asynchronous, and the',
+    '// pointer paths read the viewport offset it caches — so the explicit call below is the second',
+    '// measurement, and a tick beyond it still measures nothing at all.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-draw.ts', [
     '/** The three corners of an arrow head: the tip sits just outside the node it points at. */',
+    '// The pointer paths read these instead of the box itself: a drag would otherwise ask the layout',
+    '// engine for the same numbers on every move, forcing a synchronous layout per event. A resize',
+    '// is the only thing that moves this canvas without also moving the panel that holds it.',
+    '// Measured once before observing: the observer\'s first callback is asynchronous, and a pointer that',
+    '// arrives in between would read the cached box as a zero offset.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-dynamic-prefs.test.ts', [
     '/**\n * Forces are what a reader tunes against a graph that is already on screen, so changing one has to restart\n * the animation on the nodes that are already there — while a preference that only changes how the picture\n * looks must leave that animation alone. These cases drive the same hook the canvas uses, on a settled\n * layout whose third node the reader has dragged somewhere the physics never put it.\n */',
@@ -3442,6 +3450,13 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-pointer-layout.test.ts', [
+    '/**\n * A drag reads the pointer\'s place in the graph on every move, and the canvas box that reading is\n * measured against does not move while the pointer does. Asking the layout engine for that box on each\n * event forced a synchronous layout per move; the box is now kept beside the numbers the resize\n * observer already watches. This case counts the box reads one drag costs.\n */',
+    '// jsdom has neither a PointerEvent nor pointer capture, so the gesture carries the fields the',
+    '// handlers read and the capture call is stubbed out.',
+    '// Selecting the node is where the panel\'s own preview card measures the canvas: once per',
+    '// selection, and that is where the count starts, because the moves are what this case is about.',
+  ]],
   ['src/client/features/graph/graph-panel/panel-throttle.test.ts', [
     '/**\n * A throttled graph read is a state the reader has to be able to leave: the server\'s 429 has to reach\n * the panel as the localized message it will be shown, and the retry it offers has to be the thing\n * that asks again. A panel that swallowed the status would draw an empty graph over a library that\n * has one, which reads as "your notes are gone" rather than "you asked too often".\n */',
     '// The retry\'s own answer never lands: this case is about the first state and the second call.',
@@ -3455,6 +3470,7 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
     '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
+    '/** The canvas box\'s viewport offset, kept by the resizer: pointer math subtracts it instead of\n   * asking the layout engine for the box on every move, which forced a synchronous layout per event. */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-export.test.ts', [
     '/**\n * Exporting is the one graph action that leaves the app: the reader presses a button and a file\n * appears somewhere else. So the button has to stay shut while the picture is being painted, the\n * failure has to reach the reader rather than vanish, and the graph that gets drawn is the one on\n * screen. The file itself is the subject of `graph-export.test.ts`; here the promise is held open on\n * purpose to watch what the panel does around it.\n */',

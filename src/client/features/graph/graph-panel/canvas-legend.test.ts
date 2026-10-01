@@ -50,6 +50,8 @@ function graphElement(data: GraphResponse, canvas: HTMLCanvasElement, prefs: Gra
     offsetY: 0,
     width: 0,
     height: 0,
+    viewLeft: 0,
+    viewTop: 0,
     dragging: null,
     pointers: new Map(),
     pinch: null,

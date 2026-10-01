@@ -24,6 +24,10 @@ export interface CanvasState {
   offsetY: number
   width: number
   height: number
+  /** The canvas box's viewport offset, kept by the resizer: pointer math subtracts it instead of
+   * asking the layout engine for the box on every move, which forced a synchronous layout per event. */
+  viewLeft: number
+  viewTop: number
   dragging: { node: CanvasNode | null; startX: number; startY: number; ox: number; oy: number } | null
   pointers: Map<number, { x: number; y: number }>
   pinch: { distance: number; scale: number; centerX: number; centerY: number } | null

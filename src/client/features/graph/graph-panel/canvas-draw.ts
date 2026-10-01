@@ -319,6 +319,11 @@ export function createCanvasResizer(canvas: HTMLCanvasElement, ctx: CanvasRender
     const rect = canvas.getBoundingClientRect()
     state.width = rect.width
     state.height = rect.height
+    // The pointer paths read these instead of the box itself: a drag would otherwise ask the layout
+    // engine for the same numbers on every move, forcing a synchronous layout per event. A resize
+    // is the only thing that moves this canvas without also moving the panel that holds it.
+    state.viewLeft = rect.left
+    state.viewTop = rect.top
     canvas.width = Math.max(1, Math.round(rect.width * dpr))
     canvas.height = Math.max(1, Math.round(rect.height * dpr))
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -328,6 +333,9 @@ export function createCanvasResizer(canvas: HTMLCanvasElement, ctx: CanvasRender
     }
     state.schedule?.()
   }
+  // Measured once before observing: the observer's first callback is asynchronous, and a pointer that
+  // arrives in between would read the cached box as a zero offset.
+  resize()
   const observer = new ResizeObserver(resize)
   observer.observe(canvas)
   return { resize, observer }

@@ -28,7 +28,7 @@ function createState(nodes: CanvasNode[], edges: Array<{ source: string, target:
       const a = byId.get(edge.source), b = byId.get(edge.target)
       return a && b ? [{ a, b }] : []
     }),
-    scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600,
+    scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
     dragging: null, pointers: new Map(), pinch: null, frame: 0, raf: 0, schedule: null,
   }
 }

@@ -42,6 +42,8 @@ function createInitialState(): CanvasState {
     offsetY: 0,
     width: 0,
     height: 0,
+    viewLeft: 0,
+    viewTop: 0,
     dragging: null,
     pointers: new Map(),
     pinch: null,
@@ -185,22 +187,28 @@ describe('layout thrashing prevention (PERF-02)', () => {
     const restoreContext = mockCanvasContext(clearRectCalls)
     const canvas = document.createElement('canvas')
     const getBoundingClientRectSpy = vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
-      width: 800, height: 600, top: 0, left: 0, bottom: 600, right: 800, x: 0, y: 0, toJSON: () => {},
+      width: 800, height: 600, top: 18, left: 32, bottom: 618, right: 832, x: 32, y: 18, toJSON: () => {},
     })
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
     const state = createInitialState()
+    // The resizer measures as it is built — the observer's first callback is asynchronous, and the
+    // pointer paths read the viewport offset it caches — so the explicit call below is the second
+    // measurement, and a tick beyond it still measures nothing at all.
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
-    resize()
     expect(state.width).toBe(800)
     expect(state.height).toBe(600)
+    expect(state.viewLeft).toBe(32)
+    expect(state.viewTop).toBe(18)
     expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(1)
+    resize()
+    expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(2)
     const colors = readThemeColors()
     const prefsRef = { current: DEFAULT_PREFERENCES }
     const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
     const style = document.createElement('div').style
     createGraphTicker({ state, canvas, ctx, colorsRef: colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style })
     state.schedule?.()
-    expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(1)
+    expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(2)
     expect(clearRectCalls.length).toBeGreaterThanOrEqual(1)
     expect(clearRectCalls[0]).toEqual([0, 0, 800, 600])
     observer.disconnect()

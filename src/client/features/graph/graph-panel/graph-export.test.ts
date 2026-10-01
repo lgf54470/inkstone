@@ -30,7 +30,7 @@ function node(overrides: Partial<CanvasNode> = {}): CanvasNode {
 
 function createState(nodes: CanvasNode[], edges: Array<{ a: CanvasNode; b: CanvasNode }> = []): CanvasState {
   return {
-    nodes, edges, scale: 1.5, offsetX: 40, offsetY: 60, width: 800, height: 600,
+    nodes, edges, scale: 1.5, offsetX: 40, offsetY: 60, width: 800, height: 600, viewLeft: 0, viewTop: 0,
     dragging: null, pointers: new Map(), pinch: null, frame: 360, raf: 0, schedule: null,
   }
 }
