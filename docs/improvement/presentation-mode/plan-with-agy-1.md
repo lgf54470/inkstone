@@ -19,7 +19,7 @@
 | **批次 0** | 文档基线 | 审查报告与整改计划初始化 | `[x]` 已提交 (`d8aa7a00`) |
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
-| **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[~]` 进行中 (已提交: `5f02e2d4` ~ `53b3c570`，B3-01 ~ B3-11；余 B3-12) |
+| **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (已提交: `5f02e2d4` ~ `ed5a64d8` + 本次 B3-12，短哈希在批次 4 首个提交回填) |
 | **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
 
 ---
@@ -137,16 +137,16 @@
   - 目标：全笔记演示模式中遇到 Bento-Slides 代码块不再永久停留于 "Loading slides..." 占位态。
   - 方案：在 `SlideCanvas` 中提供 `useBentoSlidesFallback`，解析围栏内的卡片结构并直接呈现为整洁的静态卡片网格预览，移除 `loading` 类并设置 `aria-busy="false"`。
   - 验证：单元测试验证包含 ` ```slides ` 的内容在 SlideCanvas 中被正确增强为静态卡片结构，无残留 loading 状态。
-- [x] **B3-11** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令 — 已完成
+- [x] **B3-11** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令 — 已完成 (`ed5a64d8`)
   - 涉及文件：`src/client/features/presentation/start-presentation.ts`（新增）、`src/client/features/presentation/presentation-hotkeys.ts`（新增）、`src/client/features/presentation/index.ts`、`src/client/features/command/command-palette/use-commands.tsx`（`currentNoteCommands`）、`src/client/features/shell/app-shell.tsx`、`src/client/features/workspace/workspace/use-workspace.ts`
   - 目标：`Cmd+K` 支持快速呼出演示模式。
   - 方案：抽出唯一启动路径 `startPresentationFromNote(noteId)`（按编辑器光标定位起始 Slide），命令面板注册 `cmd-presentation-mode`（`<Play>` 图标）；新增特性自有 `PRESENTATION_HOTKEYS`（`mod+alt+p`，`allowInInput`，放映中 `when` 让位）并由 `app-shell` 的 `registerAll` 挂载，使面板 `combo` 提示与真实绑定一致；`useStartPresentation` 改为委托该路径以消除重复实现。
   - 验证：`start-presentation.test.ts`（5 例：正文/标题、光标就近、无编辑器、正文未加载、笔记已删除）＋ `presentation-hotkeys.test.ts`（7 例：编辑器内与 textarea 内触达、参考面板收录、放映中让位、无活动笔记、`mod+p` 不匹配）＋ `presentation-command.test.ts`（3 例：命令存在与文案/快捷键/分组、与 `cmd-slides-from-outline` 共存、`run` 委托）。四轮变异（`when` 门、`allowInInput`、光标偏移、面板项）均被具名用例杀死。
-- [ ] **B3-12** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页）
-  - 涉及文件：`src/client/features/presentation/slides.ts` (`splitIntoSlides`)、`src/client/features/presentation/slides.test.ts`
+- [x] **B3-12** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页） — 已完成
+  - 涉及文件：`src/client/features/presentation/slides.ts` (`buildDeck`/`classifyLine`/`scanBoundaries`/`autoSlideLevel`/`dividerBoundaries`)、`src/client/features/presentation/slides.test.ts`、`README.md`、`README_ZH.md`、`scripts/check-comments.mjs`
   - 目标：对于未显式插入 `---` 分割线的一般笔记，支持根据 H1/H2 智能切分幻灯片。
-  - 方案：支持 Frontmatter 配置 `slide-level: 1 | 2`；在无显式分割线时自动将顶层标题行作为分页断点。
-  - 验证：单元测试覆盖带 H1/H2 标题的长文智能切分用例，验证生成的幻灯片页数与内容边界。
+  - 方案：`splitIntoSlides` 与 `findSlideIndexByOffset` 收敛为同一次 `buildDeck` 扫描（消除旧的分页/光标两套栅栏走查漂移）；逐行状态机 `classifyLine` 识别围栏/分割线/ATX 标题；无任何 `---` 时才启用标题分页——优先按 front matter 声明的 `slide-level: 1|2`，否则自动判定（≥2 个 H1 用 H1，否则退化到 H2 层级，含更浅层标题）；分割线只「切分」不归属任何页，标题行属于它开启的那一页，故分割线页从 `offset+1` 起算而标题页从自身行起算；front matter 解析改复用 `@shared/markdown-utils` 的 `parseFrontMatter`（不新增依赖，`...` 结束符与预览渲染对齐）。
+  - 验证：`slides.test.ts` 31 例（新增智能分页 8 例 + `slide-level` 4 例 + 相邻分割线 1 例 + 标题页光标 2 例）。既有笔记零回归由 26 例差分基座证明：同一份输入下新实现与 `HEAD` 旧实现的 slides 数组、逐字符偏移量的 `findSlideIndexByOffset` 完全一致。12 项变异全部被具名用例杀死（含 `ATX_HEADING` 缩进/超六档放宽这一项：以「缩进 hash 视为代码块」用例的三页/两页差异钉住）。
 
 ---
 
