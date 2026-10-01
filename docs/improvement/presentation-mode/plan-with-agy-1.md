@@ -287,9 +287,11 @@
 - [ ] **B4-07** 缺陷修复: 黑屏/白屏覆盖层压不住放映面板
   - 现象：`ScreenCover` 与 `[role="dialog"]` 并排且 z 取 `--z-popover`(50)，而面板 `z-[var(--z-modal)]`(250) 自带不透明底色，同层上下文里覆盖层画在面板之下——按 `B`/`.` 后大屏可能仍是幻灯片。B4-02 的激光层因此刻意渲染在面板之内。
   - 方案：把覆盖层层序提到面板之上（或作为面板子元素），并为「幕布确实盖住了幻灯片」补浏览器断言——该路径当前无门禁覆盖，属既有缺口。
-- [ ] **B4-08** 健壮性: 放映按键的 target 兜底
+- [x] **B4-08** 健壮性: 放映按键的 target 兜底 — 已完成 (`0c2f096d`)
+  - 涉及文件：`src/client/features/presentation/use-presentation-keys.ts`、`src/client/features/presentation/use-presentation-keys.test.ts`
   - 现象：`use-presentation-keys.ts` 用 `event.target?.closest(...)` 判定焦点归属，keydown 的 target 为 `document`/`window` 时（无 `closest`）抛 TypeError。单测目前按真实浏览器路径派发到 `document.body`，未掩盖该风险。
-  - 方案：只对 `Element` 取 `closest` 的显式守卫，并加一条「target 是 document 的按键不炸放映」的用例。
+  - 方案：改 `event.target as HTMLElement | null` 为 `event.target instanceof Element ? event.target : null` 显式守卫，确保仅对 Element 调用 `closest`。
+  - 验证：单元测试新增「target 是 document 与 window 的按键不炸放映并正常触发命令」，11 例测试全绿。
 - [ ] **B4-09** 门禁既有红: 本机浏览器门禁 7 项（HEAD 快照复现）
   - 清单见 B4-02 验证段的对照基线条。判定依据：对同一 HEAD 快照以同法实跑，得到同样 7 个失败名。
   - 待查方向：两条 `canvas fills the stage` 无 detail 输出（先给它补 detail 才谈得上定位）；缩略图那组读数为 `katex=0/charts=0/painted=0`、`pixels=-1`，即 rail 的静止帧没画出来（疑似本机字体或解码时序）；axe 那条是 `.bottom-4` 页码片的文字色在 `--bg-overlay` 上合成出 1.67:1，若 CI 不复现则说明底色合成随环境而变，需按令牌复测该色对。
