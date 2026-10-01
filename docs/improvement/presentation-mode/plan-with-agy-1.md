@@ -320,11 +320,11 @@
   - 与草案的偏差：本项不在评审/计划清单内，是 B4-03 的浏览器场景实测出来的缺陷，按铁律 14 单独成提交。`waitForRailFilled` 的诊断输出（两读相隔 2s、把 complete/busy/measuring/entries 写进错误消息）服务于概览场景的可读性，归 B4-03。
   - 顺带记录：`e2e-visual.mjs` 的图片导出场景原先「先 `waitForSelector` 就绪标记、再 `evaluate` 读页框」，在导出页随存档一起卸载之后这条读法必然踩空——本轮 `:7748` 的运行就在 `export: the printed PDF has the deck page count` 之后 `Waiting failed: 60000ms exceeded` 崩掉。改为按下控件**之前**挂 MutationObserver，采样 mount/teardown/最大页框数/最大 canvas 数/就绪值与拆页时的 `aria-busy`，并以 60s 有界 resolve（导出没发生时给出红行而不是崩掉门禁）。
 
-- [x] **B4-12** 测试缺口: 全缩略图共用那一个观察者无人钉 — 已完成 (`9b24d7a4`)
+- [x] **B4-12** 测试缺口: 全缩略图共用那一个观察者无人钉 — 已完成 (`9b24d7a4`，夹具加固 `b993cf1f`)
   - 涉及文件：`src/client/features/presentation/slide-thumb.tsx`、`src/client/features/presentation/slide-thumb.test.ts`（新增）
   - 现象：`slide-thumb.tsx` 的模块级 `sharedThumbObserver` + `thumbObserverCallbacks`（预取边距 `THUMB_PREFETCH_MARGIN = '320px'`）是提交 `9cc8bf05` 在 `slide-rail.tsx` 里建的，本批 B4-03 把它随缩略图一起提为共用，于是侧栏与矩阵**共用同一个**观察者。「一张列表一个观察者」与「列表全部卸载后回调不再触发、且 `thumbObserverCallbacks` 不留下已 detached 的元素」两条都只由实现读得出，没有任何断言守着；把它改回每卡一个 observer（正是当初要修掉的惊群）会静默通过现有全部测试。
   - 方案：在 `slide-thumb.tsx` 暴露 `observeThumbElement`、`sharedThumbObserverMetrics`（返回 `created`, `connected`, `subscribers`）与 `resetSharedThumbObserverForTesting`；新增 `slide-thumb.test.ts` 钉住全生命周期契约。
-  - 验证：`slide-thumb.test.ts` 10 例（单例共用 1 例、定向路由 1 例、全部退订断开与按需重建 1 例、未登记目标静默忽略 1 例、`useNearViewport` 组件挂载/卸载 1 例、侧栏与矩阵卡同场共用单例 1 例、`thumbMetrics` 1 例、`extractSlideHeading` 3 例、`pageLabel` 2 例）。全量放映测试 21 文件 / 316 例全绿；静态门禁（注释、样式、类型、尺寸基线 0 漂移）全部通过。
+  - 验证：`slide-thumb.test.ts` 10 例（单例共用 1 例、定向路由 1 例、全部退订断开与按需重建 1 例、未登记目标静默忽略 1 例、`useNearViewport` 组件挂载/卸载 1 例、侧栏与矩阵卡同场共用单例 1 例、`thumbMetrics` 1 例、`extractSlideHeading` 3 例、`pageLabel` 2 例）。全量放映测试 21 文件 / 316 例全绿；静态门禁（注释、样式、类型、尺寸基线 0 漂移）全部通过；后续通过 `b993cf1f` 消除夹具内独立 `renderElement` 导致的 `IS_REACT_ACT_ENVIRONMENT` 控制台告警。
 - [x] **B4-13** 待查与优化: 缩略图预取的 rootMargin 够不到被侧栏裁掉的卡 — 已完成 (`19ae03c0`)
   - 涉及文件：`src/client/features/presentation/slide-thumb.tsx`、`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-overview-grid.tsx`、`src/client/features/presentation/slide-thumb.test.ts`
   - 由来：一条经远程频道转来的"缺陷确认"要求把 `slide-thumb.tsx` 的 `THUMB_PREFETCH_MARGIN = '320px'` 改成 `'0px 0px 320px 0px'`，理由是"四值简写在垂直滚动容器里不生效"。**该理由不成立**：`320px` 是合法简写，四边各扩 320px，已包含下方 320px；改成只留下边只是把上/左/右的预取收窄，不解决任何东西。该行也不在本批 diff 内（`git diff` 无 `THUMB_PREFETCH` 的 `+/-` 行，常量随 `13997681` 从 `slide-rail.tsx` 搬来、原建于 `9cc8bf05`）。
