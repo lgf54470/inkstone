@@ -306,19 +306,20 @@ async function loadGraphEdgesAndTags(
   if (!ids.length) {
     return { edges: [], unresolved: new Map(), tagsByNote: new Map(), truncated: false }
   }
-  const { linkResult, tagResult } = await loadGraphLinkRows(db, userId, ids)
+  const { linkResult, tagResult, truncated: cut } = await loadGraphLinkRows(db, userId, ids)
   const { edges, unresolved, truncated } = buildGraphEdges(linkResult.results, includeUnresolved)
-  return { edges, unresolved, tagsByNote: groupTagsByNote(tagResult), truncated }
+  return { edges, unresolved, tagsByNote: groupTagsByNote(tagResult), truncated: truncated || cut }
 }
 
 async function loadGraphLinkRows(
   db: D1Database,
   userId: string,
   ids: string[],
-): Promise<{ linkResult: { results: GraphLinkRow[] }; tagResult: { results: GraphTagRow[] } }> {
-  const pageIds = new Set(ids)
-  const linkRows: GraphLinkRow[] = []
-  const tagRows: GraphTagRow[] = []
+): Promise<{
+  linkResult: { results: GraphLinkRow[] }
+  tagResult: { results: GraphTagRow[] }
+  truncated: boolean
+}> {
   const statements: D1PreparedStatement[] = []
   for (let index = 0; index < ids.length; index += GRAPH_NOTE_ID_CHUNK) {
     const chunk = ids.slice(index, index + GRAPH_NOTE_ID_CHUNK)
@@ -326,14 +327,17 @@ async function loadGraphLinkRows(
     // A chunk asks for the links leaving its own notes only: binding the page on the target side as
     // well would not fit a statement a second time. Which of those links stay in the page is decided
     // below instead, because a link that leaves the page and comes back in a later chunk would be
-    // dropped by a per-chunk target list. The edge candidate cap is applied when the edges are built,
-    // on the whole page at once, so no statement carries its own LIMIT any more.
+    // dropped by a per-chunk target list. Each statement still carries its own LIMIT — the request's
+    // edge candidate budget plus one row — because one note can hold more links than the whole graph
+    // shows (a 2 MiB note keeps every `[[…]]` in it) and an unbounded statement hands D1's entire
+    // answer to the Worker. The extra row is what tells a statement that fits from one that was cut:
+    // a cut leaves rows unread, so the page hears truncated rather than looking complete.
     statements.push(
       db.prepare(
         `SELECT source_note_id, target_note_id, target_key, target_title FROM links
          WHERE user_id = ? AND source_note_id IN (${placeholders})
-         ORDER BY target_key ASC`,
-      ).bind(userId, ...chunk),
+         ORDER BY target_key ASC LIMIT ?`,
+      ).bind(userId, ...chunk, GRAPH_EDGE_CANDIDATE_LIMIT + 1),
       db.prepare(
         `SELECT nt.note_id, t.name, t.color FROM note_tags nt
          JOIN tags t ON t.id = nt.tag_id AND t.user_id = ?
@@ -342,16 +346,7 @@ async function loadGraphLinkRows(
     )
   }
   const batchResults = await db.batch<GraphLinkRow | GraphTagRow>(statements)
-  for (let i = 0; i < batchResults.length; i += 2) {
-    const linkResult = (batchResults[i]?.results ?? []) as GraphLinkRow[]
-    const tagResult = (batchResults[i + 1]?.results ?? []) as GraphTagRow[]
-    for (const row of linkResult) {
-      // Unresolved links (no target note) stay in: they become nodes of their own when the caller
-      // asked for them and are skipped otherwise. Everything else has to end inside the page.
-      if (row.target_note_id === null || pageIds.has(row.target_note_id)) linkRows.push(row)
-    }
-    tagRows.push(...tagResult)
-  }
+  const { linkRows, tagRows, truncated } = collectGraphLinkRows(batchResults, new Set(ids))
   // Each chunk was ordered on its own, so the rows are put back into the order a single statement
   // would have produced: the edge cap keeps whichever rows come first, and those should not depend
   // on how the id list happened to be split. Tags are grouped per note, so they need no reordering.
@@ -360,7 +355,30 @@ async function loadGraphLinkRows(
       ? (a.target_key < b.target_key ? -1 : a.target_key > b.target_key ? 1 : 0)
       : (a.source_note_id < b.source_note_id ? -1 : 1)
   ))
-  return { linkResult: { results: linkRows }, tagResult: { results: tagRows } }
+  return { linkResult: { results: linkRows }, tagResult: { results: tagRows }, truncated }
+}
+
+function collectGraphLinkRows(
+  batchResults: Array<{ results?: Array<GraphLinkRow | GraphTagRow> }>,
+  pageIds: Set<string>,
+): { linkRows: GraphLinkRow[]; tagRows: GraphTagRow[]; truncated: boolean } {
+  const linkRows: GraphLinkRow[] = []
+  const tagRows: GraphTagRow[] = []
+  let truncated = false
+  for (let i = 0; i < batchResults.length; i += 2) {
+    const linkResult = (batchResults[i]?.results ?? []) as GraphLinkRow[]
+    const tagResult = (batchResults[i + 1]?.results ?? []) as GraphTagRow[]
+    // A statement that came back holding its LIMIT's worth of rows was cut: more links exist for its
+    // notes and were never read, so the page cannot promise that the edges it shows are all there is.
+    if (linkResult.length > GRAPH_EDGE_CANDIDATE_LIMIT) truncated = true
+    for (const row of linkResult) {
+      // Unresolved links (no target note) stay in: they become nodes of their own when the caller
+      // asked for them and are skipped otherwise. Everything else has to end inside the page.
+      if (row.target_note_id === null || pageIds.has(row.target_note_id)) linkRows.push(row)
+    }
+    tagRows.push(...tagResult)
+  }
+  return { linkRows, tagRows, truncated }
 }
 
 function buildGraphEdges(

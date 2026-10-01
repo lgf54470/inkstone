@@ -8,6 +8,7 @@ import { loadSession } from '../src/worker/middleware/auth'
 import { createSession } from '../src/worker/lib/session-store'
 import { errorResponse } from '../src/worker/lib/errors'
 import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
+import { GRAPH_EDGE_CANDIDATE_LIMIT } from '../src/worker/routes/search/helpers'
 import { GRAPH_TAG_EDGE_LIMIT } from '../src/shared/graph-tag-nodes'
 
 const NOW = 2_000_000_000_000
@@ -218,6 +219,38 @@ describe('graph route degree aggregation (real D1)', () => {
     expect(res.status).toBe(200)
     expect(batchSpy).toHaveBeenCalledTimes(1)
     expect(batchSpy.mock.calls[0][0].length).toBe(4)
+    batchSpy.mockRestore()
+  })
+
+  it('bounds what one edge statement reads and reports the cut as truncated', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    // The page holds the newest note and the note it links to is archived, so each of these links is
+    // read and then dropped instead of edged: the page stays small while one statement's answer does
+    // not. One row past what a single statement may read is enough to tell a bounded answer from an
+    // unbounded one, and a cut answer from a complete one.
+    await seedNote(vid('bomb'), userId, NOW + 100)
+    await seedNote(vid('ghost'), userId, NOW)
+    await runSql(db, 'UPDATE notes SET is_archived = 1 WHERE id = ?', vid('ghost'))
+    await runSql(
+      db,
+      `INSERT INTO links (source_note_id, target_note_id, target_key, target_title, user_id)
+       WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < ?1)
+       SELECT ?2, ?3, 'key-' || printf('%06d', n), 'Target ' || n, ?4 FROM seq`,
+      GRAPH_EDGE_CANDIDATE_LIMIT + 2, vid('bomb'), vid('ghost'), userId,
+    )
+    const token = await signIn(userId)
+    const app = makeApp()
+    const batchSpy = vi.spyOn(db, 'batch')
+
+    const res = await request(app, '/api/search/graph?limit=50', token)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const statements = await (batchSpy.mock.results[0]!.value as Promise<Array<{ results?: unknown[] }>>)
+    const widest = Math.max(...statements.map((statement) => statement.results?.length ?? 0))
+    expect(widest).toBeLessThanOrEqual(GRAPH_EDGE_CANDIDATE_LIMIT + 1)
+    // The rows past the bound were never read, so the page cannot promise it saw every edge.
+    expect(body.meta.truncated).toBe(true)
     batchSpy.mockRestore()
   })
 
