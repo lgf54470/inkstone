@@ -3442,6 +3442,10 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/panel-throttle.test.ts', [
+    '/**\n * A throttled graph read is a state the reader has to be able to leave: the server\'s 429 has to reach\n * the panel as the localized message it will be shown, and the retry it offers has to be the thing\n * that asks again. A panel that swallowed the status would draw an empty graph over a library that\n * has one, which reads as "your notes are gone" rather than "you asked too often".\n */',
+    '// The retry\'s own answer never lands: this case is about the first state and the second call.',
+  ]],
   ['src/client/features/graph/graph-panel/preview-stub.test-helpers.ts', [
     '/**\n * Selection is the one interaction that can make the panel repaint itself, and a preview whose identity\n * changes on every render turns that into a loop that never returns. The stub counts those paints and\n * throws once a single selection has passed the cap, so the suite goes red instead of hanging.\n */',
   ]],
@@ -8270,6 +8274,10 @@ const allowed = new Map([
     '/** Receives the response validator so the caller can send it back next time. */',
     '/**\n   * Opts this call out of the browser\'s HTTP cache. A public response is cacheable by design, so a\n   * caller whose answer depends on how fresh the payload is has to ask for freshness itself — a\n   * stored copy is not a slower answer to that question, it is a different one.\n   */',
     '// Nothing changed server side: the caller keeps what it already holds.',
+  ]],
+  ['src/client/lib/api/vault.test.ts', [
+    '/**\n * The graph read is the request whose answer depends on the whole library, so it is the one that can\n * take long enough for a reader to give up on it. The timeout is what turns that wait into a\n * retryable error instead of a promise that never settles.\n */',
+    '// A hung server: the answer never comes, and only the abort ends the wait — as a real fetch does.',
   ]],
   ['src/client/lib/async.ts', [
     '/**\n * Resolves when the work does or when it has had long enough, so a slow artifact delays what\n * comes next instead of hanging it. The timeout is the contract: the caller cannot wait\n * forever, and it must not learn about a failure it can do nothing about.\n */',
@@ -14405,6 +14413,8 @@ const allowed = new Map([
     '// A chunk asks for the links leaving its own notes only: binding the page on the target side as',
     '// well would not fit a statement a second time. Which of those links stay in the page is decided',
     '// below instead, because a link that leaves the page and comes back in a later chunk would be',
+    '// Charged after the request line has been read, so a malformed query answers 400 without spending',
+    '// the account\'s read budget, and before the queries, so a runaway loop is what meets the 429.',
     '// dropped by a per-chunk target list. Each statement still carries its own LIMIT — the request\'s',
     '// edge candidate budget plus one row — because one note can hold more links than the whole graph',
     '// shows (a 2 MiB note keeps every `[[…]]` in it) and an unbounded statement hands D1\'s entire',
@@ -14428,6 +14438,9 @@ const allowed = new Map([
     '// that follows note edits within the FTS drain delay should still hit the',
     '// index instead of silently falling back to LIKE. The background drain',
     '// keeps handling the remainder and deletes.',
+  ]],
+  ['src/worker/routes/search/read-budget.ts', [
+    '/**\n * The graph read can be the heaviest read an account makes: a global page aggregates the degrees of a\n * whole library in one pass over `links` before a single node is drawn, and every filter change, mode\n * switch and debounced search asks for it again. A session stuck in a retry loop — or a stolen one —\n * can therefore burn the account\'s own read quota without ever writing anything, which the write-side\n * budgets never see.\n *\n * The window follows the share center\'s read budget: wide enough that a person browsing the graph\n * (open, toggle, search, switch modes) cannot reach 120 in five minutes, narrow enough that a runaway\n * loop reaches it in seconds. Expiry follows the primitive it borrows: crossing the budget locks the\n * key for a minute and answers 429 with a retry hint.\n */',
   ]],
   ['src/worker/routes/settings.ts', [
     '// notes and attachments carry several counts each; one pass over each table',
@@ -14859,6 +14872,9 @@ const allowed = new Map([
     '// not. One row past what a single statement may read is enough to tell a bounded answer from an',
     '// unbounded one, and a cut answer from a complete one.',
     '// The rows past the bound were never read, so the page cannot promise it saw every edge.',
+    '// The account\'s read budget is a batch of its own — one upsert row, the price of counting reads —',
+    '// and the link and tag statements still ride one round trip after it: two chunks of two.',
+    '// The state a runaway loop leaves behind: the account\'s read key is locked for a minute.',
   ]],
   ['tests/kanban-board-title.test.ts', [
     '/**\n * A board\'s name is in the fence body, and the markup a fence renders does not read that body — so\n * the block head drew its own type name instead: the type name in the head, and the same word again\n * as the tab of the board view. A reader who had named the board saw that name nowhere, and saw a\n * twice repeated type name where the name belonged (user report 2026-09-23).\n *\n * The name now comes from the two layers that hold it, each in the host where it has the room:\n *\n *  - the note, where the registry writes it into the block\'s own head. The head is a few hundred\n *    pixels wide and its two other children take 60 of them, so the name has room there; the board\'s\n *    own header does not — a name drawn in that bar took the room the view strip needs to scroll its\n *    own tab into (the visual gate read a 26px strip for an 8-tab board when it was drawn there).\n *  - the overlay, where the same header draws it, because there is no block head in an overlay.\n *\n * Nothing is drawn for an untitled board: a placeholder would have to be translated, and nothing\n * re-renders this block when the language changes. The strings that are translated and do live in\n * markup the host made — the canvas\'s landmark name — are pinned in\n * `src/client/lib/markdown/kanban/registry-locale.test.ts`.\n */',

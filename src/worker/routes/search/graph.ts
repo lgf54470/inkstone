@@ -12,6 +12,7 @@ import { requireAuth } from '../../middleware/auth'
 import { GRAPH_EDGE_CANDIDATE_LIMIT } from './helpers'
 import { escapeLike } from './helpers'
 import { applyUnresolvedNodes } from './graph-nodes'
+import { consumeGraphReadBudget } from './read-budget'
 import { applyTagNodes } from '@shared/graph-tag-nodes'
 
 // D1 refuses a statement with more than 100 bound variables, and the edge query binds the user once
@@ -90,6 +91,9 @@ export function registerSearchGraphRoutes(searchRoutes: Hono<AppBindings>): void
 
 async function graphHandler(c: Context<AppBindings>): Promise<Response> {
   const params = parseGraphParams(c)
+  // Charged after the request line has been read, so a malformed query answers 400 without spending
+  // the account's read budget, and before the queries, so a runaway loop is what meets the 429.
+  await consumeGraphReadBudget(c.env.DB, params.userId)
   const { filters, filterBinds } = buildGraphFilters(params)
   const { rows, totalNodes } = params.mode === 'local'
     ? await runLocalGraphQuery(c.env.DB, params, filters, filterBinds)

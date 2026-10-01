@@ -217,8 +217,9 @@ describe('graph route degree aggregation (real D1)', () => {
 
     const res = await request(app, '/api/search/graph?limit=50', token)
     expect(res.status).toBe(200)
-    expect(batchSpy).toHaveBeenCalledTimes(1)
-    expect(batchSpy.mock.calls[0][0].length).toBe(4)
+    // The account's read budget is a batch of its own — one upsert row, the price of counting reads —
+    // and the link and tag statements still ride one round trip after it: two chunks of two.
+    expect(batchSpy.mock.calls.map(([statements]) => statements.length)).toEqual([1, 4])
     batchSpy.mockRestore()
   })
 
@@ -532,5 +533,38 @@ describe('graph route filter grammar (FEAT-04, real D1)', () => {
     expect(nodeIds(overflow)).toHaveLength(50)
     expect(overflow.meta).toMatchObject({ totalNodes: 55, truncated: true })
     for (const id of ids.slice(0, 3)) expect(nodeIds(overflow)).not.toContain(id)
+  })
+})
+
+describe('graph read budget (G-03, real D1)', () => {
+  it('answers a read with 429 and a retry hint once the account is over budget', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('rb'), userId, NOW)
+    // The state a runaway loop leaves behind: the account's read key is locked for a minute.
+    await runSql(
+      db,
+      `INSERT INTO login_attempts (key, fails, last_fail_at, locked_until) VALUES (?1, ?2, ?3, ?4)`,
+      `graph-read:${userId}`, 200, Date.now(), Date.now() + 60_000,
+    )
+    const res = await request(makeApp(), '/api/search/graph', await signIn(userId))
+
+    expect(res.status).toBe(429)
+    const body = await res.json() as { error: { code: string; details: { retryAfter: number } } }
+    expect(body.error.code).toBe('too_many_attempts')
+    expect(body.error.details.retryAfter).toBeGreaterThan(0)
+  })
+
+  it('charges an on-budget read to the account, so the budget is what counts reads', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('rc'), userId, NOW)
+    const res = await request(makeApp(), '/api/search/graph', await signIn(userId))
+
+    expect(res.status).toBe(200)
+    const row = await db.prepare('SELECT fails FROM login_attempts WHERE key = ?')
+      .bind(`graph-read:${userId}`)
+      .first<{ fails: number }>()
+    expect(row).toEqual({ fails: 1 })
   })
 })
