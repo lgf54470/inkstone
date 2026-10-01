@@ -9,6 +9,7 @@ import {
   resetSharedThumbObserverForTesting,
   sharedThumbObserverMetrics,
   thumbMetrics,
+  ThumbRootContext,
   useNearViewport,
 } from './slide-thumb'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
@@ -68,6 +69,19 @@ function DummyThumbCard({ onNearChange }: { onNearChange?: (near: boolean) => vo
   const near = useNearViewport(ref)
   if (onNearChange) onNearChange(near)
   return createElement('div', { ref, 'data-near': String(near) })
+}
+
+function ScrollContainerDummy({ count = 2 }: { count?: number }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  return createElement(
+    ThumbRootContext.Provider,
+    { value: containerRef },
+    createElement(
+      'div',
+      { ref: containerRef },
+      Array.from({ length: count }, (_, i) => createElement(DummyThumbCard, { key: i })),
+    ),
+  )
 }
 
 beforeAll(async () => {
@@ -258,6 +272,56 @@ describe('sharedThumbObserver rail and overview co-existence', () => {
     gridCard2.unmount()
     expect(sharedThumbObserverMetrics().subscribers).toBe(0)
     expect(sharedThumbObserverMetrics().connected).toBe(false)
+  })
+})
+
+describe('sharedThumbObserver with scroll container roots', () => {
+  it('assigns container root and prefetch margin to the observer instance', () => {
+    const rootEl = document.createElement('div')
+    const thumbEl = document.createElement('span')
+    const cb = vi.fn()
+    const unobserve = observeThumbElement(thumbEl, cb, rootEl)
+
+    expect(MockIntersectionObserver.instances.length).toBe(1)
+    const observer = MockIntersectionObserver.instances[0]!
+    expect(observer.options?.root).toBe(rootEl)
+    expect(observer.options?.rootMargin).toBe('320px')
+
+    const metrics = sharedThumbObserverMetrics(rootEl)
+    expect(metrics.connected).toBe(true)
+    expect(metrics.subscribers).toBe(1)
+    expect(metrics.roots).toBe(1)
+
+    unobserve()
+    expect(sharedThumbObserverMetrics(rootEl).connected).toBe(false)
+    expect(sharedThumbObserverMetrics().roots).toBe(0)
+  })
+})
+
+describe('sharedThumbObserver container context integration', () => {
+  it('shares observer per scroll container and isolates across distinct containers', () => {
+    const view1 = renderElement(createElement(ScrollContainerDummy, { count: 3 }))
+    const view2 = renderElement(createElement(ScrollContainerDummy, { count: 2 }))
+
+    expect(MockIntersectionObserver.instances.length).toBe(2)
+    const metrics = sharedThumbObserverMetrics()
+    expect(metrics.created).toBe(2)
+    expect(metrics.roots).toBe(2)
+
+    const observer1 = MockIntersectionObserver.instances[0]!
+    const observer2 = MockIntersectionObserver.instances[1]!
+    expect(observer1.options?.root).not.toBe(observer2.options?.root)
+    expect(observer1.elements.size).toBe(3)
+    expect(observer2.elements.size).toBe(2)
+
+    view1.unmount()
+    expect(sharedThumbObserverMetrics().roots).toBe(1)
+    expect(observer1.disconnected).toBe(true)
+    expect(observer2.disconnected).toBe(false)
+
+    view2.unmount()
+    expect(sharedThumbObserverMetrics().roots).toBe(0)
+    expect(observer2.disconnected).toBe(true)
   })
 })
 

@@ -2,7 +2,7 @@
 // sidebar list and the overview grid. It lives here because the two must not disagree about how
 // a page is sliced, scaled and labelled — and because the viewport gate that keeps a long deck
 // from rendering every page at once is a single observer both of them share.
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type RefObject } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -163,60 +163,75 @@ export function SlideThumb({ thumbRef, near, html, layout, active, view, classNa
 // note used to register a hundred listeners whose callbacks all fired in the same task.
 export type ObserverCallback = (isIntersecting: boolean) => void
 
-let sharedThumbObserver: IntersectionObserver | null = null
-let sharedThumbObserverCreatedCount = 0
-const thumbObserverCallbacks = new Map<Element, ObserverCallback>()
-
-function getSharedThumbObserver(): IntersectionObserver {
-  if (!sharedThumbObserver) {
-    sharedThumbObserverCreatedCount += 1
-    sharedThumbObserver = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const cb = thumbObserverCallbacks.get(entry.target)
-        if (cb) cb(entry.isIntersecting)
-      }
-    }, { rootMargin: THUMB_PREFETCH_MARGIN })
-  }
-  return sharedThumbObserver
+interface RootObserverRecord {
+  observer: IntersectionObserver
+  callbacks: Map<Element, ObserverCallback>
 }
 
-export function observeThumbElement(element: Element, callback: ObserverCallback): () => void {
-  const observer = getSharedThumbObserver()
-  thumbObserverCallbacks.set(element, callback)
-  observer.observe(element)
+const observersByRoot = new Map<Element | null, RootObserverRecord>()
+let sharedObserverCreatedCount = 0
+
+function getObserverForRoot(root: Element | null): RootObserverRecord {
+  let record = observersByRoot.get(root)
+  if (!record) {
+    sharedObserverCreatedCount += 1
+    const callbacks = new Map<Element, ObserverCallback>()
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const cb = callbacks.get(entry.target)
+        if (cb) cb(entry.isIntersecting)
+      }
+    }, { root, rootMargin: THUMB_PREFETCH_MARGIN })
+    record = { observer, callbacks }
+    observersByRoot.set(root, record)
+  }
+  return record
+}
+
+export function observeThumbElement(element: Element, callback: ObserverCallback, root: Element | null = null): () => void {
+  const record = getObserverForRoot(root)
+  record.callbacks.set(element, callback)
+  record.observer.observe(element)
   return () => {
-    thumbObserverCallbacks.delete(element)
-    observer.unobserve(element)
-    if (thumbObserverCallbacks.size === 0) {
-      observer.disconnect()
-      sharedThumbObserver = null
+    record.callbacks.delete(element)
+    record.observer.unobserve(element)
+    if (record.callbacks.size === 0) {
+      record.observer.disconnect()
+      observersByRoot.delete(root)
     }
   }
 }
 
-export function sharedThumbObserverMetrics(): { created: number; connected: boolean; subscribers: number } {
+export function sharedThumbObserverMetrics(root: Element | null = null): { created: number; connected: boolean; subscribers: number; roots: number } {
+  const record = observersByRoot.get(root)
   return {
-    created: sharedThumbObserverCreatedCount,
-    connected: sharedThumbObserver !== null,
-    subscribers: thumbObserverCallbacks.size,
+    created: sharedObserverCreatedCount,
+    connected: record !== undefined,
+    subscribers: record ? record.callbacks.size : 0,
+    roots: observersByRoot.size,
   }
 }
 
 export function resetSharedThumbObserverForTesting(): void {
-  if (sharedThumbObserver) {
-    sharedThumbObserver.disconnect()
-    sharedThumbObserver = null
+  for (const record of observersByRoot.values()) {
+    record.observer.disconnect()
+    record.callbacks.clear()
   }
-  thumbObserverCallbacks.clear()
-  sharedThumbObserverCreatedCount = 0
+  observersByRoot.clear()
+  sharedObserverCreatedCount = 0
 }
 
-export function useNearViewport(ref: RefObject<HTMLElement | null>): boolean {
+export const ThumbRootContext = createContext<RefObject<HTMLElement | null> | null>(null)
+
+export function useNearViewport(ref: RefObject<HTMLElement | null>, rootRef?: RefObject<HTMLElement | null>): boolean {
+  const contextRootRef = useContext(ThumbRootContext)
+  const resolvedRootRef = rootRef ?? contextRootRef
   const [near, setNear] = useState(false)
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    return observeThumbElement(element, setNear)
-  }, [ref])
+    const root = resolvedRootRef?.current ?? null
+    return observeThumbElement(element, setNear, root)
+  }, [ref, resolvedRootRef])
   return near
 }

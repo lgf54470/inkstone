@@ -8,7 +8,7 @@ import { t } from '../../lib/i18n'
 import { entryIndexOf, overviewMove, railEntries, type RailEntry } from './presentation-state'
 import { presentationCommand } from './presentation-keys'
 import type { SlidePlan } from './slide-pagination'
-import { extractSlideHeading, pageLabel, SlideThumb, useCachedSlideHtml, useNearViewport, usePageHtml, useThumbView, type ThumbView } from './slide-thumb'
+import { extractSlideHeading, pageLabel, SlideThumb, ThumbRootContext, useCachedSlideHtml, useNearViewport, usePageHtml, useThumbView, type ThumbView } from './slide-thumb'
 
 const OVERVIEW_THUMB_WIDTH = 200
 // The matrix is the browser's, not ours: the cards are as wide as the thumb they carry, and a
@@ -42,32 +42,34 @@ export function SlideOverviewGrid({ deck, cacheKeys, plans, index, sub, designWi
   useOpenedFocus(rootRef, presenting)
 
   return (
-    <section
-      ref={rootRef}
-      data-presentation-overview
-      aria-label={t('workspace.presentation_overview')}
-      onKeyDown={onKeyDown}
-      className='absolute inset-0 z-[var(--z-popover)] overflow-y-auto bg-[var(--bg-base)] px-[var(--sp-6)] py-[var(--sp-5)]'
-    >
-      <div className='grid items-start justify-items-center gap-[var(--sp-4)]' style={{ gridTemplateColumns: OVERVIEW_GRID }}>
-        {entries.map((entry, item) => (
-          <OverviewCard
-            key={`${entry.slide}-${entry.sub}`}
-            entry={entry}
-            item={item}
-            cacheKey={cacheKeys[entry.slide] ?? ''}
-            source={deck[entry.slide] ?? ''}
-            plan={plans[entry.slide]}
-            deckLength={deck.length}
-            presenting={item === presenting}
-            focused={item === roam}
-            view={view}
-            onSelectPage={onSelectPage}
-            onClose={onClose}
-          />
-        ))}
-      </div>
-    </section>
+    <ThumbRootContext.Provider value={rootRef}>
+      <section
+        ref={rootRef}
+        data-presentation-overview
+        aria-label={t('workspace.presentation_overview')}
+        onKeyDown={onKeyDown}
+        className='absolute inset-0 z-[var(--z-popover)] overflow-y-auto bg-[var(--bg-base)] px-[var(--sp-6)] py-[var(--sp-5)]'
+      >
+        <div className='grid items-start justify-items-center gap-[var(--sp-4)]' style={{ gridTemplateColumns: OVERVIEW_GRID }}>
+          {entries.map((entry, item) => (
+            <OverviewCard
+              key={`${entry.slide}-${entry.sub}`}
+              entry={entry}
+              item={item}
+              cacheKey={cacheKeys[entry.slide] ?? ''}
+              source={deck[entry.slide] ?? ''}
+              plan={plans[entry.slide]}
+              deckLength={deck.length}
+              presenting={item === presenting}
+              focused={item === roam}
+              view={view}
+              onSelectPage={onSelectPage}
+              onClose={onClose}
+            />
+          ))}
+        </div>
+      </section>
+    </ThumbRootContext.Provider>
   )
 }
 

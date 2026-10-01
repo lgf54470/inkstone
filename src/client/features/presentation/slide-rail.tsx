@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { entryIndexOf, railEntries, type RailEntry } from './presentation-state'
 import type { PreflightProgress } from './slide-preflight'
 import type { SlidePlan } from './slide-pagination'
-import { extractSlideHeading, pageLabel, SlideThumb, useCachedSlideHtml, useNearViewport, usePageHtml, useThumbView, type ThumbView } from './slide-thumb'
+import { extractSlideHeading, pageLabel, SlideThumb, ThumbRootContext, useCachedSlideHtml, useNearViewport, usePageHtml, useThumbView, type ThumbView } from './slide-thumb'
 
 export const SLIDE_RAIL_WIDTH = 216
 const RAIL_THUMB_WIDTH = 148
@@ -108,30 +108,34 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
   onSelectPage: (slide: number, sub: number) => void
   registerItem: (element: HTMLButtonElement | null) => void
 }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   return (
-    <div
-      role='tablist'
-      aria-orientation='vertical'
-      className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'
-    >
-      {entries.map((entry, item) => (
-        <SlideRailItem
-          key={`${entry.slide}-${entry.sub}`}
-          entry={entry}
-          entryIndex={item}
-          cacheKey={cacheKeys[entry.slide] ?? ''}
-          source={deck[entry.slide] ?? ''}
-          plan={plans[entry.slide]}
-          deckLength={deck.length}
-          active={item === active}
-          view={view}
-          onSelectPage={onSelectPage}
-          buttonRef={registerItem}
-          setsize={entries.length}
-          posinset={item + 1}
-        />
-      ))}
-    </div>
+    <ThumbRootContext.Provider value={containerRef}>
+      <div
+        ref={containerRef}
+        role='tablist'
+        aria-orientation='vertical'
+        className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'
+      >
+        {entries.map((entry, item) => (
+          <SlideRailItem
+            key={`${entry.slide}-${entry.sub}`}
+            entry={entry}
+            entryIndex={item}
+            cacheKey={cacheKeys[entry.slide] ?? ''}
+            source={deck[entry.slide] ?? ''}
+            plan={plans[entry.slide]}
+            deckLength={deck.length}
+            active={item === active}
+            view={view}
+            onSelectPage={onSelectPage}
+            buttonRef={registerItem}
+            setsize={entries.length}
+            posinset={item + 1}
+          />
+        ))}
+      </div>
+    </ThumbRootContext.Provider>
   )
 }
 
