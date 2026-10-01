@@ -1,0 +1,571 @@
+# Inkstone「关系图谱」唯一执行计划（合并版）
+
+> **文档地位**：本目录只有两份文档——问题台账 [`review-with-freebuff.md`](./review-with-freebuff.md)（`G-01…G-48`）与本执行计划。被取代的六份中间文档（`review-with-agy-1.md`、`plan-with-agy-1.md`、`review-with-qoder-1.md`、`plan-with-qoder-1.md`、`review-with-buffy-2.md`、`verify-with-buffy-1.md`）已清退；其中两份 agy 文档原为 git 跟踪文件，由一次 `docs(graph)` 提交删除。它们的有效结论已全部并入台账：29 项 agy 全部关闭并登记 7 处残留、qoder 30 项中 1 项撤下 / 6 项前提改写 / 23 项并入、buffy 20 项全部并入，去重后即 `G-01…G-48`。
+> **基线分支/提交**：`improvement/relationship-graph-agy` @ `ec916280480eb06d658cd4358ace9ba23b9c2806`。台账与本计划的行号、证据均以该树为准。
+> **工程规范**：[`AGENTS.md`](../../../AGENTS.md)、[`ADR-0002`](../../../ADR-0002-renderer-theme-following.md)。
+> **当前状态（如实说明）**：**42 项挂批次 + 3 项待决策闸门 + 3 项不挂批次，全部 `- [ ] 待开始`，提交哈希全部「待登记」**。本会话只产出两份文档，未改动任何 `src/` 源码，未运行 `typecheck` / `style:check` / `build` 与三个浏览器门禁。任何 `[x]` 只由真实提交与真实门禁输出来填。
+> **核心原则**：一项一次原子提交，正文按 `- 路径: 改动` 逐文件写；先红后绿；每落地一项即在本文档登记提交哈希与实测输出；不伪造、不夹带（铁律 14）；不静默假设、不静默失败、不静默降级。
+
+**编号与优先级**：唯一编号 `G-01…G-48`；分布 P0 4 条（G-06 / G-07 / G-22 / G-02）、P1 24 条、P2 17 条、候选 3 条（G-43 / G-46 / G-48），以台账 §6 为唯一来源。本计划不新增编号；落地过程中发现的新问题写进 §8「新增发现」，另开条目。
+
+---
+
+## 0. 怎么用这份计划
+
+1. 每条任务的证据与方案取舍**不在此重复**，只注明台账小节号；动手前先读那一条的「判定 / 证据 / 方案」。
+2. 每条给出：涉及文件 / 修改要点 / 验证命令 / 依赖 / 代价 / 提交建议 / 提交哈希 / 状态。
+3. **先红后绿是硬要求**：行为变化的条目先让复现用例（或命令输出）变红，记录失败输出，再改实现转绿（AGENTS.md「修 bug 先写复现测试」）。
+4. 提交哈希逐项登记进本表；`docs(graph): 登记 …` 提交与本仓库既有做法一致（`git log` 可见 `d5ec396b`、`ec916280` 等先例）。
+5. 台账 §2 的 **8 条已失效条目禁止作为任务执行**。最容易踩的一条：`Q-UX-02` 主张「删除『以此笔记为中心』菜单项」——**不成立**，该入口是可达的（`onOpenNote` → 活动笔记变化 → 面板以新 id 重查）；正确判据应看 `mode`，见 §5 第 1 条。
+6. 三条 🔬（G-08 / G-10 / G-47）在决策闸门里处理，不混进批次；批次 0 拿到数字前不动手。
+
+---
+
+## 1. 进展概览与统计
+
+| 批次 | 涵盖编号 | 目标与完成判据 | 编号数 | 估计代价 | 状态 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **批次 0（前置）｜先量后改** | V-01…V-03（无 G 编号） | 新增 `scripts/measure-graph.mjs` + 合成大库样本，拿到布局帧成本、单请求读行数、degree 聚合耗时；三个 🔬 条目据此进入决策闸门 | — | ≈0.5–1 人日 | ⬜ 未开始 |
+| **批次 1｜P0 渲染连续性与红线** | G-06（含 G-07 步骤 1）、G-22、G-28、G-02、G-38 | 输入搜索词/切开关不再重建画布，拖过的坐标与 pin 存活；键盘可开节点菜单；标签边有预算；开启标签节点后截断读数不再自相矛盾 | 6 | ≈4–5 人日 | ⬜ 0/6 |
+| **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | ⬜ 0/4 |
+| **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | ⬜ 0/5 |
+| **批次 4｜无障碍关系与键盘语义** | G-23、G-24、G-25、G-26、G-27 | 方向键按空间序且选中可见；标签节点可辨、可操作；设置抽屉关系完整；色板热区达标；说明关联与取消播报补全 | 5 | ≈2 人日 | ⬜ 0/5 |
+| **批次 5｜交互与检索语义** | G-14、G-15、G-16、G-18、G-19、G-20、G-21 | 搜索是定位不是重查；空态有出口；拖拽期间不悬停预览；窄屏不重叠、触屏提示到位；伴随图谱复用偏好；上限/深度可调 | 7 | ≈6 人日 | ⬜ 0/7 |
+| **批次 6｜设置与工程卫生** | G-11 + G-32、G-35、G-36、G-37、G-39、G-07 步骤 2、G-33（两步两提交） | 滑块走组件库且不逐事件落盘；文案/默认值/常量单一来源；pin 跨会话持久；死重载与渲染期写 ref 清除 | 7 | ≈3 人日 | ⬜ 0/7 |
+| **批次 7｜收尾与对标** | G-05 + G-45、G-12、G-13、G-17、G-34、G-42、G-44 | 导出有隐私选项；字体读取策略有据；绘制异常不静默停帧；滚轮非 passive；死键清零；单篇排除；方向过滤 | 8 | ≈4.5 人日 | ⬜ 0/8 |
+| **决策闸门** | G-08、G-10、G-47 | 按批次 0 的数字定 G-08/G-10；G-47 需归属决策而非数字；结论（含「不做」）必须登记为以证据关闭 | 3 | 由证据决定 | ⬜ 未开始 |
+| **不挂批次** | G-43 ②③、G-46、G-48 | 持久化契约变更 / 跨模块色板语义 / 候选清单 | 3 | 另立 | ⬜ 不排期 |
+| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **⬜ 0/48** |
+
+> G-07 跨批次 1（步骤 1）与批次 6（步骤 2），编号只计一次（记在批次 1）。G-28 随 G-22 落地、不单独提交。G-04 的 ②（共享范围判定）与 G-43 的 ②③（`links` 增类型/附件节点）属**另立事项**，不进本计划排期。
+
+### 1.1 编号定位索引（G-xx → 批次）
+
+| 编号 | 批次 | 编号 | 批次 | 编号 | 批次 | 编号 | 批次 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| G-01 | 2 | G-13 | 7 | G-25 | 4 | G-37 | 6 |
+| G-02 | 1 | G-14 | 5 | G-26 | 4 | G-38 | 1 |
+| G-03 | 2 | G-15 | 5 | G-27 | 4 | G-39 | 6 |
+| G-04 | 2（①） | G-16 | 5 | G-28 | 1（随 G-22） | G-40 | 3 |
+| G-05 | 7 | G-17 | 7 | G-29 | 3 | G-41 | 3 |
+| G-06 | 1 | G-18 | 5 | G-30 | 3 | G-42 | 7 |
+| G-07 | 1 + 6 | G-19 | 5 | G-31 | 3 | G-43 | ① 3；②③ 另立 |
+| G-08 | 闸门 | G-20 | 5 | G-32 | 6 | G-44 | 7 |
+| G-09 | 2 | G-21 | 5 | G-33 | 6 | G-45 | 7 |
+| G-10 | 闸门 | G-22 | 1 | G-34 | 7 | G-46 | 另立 |
+| G-11 | 6 | G-23 | 4 | G-35 | 6 | G-47 | 闸门 |
+| G-12 | 7 | G-24 | 4 | G-36 | 6 | G-48 | 候选不排期 |
+
+---
+
+## 2. 批次依赖与合并约束（动手前必读）
+
+这些约束是从代码里读出来的，违反会产生比原缺陷更糟的中间态：
+
+1. **G-06 ⇄ G-07 步骤 1 必须同批同提交**。坐标与 pin 丢失大半是画布整体重建的下游症状；只修其一会出现「画布没重建但坐标被 reset」的更怪现象。G-06 的坐标继承天然保住 pin，步骤 1 约 12 行、不动共享契约。
+2. **G-11 + G-32 合并为一次提交**。两处改的是同一个 `GraphRange` 组件（换 `Slider` 与去掉逐事件副作用）；拆开会出现「新组件里仍带旧副作用」的中间版本。
+3. **G-22 先于 G-24 与 G-07 步骤 2**。菜单独占「固定节点 / 按标签筛选 / 右侧打开 / 以此笔记为中心」四个功能；键盘入口不修，后续给标签节点绑的「按标签筛选」与 pin 持久化对键盘用户同样不可达。
+4. **G-34（死键清理）排在 G-35 与 G-24 之后**。`graph.reset` 由 G-35 一并删除；`graph.tag_node` 被 G-24 使用必须保留——提前删会让两项的文案来源断裂。
+5. **G-41 的四条功能断言各归入其功能项的同一提交**（跨查询 pin 存活 → G-07；标签边预算 → G-02；键盘开菜单 → G-22；筛选空态出口 → G-15），**不单开测试批次**，否则又变成「先实现后补测」。G-41 本身只做对比度门禁的图谱场景与核对。
+6. **G-29 若走 B 方案（新增 `--graph-tag-*` 令牌）**：改共享令牌后必须 `node scripts/check-token-drift.mjs --update-baseline`，且 G-41 的图谱场景同批跟上（色板改了才需要门禁守住）。
+7. **G-21 若把 `limit` 上界提到数千**，`canvas-hooks.tsx` 的 `Math.min(...xs)` 必须同步改循环求极值——当前不溢出只是因为服务端 `clampInt` 上限 600（见台账 V-04）。在 600 以内则只需一条注释说明前提。
+8. **G-02 与 G-38 共用 `buildGraphBody` 的标签边与 `truncated`/`totalEdges` 判定**，排同批、相邻提交（避免两次改同一段），但仍是两个提交：一个是预算，一个是读数口径。
+9. **G-33 必须两步两提交**：先删零调用者的位置重载与 `!` 断言；再把 `canvas-draw.test.ts` / `canvas-physics.test.ts` 改成传 `{ current }` 后删 `'current' in` 双形态判断。合成一步会让「先红后绿」把测试失败误读成回归。
+10. **G-40 的文档部分先单独 `docs(graph)` 提交**，并**保留 `ADR-0002:59` 的「修复方向」段**——它顺带记录了「这条 effect 会重建布局」，正是 G-06 的根因，删掉会丢失为什么坐标继承要存在。
+11. **G-46 不挂图谱批次**（五处调用点同改，只改图谱会制造局部偏离，铁律 14）；**G-43 ②③ 不挂图谱批次**（`links` 表增类型属持久化契约变更，须走 expand-contract + 迁移不可变门禁 + 部署前备份）。
+12. **同一文件被多提交共享时**（`canvas-draw.ts`、`canvas.tsx`、`index.tsx`、`graph.ts` 会各被多项触碰）：按 AGENTS.md「分批与门禁」执行——工作区停在最终态，只把本批 hunk 暂存（`git diff <file> > /tmp/all.patch` 后按块切分），每个暂存快照单独用 `git archive` 快照验证；**不得为凑中间态回退工作区**。
+
+---
+
+## 3. 执行前提与门禁操作（本工程实测，避免误判回归）
+
+- **统一命令（每条提交前）**，下表各条目的「验证命令」在此之上叠加：
+
+```bash
+npm run typecheck && npm run style:check && npm run comments:check && npm run empty-catch:check \
+  && npm run escape:check && npm run hardcoded:check && npm run tokens:check && npm run i18n:check \
+  && npm run size:check && npm run module-state:check && npm run deep-imports:check \
+  && npm run surfaces:check \
+  && npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts \
+     src/shared/graph-filter-expression.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts
+```
+
+  改到 i18n 文案或视觉文案的条目（G-15 / G-19 / G-24 / G-27 / G-34 / G-35 等）另跑 `npm run labels:check`。
+
+- **批次收尾（每批一次）**：`npm run test:unit`、`npm run build`、`npm run budget:check`，以及三个浏览器门禁。浏览器门禁**只对全新实例有效**：以当前树新起 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv`（用 `setsid nohup … </dev/null &` 启动，避免超时调用杀掉进程组）后依次 `node scripts/e2e.mjs`、`INKSTONE_CHROME_PATH=… node scripts/e2e-visual.mjs`、`INKSTONE_CHROME_PATH=… node scripts/check-contrast.mjs`；复用上一轮实例会累积账号/面板状态并产出假失败。判定「是否我引入的」用 `git archive HEAD~N` 快照跑同一条门禁对比。
+- **浏览器门禁运行期间不改任何文件**：Tailwind 会重扫 `.md`/`.mjs` 并重出 `app.css`，页面会在 `page.evaluate` 期间跳转。文档编辑与门禁串行。
+- **`npm run test:unit` 有已登记的负载敏感 flake**（`tests/starter-deck-render.test.ts`、`blog-comments-window.test.ts`、`calendar-tree.test/activity.test.ts`、`radiogroup-names*.test.ts`、`music-hub-modal.test.ts`，以及 `music-store/eq.test.ts:164` 的取值断言）。全量红时先看失败块是否为 `Test timed out`，再单独重跑那几个文件并核对 import；按 flake 如实报告，不得写「全绿」，也不得顺手修（铁律 14）。
+- **`check-size.mjs` 把 `describe`/`it` 的回调也计为函数**：在既有 describe 里加用例可能被报成长函数并让基线从 `null` 变 `{"longFns":1}`。做法是拆分 describe 或把 setup 提出去，**不用 `--update-baseline` 吸收自己造的长函数**。
+- **`check-hardcoded.mjs` 按文件粒度 grandfathering**：从别的组件原样复制一行 `text-white` 到新文件仍是新违规，用令牌（如 `--swatch-white`）。
+- **本仓库禁止运行 prettier**（无配置，其默认风格与 `style:check` 冲突）。格式以一提交前的门禁为准。
+- `.githooks/pre-commit` 镜像大部分静态门禁，并对暂存 TS 跑增量 `tsc -b` 与 `vitest related`；它检查的是**工作区**而非暂存快照，多提交共享文件时按 §2 第 12 条处理。
+
+---
+
+## 4. 详细任务执行清单
+
+### 批次 0：先量后改（V-01…V-03）
+
+> 目标：把三条 🔬 从「推断」变成「实测」。完成判据：三个数字写进台账 §5 的 V 表，并作为 §6 决策闸门的输入。本批不碰产品代码，可与批次 1 并行。
+
+- [ ] **0.1 新增 `scripts/measure-graph.mjs`：布局帧成本、单请求读行数、degree 聚合耗时**
+  - 台账：§5 V-01 / V-02 / V-03
+  - 文件：`scripts/measure-graph.mjs`（新增）；合成样本写入方式沿用既有脚本（写笔记/栅栏或直接对本地 D1 造库），不改 `src/`
+  - 要点：① 按仓库既有手动验收脚本惯例——`node scripts/measure-graph.mjs [baseUrl] [nodes]`，`NODES`/推帧上限可调，账号用 `INKSTONE_VISUAL_USERNAME/PASSWORD`、浏览器用 `INKSTONE_CHROME_PATH`，**只报告不判定**（帧时序在共享 runner 上是噪声）；② 采样项：布局期物理 vs 绘制占比、单次布局最长提交、每次请求耗时与返回的节点/边数（配合 `wrangler d1 execute --local` 的 `EXPLAIN QUERY PLAN` 与 10k 笔记 / 50k 链接量级合成库）；③ 结论以数据 + 判读两段打印，与 `measure-preflight.mjs` / `measure-kanban.mjs` / `measure-music.mjs` 同风格
+  - 验证：在全新 `dev:kv` 实例上跑通脚本（`node scripts/measure-graph.mjs`），把三组数字与本机配置一并贴进台账 §5
+  - 依赖：无。G-08 / G-10 / G-01 阈值 / G-03 必要性引用它的输出
+  - 代价：S（0.5–1 人日）｜提交建议：`perf(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 1：P0 渲染连续性与红线（6 项编号 / 4 次提交）
+
+> 完成判据：输入搜索词、切换六个开关、重试时画布**不重建**，读者拖过的坐标与 pin 原样保留；键盘能打开节点菜单；`tagNodes=1` 时边数落在预算内；开启标签节点后截断徽标与顶部统计不再互相矛盾。
+
+- [ ] **1.1 G-06（含 G-07 步骤 1）｜画布不再整体重建，坐标与 pin 跨查询存活** ★P0
+  - 台账：§3.2 G-06 / G-07
+  - 文件：`graph-panel/index.tsx`、`canvas.tsx`、`canvas-draw.ts`、`canvas-hooks.tsx`、`types.ts`；`canvas-physics.test.ts`、`panel-parameter-isolation.test.ts`
+  - 要点：① `buildInitialLayout` 增 `previous` 参数，按 id 建 Map 继承 `x/y/vx/vy/pinned`，未命中才螺线播种；② `GraphBody` 只在**首次加载**与硬错误时替换内容，刷新中保留画布并在角落挂 `role='status'` 指示器；③ `useGraphCanvasLoop` 的数据依赖收敛，数据变更走显式 `applyData()` 通道；④ `fitGraph` 只在首次载入、节点集合实质变化、用户 Fit/Home 时执行；⑤ `createCanvasResizer` 的 `if (!state.offsetX && !state.offsetY)` 改按「是否已有过布局」判定，避免旧相机套新坐标
+  - 先红后绿：新增「改搜索词后，读者拖过的节点坐标与 pin 原样保留」用例（挂在 `canvas-physics.test.ts` 或面板级挂载套件），先跑红并记录输出
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`；批次收尾时人工确认「输入搜索词不白屏」
+  - 依赖：无（全表第一项）。G-07 步骤 2、G-14、G-47② 依赖本项
+  - 代价：M（1.5–2 人日 + 0.5 人日用例）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **1.2 G-22 + G-28｜节点菜单的键盘入口（WCAG 2.1.1 Level A）** ★P0
+  - 台账：§3.4 G-22 / G-28
+  - 文件：`canvas.tsx`、`canvas-hooks.tsx`、`use-graph-preview.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`；`canvas-a11y.test.ts`
+  - 要点：① `handleCanvasKeyDown` 增 `ContextMenu` 键与 `Shift+F10` 分支，复用 `computeAnchor` 把选中节点换算成屏幕锚点后 `setContext`；② 无选中时不打开空菜单；③ 同步更新 `graph_canvas_accessible` 文案，把「菜单键/Shift+F10 打开节点操作」写进对外承诺（G-28 即此项的登记与快捷键清单同步，不单独提交）；④ 顺带在同批把四类动作在 `?` 快捷键参考里登记
+  - 先红后绿：`canvas-a11y.test.ts` 先补「菜单键打开节点菜单且焦点/菜单项可达」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/canvas-a11y.test.ts`
+  - 依赖：无。G-24 与 G-07 步骤 2 依赖本项；G-41 的第三条断言随本提交落地
+  - 代价：S（0.5 人日 + 用例）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **1.3 G-02｜标签边预算：`applyTagNodes` 不再无上限 push** ★P0
+  - 台账：§3.1 G-02
+  - 文件：`src/shared/graph-tag-nodes.ts`、`src/worker/routes/search/graph.ts`；`tests/graph-routes.test.ts`（demo 后端与 Worker 共用该共享函数，改一处两端同步）
+  - 要点：① 新增 `GRAPH_TAG_EDGE_LIMIT`，按簇大小降序分配边预算，超预算的簇降级为「不展开」；② `truncated` 与 `meta.totalEdges` 在标签边落定后判定（与 1.4 相邻提交）；③ 断言 `tagNodes=1` 时 `edges.length` 落在预算内——`graph-routes.test.ts` 已造出 61 笔记 × 61 标签场景，加一条边数断言即可
+  - 先红后绿：先加边数断言跑红（当前理论 21,000 条），再实现预算
+  - 验证命令：统一命令 + `npx vitest run tests/graph-routes.test.ts src/client/demo/backend.test.ts`
+  - 依赖：与 1.4 同批；默认关闭 `showTagNodes` 只降低触发概率，踩到的是界面卡死
+  - 代价：S（≤1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **1.4 G-38｜截断徽标与顶部统计的口径统一（标签节点计「篇」的矛盾）**
+  - 台账：§3.6 G-38
+  - 文件：`graph-overlays.tsx`、`index.tsx`、`helpers.ts`、`src/worker/routes/search/graph.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：① 抽 `graphNodeCounts(nodes) → { notes, tags, unresolved }` 纯函数供徽标与统计同读；② 徽标改用 `notes`，或把文案改成量词中立的「{shown} / {total} 个节点」（同步 en/zh）；③ 服务端 `total` 侧不再把 `tagNodes.dropped` 混入「篇」（与 1.3 同一函数、相邻提交）；④ 注意 unresolved 计「篇」与全应用一致，**不要**顺手改它
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts`
+  - 依赖：1.3（同一段 `buildGraphBody`）
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 2：请求与开销边界（4 项）
+
+> 完成判据：大库请求读行数有明确上界且超时可回退；服务端读端点有节流；MCP 与 UI 的归档口径一致；拖拽路径不再逐 pointermove 强制布局。
+
+- [ ] **2.1 G-01｜边查询补回逐语句 `LIMIT`，截断提前到分块循环内**
+  - 台账：§3.1 G-01
+  - 文件：`src/worker/routes/search/graph.ts`、`src/worker/routes/search/helpers.ts`；`tests/graph-routes.test.ts`
+  - 要点：① 分块循环累计行数，达到 `GRAPH_EDGE_CANDIDATE_LIMIT` 即停止追加后续语句并置 `truncated`（保住「跨分块不漏边」的语义）；② 每条语句加 `LIMIT (chunk.length × 每篇上限 + 1)`（MCP 侧 `loadMcpLinkEdges` 已用此形状）；③ 阈值按批次 0 的 V-02 数字确定；④ 断言截断的确定性（`linkRows.sort` 已按 `(source, target_key)` 排序，正好可用）
+  - 先红后绿：补「一页笔记出链总数超过候选上限时返回行数有上界且 `truncated` 为真」用例
+  - 验证命令：统一命令 + `npx vitest run tests/graph-routes.test.ts`
+  - 依赖：批次 0 的 V-02（阈值）；与 2.2 同批（同属端点成本）
+  - 代价：S（≤1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **2.2 G-03｜图谱读请求：客户端加超时，服务端挂读预算**
+  - 台账：§3.1 G-03
+  - 文件：`src/client/lib/api/vault.ts`、`src/worker/routes/search/graph.ts`、`graph-panel/index.tsx`（429 接入既有错误三态）；`tests/graph-routes.test.ts`
+  - 要点：① `api.graph` 加 `{ timeoutMs: 15_000 }`（对齐同文件 `sync` 的形状）；② 挂按用户维度的读预算，照抄 `routes/search/reindex.ts` 的 `consumeAttemptBudget` + `ApiError(429, 'too_many_attempts', …, { retryAfter })` 形状；③ 前端把 429 显示为可重试提示，不静默
+  - 注意：`consumeAttemptBudget` 是 D1 递增预算、每个读请求多一次 D1 写，与 G-10 的减负方向相反——若 G-10 采纳物化方案，本条只保留客户端超时（在闸门结论里定）
+  - 验证命令：统一命令 + `npx vitest run tests/graph-routes.test.ts`
+  - 依赖：批次 0 的 V-02（是否有必要上服务端预算）；G-10 的闸门结论
+  - 代价：S（≤0.5 人日 + 用例）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **2.3 G-04（①）｜MCP 图谱补上归档过滤，工具说明写清范围**
+  - 台账：§3.1 G-04
+  - 文件：`src/worker/mcp/library/graph.ts`、`src/worker/mcp/server/assets.ts`（工具 description）；MCP 侧用例
+  - 要点：① `loadMcpNotesByIds` 补 `AND is_archived = 0`（与 UI 侧 `filters` 一致）；② 工具 description 写明「不含归档与已删除」；③ ②（抽 `shared/graph-scope.ts` 共享范围判定）属另立事项，**不在本提交里做**（跨层契约需走 `src/shared` 公开入口）
+  - 先红后绿：补「归档笔记不出现在 MCP 图谱结果中」用例
+  - 验证命令：统一命令 + MCP 相关测试（MCP 用例所在文件按现有套件运行）
+  - 依赖：无
+  - 代价：① XS（0.2 人日）｜提交建议：`fix(mcp)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **2.4 G-09｜`toWorld` 缓存画布 rect，去掉逐 pointermove 的强制同步布局**
+  - 台账：§3.2 G-09
+  - 文件：`canvas-hooks.tsx`、`types.ts`、`canvas-draw.ts`（resizer 回调失效重取）
+  - 要点：① rect 缓存进 `CanvasState`（`viewLeft`/`viewTop`），由既有 `createCanvasResizer` 回调失效重取；② `toWorld` 内把非空断言换成判空早返回（防御性写法，顺带修；「卸载瞬间抛 TypeError」无复现路径，不必单独断言）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：1.1（同改 `CanvasState` 与 resizer，排在它之后少一次改写）
+  - 代价：XS（0.3 人日）｜提交建议：`perf(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 3：视觉、主题与门禁（5 项 + G-43① 顺手）
+
+> 完成判据：调色板收敛为单一来源且两套主题达标（A/B 见下）；主题翻转后预览卡与画布同步；`ADR-0002` / `AGENTS.md` 不再与代码相反、且 ADR 点名要的浏览器像素断言存在；`npm run contrast:check` 覆盖图谱表面。
+
+- [ ] **3.1 G-29｜消除第二套回退色板；浅色底不达标的 6/10 收敛**
+  - 台账：§3.5 G-29
+  - 文件：`helpers.ts`、`canvas-draw.ts`（B 方案加 `src/client/styles/tokens.css`）；`helpers.test.ts`、`canvas-color-groups.test.ts`、`canvas-legend.test.ts`
+  - 要点：**A（必做）** 删 `TAG_FALLBACK_PALETTE`，`tagHashColor` 改为在 `shared/organizer-colors.ts` 的 `ORGANIZER_COLORS` 上取模——单一来源，立刻消除两族；**B（视复算结论）** 若需更细色相区分，加 `--graph-tag-1…10` 令牌（两套主题各给值，全部 ≥3:1），画布色纳入 G-41 门禁；改共享令牌后 `node scripts/check-token-drift.mjs --update-baseline`
+  - 注意：颜色断言会变**是预期结果**，不要为了让旧断言继续绿而保留旧色板
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/{helpers,canvas-color-groups,canvas-legend}.test.ts` + `npm run tokens:check`
+  - 依赖：B 方案与 3.5 同批（门禁守住）
+  - 代价：S（0.5–1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **3.2 G-30｜默认 `groupBy: 'none'` 下信息密度偏低**
+  - 台账：§3.5 G-30
+  - 文件：`constants.ts`、`canvas-draw.ts`、`README.md`（图谱设置表）
+  - 要点：择一并在提交信息写明理由——③ **推荐先做**：三类节点不依赖颜色也能区分（unresolved 已是空心圈，tag 加双环）；② 首次打开一次性提示；① 默认 `groupBy: 'folder'` 属用户可感知变化，只影响新账号（偏好按账号存 localStorage），若采纳必须同步 README 设置表
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：1.1（默认值只在无旧偏好时生效，与坐标继承无关但同改 `canvas-draw.ts`，排在其后）
+  - 代价：XS（0.3 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **3.3 G-31｜`isDark` 不再在渲染期直读 DOM，预览卡跟随主题**
+  - 台账：§3.5 G-31
+  - 文件：`canvas.tsx`、`graph-overlays.tsx`
+  - 要点：① 用应用的主题 hook/store 订阅替换渲染期 `document.documentElement.dataset.theme` 直读（修复范式已在 `presentation-theme.ts`、`pinned-windows-layer.tsx`）；② 删掉无 SSR 意义的 `typeof document !== 'undefined'` 守卫；③ `GraphOverlays` 的 `isDark = true` 默认值改为必填 prop（铁律 5：删掉会掩盖漏传的默认值）
+  - 先红后绿：补「主题翻转（账号跟随系统 + 翻系统偏好）后预览卡重渲且配色变化」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`；G-41 的浏览器场景里用 V-05 断言复核
+  - 依赖：无（可与 3.1 同批）
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **3.4 G-40｜ADR/AGENTS 与代码对齐（先独立 `docs` 提交）+ ADR 点名要的浏览器像素断言**
+  - 台账：§3.7 G-40（G-43① 顺手）
+  - 文件：`ADR-0002-renderer-theme-following.md`、`AGENTS.md`、`scripts/e2e-visual.mjs`（或 `scripts/e2e-harness.mjs` 复用启动流程）
+  - 要点：① 文档提交：渲染物表该行改 ✅、删除「已知缺口」段落，**保留 :59「修复方向」**；`AGENTS.md`「设计令牌位置」一节删掉「图谱 canvas 是已知缺口」；同批顺手写 G-43① 的口径说明（「图谱画的是 wiki 关系、含嵌入，不含附件」）；② 断言提交：开图谱 → 翻主题（先设账号「跟随系统」再翻系统偏好，与既有门禁惯例一致）→ 断言**同一张 canvas 元素**的像素/内联色变化。这条 ADR 曾让两轮审查差点重复实现已有修复，文档部分零风险、应立即做
+  - 验证命令：文档提交只跑统一命令的静态门禁；断言提交跑全新实例的 `node scripts/e2e-visual.mjs`
+  - 依赖：无（可与 3.1/3.3 并行）；断言依赖图谱表面在门禁里的启动路径（`e2e-harness.mjs`）
+  - 代价：文档 XS（0.2 人日）+ 断言 S（0.5 人日）｜提交建议：`docs(graph)` + `test(graph)`
+  - 提交哈希：待登记（两个）｜状态：⬜ 待开始
+
+- [ ] **3.5 G-41｜对比度门禁覆盖图谱表面；核对四条功能断言已随功能项落地**
+  - 台账：§3.7 G-41
+  - 文件：`scripts/check-contrast.mjs`、`scripts/e2e-harness.mjs`
+  - 要点：① 增图谱场景：两套主题各量图例色与节点色在 `--bg-base` 上的实际比值（令牌色按令牌名量；非令牌的用户标签色只报告不判定，与既有约定一致）；② 场景按 `surfaces:check` 与 `e2e-harness.mjs` 的既有启动/登录/主题动作编写，**不要复制一份启动流程**；③ 逐条核对四条功能断言已在 1.1 / 1.3 / 1.2 / 5.2 的提交里落地（本项不再单开测试批次）；④ 若 3.1 走了 B 方案，本场景必须覆盖新令牌
+  - 验证命令：全新实例上 `node scripts/check-contrast.mjs` + `npm run surfaces:check`
+  - 依赖：3.1（色板改完才守得住）
+  - 代价：M（1–1.5 人日）｜提交建议：`test(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 4：无障碍关系与键盘语义（5 项，依赖批次 1 的 G-22）
+
+> 完成判据：方向键按空间序移动且选中节点可见；标签节点对读屏可辨、Enter 有明确行为；设置抽屉的 ARIA 关系与焦点迁移完整；色板热区达标；画布说明与取消选择播报补全。
+
+- [ ] **4.1 G-23｜方向键按空间序取邻居，选中节点进入视口**
+  - 台账：§3.4 G-23
+  - 文件：`canvas.tsx`、`canvas-hooks.tsx`；`canvas-a11y.test.ts`
+  - 要点：① 提纯函数 `pickNeighborInDirection(nodes, fromIndex, direction)`（从当前 `x/y` 出发，在指定半平面取角度加权距离最小者，约 15 行、可单测）；② 选中变化时若节点在视口外则平移相机（复用 `useGraphFit` 的偏移数学）；③ 无选中时 `→` 取 `nodes[0]`、`←` 取最后一个，**同步改掉既有把旧行为固化的断言**
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/canvas-a11y.test.ts`
+  - 依赖：1.2（同改 `handleCanvasKeyDown`）
+  - 代价：S（0.5–1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **4.2 G-24｜标签节点的 kind 播报与 Enter 行为（复用 `graph.tag_node`）**
+  - 台账：§3.4 G-24
+  - 文件：`canvas.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`；`canvas-a11y.test.ts`
+  - 要点：① 播报里带 kind（复用现成但 0 引用的 `graph.tag_node`）；② 标签节点的 `Enter` 改绑「按标签筛选」（与 1.2 的菜单入口同源）；③ **`graph.tag_node` 必须保留**，G-34 清理时注意
+  - 先红后绿：补「标签节点选中播报含 kind」与「Enter 触发按标签筛选」用例
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npx vitest run …/canvas-a11y.test.ts`
+  - 依赖：1.2
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **4.3 G-25｜设置抽屉的四项无障碍关系补齐**
+  - 台账：§3.4 G-25
+  - 文件：`settings.tsx`、`index.tsx`；`panel-disclosure-state.test.ts`
+  - 要点：① `aside` 加 `id` + `role='region'`，移动端条件改 `role='dialog' aria-modal='true'`；② 触发器加 `aria-controls`，桌面端撤下错误的 `aria-haspopup='dialog'`；③ `Switch` 接 `aria-describedby` 指向 `hintId`；④ 开合各补一次焦点迁移；⑤ 移动端遮罩不再用裸 `<div onClick>`（走既有 Overlay 语义，铁律 10）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/panel-disclosure-state.test.ts`
+  - 依赖：无
+  - 代价：S（0.5 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **4.4 G-26｜颜色规则色板热区从 20px 提到全仓既有尺寸**
+  - 台账：§3.4 G-26
+  - 文件：`settings-color-rules.tsx`
+  - 要点：升到 `size-6`（24px），或保持视觉尺寸而用 padding 扩大命中面积；色名与单选语义属跨模块 G-46，**不在本提交里做**
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/settings-color-rules.test.ts`
+  - 依赖：无
+  - 代价：XS（0.1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **4.5 G-27｜画布说明与控件关联、取消选择时播报**
+  - 台账：§3.4 G-27
+  - 文件：`canvas.tsx`、`graph-overlays.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`；`canvas-a11y.test.ts`
+  - 要点：① 给画布加 `aria-describedby`（hint 保持视觉层 + 另建 `sr-only`，或用同一节点 id）；② 取消选择时把 live region 设为新增文案 `graph.selection_cleared`（双语言，不拼接句子）
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npx vitest run …/canvas-a11y.test.ts`
+  - 依赖：无
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 5：交互与检索语义（7 项）
+
+> 完成判据：搜索输入不再白屏/重排，未命中只变暗且可跳到首个命中；筛选致空有出口；拖拽期间预览卡消失、松手后重锚；窄屏图例与徽标不重叠；触屏能看到「长按」等价提示；伴随图谱与全屏图谱偏好一致；上限与局部深度可调。
+
+- [ ] **5.1 G-14｜搜索从「重新查询」升级为「定位」（客户端变暗 + 图例可交互）**
+  - 台账：§3.3 G-14
+  - 文件：`index.tsx`、`canvas-draw.ts`（dim 集合入参）、`helpers.ts`、`graph-overlays.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：① 引入「变暗模式」：命中集合在客户端算（复用已有 `graphFilterMatches`），未命中节点/边降透明度，**不发起请求**（因此绕开 G-06）；② 保留服务端过滤作为「仅显示匹配」开关（默认关）；③ 命中数 > 0 时提供「跳到第一个命中」；④ 图例改为可聚焦的 `button`（点击高亮 / 双击过滤），补键盘路径
+  - 先红后绿：补「输入搜索词不触发第二次请求且未命中节点变暗」与「图例可键盘聚焦并触发高亮」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：1.1（坐标继承与不重建是它的前提）
+  - 代价：M（2–3 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.2 G-15｜筛选致空时的文案分流与「清除全部筛选」出口**
+  - 台账：§3.3 G-15
+  - 文件：`index.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：① 按 `query || prefs.tag || prefs.folderId || selectedTags.length` 分流到「没有匹配的笔记」+ 一个清空全部筛选的 `Button`；② 新增 2 个 locale key × 2 语言（不拼接句子）；③ 空库场景仍保留原「还没有可以画的东西」文案
+  - 先红后绿：`graph-routes` 之外的组件级用例：筛选致空时渲染「没有匹配」与清除按钮（这是 G-41 的第四条断言，随本提交落地）
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npx vitest run src/client/features/graph`
+  - 依赖：无
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.3 G-16｜拖拽节点时关掉预览卡，松手后重新锚定**
+  - 台账：§3.3 G-16
+  - 文件：`canvas-hooks.tsx`、`canvas.tsx`、`use-graph-preview.ts`；`canvas-selection-loop.test.ts`
+  - 要点：`applyDragMove` 在节点位移超过 4px 时 `preview.closePreview()`；松手后重新 `showPreview`（拖动**期间**不该有悬浮卡，也不要靠「位移 ≥5 直接 return」的既有分支兜底）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/canvas-selection-loop.test.ts`
+  - 依赖：无
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.4 G-18｜窄屏图例与节点详情徽标不再落在同一水平带**
+  - 台账：§3.3 G-18
+  - 文件：`graph-overlays.tsx`
+  - 要点：图例存在时徽标下移一档（如 `bottom-14`），或图例改右上与 `TruncatedBadge` 错开；断点与尺寸用既有令牌，不散写视觉字面量
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`；批次收尾在 375px 下人工确认
+  - 依赖：无
+  - 代价：XS（0.2 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.5 G-19｜窄屏交互提示与触屏的「长按」等价说明**
+  - 台账：§3.3 G-19
+  - 文件：`graph-overlays.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：窄屏改为可折叠的一行简版提示，或首次进入时一次性 `role='status'` 播报；文案按 `pointer: coarse` 分流（触屏写「长按查看更多」），不改变桌面文案
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npx vitest run src/client/features/graph`
+  - 依赖：无
+  - 代价：S（0.5 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.6 G-20｜伴随式局部图谱复用用户偏好**
+  - 台账：§3.3 G-20
+  - 文件：`index.tsx`、`local-graph.tsx`；`local-graph.test.ts`
+  - 要点：① 把 `useGraphPrefs` 提升为共享 hook 供两处使用；② 伴随面板只覆写 `mode: 'local'` 与自己的深度（默认取用户值，下限 1）；③ 头部加「打开图谱设置」入口；④ 两处写同一 localStorage key 的竞态策略：只在全屏面板持久化、伴随面板只读，并把该策略写进注释
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/local-graph.test.ts src/client/lib/graph-settings.test.ts`
+  - 依赖：无
+  - 代价：S（1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **5.7 G-21｜节点上限与局部深度可调（服务端能力不再被界面埋掉）**
+  - 台账：§3.3 G-21
+  - 文件：`index.tsx`、`local-graph.tsx`、`settings.tsx`、`src/client/lib/graph-settings.ts`、`src/worker/routes/search/graph.ts`
+  - 要点：① `limit` 提为 prefs 项 + `Slider`，界值与服务端 `clampInt` 共享常量（避免两处定义）；② 伴随面板补深度切换（至少 1/2 两档）；③ 若上界突破 600，同步把 `canvas-hooks.tsx` 的 `Math.min(...xs)` 改循环求极值（当前不溢出的前提只是服务端 clamp），否则补一条注释说明前提（台账 V-04）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts`
+  - 依赖：5.6（伴随面板的偏好通路）
+  - 代价：S（1 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+### 批次 6：设置与工程卫生（7 项）
+
+> 完成判据：全仓裸 `input[type=range]` 只剩既有注释例外；三处默认值有守卫；滑块不逐事件落盘；pin 跨会话存活；死重载与渲染期写 ref 清除。
+
+- [ ] **6.1 G-11 + G-32｜力滑块换用组件库 `Slider`，界值单一来源，副作用移出输入路径（同一提交）**
+  - 台账：§3.2 G-11 / §3.6 G-32
+  - 文件：`settings.tsx`、`index.tsx`、`canvas-hooks.tsx`、`helpers.ts`、`constants.ts`
+  - 要点：① `GraphRange` 内部换用 `Slider`（`label` 给可访问名称、`suffix` 给单位，`aria-valuetext` 由组件提供）；② 新增 `GRAPH_FORCE_RANGES` 常量表，面板与 `loadPreferences` 同读一份；③ 滑块值先落组件本地 state 做即时反馈，`onPointerUp`/rAF 边界提交进 `prefs`；④ `localStorage` 写入 debounce 300ms 并移出渲染路径；⑤ 既有 `catch` 内补 `console.warn`（保留注释，铁律 2 的 best-effort 例外形式）
+  - 先红后绿：补「一次拖动只产生 ≤1 次存储写入与 ≤1 次物理唤醒」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts`
+  - 依赖：无（合并约束 2）
+  - 代价：S（1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.2 G-35｜Tooltip 可见文案与可访问名称统一为 `graph.fit`**
+  - 台账：§3.6 G-35
+  - 文件：`index.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：`Tooltip label` 与 `IconButton label` 统一为 `graph.fit`；`graph.reset` 随本提交一并删除（G-34 的前置）
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npx vitest run src/client/features/graph`
+  - 依赖：无
+  - 代价：XS（0.1 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.3 G-36｜默认值的唯一来源与守卫**
+  - 台账：§3.6 G-36
+  - 文件：`src/client/lib/graph-settings.ts`、`constants.ts`、`graph-settings.test.ts`
+  - 要点：测试改断言 `DEFAULT_PREFERENCES[control.prefKey] === control.default`；或让 `DEFAULT_PREFERENCES` 的布尔项由 manifest 派生，使 `default` 成为唯一来源（两者 7 个布尔值目前一致，是「无守卫的重复」而非已漂移）
+  - 先红后绿：把测试改成对 `constants.ts` 求值后，先把 `includeOrphans` 翻转验证会红，再恢复
+  - 验证命令：统一命令 + `npx vitest run src/client/lib/graph-settings.test.ts`
+  - 依赖：无
+  - 代价：XS（0.2 人日）｜提交建议：`refactor(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.4 G-37｜魔法数字提具名常量（跨端共享的放共享层）**
+  - 台账：§3.6 G-37
+  - 文件：`index.tsx`、`local-graph.tsx`、`src/worker/routes/search/graph.ts`、`use-graph-preview.ts`、`constants.ts`
+  - 要点：逐项提常量——`limit: 350`、防抖 `220`、伴随图谱 `depth:1`/`limit:100`、`params.limit - 50` 与 `50`（同一数字两种含义）、查询长度 `200`、悬停 `300`/隐藏 `200`；`graph.ts` 的 `!a || b && c` 补显式括号
+  - 注意：ULID 正则重复是全仓级现象（10+ 处），**不在图谱批次里做**（§5 第 8 条）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph tests/graph-routes.test.ts`
+  - 依赖：无
+  - 代价：S（0.5 人日）｜提交建议：`refactor(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.5 G-39｜`useGraphControls` 不在 render 阶段写 ref**
+  - 台账：§3.6 G-39
+  - 文件：`canvas-hooks.tsx`；`header-export.test.ts`
+  - 要点：改成 `useEffect(() => { controlsRef.current = {...} }, [stateRef, fitGraph])`；调用点只在 `onClick` 时读，effect 时序足够。若既有测试依赖渲染期写入，那正是该修的时序假设
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/header-export.test.ts`
+  - 依赖：无
+  - 代价：XS（0.2 人日）｜提交建议：`refactor(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.6 G-07 步骤 2｜pin 跨会话持久化**
+  - 台账：§3.2 G-07
+  - 文件：`helpers.ts`、`src/client/lib/graph-settings.ts`、`types.ts`、`canvas-draw.ts`、`canvas.tsx`（`shared/types/graph.ts` 仅在需要把 pin 语义外显时同步）
+  - 要点：`pinned` 提升为 `GraphPreferences.pinnedNodeIds: string[]`；`loadPreferences` 按 `/^[0-9a-hjkmnp-tv-z]{26}$|^tag:.+$/` 白名单逐项校验（沿用 agy SEC-04 的偏好加固形状）；加载时把命中的节点的 `pinned` 置回
+  - 先红后绿：补「重载后 pin 仍在」与「非法 id 被丢弃」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts`
+  - 依赖：1.1（坐标继承）与 1.2（键盘入口；否则 pin 对键盘用户仍不可达）
+  - 代价：S（0.5 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **6.7 G-33｜`createGraphTicker` 双形态签名清理（两步两提交）**
+  - 台账：§3.6 G-33
+  - 文件：`canvas-draw.ts`、`canvas-draw.test.ts`、`canvas-physics.test.ts`
+  - 要点：**步骤 ①** 删位置重载与一串 `!` 断言（grep 已确认全部调用点都是对象形态，零调用者）；**步骤 ②** 先把两个测试文件改成传 `{ current: … }` 并确认仍绿，再删 `'current' in colorsRef/prefsRef` 双形态判断（`canvas-physics.test.ts` 传的是朴素 `readThemeColors()`/`DEFAULT_PREFERENCES`，是这条判断的真实调用者）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/{canvas-draw,canvas-physics}.test.ts`
+  - 依赖：无；**不得合并两步**（合并约束 9）
+  - 代价：XS（0.3 + 0.2 人日）｜提交建议：`refactor(graph)` ×2
+  - 提交哈希：待登记（两个）｜状态：⬜ 待开始
+
+### 批次 7：收尾与对标（7 项 / 8 个编号）
+
+> 完成判据：导出面板能去掉标题（隐私）与背景；绘制异常不再静默停帧；滚轮监听不再被动；死键清零；单篇排除与方向过滤落地。
+
+- [ ] **7.1 G-05 + G-45｜导出选项：「不含标题」「背景透明/纯色」（含隐私维度）**
+  - 台账：§3.1 G-05 / §3.8 G-45
+  - 文件：`graph-export.ts`、`use-graph-export.ts`、`src/client/lib/graph-settings.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：`prefs` 新增两个布尔项（绘制路径已按 `prefs.labels` 分支）；导出面板提供开关；文件名固定 `graph-<mode>.<ext>` 的现状在提交信息里说明是否保留；导出的 PNG 常被贴到外部，标题即笔记名，属隐私项
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/graph-export.test.ts src/client/features/graph/graph-panel/use-graph-export.test.ts`
+  - 依赖：无
+  - 代价：S（0.5 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.2 G-12｜`--font-ui` 每帧读取的处理（缓存必须显式跟随变更）**
+  - 台账：§3.2 G-12
+  - 文件：`canvas-draw.ts`、`canvas.tsx`
+  - 要点：择一——并入「由主题/字体变更观察器刷新的引用」（现有 `createThemeObserver` 扩一个观察对象），或保留每帧读但**写明理由**（它正是「换字体后自愈」的机制）。若改缓存，必须补「换 UI 字体后画布文字用新字体」用例；**不要**简单 `useMemo` 缓存（ADR-0002 警告的「冻在创建时刻」）
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：3.3（同一处主题订阅收敛后改，避免两次改同一段）
+  - 代价：XS（0.3 人日）｜提交建议：`refactor(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.3 G-13｜绘制路径错误边界：异常不静默停帧**
+  - 台账：§3.2 G-13
+  - 文件：`canvas-draw.ts`、`canvas.tsx`；`canvas-draw.test.ts`
+  - 要点：`tick()` 内 try/catch：`console.error('[inkstone] graph paint failed', error)`（带 message、不带数据）、复位 `state.raf = 0`、停止循环，并经可选 `onPaintError` 让面板显示 `Empty` + 重试（复用 `graph.could_not_load_graph` 文案）
+  - 先红后绿：用上下文替身注入抛错，断言不会永久停帧且错误被记录
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+  - 依赖：3.3
+  - 代价：XS（0.5 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.4 G-17｜滚轮缩放换非 passive 原生监听**
+  - 台账：§3.3 G-17
+  - 文件：`canvas.tsx`
+  - 要点：仿 `features/preview/lightbox.tsx` 的做法在画布容器上注册 `{ passive: false }` 原生监听（React 19 在 root 上被动注册，现有 `preventDefault` 是空调用，并会在 Chrome 打印警告）；或至少给面板加 `overscroll-behavior: none` 并去掉误导性的 `preventDefault`。低危但一旦图谱进可滚动容器会真的带着页面滚
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：无
+  - 代价：XS（0.3 人日）｜提交建议：`fix(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.5 G-34｜死 i18n 键清理（排在 6.2 与 4.2 之后）**
+  - 台账：§3.6 G-34
+  - 文件：`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：删 7 项（`graph.drag_to_pan_…_abov` 截断 key、`graph.graph_canvas_drag_…_note`、`graph.choose_a_note`、`graph.open_a_note_from_the_graph`、`graph.links`、`graph.notes`、`graph.unresolved_short`）；`graph.tag_node` **保留**（4.2 在用）；`graph.reset` 已随 6.2 删除；zh-CN 正确行号 `6,12,13,14,31,35,60,71`（:21 是活键 `graph_canvas_accessible`，不在其列）
+  - 注意：不去改 `i18n:check` 增零引用报告（§5 第 7 条）
+  - 验证命令：统一命令（含 `npm run labels:check`）+ `npm run i18n:check`
+  - 依赖：6.2 + 4.2（合并约束 4）
+  - 代价：XS（0.2 人日）｜提交建议：`chore(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.6 G-42｜单篇「从图谱中排除」**
+  - 台账：§3.8 G-42
+  - 文件：`src/client/lib/graph-settings.ts`、`helpers.ts`、`src/worker/routes/search/graph.ts`、`settings.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：prefs 新增 `excludedNoteIds`（复用 6.6 的白名单校验机制）；服务端 `filters` 加 `NOT IN`——注意 D1 绑定变量预算与既有 `GRAPH_NOTE_ID_CHUNK`，需分块或改用临时表；设置面板提供移除入口
+  - 先红后绿：补「排除的笔记不出现在结果里（且现有文件夹/标签过滤不受影响）」用例
+  - 验证命令：统一命令 + `npx vitest run tests/graph-routes.test.ts src/client/lib/graph-settings.test.ts src/client/features/graph`
+  - 依赖：6.6（校验机制形状）
+  - 代价：M（1–1.5 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+- [ ] **7.7 G-44｜局部图谱的方向过滤（仅入 / 仅出 / 双向）**
+  - 台账：§3.8 G-44
+  - 文件：`src/worker/routes/search/graph.ts`（递归 CTE 方向分支）、`src/client/lib/graph-settings.ts`、`settings.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：局部图谱加三选一（全局图谱语义上无意义，不渲染）；服务端只需在 CTE 的方向分支上加条件；默认「双向」，保持现有行为
+  - 验证命令：统一命令 + `npx vitest run tests/graph-routes.test.ts src/client/lib/graph-settings.test.ts`
+  - 依赖：5.7（同行设置区块）
+  - 代价：S–M（1 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：待登记｜状态：⬜ 待开始
+
+---
+
+## 5. 不做清单（明确不做，避免反复讨论）
+
+1. **不删「以此笔记为中心」菜单项**（台账 §2 Q-UX-02 整体不成立）。该功能经「打开笔记 → 活动笔记变化 → 面板以新 id 重查」可达；若要去掉 `onMakeLocal={() => {}}` 的异味，正确判据是看 `mode === 'local'`，且这属于可选打磨（需产品确认），不在 48 条内。
+2. **不上 Barnes-Hut**。节点上限 410 时收益不抵复杂度（G-08 只考虑「每 2 帧物理 / 光晕降级 / 远端团簇跳过」三档）。
+3. **不合并 MCP 与 UI 两套图谱遍历实现**。形状差异大（BFS+摘要 vs 聚合+合成节点），只共享「范围」判定（G-04②，另立）。
+4. **不在本计划排期内改 `links` 表**。G-43 ②③（附件节点 / 边类型）是持久化契约变更，须走 expand-contract + 迁移不可变门禁 + 部署前备份，另立事项。
+5. **G-46（色板可访问名与单选语义，5 个调用点）不挂图谱批次**。只改图谱会制造局部偏离（铁律 14）。
+6. **G-48 候选里只保留两项**：「按路径分组着色（含祖先目录）」与「从笔记自身打开全屏图谱」；其余（小地图、缩放百分比读数、冻结物理开关、图谱前进后退、节点尺寸公式可调、框选、未链接的提及）明确不做。
+7. **不给 `i18n:check` 增零引用报告**。属全仓性收益，单独立项（铁律 14）。
+8. **不在图谱批次里抽 ULID 正则共享**。该重复是全仓 10+ 处的现象，另立。
+9. **不顺手修已登记的音乐/日历 flake**（铁律 14，见 §3）；不用 `--update-baseline` 吸收自己造的长函数。
+10. **不做无证据的持久化契约变更**。G-10 先量后决定；量测结论为「无压力」时登记为以证据关闭。
+
+---
+
+## 6. 待量测与决策闸门
+
+### 6.1 待量测（批次 0 产出，写入台账 §5 的 V 表）
+
+| 编号 | 待量测 | 手段 | 解锁 |
+| :--- | :--- | :--- | :--- |
+| V-01 | 布局期真实帧成本（物理 vs 绘制各占多少） | `measure-graph.mjs` 帧采样 | G-08 的 ①②③ 取舍 |
+| V-02 | 一次请求实际读多少行 links（大库样本） | 脚本采样 + `EXPLAIN QUERY PLAN` | G-01 的提前退出阈值与 G-03 服务端预算必要性 |
+| V-03 | 全局图谱 degree 聚合真实耗时 | `EXPLAIN QUERY PLAN` + 10k 笔记 / 50k 链接样本 | G-10 的 A/B/撤销 |
+| V-04 | `Math.min(...xs)` 的安全上界 | 文档层已确认（服务端 clamp 600 + 标签 60 → ≤410）；G-21 若放开上限须同步改循环求极值 | G-21 的前置 |
+| V-05 | 主题翻转时预览卡的像素/内联色是否真的陈旧 | 浏览器断言（先设账号「跟随系统」再翻系统偏好） | G-31 的验收条件 |
+
+### 6.2 决策闸门（拿到证据后必须登记结论，含「不做」）
+
+| 闸门 | 决策 | 判据 |
+| :--- | :--- | :--- |
+| D-1（G-08） | 做「每 2 帧物理」「标签光晕降级」「远端团簇跳过」的哪几档，或全部不做 | V-01：单次布局最长提交与绘制占比；不做 Barnes-Hut |
+| D-2（G-10） | A 物化 `link_degree`（持久化契约变更，须 expand-contract + 备份 + 迁移门禁）/ B 请求内 memo + 短缓存（须为 `no-store` 开例外并注明理由、不得引入模块级可变状态）/ 撤销 | V-03 的 `EXPLAIN QUERY PLAN` 与实测耗时 |
+| D-3（G-47） | ① 底部徽标升级为可点开的邻居清单（M）；② 节点菜单「展开相邻笔记」合并进当前图（M，依赖 G-06） | **不需要数字**，需要归属决策（是否算图谱模块该做的事）；建议 ① 先做、② 待 1.1 落地后评估 |
+
+---
+
+## 7. 完成定义（每项都按此验收，不满足不得勾 `[x]`）
+
+1. **先红后绿**：行为变化先有复现用例并记录失败输出，再改代码转绿。
+2. **原子提交**：一次提交只做一件事，正文按 `- 路径: 改动` 逐文件写；§2 指定的同批项在提交信息中互相引用。
+3. **门禁**：统一命令 + 该项「验证命令」全绿；批次收尾跑 `test:unit`、`build`、`budget:check` 与三个浏览器门禁（全新实例）；负载 flake 按证据标注而不得写成「全绿」。
+4. **文档同步**：对外行为变化（键盘承诺、空态文案、可调上限、默认分组、导出选项）同步 `AGENTS.md` 相关条目、`ADR-0002`、`README.md` 设置表、locale 资源与本表；本表每落地一项即登记提交哈希。
+5. **不夹带**：过程中的新问题写进 §8 并另开条目，不在当前提交里顺手修（铁律 14）。
+6. **不伪造**：无法运行的验证必须在「状态」列写明「未验证 + 原因 + 风险」。本次两份文档即如实登记：`typecheck` / `style:check` / `build` / 三个浏览器门禁均未运行。
+
+---
+
+## 8. 新增发现（待登记，本表落地过程中随时追加）
+
+| 编号 | 现象 | 涉及文件 | 严重程度 | 归属批次 | 状态 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| — | — | — | — | — | 暂无 |
