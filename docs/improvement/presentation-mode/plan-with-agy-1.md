@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 已提交，其哈希由下一提交回填） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 已提交，其哈希由下一提交回填） |
 
 ---
 
@@ -158,7 +158,7 @@
   - 方案：抽取放在分页**之前**（`buildDeck` 前置一步 `readSpeakerNotes` 逐行走查），而非评审草案提议的「对整篇源码跑 `[\s\S]*?` 正则再替换」——草案写法会把跨行备注在其中的 `---` 处截断，剩下半截作为正文投出去，反而是新的泄露面。逐行状态机同时避开三种误认：围栏之内（演示该语法的代码块原样保留、不当备注）、front matter 之内（元数据里的同类写法不是备注，且不参与栅栏状态推断）、行首 ≥4 空格（Markdown 读作代码块）。整行归备注时删该行并连带删掉它上面的那个空行（否则幻灯片里留一个空洞）；`-->` 之后的文字属作者正文，保留。未闭合的备注一路私有到文末，与 Markdown 阅读器丢弃未闭合注释的既有行为一致。备注按行号归页：`noteLimit` 让分割线自己的行归上一页、标题行归它开启的那一页；`placeCues` 把「吞掉尾部所有行」的备注落到正文最后的现存行，避免尾部空白页被裁掉时备注一并消失；末组的右界取 `Infinity`，因为该组可能已无任何行可站。
   - 与草案的偏差（实测纠偏）：评审前提「备忘内容会直接投射到大屏」**不成立**——渲染器 `html: true` 产出的注释节点在 DOMPurify 一道就被丢弃，投影里本来就看不见。评审点名的 `slide-html.ts` 因此不动：剔除发生在分页时而不是渲染时，`use-slide-html` / `slide-canvas` / `slide-rail` / `deck-print` 四条渲染入口自动同步，无需各改一处。本项的实际收益因此是：(1) 修掉草案正则的跨行截断面；(2) 把备注提为与 `splitIntoSlides` 同序的 Slide 元数据（`splitIntoSlidesWithNotes`），供 B4-05 演讲者窗口直接读取。草案中的「演讲备注面板 UI」不在本项交付，归 B4-05；本项只交付语法识别 + 剔除 + 元数据，`notes` 半边在 B4-05 之前无生产消费者（同一批次内两步走，不为尚未到来的面板预铺 plumbing）。
   - 验证：`slides.test.ts` 52 例（新增 `splitIntoSlides — private speaker cues` 一组 21 例：单行、多行合并、`speaker:` 别名、大小写、`<!--note:` 贴合写法、行首四空格不识别、围栏内保留、`---` 写在备注内不分页、`-->` 后正文保留、未闭合私有到文末、备注独占一页、整篇只有一条备注、备注与分割线同行、备注吞掉分页后的尾部、front matter 不当备注、front matter 不开栅栏、光标越过备注仍落对页）。既有笔记零回归由 184 条差分断言证明：60 条不含备注的输入下，新实现与 `HEAD` 旧实现的 slides 数组与逐字符偏移的 `findSlideIndexByOffset` 完全一致，且 notes 全为空串；21 条含备注输入再各自断言「围栏外无备注文本/备注正文完整/不留空白尾页」。25 项变异全部被具名用例杀死（`NOTE_OPEN` 的缩进、大小写、空格三档放宽或收紧，`takeNote` 的删行与不删行与错行，`placeCues` 的上界与整体移除，`noteLimit` 的 `+1`，末组 `Infinity` 退回 `lines.length`，front matter 跳过条件失效等）。无新增 UI 文案，i18n 资源无变化。
-- [x] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔（评审标题里的「聚光灯」拆到 B4-06） — 已完成（哈希由下一提交回填）
+- [x] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔（评审标题里的「聚光灯」拆到 B4-06） — 已完成 (`e7cf8aba`)
   - 涉及文件：新增 `src/client/features/presentation/presentation-pointer.tsx` + `.test.ts`、`use-presentation-keys.test.ts`、`use-dialog-behavior.ts`；改 `presentation-keys.ts` + `.test.ts`、`presentation-state.ts` + `.test.ts`、`use-presentation-keys.ts`、`presentation-overlay.tsx`、`src/client/styles/presentation.css`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`README.md`、`README_ZH.md`
   - 目标：放映中按一个键在大屏画出跟随指针的红色激光点（带拖尾与呼吸脉冲），开启期间系统光标隐藏；`Esc` 先把激光笔收回去而不代价一屏；模式关闭、放映结束、层卸载三条路径都不留悬空监听器与残点；激光点不吞掉大屏本要收到的点击。
   - 方案：`presentation-pointer.tsx` 在**对话框内部**渲染一层 `aria-hidden` 的 `.laser-pointer`，`pointermove` 经 `requestAnimationFrame` 合帧，一帧只写 `--laser-x/--laser-y` 两个 CSS 变量；点与三条拖尾读同一坐标、只差 `transition-duration`（`--dur-fast/base/slow`），于是「拖尾」是 CSS 的滞后而非每帧绘制的粒子；颜色取 `var(--danger)`，脉冲光晕用 `color-mix` 在同一令牌上稀释；`prefers-reduced-motion: reduce` 下脉冲写作 `animation: none`（时长令牌本身退化成 1ms，缩短会变成频闪）。键位在 `presentation-keys.ts` 注册 `'laser'`，`use-presentation-keys.ts` 的 `useLaserMode` 持有模式并以「放映关闭即退出」为效果，`escapeAction` 增加第一级 `clearLaser` 并由 `useDialogBehavior` 消费。
@@ -209,7 +209,22 @@
   - 待查方向：两条 `canvas fills the stage` 无 detail 输出（先给它补 detail 才谈得上定位）；缩略图那组读数为 `katex=0/charts=0/painted=0`、`pixels=-1`，即 rail 的静止帧没画出来（疑似本机字体或解码时序）；axe 那条是 `.bottom-4` 页码片的文字色在 `--bg-overlay` 上合成出 1.67:1，若 CI 不复现则说明底色合成随环境而变，需按令牌复测该色对。
 - [ ] **B4-10** 文档: `AGENTS.md` 的视觉门禁断言计数已过期
   - 现象：`AGENTS.md` 写 `scripts/e2e-visual.mjs`「当前 380 条断言」，本分支 HEAD 快照实跑已是 682 条，B4-02 后为 694 条（687 通过 + 7 既有红）。
-  - 处置：`AGENTS.md` 自述「修改本文件需 PR 评审」，不在功能提交里改文档计数；单独提交或随批次收尾一并更新。（顺带核实：仓库根有 `.pre-commit-authors.json` 把 `AGENTS.md`/`scripts/e2e-visual.mjs`/`scripts/check-comments.mjs` 记给若干上游作者，但 `.githooks/pre-commit` 与本仓脚本都不读它，本检出中不生效——B4-01/B4-02 均按现状提交了这些文件。）
+  - 处置：`AGENTS.md` 自述「修改本文件需 PR 评审」，不在功能提交里改文档计数；单独提交或随批次收尾一并更新。（顺带核实：仓库根有 `.pre-commit-authors.json` 把 `AGENTS.md`/`scripts/e2e-visual.mjs`/`scripts/check-comments.mjs` 记给若干上游作者，但 `.githooks/pre-commit` 与本仓脚本都不读它，本检出中不生效——B4-01/B4-02 均按现状提交了这些文件。）B4-11 后本树实跑为 717 条（709 通过 + 8 失败）。
+
+- [x] **B4-11** 缺陷修复: 图片导出反复重跑且从不拆掉导出页 — 已完成（哈希由下一提交回填）
+  - 涉及文件：`src/client/features/presentation/deck-print.tsx`、`src/client/features/presentation/deck-print.test.ts`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
+  - 现象（由 B4-03 的浏览器场景暴露）：概览场景等一份 9 页 deck 的量测完成 >60s 不返回，而同样的 deck 在干净会话里约 5s 完成（一次性探针读到 `[data-slide-list-complete]` 在 t=4→5 之间翻真）。失败状态里 `aria-busy="true"` 且 `[data-deck-print]` 仍在文档中——是上一个场景的图片导出没结束，离屏导出页整场保留并持续布局，把下一页的空闲量测饿死。
+  - 根因两条，都在 `useDeckSheetReady`：(1) 效果依赖内联的 `handOver`/`onDone`，而导出每画一页就 `setProgress` 重渲染一次，于是 `prepareDeckSheet` + 栅格化 + 存档整轮随每次渲染重启；修复前探针实测一次按压 `restarts=69`、约 18s 内完成 5 份存档（5 个下载）。(2) 图片路径只有 `afterprint` 会调 `onDone`，写完存档从不交还放映。
+  - 修法：两个回调收进 ref，依赖只留 `dark`/`metrics`/`sheetRef`（`useStageMetrics` 的 `sameMetrics` 保证 metrics 身份稳定，故主题与几何仍会照旧触发重备）；图片导出在写完存档后 `onDone()`；run 被取代或卸载时由 `cancelled` 拦住交还，顺序仍是先写存档再交还。
+  - 验证：
+    - 先红：把两处修复按原字符串退回后 `deck-print.test.ts` = 2 failed / 7 passed，两条都以 `Test timed out in 5000ms` 红（重启的导出把事件循环灌满，红因即缺陷本身；stderr 里 `deck sheet preparation failed` 重复 3008 次）；恢复修复后本文件 11 例全绿。jsdom 无 `document.fonts`，而 `prepareDeckSheet` 把自己的异常吞在 best-effort catch 里——不桩它就等于跳过被测那步，故测试自带 fonts 桩并让等待有界，避免把「没跑到」伪装成「跑过了」。
+    - 单元新增 4 例：一次按压只出一份存档；顺序为 `['archive written','deck handed back']`；交还读「当前渲染」的回调而非挂载时的（`rerender` 换掉 `onDone` 后只有后者被调用）；放映已离开则放弃在绘的导出（fonts 桩挂起 → 卸载 → 释放 → `renderDeckPagePng` 与 `onDone` 均不触发）。
+    - 变异 6 项全部被具名用例杀死（跑前基线 11 例 rc=0，跑完按 sha256 校验工作树逐字节复原）：删 `onDone()`（2 例红）；`handOver, onDone` 放回依赖（2 例 5007/5010ms 超时 + 1 例 45ms 断言红）；改用挂载时的 `handOver` 闭包（1 例红）；交还早于写存档（2 例红）；不写就绪标记（1 例红）；去掉 `cancelled` 守卫（1 例红）。
+    - 浏览器：全新实例 `:7750`，`scripts/e2e.mjs` **177 通过 / 0 失败**，`scripts/e2e-visual.mjs` **709 通过 / 8 失败**——8 条为 B4-09 的 7 条既有红 + 1 条概览焦点归还（属 B4-03，不在本提交修）。`export:` 5 行全绿，含本批新增两行 `export: the image export mounts one sheet and takes it down again`、`export: the image export hands the deck back to the show`。一次性 MutationObserver 探针同实例读到 `mounts=1 teardowns=1 pages=7 outcome="true" busyAfter="absent"`、下载目录只有一份 `deck-images.zip`、导出后 `[data-slide-list-complete]` 仍为 true 且条目 7（量测不再被饿死）。
+    - 全量：`npm run test:unit` **611 文件 / 5458 通过 + 1 跳过 / 0 失败**（首轮曾见 8 文件 10 例超时，与并发 dev server 争 CPU 有关，空载复跑归零；见本文末「全量单元测试基线说明」）；`npm run typecheck` 与 13 项自定义门禁通过。
+    - 快照自证：`/tmp/b411-snap`（`git archive HEAD` + 本批文件，其中 `e2e-visual.mjs` 只取导出场景改动）内重生成白名单（12774 条 / 1340 文件）与 size 基线（只多 `deck-print.test.ts` 一项），13 项静态门禁 + `tsc -b`（rc=0）+ `deck-print.test.ts` 11 例全绿 → 本提交单独可过 CI。
+  - 与草案的偏差：本项不在评审/计划清单内，是 B4-03 的浏览器场景实测出来的缺陷，按铁律 14 单独成提交。`waitForRailFilled` 的诊断输出（两读相隔 2s、把 complete/busy/measuring/entries 写进错误消息）服务于概览场景的可读性，归 B4-03。
+  - 顺带记录：`e2e-visual.mjs` 的图片导出场景原先「先 `waitForSelector` 就绪标记、再 `evaluate` 读页框」，在导出页随存档一起卸载之后这条读法必然踩空——本轮 `:7748` 的运行就在 `export: the printed PDF has the deck page count` 之后 `Waiting failed: 60000ms exceeded` 崩掉。改为按下控件**之前**挂 MutationObserver，采样 mount/teardown/最大页框数/最大 canvas 数/就绪值与拆页时的 `aria-busy`，并以 60s 有界 resolve（导出没发生时给出红行而不是崩掉门禁）。
 
 ---
 

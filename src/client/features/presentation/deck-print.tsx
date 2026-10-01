@@ -104,6 +104,10 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
       root.dataset.deckImageReady = 'failed'
       useUi.getState().toast({ title: t('workspace.presentation_images_failed'), tone: 'danger' })
     }
+    // The archive is out, so the sheet has nothing left to draw: it goes back to the show the same
+    // way the printed sheet does when the print dialog closes. Held any longer it stays laid out
+    // off-screen for the rest of the talk, and the show keeps announcing itself as busy.
+    onDone()
   }, onDone)
   return (
     <>
@@ -124,6 +128,12 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
 // Both exports share one lifecycle: mount the sheet, let it finish drawing what it has to draw, hand
 // the finished sheet over, and tear everything down when the export is over for either reason —
 // the caller saying so (`onDone`) or the overlay closing under it.
+//
+// The two callbacks are held in refs rather than taken as effect dependencies: the sheet writes them
+// inline, so their identity changes on every render, and an export that reports its own progress
+// renders on every page it draws. Depending on them therefore restarted the whole export — and the
+// print dialog, and the archive, and the download — once per page, forever. What genuinely asks for
+// a re-prepare is the theme and the geometry the pages were built for, and those are the deps.
 function useDeckSheetReady(
   sheetRef: React.RefObject<HTMLDivElement | null>,
   dark: boolean,
@@ -131,22 +141,29 @@ function useDeckSheetReady(
   handOver: (root: HTMLDivElement) => void | Promise<void>,
   onDone: () => void,
 ): void {
+  const handOverRef = useRef(handOver)
+  const doneRef = useRef(onDone)
+  useEffect(() => {
+    handOverRef.current = handOver
+    doneRef.current = onDone
+  })
   useEffect(() => {
     let cancelled = false
     const run = async () => {
       const root = sheetRef.current
       if (!root) return
       await prepareDeckSheet(root, dark, metrics)
-      if (!cancelled) await handOver(root)
+      if (!cancelled) await handOverRef.current(root)
     }
-    window.addEventListener('afterprint', onDone)
+    const finished = () => doneRef.current()
+    window.addEventListener('afterprint', finished)
     void run()
     return () => {
       cancelled = true
-      window.removeEventListener('afterprint', onDone)
+      window.removeEventListener('afterprint', finished)
       destroyChartInstances(sheetRef.current)
     }
-  }, [dark, metrics, handOver, onDone, sheetRef])
+  }, [dark, metrics, sheetRef])
 }
 
 export async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string, onProgress?: (current: number, total: number) => void): Promise<number> {

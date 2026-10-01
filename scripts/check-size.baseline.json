@@ -63,6 +63,9 @@
   "src/client/features/music/music-track-table.test.ts": {
     "lines": 532
   },
+  "src/client/features/presentation/deck-print.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },

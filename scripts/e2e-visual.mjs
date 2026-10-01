@@ -836,6 +836,9 @@ async function assertDeckExport(page) {
 // file came out of it: every page rasterized (the sheet reports that itself, and it only reports it
 // after the archive was handed to the browser) and the browser then wrote the archive somewhere.
 // Its pages are the page boxes the PDF export uses, built from the same measured plans.
+// The sheet is torn down as soon as it has handed the archive over, so it is watched rather than
+// polled: a readiness marker written in the moment before the teardown, and the page boxes that
+// only exist while the export runs, are both gone before a wait from Node can read them.
 async function assertDeckImageExport(page) {
   const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-images-'))
   const client = await page.createCDPSession()
@@ -844,21 +847,57 @@ async function assertDeckImageExport(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   const entries = await waitForRailFilled(page)
-  await clickPresentationControl(page, LABELS.presentExportImages)
-  await page.waitForSelector('[data-deck-print][data-deck-image-ready="true"]', { timeout: 60_000 })
-  const images = await page.evaluate(() => {
-    const sheet = document.querySelector('[data-deck-print][data-deck-image-ready]')
-    return {
-      pages: sheet?.querySelectorAll('.deck-print-page').length ?? 0,
-      charts: sheet?.querySelectorAll('[data-chart] canvas').length ?? 0,
+  // Armed before the press, because the sheet's whole life can fit between two polls. Every
+  // mutation re-reads the sheet it is watching and keeps the largest picture it has been shown, so
+  // the read describes the export at its fullest rather than at whatever moment Node looked.
+  const watching = page.evaluate(() => new Promise((resolve) => {
+    const seen = { mounts: 0, teardowns: 0, pages: 0, charts: 0, outcome: '', busy: 'never mounted' }
+    const isSheet = (node) => node?.nodeType === 1 && node.hasAttribute?.('data-deck-print')
+    const record = (sheet) => {
+      if (!sheet) return
+      seen.pages = Math.max(seen.pages, sheet.querySelectorAll('.deck-print-page').length)
+      seen.charts = Math.max(seen.charts, sheet.querySelectorAll('[data-chart] canvas').length)
+      if (sheet.dataset.deckImageReady) seen.outcome = sheet.dataset.deckImageReady
     }
-  })
+    const done = () => {
+      observer.disconnect()
+      seen.busy = document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? 'absent'
+      resolve(seen)
+    }
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (isSheet(mutation.target)) record(mutation.target)
+        for (const node of mutation.addedNodes) { if (isSheet(node)) { seen.mounts += 1; record(node) } }
+        for (const node of mutation.removedNodes) { if (isSheet(node)) { seen.teardowns += 1; record(node) } }
+      }
+      record(document.querySelector('[data-deck-print]'))
+      if (seen.outcome && !document.querySelector('[data-deck-print]')) done()
+    })
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-deck-image-ready'] })
+    // Bounded, and it resolves rather than hangs: an export that never mounts has to come back as a
+    // row saying so, not as a gate that stopped at its own timeout.
+    setTimeout(done, 60_000)
+  }))
+  await clickPresentationControl(page, LABELS.presentExportImages)
+  const images = await watching
+  check('export: the image export mounts one sheet and takes it down again', images.mounts === 1 && images.teardowns === 1 && images.outcome === 'true', JSON.stringify(images))
   check('export: the image export carries one page per deck page', images.pages > 1 && images.pages === entries, `images=${images.pages} rail=${entries}`)
   check('export: the image export draws its charts on the sheet', images.charts > 0, `charts=${images.charts}`)
 
   await sleep(2000)
   const saved = fs.readdirSync(downloadDir)
   check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
+  // The show being busy with an export is a state the presenter can leave; a sheet that outlives the
+  // archive keeps the whole deck laid out off-screen and the dialog announcing itself as busy for
+  // the rest of the talk — and it starves the slide list's own idle pass behind it.
+  const handedBack = await page.waitForFunction(() => document.querySelector('[data-deck-print]') === null
+    && document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') === null, { timeout: 5_000, polling: 200 })
+    .then(() => true)
+    .catch(() => false)
+  check('export: the image export hands the deck back to the show', handedBack, await page.evaluate(() => JSON.stringify({
+    sheets: document.querySelectorAll('[data-deck-print]').length,
+    busy: document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? 'absent',
+  })))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
 }

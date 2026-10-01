@@ -1,6 +1,9 @@
+import { act, createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFenceBodies, takeFenceIndex, type FenceBodies } from '../../lib/markdown/fence-bodies'
-import { buildDeckPages, saveDeckPages } from './deck-print'
+import { renderElement } from '../../lib/test-render'
+import * as deckImage from './deck-image'
+import { buildDeckPages, DeckImageSheet, saveDeckPages } from './deck-print'
 import { readSlideHtml, rememberSlideHtml, slideCacheKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
@@ -12,6 +15,11 @@ vi.mock('./deck-image', () => ({
   zipDeckImages: vi.fn(async () => new Blob(['fake-zip'], { type: 'application/zip' })),
   saveDeckImages: vi.fn(),
 }))
+
+// The sheet reports its own progress and toasts when it is done, so the store is stood up rather
+// than imported: a test of the export's lifecycle should not depend on the toast queue's timers.
+vi.mock('../../store/ui', () => ({ useUi: { getState: () => ({ toast: vi.fn() }) } }))
+
 
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const FIRST = '<p>one</p><p>two</p><h2>three</h2><p>four</p>'
@@ -110,5 +118,114 @@ describe('saveDeckPages — streaming progress', () => {
       [2, 3],
       [3, 3],
     ])
+  })
+})
+
+// A pass of the export runs through awaits (prepare, one page per round, then the archive), so the
+// test gives it room and then keeps watching: how much room a pass needs is not what is being
+// asserted, and a second pass inside the same window is.
+async function flush(ticks: number) {
+  for (let index = 0; index < ticks; index++) {
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
+  }
+}
+
+// jsdom has no FontFaceSet, and the sheet waits for its webfonts before it hands the pages over.
+// Left unshimmed the wait throws inside the component's own best-effort catch, which swallows the
+// step the test is driving rather than failing it — so the marker is what bounds the wait below.
+// The shim is rewritten per test because one of them hands back a font pass that never lands.
+function stubFonts(ready: Promise<unknown> = Promise.resolve()) {
+  Object.defineProperty(document, 'fonts', { value: { ready }, configurable: true })
+}
+
+// Bounded, then asserted: a loop that never settles must fail as "this never happened", because a
+// test that hangs instead reports a timeout and says nothing about which promise the code broke.
+async function until(probe: () => boolean, ticks = 120) {
+  for (let index = 0; index < ticks && !probe(); index++) await flush(1)
+  return probe()
+}
+
+describe('DeckImageSheet — what the export leaves behind', () => {
+  beforeEach(() => {
+    stubFonts()
+    vi.mocked(deckImage.saveDeckImages).mockClear()
+    vi.mocked(deckImage.renderDeckPagePng).mockClear()
+  })
+
+  // The sheet is a portal on `document.body`, so each test takes its own back down in a `finally`:
+  // a failed assertion that left one up would be read by the next test as its own.
+  it('writes one archive for one press of the control', async () => {
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckImageReady === 'true')
+      expect(drawn).toBe(true)
+      await flush(10)
+      expect(deckImage.saveDeckImages).toHaveBeenCalledTimes(1)
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('hands the deck back to the show once the pictures are saved', async () => {
+    // The order is the contract: a sheet that gives the deck back before the archive is written
+    // takes the pages out from under the export that is still reading them.
+    const steps: string[] = []
+    vi.mocked(deckImage.saveDeckImages).mockImplementation(() => { steps.push('archive written') })
+    const onDone = vi.fn(() => { steps.push('deck handed back') })
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone }))
+    try {
+      const handed = await until(() => onDone.mock.calls.length > 0)
+      expect(handed).toBe(true)
+      await flush(10)
+      expect(onDone).toHaveBeenCalledTimes(1)
+      expect(steps).toEqual(['archive written', 'deck handed back'])
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('hands the deck back to the overlay that is showing, not the one that mounted', async () => {
+    // The sheet is handed its callbacks inline, so the render that finishes the draw has to be the
+    // render they are read from: a handover taken from the mount would tell an overlay that is gone
+    // that it is done while the one on screen keeps announcing itself as busy.
+    let release: () => void = () => {}
+    stubFonts(new Promise<void>((resolve) => { release = resolve }))
+    const mounted = vi.fn()
+    const showing = vi.fn()
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const sheet = (onDone: () => void) => createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone })
+    const view = renderElement(sheet(mounted))
+    await flush(2)
+    view.rerender(sheet(showing))
+    release()
+    const handed = await until(() => showing.mock.calls.length > 0 || mounted.mock.calls.length > 0)
+    try {
+      expect(handed).toBe(true)
+      await flush(10)
+      expect(showing).toHaveBeenCalledTimes(1)
+      expect(mounted).not.toHaveBeenCalled()
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('gives up a draw the show is no longer waiting for', async () => {
+    // Leaving the show tears the sheet down while its pages are still being drawn. The pass that
+    // was already in flight has to notice, or it downloads a deck nobody asked for and hands back
+    // a deck the overlay has gone — and the fonts the sheet waits on are the seam that keeps it
+    // in flight until the test takes the sheet away.
+    let release: () => void = () => {}
+    stubFonts(new Promise<void>((resolve) => { release = resolve }))
+    const onDone = vi.fn()
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone }))
+    await flush(2)
+    view.unmount()
+    release()
+    await flush(20)
+    expect(deckImage.renderDeckPagePng).not.toHaveBeenCalled()
+    expect(onDone).not.toHaveBeenCalled()
   })
 })
