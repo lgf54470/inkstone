@@ -5,6 +5,7 @@ import type { BlogTrashRow } from '../../db/rows'
 import { toBlogTrashEntry } from './helpers'
 import { blogTrashListQuery } from './post-list-query'
 import { blogPurgeStatements, chunkPostIds } from './posts-batch'
+import { enqueueBlogFtsStatement } from '../../db/blog-fts'
 
 /**
  * The recycle bin (FEA-04). Deleting a post only marks it (`deleted_at`), so everything the post
@@ -85,8 +86,15 @@ async function purgeTrashPosts(db: D1Database, userId: string, ids: string[]): P
       .all<{ id: string }>()
     const trashed = (results || []).map((row) => row.id)
     if (!trashed.length) continue
-    const statements = blogPurgeStatements(userId, trashed)
+    const purgeStatements = blogPurgeStatements(userId, trashed)
       .map((statement) => db.prepare(statement.sql).bind(...statement.binds))
+    // The index rows go through the queue's delete arm rather than staying behind as unreachable
+    // entries, and the queue statements ride ahead of the purge so the post delete stays the batch's
+    // last statement — its change count is how the caller counts purged posts.
+    const statements = [
+      ...trashed.map((postId) => enqueueBlogFtsStatement(db, userId, postId, 'delete')),
+      ...purgeStatements,
+    ]
     const outcomes = await db.batch(statements)
     // The post delete is the last statement of the batch, so its change count is the batch's answer.
     purged += outcomes.at(-1)?.meta.changes ?? 0

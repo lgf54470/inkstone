@@ -14,6 +14,11 @@ export interface BlogPost {
   isPinned: boolean
   views: number
   commentsCount?: number
+  /**
+   * 命中词附近的原文片段。只出现在走全文索引的搜索结果里（FEA-12 时搜索还是 LIKE，没有这个字段），
+   * 列表优先显示它，没有时退回 `excerpt`。
+   */
+  snippet?: string
   createdAt: number
   updatedAt: number
   /**

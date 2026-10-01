@@ -1,8 +1,9 @@
-import { segmentCJK, toPlainText } from '@shared/markdown-utils'
-import { sliceText, truncateText } from '@shared/text-utils'
+import { segmentCJK } from '@shared/markdown-utils'
+import { truncateText } from '@shared/text-utils'
 import type { SearchHit } from '@shared/types'
 import { drainFtsQueue, hasPendingFtsWork } from '../../db/fts'
 import { NOTE_COLUMNS, toNoteSummary, type NoteRow } from '../../db/rows'
+import { contentWindowSql, makeSnippet } from '../../lib/snippet'
 
 export const GRAPH_EDGE_CANDIDATE_LIMIT = 10_000
 
@@ -176,7 +177,7 @@ async function ftsSearch(
     AND n.user_id = ?2 AND n.deleted_at IS NULL`
   applyFilters(q, binds, (clause) => (where += clause))
   binds.push(q.terms[0]!)
-  const contentWindow = contentWindowSql(binds.length)
+  const contentWindow = contentWindowSql('n.content', binds.length)
   binds.push(limit)
 
 
@@ -226,7 +227,7 @@ async function likeSearch(
   let contentSelect = 'n.excerpt'
   if (q.terms.length) {
     binds.push(q.terms[0]!)
-    contentSelect = contentWindowSql(binds.length)
+    contentSelect = contentWindowSql('n.content', binds.length)
   }
   binds.push(candidateLimit)
   const titleRank = termBindIndexes.length
@@ -282,24 +283,6 @@ function applyFilters(q: ParsedQuery, binds: unknown[], append: (clause: string)
 }
 
 
-function makeSnippet(content: string, terms: string[], radius = 70): string {
-  const plain = toPlainText(content).replace(/\s+/g, ' ')
-  if (!plain) return ''
-  const lower = plain.toLowerCase()
-
-  let at = -1
-  for (const term of terms) {
-    const idx = lower.indexOf(term.toLowerCase())
-    if (idx >= 0 && (at < 0 || idx < at)) at = idx
-  }
-  if (at < 0) return truncateText(plain, radius * 2) + (plain.length > radius * 2 ? '…' : '')
-
-  const start = Math.max(0, at - radius)
-  const end = Math.min(plain.length, at + radius * 1.6)
-  return (start > 0 ? '…' : '') + sliceText(plain, start, end).trim() + (end < plain.length ? '…' : '')
-}
-
-
 function scoreOf(row: NoteRow & { content: string }, terms: string[]): number {
   let score = 0
   const title = row.title.toLowerCase()
@@ -329,9 +312,3 @@ function countOccurrences(text: string, query: string, limit: number): number {
 import { escapeLike } from '../../lib/like'
 
 export { escapeLike }
-
-
-function contentWindowSql(termBindIndex: number): string {
-  const found = `instr(lower(n.content), lower(?${termBindIndex}))`
-  return `substr(n.content, CASE WHEN ${found} > 180 THEN ${found} - 180 ELSE 1 END, 520)`
-}

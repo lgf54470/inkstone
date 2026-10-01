@@ -3,12 +3,14 @@ import { Hono } from 'hono'
 import { extractCoverUrl, parseFrontMatter } from '@shared/markdown-utils'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { newId, newSlug } from '../../lib/id'
+import { newId } from '../../lib/id'
 import { assertContentSize, clampInt, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import type { BlogPostIndexRow, BlogPostRow, BlogPostSummaryRow } from '../../db/rows'
+import { enqueueBlogFtsStatement } from '../../db/blog-fts'
 import { blogPostWriteSchema } from './schemas'
 import { blogPostPatchSchema } from './schemas'
 import { blogBatchSchema } from './schemas'
+import { insertBlogPost, normalizedSlug, postInputFromBody, resolvePostSource, SLUG_RE, updateBlogPost } from './post-write'
 import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
 import { resolvedPublishedAt } from './publish-moment'
 import { blogBatchStatements, chunkPostIds } from './posts-batch'
@@ -17,8 +19,6 @@ import { patchTouchesPostContent, registerBlogRevisionsRoutes, snapshotRevisionS
 import { pingBlogFeed, postVisibleInFeed } from './feed-ping'
 import { waitUntilOf } from './background'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
-
-const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
 
 export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogPostsListRoute(blogManageRoutes)
@@ -101,6 +101,9 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
         ...snapshotRevisionStatements(c.env.DB, existingPost, now),
         updateBlogPost(c.env.DB, existingPost.id, postInput, publishedAt),
         ...slugMoveStatements({ db: c.env.DB, userId, postId: existingPost.id, from: existingPost.slug, to: slug, now }),
+        // The index is told in the same batch as the write: an enqueue that lands on its own could
+        // be lost, and that is a post the search would silently stop tracking.
+        enqueueBlogFtsStatement(c.env.DB, userId, existingPost.id, 'upsert'),
       ]
       await c.env.DB.batch(statements)
       if (postVisibleInFeed(postInput.isPublished === 1, publishedAt, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
@@ -113,177 +116,11 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
     await c.env.DB.batch([
       insertBlogPost(c.env.DB, { ...postInput, id, noteId: body.noteId, userId }),
       ...claimSlugStatements({ db: c.env.DB, userId, slug }),
+      enqueueBlogFtsStatement(c.env.DB, userId, id, 'upsert'),
     ])
     if (postVisibleInFeed(postInput.isPublished === 1, postInput.publishedAt ?? now, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
     return c.json({ ok: true, id, slug })
   })
-}
-
-interface PostSource {
-  noteTitle: string
-  noteContent: string
-}
-
-async function resolvePostSource(
-  db: D1Database,
-  userId: string,
-  body: { noteId: string; title?: string; content?: string },
-): Promise<PostSource> {
-  let noteTitle = body.title || ''
-  let noteContent = body.content || ''
-  if (noteTitle && noteContent) return { noteTitle, noteContent }
-  const note = await db
-    .prepare('SELECT title, content FROM notes WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
-    .bind(body.noteId, userId)
-    .first<{ title: string; content: string }>()
-  if (!note) throw ApiError.notFound('Note not found')
-  noteTitle = noteTitle || note.title
-  noteContent = noteContent || note.content
-  return { noteTitle, noteContent }
-}
-
-function normalizedSlug(rawSlug: string | undefined): string {
-  const slug = (rawSlug?.trim() || newSlug().slice(0, 8)).toLowerCase()
-  if (!SLUG_RE.test(slug)) {
-    throw ApiError.badRequest('Invalid slug format')
-  }
-  return slug
-}
-
-interface PostWriteInput {
-  slug: string
-  title: string
-  excerpt: string
-  content: string
-  coverUrl: string | null
-  categoryId: string | null
-  folderId: string | null
-  tagsJson: string
-  isPublished: number
-  publishedAt?: number
-  allowComments: number
-  isPinned: number
-  seoTitle: string
-  seoDescription: string
-  seoImageUrl: string
-  seoCanonicalUrl: string
-  seoNoindex: number
-}
-
-function postInputFromBody(
-  body: z.infer<typeof blogPostWriteSchema>,
-  note: PostSource,
-  slug: string,
-): PostWriteInput {
-  return {
-    slug,
-    title: note.noteTitle,
-    excerpt: body.excerpt || '',
-    content: note.noteContent,
-    coverUrl: extractCoverUrl(body.coverUrl || ''),
-    categoryId: body.categoryId || null,
-    folderId: body.folderId || null,
-    tagsJson: JSON.stringify(body.tags || []),
-    isPublished: body.isPublished !== false ? 1 : 0,
-    publishedAt: body.publishedAt,
-    allowComments: body.allowComments !== false ? 1 : 0,
-    isPinned: body.isPinned ? 1 : 0,
-    seoTitle: body.seoTitle || '',
-    seoDescription: body.seoDescription || '',
-    seoImageUrl: body.seoImageUrl || '',
-    seoCanonicalUrl: body.seoCanonicalUrl || '',
-    seoNoindex: body.seoNoindex ? 1 : 0,
-  }
-}
-
-function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publishedAt: number): D1PreparedStatement {
-  const now = Date.now()
-  return db
-    .prepare(`
-      UPDATE blog_posts SET
-        slug = ?1,
-        title = ?2,
-        excerpt = ?3,
-        content = ?4,
-        cover_url = ?5,
-        category_id = ?6,
-        folder_id = ?7,
-        tags = ?8,
-        is_published = ?9,
-        allow_comments = ?10,
-        is_pinned = ?11,
-        published_at = ?12,
-        updated_at = ?13,
-        seo_title = ?14,
-        seo_description = ?15,
-        seo_image_url = ?16,
-        seo_canonical_url = ?17,
-        seo_noindex = ?18,
-        deleted_at = NULL
-      WHERE id = ?19
-    `)
-    .bind(
-      input.slug,
-      input.title,
-      input.excerpt,
-      input.content,
-      input.coverUrl,
-      input.categoryId,
-      input.folderId,
-      input.tagsJson,
-      input.isPublished,
-      input.allowComments,
-      input.isPinned,
-      publishedAt,
-      now,
-      input.seoTitle,
-      input.seoDescription,
-      input.seoImageUrl,
-      input.seoCanonicalUrl,
-      input.seoNoindex,
-      id,
-    )
-}
-
-function insertBlogPost(
-  db: D1Database,
-  input: PostWriteInput & { id: string; noteId: string; userId: string },
-): D1PreparedStatement {
-  const now = Date.now()
-  return db
-    .prepare(`
-      INSERT INTO blog_posts (
-        id, slug, note_id, user_id, title, excerpt, content, cover_url,
-        category_id, folder_id, tags, is_published, allow_comments, is_pinned, views,
-        published_at, created_at, updated_at,
-        seo_title, seo_description, seo_image_url, seo_canonical_url, seo_noindex
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?16,
-        ?17, ?18, ?19, ?20, ?21)
-    `)
-    .bind(
-      input.id,
-      input.slug,
-      input.noteId,
-      input.userId,
-      input.title,
-      input.excerpt,
-      input.content,
-      input.coverUrl,
-      input.categoryId,
-      input.folderId,
-      input.tagsJson,
-      input.isPublished,
-      input.allowComments,
-      input.isPinned,
-      // A new post takes the moment its author picked; without one it went out as it was written.
-      input.publishedAt ?? now,
-      now,
-      input.seoTitle,
-      input.seoDescription,
-      input.seoImageUrl,
-      input.seoCanonicalUrl,
-      input.seoNoindex,
-    )
 }
 
 function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
@@ -291,35 +128,16 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     const id = c.req.param('id')
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogPostPatchSchema, JSON_BODY_LIMITS.note)
-
-    // A post in the trash is not offered for editing: the row still exists, but to the author it is
-    // gone until it is restored.
-    const current = await c.env.DB
-      .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
-      .bind(id, userId)
-      .first<BlogPostRow>()
-    if (!current) throw ApiError.notFound('Post not found')
+    const current = await loadEditablePost(c.env.DB, id, userId)
 
     const previousSlug = current.slug
     const before = { ...current }
-    if (body.slug && body.slug !== current.slug) {
-      const slug = body.slug.trim().toLowerCase()
-      if (!SLUG_RE.test(slug)) throw ApiError.badRequest('Invalid slug format')
-      await assertSlugFree(c.env.DB, userId, slug, id)
-      current.slug = slug
-    }
-
+    await claimPatchSlug(c.env.DB, userId, id, body.slug, current)
     if (body.content !== undefined) assertContentSize(body.content, 'Blog post')
 
     const now = Date.now()
-    // A patch that only moves presentation (pin, publish, comments, publish moment) does not rewrite
-    // text, so it records no version; one that can change what the post says snapshots what it said.
-    const statements = patchTouchesPostContent(body)
-      ? snapshotRevisionStatements(c.env.DB, before, now)
-      : []
-    statements.push(blogPostPatchStatement(c.env.DB, body, current, id, now))
-    statements.push(...slugMoveStatements({ db: c.env.DB, userId, postId: id, from: previousSlug, to: current.slug, now }))
-    await c.env.DB.batch(statements)
+    const contentRewritten = patchTouchesPostContent(body)
+    await writeBlogPostPatch({ db: c.env.DB, userId, id, body, current, before, previousSlug, contentRewritten, now })
     pingIfFeedChanged({
       db: c.env.DB,
       userId,
@@ -330,10 +148,61 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
         resolvedPublishedAt(body, current, now),
         now,
       ),
-      contentRewritten: patchTouchesPostContent(body),
+      contentRewritten,
     })
     return c.json({ ok: true })
   })
+}
+
+/** A post in the trash is not offered for editing: the row still exists, but to the author it is
+ * gone until it is restored. */
+async function loadEditablePost(db: D1Database, id: string, userId: string): Promise<BlogPostRow> {
+  const current = await db
+    .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
+    .bind(id, userId)
+    .first<BlogPostRow>()
+  if (!current) throw ApiError.notFound('Post not found')
+  return current
+}
+
+/** The slug a patch asks for, claimed on the row it will be written to (the caller's `current`). */
+async function claimPatchSlug(
+  db: D1Database,
+  userId: string,
+  id: string,
+  rawSlug: string | undefined,
+  current: BlogPostRow,
+): Promise<void> {
+  if (!rawSlug || rawSlug === current.slug) return
+  const slug = rawSlug.trim().toLowerCase()
+  if (!SLUG_RE.test(slug)) throw ApiError.badRequest('Invalid slug format')
+  await assertSlugFree(db, userId, slug, id)
+  current.slug = slug
+}
+
+/**
+ * Writes the patch. A patch that only moves presentation (pin, publish, comments, publish moment)
+ * does not rewrite text, so it records no version; one that can change what the post says snapshots
+ * what it said and asks the search index to take the new text.
+ */
+async function writeBlogPostPatch(params: {
+  db: D1Database
+  userId: string
+  id: string
+  body: z.infer<typeof blogPostPatchSchema>
+  current: BlogPostRow
+  before: BlogPostRow
+  previousSlug: string
+  contentRewritten: boolean
+  now: number
+}): Promise<void> {
+  const { db, userId, id, body, current, before, previousSlug, contentRewritten, now } = params
+  const statements = contentRewritten ? snapshotRevisionStatements(db, before, now) : []
+  statements.push(blogPostPatchStatement(db, body, current, id, now))
+  statements.push(...slugMoveStatements({ db, userId, postId: id, from: previousSlug, to: current.slug, now }))
+  // A presentation-only patch leaves the indexed text alone, so it does not ask for a reindex.
+  if (contentRewritten) statements.push(enqueueBlogFtsStatement(db, userId, id, 'upsert'))
+  await db.batch(statements)
 }
 
 /**
@@ -457,6 +326,7 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
           updated_at = ?5
         WHERE id = ?6
       `).bind(note.title, note.content, note.excerpt, coverUrl, now, id),
+      enqueueBlogFtsStatement(c.env.DB, userId, id, 'upsert'),
     ])
     if (postVisibleInFeed(post.is_published === 1, post.published_at, now)) void pingBlogFeed(c.env.DB, userId, waitUntilOf(c))
 

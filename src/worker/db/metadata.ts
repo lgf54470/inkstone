@@ -21,7 +21,7 @@ export async function selectQueueUsersRoundRobin(
   db: D1Database,
   // `notes` carries the accounts that own any note, which is the set the index audit has to walk:
   // an account with a drifted index and nothing queued would never show up through the queues.
-  table: 'ai_index_queue' | 'fts_index_queue' | 'notes',
+  table: 'ai_index_queue' | 'blog_fts_queue' | 'fts_index_queue' | 'notes',
   cursorKey: string,
   limit: number,
 ): Promise<string[]> {

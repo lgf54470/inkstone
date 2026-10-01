@@ -372,10 +372,12 @@ function SearchResultTitle({ post, selected, locale }: { post: BlogPost; selecte
 }
 
 function SearchResultExcerpt({ post }: { post: BlogPost }) {
-  if (!post.excerpt) return null
+  // 全文索引的搜索结果带命中片段：显示它，没有时照旧显示文章摘要。
+  const text = post.snippet || post.excerpt
+  if (!text) return null
   return (
     <p className='text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed'>
-      {post.excerpt}
+      {text}
     </p>
   )
 }

@@ -357,6 +357,16 @@ export const TABLE_STATEMENTS: readonly string[] = [
       created_at INTEGER NOT NULL,
       PRIMARY KEY (user_id, note_id)
     )`,
+  // The blog index's write queue: a post write enqueues in the same batch it writes, and the drain
+  // turns the queue into the FTS rows (segmentation runs in code, so the indexed text cannot be
+  // produced by SQL alone). One row per post, the newest write wins.
+  `CREATE TABLE IF NOT EXISTS blog_fts_queue (
+      user_id TEXT NOT NULL,
+      post_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('upsert', 'delete')),
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, post_id)
+    )`,
   `CREATE TABLE IF NOT EXISTS community_templates (
       id TEXT PRIMARY KEY,
       author_id TEXT NOT NULL,

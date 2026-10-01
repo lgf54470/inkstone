@@ -2,7 +2,7 @@ import type { DatabaseState, Env } from '../../env'
 import { getMeta, setMeta } from '../metadata'
 import { DATABASE_STATE_KEY, INDEX_SCHEMA_STATEMENTS, REQUIRED_COLUMNS, REQUIRED_INDEXES, REQUIRED_TABLES, TABLE_SCHEMA_STATEMENTS } from './checks'
 import { SCHEMA_MIGRATIONS } from './migrations'
-import { FTS_STATEMENT, SCHEMA_STATEMENTS } from './statements'
+import { FTS_STATEMENT, BLOG_FTS_STATEMENT, SCHEMA_STATEMENTS } from './statements'
 
 const initializationCache = new WeakMap<D1Database, Promise<DatabaseState>>()
 
@@ -41,7 +41,7 @@ async function createSchema(db: D1Database): Promise<DatabaseState> {
 
   let state: DatabaseState
   try {
-    await db.prepare(FTS_STATEMENT).run()
+    await db.batch([db.prepare(FTS_STATEMENT), db.prepare(BLOG_FTS_STATEMENT)])
     state = { ftsEnabled: true }
   } catch (error) {
     console.warn(
@@ -104,7 +104,7 @@ function schemaFingerprint(): string {
     statements: migration.statements,
     skipIfColumnExists: migration.skipIfColumnExists ?? null,
   }))
-  const source = [...SCHEMA_STATEMENTS, FTS_STATEMENT, ...migrationSource].join('\n')
+  const source = [...SCHEMA_STATEMENTS, FTS_STATEMENT, BLOG_FTS_STATEMENT, ...migrationSource].join('\n')
   let hash = 0x811c9dc5
   for (let index = 0; index < source.length; index++) {
     hash = Math.imul(hash ^ source.charCodeAt(index), 0x01000193)

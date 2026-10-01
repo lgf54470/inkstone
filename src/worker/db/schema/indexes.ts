@@ -95,6 +95,8 @@ export const INDEX_STATEMENTS: readonly string[] = [
        ON ai_index_queue(user_id, created_at, note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_fts_index_queue_due
        ON fts_index_queue(user_id, created_at, note_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_fts_queue_due
+       ON blog_fts_queue(user_id, created_at, post_id)`,
   `CREATE INDEX IF NOT EXISTS idx_community_templates_created
        ON community_templates(created_at DESC)`,
   ...BLOG_POSTS_INDEX_STATEMENTS,

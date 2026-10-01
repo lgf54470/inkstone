@@ -1,14 +1,13 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTimelineRow } from '../../db/rows'
-import { escapeLike, likeAny } from '../../lib/like'
 import { loadPublicPostBySlug } from './public-post'
 import { registerBlogPublicRelatedRoute } from './public-related'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts, toBlogSeoFields } from './helpers'
-import { blogTagFilterSql } from './tag-needles'
 import { resolveRetiredSlug } from './slug-history'
 import { publicPostVisibleSql } from './publish-moment'
+import { searchPublicPosts } from './post-search'
 
 
 import { registerMusicPublicRoutes } from '../music'
@@ -112,17 +111,17 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
     const categorySlug = c.req.query('category')?.trim()
     const search = c.req.query('search')?.trim()
 
-    const pageQuery = blogPublicPostsQuery(ownerId, { categorySlug, search, tag }, limit, offset)
-    const countQuery = blogPublicPostsCountQuery(ownerId, { categorySlug, search, tag })
-    const [pageResult, countRow] = await Promise.all([
-      c.env.DB.prepare(pageQuery.sql).bind(...pageQuery.params).all<BlogPostPublicRow>(),
-      c.env.DB.prepare(countQuery.sql).bind(...countQuery.params).first<{ n: number }>(),
-    ])
-
-    const total = countRow?.n ?? 0
+    const { rows, total } = await searchPublicPosts(
+      c.env.DB,
+      ownerId,
+      { categorySlug, search, tag },
+      limit,
+      offset,
+      c.get('database')?.ftsEnabled === true,
+    )
 
     return c.json({
-      posts: (pageResult.results || []).map(toPublicPostSummary),
+      posts: rows.map(toPublicPostSummary),
       pagination: {
         page,
         limit,
@@ -133,65 +132,7 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
   })
 }
 
-interface PublicPostsFilter {
-  categorySlug?: string
-  search?: string
-  tag?: string
-}
-
-function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
-  const clauses = [publicPostVisibleSql('p'), 'p.user_id = ?1']
-  const params: unknown[] = [ownerId]
-  let idx = 2
-
-  if (filter.categorySlug) {
-    clauses.push(`c.slug = ?${idx++}`)
-    params.push(filter.categorySlug)
-  }
-
-  if (filter.search) {
-    // The needle is escaped like the tag one above, or a query of `%` turns the public listing
-    // into a full scan of every post body.
-    clauses.push(`(${likeAny(['p.title', 'p.excerpt', 'p.content'], `?${idx}`)})`)
-    params.push(`%${escapeLike(filter.search)}%`)
-    idx++
-  }
-
-  if (filter.tag) {
-    const tagFilter = blogTagFilterSql('p.tags', filter.tag, idx)
-    clauses.push(tagFilter.clause)
-    params.push(...tagFilter.params)
-    idx += 2
-  }
-
-  return { clauses: clauses.join(' AND '), params }
-}
-
-function blogPublicPostsQuery(ownerId: string, filter: PublicPostsFilter, limit: number, offset: number): { sql: string; params: unknown[] } {
-  const { clauses, params } = blogPublicPostsWhere(ownerId, filter)
-  const sql = `
-    SELECT p.id, p.slug, p.title, p.excerpt, p.cover_url, p.category_id, p.tags,
-           p.views, p.published_at, p.updated_at,
-           c.name as category_name, c.slug as category_slug,
-           (SELECT COUNT(*) FROM blog_comments cm WHERE cm.post_id = p.id AND cm.status = 'approved') as comments_count
-    FROM blog_posts p
-    LEFT JOIN blog_categories c ON p.category_id = c.id
-    WHERE ${clauses}
-    ORDER BY p.is_pinned DESC, p.published_at DESC
-    LIMIT ?${params.length + 1} OFFSET ?${params.length + 2}
-  `
-  return { sql, params: [...params, limit, offset] }
-}
-
-function blogPublicPostsCountQuery(ownerId: string, filter: PublicPostsFilter): { sql: string; params: unknown[] } {
-  const { clauses, params } = blogPublicPostsWhere(ownerId, filter)
-  return {
-    sql: `SELECT COUNT(*) AS n FROM blog_posts p LEFT JOIN blog_categories c ON p.category_id = c.id WHERE ${clauses}`,
-    params,
-  }
-}
-
-function toPublicPostSummary(row: BlogPostPublicRow): {
+function toPublicPostSummary(row: BlogPostPublicRow & { snippet?: string }): {
   id: string
   slug: string
   title: string
@@ -205,6 +146,9 @@ function toPublicPostSummary(row: BlogPostPublicRow): {
   commentsCount: number
   publishedAt: number
   updatedAt: number
+  // Present only on a search answered from the full-text index: the text around the match, which
+  // the reader-facing list prefers over the post's own excerpt.
+  snippet?: string
 } {
   return {
     id: row.id,
@@ -220,6 +164,7 @@ function toPublicPostSummary(row: BlogPostPublicRow): {
     commentsCount: row.comments_count || 0,
     publishedAt: row.published_at,
     updatedAt: row.updated_at,
+    ...(row.snippet ? { snippet: row.snippet } : {}),
   }
 }
 

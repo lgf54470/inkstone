@@ -127,6 +127,7 @@ export function normalizePost(value: unknown): BlogPost {
     isPinned: Boolean(p.isPinned ?? p.is_pinned ?? false),
     views: toNumber(p.views),
     commentsCount: toNumber(p.commentsCount) || toNumber(p.comments_count) || 0,
+    snippet: asString(p.snippet) || undefined,
     createdAt: toTimestamp(p.createdAt) || toTimestamp(p.created_at) || Date.now(),
     updatedAt: toTimestamp(p.updatedAt) || toTimestamp(p.updated_at) || Date.now(),
     seoTitle: asString(p.seoTitle) || asString(p.seo_title),

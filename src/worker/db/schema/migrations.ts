@@ -876,4 +876,32 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       ...BLOG_REVISIONS_INDEX_STATEMENTS,
     ],
   },
+  // Blog search moves onto its own full text index. The index table itself is created by the schema
+  // path (like the note one, it only exists where FTS5 does), so the migration's job is the queue
+  // plus the backfill: every post that exists when this migration runs is enqueued once, because
+  // the indexed text has to be segmented in code and no migration can run it. Posts written after
+  // this point enqueue themselves in the same batch as their write.
+  {
+    version: 59,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS blog_fts_queue (
+         user_id TEXT NOT NULL,
+         post_id TEXT NOT NULL,
+         kind TEXT NOT NULL CHECK (kind IN ('upsert', 'delete')),
+         created_at INTEGER NOT NULL,
+         PRIMARY KEY (user_id, post_id)
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_fts_queue_due
+         ON blog_fts_queue(user_id, created_at, post_id)`,
+      `INSERT INTO blog_fts_queue (user_id, post_id, kind, created_at)
+         SELECT user_id, id, 'upsert', CAST(strftime('%s', 'now') AS INTEGER) * 1000
+           FROM blog_posts WHERE deleted_at IS NULL
+         ON CONFLICT(user_id, post_id) DO UPDATE SET
+           kind = excluded.kind,
+           created_at = CASE
+             WHEN excluded.created_at > blog_fts_queue.created_at THEN excluded.created_at
+             ELSE blog_fts_queue.created_at + 1
+           END`,
+    ],
+  },
 ]

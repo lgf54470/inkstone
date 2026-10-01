@@ -76,6 +76,19 @@ describe('api.getPosts payload mapping', () => {
     expect(result.posts[0]!.publishedAt).toBe(Date.parse('2026-01-02T00:00:00Z'))
   })
 
+  it('carries the search match snippet and leaves it absent when the answer has none', async () => {
+    stubFetch({
+      posts: [{ ...SNAKE_CASE_POST, snippet: '…the needle lives here…' }],
+      pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    })
+    const searched = await api.getPosts({ search: 'needle' })
+    expect(searched.posts[0]?.snippet).toBe('…the needle lives here…')
+
+    stubFetch({ posts: [SNAKE_CASE_POST], pagination: { total: 1, page: 1, limit: 10, totalPages: 1 } })
+    const unranked = await api.getPosts({ search: 'needle' })
+    expect(unranked.posts[0]?.snippet).toBeUndefined()
+  })
+
   it('rejects when fetch fails instead of fabricating posts', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down') }))
     await expect(api.getPosts({})).rejects.toThrow('network down')
