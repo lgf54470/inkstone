@@ -8,7 +8,7 @@ import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { FORM_BODY_LIMITS, JSON_BODY_LIMITS, readFormDataWithinLimit, readJson } from '../../lib/request'
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
-import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
+import { enforceAttachmentUploadBudget } from '../../lib/upload-budget'
 import { requireAuth } from '../../middleware/auth'
 import { removeTagFromAttachmentJson } from './helpers'
 import { renameTagInAttachmentJson } from './helpers'
@@ -22,7 +22,7 @@ export function registerFilesOrganizerRoutes(filesRoutes: Hono<AppBindings>): vo
 function registerFilesUploadRoute(filesRoutes: Hono<AppBindings>): void {
   filesRoutes.post('/', requireAuth, async (c) => {
     const userId = c.get('userId')
-    await enforceUploadThrottle(c.env.DB, userId)
+    await enforceAttachmentUploadBudget(c.env.DB, userId)
 
     const { file, noteId, folderId } = await readUploadForm(c)
     if (file.size > LIMITS.attachmentMaxBytes) {
@@ -61,27 +61,6 @@ function registerFilesUploadRoute(filesRoutes: Hono<AppBindings>): void {
     }
     return c.json(attachment, 201)
   })
-}
-
-async function enforceUploadThrottle(db: D1Database, userId: string): Promise<void> {
-  try {
-    await consumeAttemptBudget(db, [{
-      key: `attachment-upload:${userId}`,
-      maxAttempts: LIMITS.attachmentUploadsPerHour,
-      windowMs: 60 * 60 * 1000,
-      lockMs: 60 * 60 * 1000,
-    }])
-  } catch (error) {
-    if (error instanceof ThrottleError) {
-      throw new ApiError(
-        429,
-        'too_many_attempts',
-        `Too many uploads. Try again in ${error.retryAfterSec} seconds`,
-        { retryAfter: error.retryAfterSec },
-      )
-    }
-    throw error
-  }
 }
 
 async function readUploadForm(

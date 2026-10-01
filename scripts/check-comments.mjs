@@ -2694,6 +2694,12 @@ const allowed = new Map([
     '// The demo\'s visit fixtures carry fingerprints and a demo backend has no secret that could be',
     '// missing, so it reports the product\'s normal state rather than a zero nobody can explain.',
   ]],
+  ['src/client/demo/backend/routes/blog-media.ts', [
+    '/**\n * The demo\'s media library (FEA-07): the same read/upload/delete contract the worker answers,\n * backed by the demo\'s in-memory attachments. A picture a note owns or a post shows is refused\n * exactly as the worker refuses it, so the picker\'s failure path is exercised in demo mode too.\n */',
+    '// The demo serves attachments from its own files route; a cover stored here points at that,',
+    '// which is why the delete guard below compares against this same value.',
+    '/** The first live post showing this picture, mirroring the worker\'s refusal to remove a used cover. */',
+  ]],
   ['src/client/demo/backend/routes/blog-mutations.ts', [
     '// The worker\'s rule (FEA-04): the note keeps its one post, so publishing a note whose post waits',
     '// in the bin revives that post instead of creating a second one for the same note.',
@@ -2786,6 +2792,9 @@ const allowed = new Map([
     '// The same single-choice filter the worker applies, asked of the shared predicate. `real` is the',
     '// three traffic toggles at once, which is also what a reading\'s default excludes.',
     '/**\n * The demo\'s session view: the same sample rows the log lists, folded the way the worker folds\n * them (same fingerprint, within the gap, same UTC day), so the panel\'s empty, single-session and\n * multi-session states can all be seen without a spent history.\n */',
+  ]],
+  ['src/client/demo/blog-media.test.ts', [
+    '/**\n * FEA-07 in demo mode: the picker\'s library must back the same read/upload/delete contract the\n * worker answers, including the two refusals (a note-owned picture, a picture a live post shows).\n * It runs in the node project because the jsdom FormData rejects the File class Node hands us.\n */',
   ]],
   ['src/client/demo/blog-smoke.test.ts', [
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
@@ -3214,6 +3223,20 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-publish-lazy.ts', [
     '/**\n * The publish form (title, slug availability check, tags, cover, summary) is opened from a note\n * row\'s blog submenu, so the note list — which imports the blog barrel for the store and the\n * submenu — must not carry it. Same rule as the hub: exported as a lazy component, rendered inside a\n * Suspense by every caller.\n */',
+  ]],
+  ['src/client/features/blog/blog-publish-modal/cover-field.test.ts', [
+    '/**\n * FEA-07: the cover picker. The library has to draw the account\'s own pictures, hand the picked\n * public address back to the field, upload through the same route every attachment uses, and say\n * what happened when a load fails or a deletion is refused — a failure must never read as an empty\n * library.\n */',
+    '// `confirm` is the only overlay export this test replaces; `Modal` stays real so the dialog the',
+    '// picker actually draws is the one under test.',
+    '/** The field is controlled by its parent, so the harness is where the picked address lands. */',
+    '// Picking closes the library; the field is the only thing left of it.',
+  ]],
+  ['src/client/features/blog/blog-publish-modal/cover-field.tsx', [
+    '/**\n * The cover field and the media library behind it (FEA-07). A cover is still an address the author\n * may paste, but the library is now a first-class source: the picker lists the account\'s pictures,\n * uploads through the same route the attachment library uses, and hands back the public address the\n * post stores. A picture a note owns or another post shows is refused by the server, so the picker\n * only has to say what happened rather than guard the rule itself.\n */',
+    '/** The picked address drawn as it will read on the blog; a dead URL hides itself instead of burning. */',
+    '/** The library\'s two writes live together so the modal itself stays a view. */',
+    '/** The library\'s upload control: one hidden input driven by a real button. */',
+    '/** The library\'s own three states — loading, failed, empty — kept apart from the loaded grid. */',
   ]],
   ['src/client/features/blog/blog-publish-modal/index.test.ts', [
     '// The dialog loads categories and asks about the slug when it opens; neither is what this test is',
@@ -12700,6 +12723,7 @@ const allowed = new Map([
   ]],
   ['src/shared/locales/en-US/blog-1.ts', [
     '// FEA-06 comment replies, the notification webhook, and the spam rules the settings dialog edits.',
+    '// FEA-07 media library: the cover field\'s picker, its upload and delete actions.',
   ]],
   ['src/shared/locales/en-US/blog-2.ts', [
     '// FEA-04 recycle bin: a deleted post waits there until it is restored or erased for good.',
@@ -12735,6 +12759,7 @@ const allowed = new Map([
   ]],
   ['src/shared/locales/zh-CN/blog-1.ts', [
     '// FEA-06 comment replies, the notification webhook, and the spam rules the settings dialog edits.',
+    '// FEA-07 media library: the cover field\'s picker, its upload and delete actions.',
   ]],
   ['src/shared/locales/zh-CN/blog-2.ts', [
     '// FEA-04 recycle bin: a deleted post waits there until it is restored or erased for good.',
@@ -12849,6 +12874,7 @@ const allowed = new Map([
     '/**\n   * The post\'s own search and social preview values. Empty means "use what the post says" — the\n   * title, the excerpt and the cover — so an untouched post behaves exactly as it did before these\n   * existed, and `seoNoindex` is the one flag that has to be read (false = indexable).\n   */',
     '/**\n * One page of the management list: every column the table and grid draw, and never the body. The\n * body is the one field measured in kilobytes, and the list asked for it only to drop it again.\n */',
     '/**\n * A post in the recycle bin (FEA-04): the list row plus the moment it was deleted. The entry is the\n * same shape the management list draws, so the bin shows what is waiting to come back.\n */',
+    '/**\n * One picture in the account\'s media library (FEA-07): an attachment seen through the picker\'s\n * question. `previewUrl` is the owner-facing address the picker draws, and `publicUrl` is what a\n * stored cover carries — the same picture, served only while a published post shows it.\n */',
     '/**\n * The complete body-free view of an account\'s posts, keyed by the note each was published from. The\n * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a\n * paginated row list cannot answer for a note that sits on another page.\n */',
     '/** The two flag tabs; the admin list filters on them exactly like a status. */',
     '/** The blog\'s author wrote this one (FEA-06); the reader-facing view marks it as such. */',
@@ -13426,6 +13452,9 @@ const allowed = new Map([
     '// Best-effort release; a failed cancel leaks only until the runtime',
     '// reclaims the stream, with no correctness impact on the operation.',
   ]],
+  ['src/worker/lib/upload-budget.ts', [
+    '/**\n * The hourly attachment upload budget. The attachment library, the MCP library and the blog\'s\n * media library all write into the same attachments table and the same object storage, so they\n * must not hand out a budget of their own: a caller that has run out in one place has run out in\n * all of them, and one path cannot be used to get around another\'s ceiling.\n */',
+  ]],
   ['src/worker/lib/visit-aggregates.ts', [
     '// Both visit tables answer the same questions (totals, timeline buckets, five',
     '// distributions, per-target stats). Every range is summarized in SQL: a bounded range used to fetch',
@@ -13622,6 +13651,26 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/links.ts', [
     '/**\n * The client used to send these three and get the whole table back, filtering it again in the\n * browser. The server now answers the question that was asked: one statement for the page, one for\n * the tab badges. An unknown status is refused rather than quietly treated as `all`.\n */',
+  ]],
+  ['src/worker/routes/blog/media.ts', [
+    '/**\n * The blog\'s own media library (FEA-07). It is the attachment library seen through a narrower\n * question — "which pictures may a post use as its cover" — so it lists the account\'s images (and\n * only images), accepts an upload through the same storage, quota and validation path as every\n * other attachment, and refuses to delete a picture a post or a note is still using. The public\n * half lives here too: a picture is served to readers only while a published post of its owner\n * shows it, which is what makes a cover work without opening the attachment library to the world.\n */',
+    '/** The library is a picker, not an archive: past this the author uploads fewer or searches by hand. */',
+    '// The picker draws the owner\'s own attachment through the attachment route (which serves it to',
+    '// its owner), and the cover it hands back is the public address the reader-facing page may use.',
+    '/** The public address of an attachment, as a stored cover URL carries it. */',
+    '// A cover is an `<img>`: the upload is checked before anything is stored, so a PDF or a script',
+    '// never becomes a library entry the picker would offer as a picture.',
+    '// A picture a note is using or a post is showing is not the library\'s to remove: the first',
+    '// would break the note\'s own attachment list, the second would break a live cover. Both',
+    '// refusals name the caller\'s next step instead of deleting quietly.',
+    '// A failed drain is safe: the cleanup row stays queued and the next scheduled run retries it.',
+    '/** The first post of the account that still shows this image, in either cover slot. */',
+    '// A stored cover URL is the only reason this picture is public: an attachment the blog has not',
+    '// published stays private no matter who asks for it.',
+    '// The bytes behind an id never change (re-uploading stores a new id), so a reader\'s browser',
+    '// and any cache in front of it may keep this for a while without asking again.',
+    '/** A picture may be served publicly only while a published post of its owner shows it (FEA-07). */',
+    '/** The reader-facing half of the media library, mounted under `/api/blog/public`. */',
   ]],
   ['src/worker/routes/blog/organizer.ts', [
     '// Counted from the tags JSON by SQL: the list used to read every post row back and parse the',
@@ -14853,6 +14902,9 @@ const allowed = new Map([
     '// 2023-11-14: reader-facing queries compare a post\'s publish moment against the real clock (that is',
     '// what makes a scheduled post invisible), so a fixture that must be readable sits in the real past —',
     '// `H.now` is a deterministic 2033, which the rule would rightly treat as scheduling.',
+    '/** A minimal R2 binding: the media tests upload and serve through the real attachment code. */',
+    '/** A 1×1 PNG with a real signature: the upload path validates bytes, not the claimed type. */',
+    '/** One attachment row as the library stores it, with an object sitting in the R2 stub. */',
     '/** The reader\'s browser reporting a page view: the only caller that counts one. */',
     '// FEA-04: the row moved to the recycle bin instead of vanishing; its own view lists it.',
     '// A post carries its note\'s body into a second row, so the write that copies it must weigh the',
@@ -14930,6 +14982,15 @@ const allowed = new Map([
     '// The sender learns the ordinary answer, not which rule fired.',
     '// One link is a link, not spam: the threshold is what keeps a quoted address publishable.',
     '// What leaves the worker says what was written, never who wrote it beyond the name.',
+    '/**\n * FEA-07: the cover picker\'s library. It lists the account\'s own pictures, uploads through the same\n * validation/quotas as every attachment, refuses to remove one a note owns or a live cover shows,\n * and serves a picture to readers only while a published post of its owner still shows it.\n */',
+    '// A library picture is an ordinary attachment: no note owns it, so the attachment library',
+    '// lists it too and the same cleanup path can reclaim its object.',
+    '// Claiming an image type is not enough: the bytes decide, and these are not a picture.',
+    '// The object is reclaimed through the shared cleanup queue rather than left orphaned; the',
+    '// refused pictures keep theirs.',
+    '// An unpublished post no longer justifies the picture being public, and another account\'s id',
+    '// is not part of this blog at all.',
+    '// The management half keeps working for the owner while the picture is not public.',
   ]],
   ['tests/blog-slug-scope.test.ts', [
     '/**\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account\'s own post\n * fail to publish because the first account had used the name, and `/check-slug` answered the same\n * question for both, so one blog\'s naming was readable from another\'s editor.\n */',

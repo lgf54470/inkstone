@@ -1,4 +1,4 @@
-import { Globe, Image as ImageIcon, Check, Clock, Hash, X, Sparkles, ExternalLink } from 'lucide-react'
+import { Globe, Check, Clock, Hash, X, ExternalLink } from 'lucide-react'
 import type { BlogPostIndexEntry } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
@@ -7,6 +7,7 @@ import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { fromDateTimeLocalValue } from '../../../lib/time'
 import { useBlogPublishForm } from './use-blog-publish-form'
+import { CoverField } from './cover-field'
 import { SeoFields } from './seo-fields'
 
 const MODAL_WIDTH = 640
@@ -79,32 +80,6 @@ function PublishTimeField({ form }: { form: PublishForm }) {
         leading={<Clock size={13} className='text-[var(--text-quaternary)]' />}
       />
     </Field>
-  )
-}
-
-function CoverField({ form }: { form: PublishForm }) {
-  const { coverUrl, setCoverUrl, firstImageInContent } = form
-  return (
-    <div className='space-y-1.5'>
-      <Field label={t('blog.cover')} hint={`${t('blog.cover_hint')} ${t('blog.frontmatter_cover_hint')}`}>
-        <Input
-          leading={<ImageIcon size={13} className='text-[var(--text-quaternary)]' />}
-          value={coverUrl}
-          onChange={(e) => setCoverUrl(e.target.value)}
-          placeholder={t('blog.cover_placeholder')}
-        />
-      </Field>
-      {firstImageInContent && (
-        <button
-          type='button'
-          onClick={() => setCoverUrl(firstImageInContent.url)}
-          className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--accent)] hover:underline'
-        >
-          <Sparkles size={11} />
-          {t('blog.use_first_image')}
-        </button>
-      )}
-    </div>
   )
 }
 
@@ -366,7 +341,11 @@ export function BlogPublishModal({
       <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\\.5)]">
         <TitleField form={form} />
         <SlugField form={form} />
-        <CoverField form={form} />
+        <CoverField
+          coverUrl={form.coverUrl}
+          onCoverUrlChange={form.setCoverUrl}
+          firstImageInContent={form.firstImageInContent}
+        />
         <div className='grid grid-cols-2 gap-4'>
           <FolderField form={form} />
           <CategoryField form={form} />

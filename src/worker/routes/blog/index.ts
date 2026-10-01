@@ -3,6 +3,7 @@ import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
 import { registerBlogCommentsRoutes } from './comments'
 import { registerBlogLinksRoutes } from './links'
+import { registerBlogMediaRoutes } from './media'
 import { registerBlogOrganizerRoutes } from './organizer'
 import { registerBlogPostsRoutes } from './posts'
 import { registerBlogPublicRoutes } from './public'
@@ -25,4 +26,5 @@ registerBlogTrashRoutes(blogManageRoutes)
 registerBlogOrganizerRoutes(blogManageRoutes)
 registerBlogCommentsRoutes(blogManageRoutes)
 registerBlogLinksRoutes(blogManageRoutes)
+registerBlogMediaRoutes(blogManageRoutes)
 registerBlogPublicRoutes(blogPublicRoutes)

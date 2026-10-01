@@ -23,7 +23,56 @@ const USER = 'user-1'
 // what makes a scheduled post invisible), so a fixture that must be readable sits in the real past —
 // `H.now` is a deterministic 2033, which the rule would rightly treat as scheduling.
 const VISIBLE_PUBLISHED_AT = 1_700_000_000_000
-const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
+
+interface MediaStoredObject {
+  bytes: Uint8Array
+  httpMetadata?: { contentType?: string }
+  customMetadata?: Record<string, string>
+}
+
+/** A minimal R2 binding: the media tests upload and serve through the real attachment code. */
+function mapR2() {
+  const objects = new Map<string, MediaStoredObject>()
+  return {
+    objects,
+    put: async (key: string, bytes: Uint8Array, options?: MediaStoredObject) => {
+      objects.set(key, { bytes, httpMetadata: options?.httpMetadata, customMetadata: options?.customMetadata })
+    },
+    get: async (key: string) => {
+      const stored = objects.get(key)
+      if (!stored) return null
+      return {
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(stored.bytes)
+            controller.close()
+          },
+        }),
+        size: stored.bytes.byteLength,
+        customMetadata: stored.customMetadata ?? {},
+        httpMetadata: stored.httpMetadata,
+      }
+    },
+    delete: async (keys: string[]) => {
+      for (const key of keys) objects.delete(key)
+    },
+  }
+}
+
+const MEDIA_R2 = mapR2()
+/** A 1×1 PNG with a real signature: the upload path validates bytes, not the claimed type. */
+const PNG_BYTES = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+  (char) => char.charCodeAt(0),
+)
+
+const DB_ENV = {
+  env: {
+    DB: null as unknown as D1Database,
+    VISIT_FP_SECRET: undefined as string | undefined,
+    FILES: MEDIA_R2 as unknown as AppBindings['Bindings']['FILES'],
+  },
+}
 const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 
 function shaOf(content: string): string {
@@ -36,7 +85,44 @@ async function makeDb(): Promise<D1Shim> {
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
   DB_ENV.env.VISIT_FP_SECRET = undefined
+  MEDIA_R2.objects.clear()
   return db
+}
+
+/** One attachment row as the library stores it, with an object sitting in the R2 stub. */
+async function seedAttachment(
+  db: D1Shim,
+  fields: {
+    id: string
+    userId?: string
+    noteId?: string | null
+    mime?: string
+    name?: string
+    createdAt?: number
+  },
+): Promise<string> {
+  const userId = fields.userId ?? USER
+  const objectKey = `images/2023-11-14/${userId}/${fields.id}.png`
+  await runSql(
+    db,
+    `INSERT INTO attachments (id, user_id, note_id, filename, mime, size, sha256, storage, object_key, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, 128, 'sha', 'r2', ?6, ?7)`,
+    fields.id,
+    userId,
+    fields.noteId ?? null,
+    fields.name ?? `${fields.id}.png`,
+    fields.mime ?? 'image/png',
+    objectKey,
+    fields.createdAt ?? H.now - 2000,
+  )
+  MEDIA_R2.objects.set(objectKey, { bytes: PNG_BYTES, httpMetadata: { contentType: fields.mime ?? 'image/png' } })
+  return objectKey
+}
+
+function uploadForm(filename: string, bytes: Uint8Array, type: string): RequestInit {
+  const form = new FormData()
+  form.set('file', new File([bytes as unknown as BlobPart], filename, { type }))
+  return { method: 'POST', body: form }
 }
 
 async function seedUser(db: D1Shim, id = USER): Promise<void> {
@@ -2112,5 +2198,112 @@ describe('blog comment replies, notifications and spam (FEA-06)', () => {
     } finally {
       fetchSpy.mockRestore()
     }
+  })
+})
+
+/**
+ * FEA-07: the cover picker's library. It lists the account's own pictures, uploads through the same
+ * validation/quotas as every attachment, refuses to remove one a note owns or a live cover shows,
+ * and serves a picture to readers only while a published post of its owner still shows it.
+ */
+describe('blog media library (FEA-07)', () => {
+  it('lists only the account\'s own pictures, newest first, with both addresses', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    await seedAttachment(db, { id: 'm-old', name: 'old.png', createdAt: H.now - 3000 })
+    await seedAttachment(db, { id: 'm-new', name: 'new.png', createdAt: H.now - 1000 })
+    await seedAttachment(db, { id: 'm-other', userId: 'user-2' })
+    await seedAttachment(db, { id: 'm-doc', mime: 'application/pdf', name: 'doc.pdf' })
+    const app = makeApp()
+
+    const listed = await request(app, '/api/blog/media')
+    expect(listed.status).toBe(200)
+    const { media } = await listed.json()
+    expect(media.map((item: { id: string }) => item.id)).toEqual(['m-new', 'm-old'])
+    expect(media[0]).toMatchObject({
+      filename: 'new.png',
+      mime: 'image/png',
+      previewUrl: '/api/files/m-new?preview=1',
+      publicUrl: '/api/blog/public/media/m-new',
+    })
+  })
+
+  it('stores an uploaded picture and refuses everything that is not one', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const uploaded = await request(app, '/api/blog/media', uploadForm('cover.png', PNG_BYTES, 'image/png'))
+    expect(uploaded.status).toBe(201)
+    const item = await uploaded.json()
+    expect(item).toMatchObject({ filename: 'cover.png', mime: 'image/png', width: 1, height: 1 })
+    expect(item.publicUrl).toBe(`/api/blog/public/media/${item.id}`)
+    // A library picture is an ordinary attachment: no note owns it, so the attachment library
+    // lists it too and the same cleanup path can reclaim its object.
+    expect(await firstRow(db, 'SELECT note_id, mime FROM attachments WHERE id = ?1', item.id)).toMatchObject({
+      note_id: null,
+      mime: 'image/png',
+    })
+
+    const text = new TextEncoder().encode('not a picture')
+    expect((await request(app, '/api/blog/media', uploadForm('notes.txt', text, 'text/plain'))).status).toBe(400)
+    // Claiming an image type is not enough: the bytes decide, and these are not a picture.
+    expect((await request(app, '/api/blog/media', uploadForm('fake.png', text, 'image/png'))).status).toBe(400)
+  })
+
+  it('deletes a free picture but refuses one a note owns or a live cover shows', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedAttachment(db, { id: 'm-note', noteId: 'n-1' })
+    await seedAttachment(db, { id: 'm-cover' })
+    const freeKey = await seedAttachment(db, { id: 'm-free' })
+    await seedBlogPost(db, { id: 'p-covered', slug: 'covered', title: 'Covered' })
+    await runSql(db, 'UPDATE blog_posts SET cover_url = ?1 WHERE id = ?2', '/api/blog/public/media/m-cover', 'p-covered')
+    const app = makeApp()
+
+    const owned = await request(app, '/api/blog/media/m-note', { method: 'DELETE' })
+    expect(owned.status).toBe(400)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM attachments WHERE id = ?1', 'm-note')).toMatchObject({ n: 1 })
+
+    const used = await request(app, '/api/blog/media/m-cover', { method: 'DELETE' })
+    expect(used.status).toBe(400)
+    expect((await used.json()).error.message).toContain('Covered')
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM attachments WHERE id = ?1', 'm-cover')).toMatchObject({ n: 1 })
+
+    const free = await request(app, '/api/blog/media/m-free', { method: 'DELETE' })
+    expect(free.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM attachments WHERE id = ?1', 'm-free')).toMatchObject({ n: 0 })
+    // The object is reclaimed through the shared cleanup queue rather than left orphaned; the
+    // refused pictures keep theirs.
+    await vi.waitFor(() => expect(MEDIA_R2.objects.has(freeKey)).toBe(false))
+    expect(MEDIA_R2.objects.size).toBe(2)
+  })
+
+  it('serves a cover to readers only while a published post still shows it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    await seedAttachment(db, { id: 'm-live' })
+    await seedAttachment(db, { id: 'm-other', userId: 'user-2' })
+    const post = await seedBlogPost(db, { id: 'p-live', slug: 'live-post', title: 'Live' })
+    await runSql(db, 'UPDATE blog_posts SET cover_url = ?1 WHERE id = ?2', '/api/blog/public/media/m-live', post.id)
+    const app = makeApp()
+
+    const served = await request(app, '/api/blog/public/media/m-live')
+    expect(served.status).toBe(200)
+    expect(served.headers.get('Content-Type')).toBe('image/png')
+    expect(served.headers.get('Cache-Control')).toBe('public, max-age=86400')
+    expect(new Uint8Array(await served.arrayBuffer()).byteLength).toBe(PNG_BYTES.byteLength)
+
+    // An unpublished post no longer justifies the picture being public, and another account's id
+    // is not part of this blog at all.
+    await runSql(db, 'UPDATE blog_posts SET is_published = 0 WHERE id = ?1', post.id)
+    expect((await request(app, '/api/blog/public/media/m-live')).status).toBe(404)
+    expect((await request(app, '/api/blog/public/media/m-other')).status).toBe(404)
+
+    // The management half keeps working for the owner while the picture is not public.
+    const stillListed = await request(app, '/api/blog/media')
+    expect((await stillListed.json()).media.map((item: { id: string }) => item.id)).toEqual(['m-live'])
   })
 })

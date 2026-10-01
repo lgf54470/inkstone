@@ -57,6 +57,23 @@ export interface BlogTrashEntry extends BlogPostSummary {
 }
 
 /**
+ * One picture in the account's media library (FEA-07): an attachment seen through the picker's
+ * question. `previewUrl` is the owner-facing address the picker draws, and `publicUrl` is what a
+ * stored cover carries — the same picture, served only while a published post shows it.
+ */
+export interface BlogMediaItem {
+  id: string
+  filename: string
+  mime: string
+  size: number
+  width: number | null
+  height: number | null
+  createdAt: number
+  previewUrl: string
+  publicUrl: string
+}
+
+/**
  * The complete body-free view of an account's posts, keyed by the note each was published from. The
  * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a
  * paginated row list cannot answer for a note that sits on another page.

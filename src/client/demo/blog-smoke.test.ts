@@ -52,6 +52,7 @@ const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/posts/demo-post-4', init: { method: 'DELETE' } },
   { path: '/api/blog/posts/batch', init: json({ action: 'delete', postIds: ['demo-post-4'] }) },
   { path: '/api/blog/trash' },
+  { path: '/api/blog/media' },
   // The single delete above left demo-post-4 in the bin: purge it, then move another post in and back
   // out, so every trash route answers on both an occupied and an emptying bin.
   { path: '/api/blog/trash/demo-post-4', init: { method: 'DELETE' } },

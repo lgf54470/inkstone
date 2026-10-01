@@ -190,4 +190,14 @@ export const messages = {
 'blog.selected_posts_count': '{value0} posts selected',
 'blog.batch_publish': 'Batch Publish',
 'blog.batch_unpublish': 'Batch Unpublish',
+// FEA-07 media library: the cover field's picker, its upload and delete actions.
+'blog.media_library': 'Media Library',
+'blog.media_choose_cover': 'Choose a Cover',
+'blog.media_choose_hint': 'Pick an image from the library, or upload a new one.',
+'blog.media_upload': 'Upload Image',
+'blog.media_uploaded': 'Image uploaded',
+'blog.media_empty': 'No images yet. Upload one to use it as a cover.',
+'blog.media_delete': 'Delete Image',
+'blog.media_deleted': 'Image deleted',
+'blog.confirm_delete_media': 'Delete "{value0}" from the media library? This cannot be undone.',
 }

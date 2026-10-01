@@ -3,6 +3,7 @@ import type { DemoState } from '../../state'
 import type { BlogCommentsCounts, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, ShareTimelineRange } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
 import { buildAnalytics, buildStats, createBlogDemoData, type BlogDemoData } from './blog-seed'
+import { registerBlogMediaRoutes } from './blog-media'
 import {
   registerBlogCategoryRoutes,
   registerBlogFolderRoutes,
@@ -218,6 +219,7 @@ export function registerBlogRoutes(app: Hono, state: DemoState): void {
   registerBlogPostItemRoutes(app, data, state)
   registerBlogPostBatchRoute(app, data)
   registerBlogTrashRoutes(app, data)
+  registerBlogMediaRoutes(app, state, data)
   registerBlogFolderRoutes(app, data)
   registerBlogTagRoutes(app, data)
   registerBlogCategoryRoutes(app, data)

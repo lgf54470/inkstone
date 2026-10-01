@@ -15,6 +15,7 @@ import { getBlogSettings } from './settings'
 import { blogOwnerOf, registerBlogOwnerMiddleware } from './owner'
 import { registerBlogPublicCommentsRoutes } from './public-comments'
 import { registerBlogPublicLinksRoutes } from './public-links'
+import { registerBlogPublicMediaRoutes } from './media'
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogCorsMiddleware(blogPublicRoutes)
@@ -29,6 +30,7 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogPublicCalendarRoute(blogPublicRoutes)
   registerBlogPublicCommentsRoutes(blogPublicRoutes)
   registerBlogPublicLinksRoutes(blogPublicRoutes)
+  registerBlogPublicMediaRoutes(blogPublicRoutes)
   registerBlogPublicVisitBeaconRoute(blogPublicRoutes)
   registerPublicMusicRoutes(blogPublicRoutes)
 }

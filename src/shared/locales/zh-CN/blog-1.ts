@@ -190,4 +190,14 @@ export const messages = {
 'blog.selected_posts_count': '已选择 {value0} 篇',
 'blog.batch_publish': '批量发布',
 'blog.batch_unpublish': '批量下架',
+// FEA-07 media library: the cover field's picker, its upload and delete actions.
+'blog.media_library': '媒体库',
+'blog.media_choose_cover': '选择封面',
+'blog.media_choose_hint': '从媒体库选择一张图片，或上传新图片。',
+'blog.media_upload': '上传图片',
+'blog.media_uploaded': '图片已上传',
+'blog.media_empty': '媒体库还没有图片，上传一张即可用作封面。',
+'blog.media_delete': '删除图片',
+'blog.media_deleted': '图片已删除',
+'blog.confirm_delete_media': '确定要从媒体库删除「{value0}」吗？此操作不可撤销。',
 }

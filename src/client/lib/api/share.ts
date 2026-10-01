@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogMediaItem, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -219,6 +219,17 @@ export const share = {
         request<{ ok: true }>(`/api/blog/trash/${id}`, { method: 'DELETE' }),
       empty: () =>
         request<{ purged: number }>('/api/blog/trash/empty', { method: 'POST' }),
+    },
+    media: {
+      list: (signal?: AbortSignal) =>
+        request<{ media: BlogMediaItem[] }>('/api/blog/media', { signal }),
+      upload: (file: File) => {
+        const form = new FormData()
+        form.append('file', file)
+        return request<BlogMediaItem>('/api/blog/media', { method: 'POST', formData: form })
+      },
+      remove: (id: string) =>
+        request<{ ok: true }>(`/api/blog/media/${id}`, { method: 'DELETE' }),
     },
     posts: {
       list: (params?: { status?: string; categoryId?: string; folderId?: string; tag?: string; search?: string; sort?: string; page?: number }, signal?: AbortSignal) =>

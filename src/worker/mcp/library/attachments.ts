@@ -8,7 +8,7 @@ import type { Env } from '../../env'
 import { fromBase64, sha256Hex, toBase64 } from '../../lib/encoding'
 import { ApiError } from '../../lib/errors'
 import { isValidId, newId } from '../../lib/id'
-import { ThrottleError, consumeAttemptBudget } from '../../lib/throttle'
+import { enforceAttachmentUploadBudget } from '../../lib/upload-budget'
 import { runIdempotent } from '.././operations'
 import { LIMITS } from '@shared/constants'
 
@@ -162,7 +162,7 @@ async function persistUploadedAttachment(
   input: UploadAttachmentInput,
   payload: { id: string; bytes: Uint8Array },
 ): Promise<ReturnType<typeof attachmentUploadResult>> {
-  await assertUploadBudget(context.env.DB, context.userId)
+  await enforceAttachmentUploadBudget(context.env.DB, context.userId)
   const collision = await context.env.DB.prepare(`SELECT 1 FROM attachments WHERE id = ?1`).bind(payload.id).first()
   if (collision) throw ApiError.conflict('This attachment id is already in use')
   const stored = await persistAttachmentWithinQuota(context.env, {
@@ -183,27 +183,6 @@ async function persistUploadedAttachment(
     width: stored.width,
     height: stored.height,
   })
-}
-
-async function assertUploadBudget(db: D1Database, userId: string): Promise<void> {
-  try {
-    await consumeAttemptBudget(db, [{
-      key: `attachment-upload:${userId}`,
-      maxAttempts: LIMITS.attachmentUploadsPerHour,
-      windowMs: 60 * 60 * 1000,
-      lockMs: 60 * 60 * 1000,
-    }])
-  } catch (error) {
-    if (error instanceof ThrottleError) {
-      throw new ApiError(
-        429,
-        'too_many_attempts',
-        `Too many uploads. Try again in ${error.retryAfterSec} seconds`,
-        { retryAfter: error.retryAfterSec },
-      )
-    }
-    throw error
-  }
 }
 
 function attachmentUploadResult(meta: AttachmentUploadMeta) {
