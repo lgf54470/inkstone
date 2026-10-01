@@ -22,6 +22,10 @@ const COMMENT_LINE = /^<!--(?:.*-->)?[ \t]*$/
 const LIST_MARKER = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]+)/
 const LINE_PARTS = /(\r?\n)/
 const SLIDE_LEVEL_KEY = 'slide-level'
+// `none` is the author saying "the headings are prose structure, not slide starts" — the one reading
+// of a `slide-level` value that is not a level. YAML hands it over as a plain string.
+const SLIDE_LEVEL_NONE = 'none'
+type DeclaredSlideLevel = 1 | 2 | typeof SLIDE_LEVEL_NONE
 const NOTE_OPEN = /^ {0,3}<!--[ \t]*(?:note|speaker):[ \t]*/i
 const NOTE_END = '-->'
 const LAYOUT_LINE = /^ {0,3}<!--[ \t]*layout[ \t]*:[ \t]*([a-z][a-z0-9_-]*)[ \t]*-->$/i
@@ -169,8 +173,9 @@ function readLines(source: string): Line[] {
   return lines
 }
 
-function slideLevelOf(data: Record<string, unknown>): 1 | 2 | null {
+function slideLevelOf(data: Record<string, unknown>): DeclaredSlideLevel | null {
   const value = data[SLIDE_LEVEL_KEY]
+  if (typeof value === 'string' && value.trim().toLowerCase() === SLIDE_LEVEL_NONE) return SLIDE_LEVEL_NONE
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
   return parsed === 1 || parsed === 2 ? parsed : null
 }
@@ -277,12 +282,25 @@ function autoSlideLevel(headings: Boundary[]): 1 | 2 | null {
   return count(2) >= 2 ? 2 : null
 }
 
-function dividerBoundaries(lines: Line[], bodyStart: number, declaredLevel: 1 | 2 | null): Boundary[] {
+/**
+ * Where the deck divides: the separators the author wrote, plus the headings at the level in force.
+ *
+ * One set used to switch the other off, so a note with a rule in it lost its heading sections. The
+ * two are read together now, and `buildDeck` drops the edges that land on an already-open slide.
+ */
+function slideBoundaries(lines: Line[], bodyStart: number, declaredLevel: DeclaredSlideLevel | null): Boundary[] {
   const { breaks, headings } = scanBoundaries(lines, bodyStart)
-  if (breaks.length) return breaks
+  if (declaredLevel === SLIDE_LEVEL_NONE) return breaks
   const level = declaredLevel ?? autoSlideLevel(headings)
-  if (level === null) return []
-  return headings.filter((heading) => heading.level <= level)
+  const edges = level === null ? breaks : [...breaks, ...headings.filter((heading) => heading.level <= level)]
+  return edges.sort((left, right) => left.line - right.line)
+}
+
+/** Whether the lines between two cuts hold nothing but blanks: the heading below has no slide of its
+ * own to open, because the cut above already starts the slide it would begin. */
+function blankRunBefore(lines: Line[], from: number, to: number): boolean {
+  for (let index = from; index < to; index++) if (lines[index]!.text.trim() !== '') return false
+  return true
 }
 
 function sliceSlide(lines: Line[], from: number, to: number): string {
@@ -299,12 +317,16 @@ function buildDeck(source: string): Deck {
   const bodyStart = raw[frontMatter.lineOffset]?.offset ?? source.length
   const { notes: found, lines } = readSpeakerNotes(raw, bodyStart)
   const marks = placeCues(found, frontMatter.lineOffset, lines.length)
-  const boundaries = dividerBoundaries(lines, bodyStart, slideLevelOf(frontMatter.data))
+  const boundaries = slideBoundaries(lines, bodyStart, slideLevelOf(frontMatter.data))
   const slides: string[] = []
   const notes: string[] = []
   const starts: number[] = [bodyStart]
   let from = frontMatter.lineOffset
   for (const boundary of boundaries) {
+    // Only a separator divides whatever is above it; a heading with nothing but blank lines above it
+    // opens the very slide the cut before it already opened, and cutting twice there makes a page of
+    // the heading's own blank lines and leaves the heading to the page below.
+    if (boundary.level !== 0 && blankRunBefore(lines, from, boundary.line)) continue
     slides.push(sliceSlide(lines, from, boundary.line))
     notes.push(joinNotes(marks, from, noteLimit(boundary)))
     // A separator only divides, so it belongs to no slide; a heading is the first line of

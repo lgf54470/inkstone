@@ -147,7 +147,7 @@ describe('splitIntoSlides — smart heading split', () => {
     expect(splitIntoSlides('cold open\n\n# Act I\n\nscene\n\n# Act II\n\nscene')).toEqual(['cold open', '# Act I\n\nscene', '# Act II\n\nscene'])
   })
 
-  it('keeps authored separators in charge and ignores heading structure', () => {
+  it('divides no further when headings sit above the level or on a slide a separator opened', () => {
     const source = '# A\n\n---\n\n# B\n\n## C\n\n## D'
     expect(splitIntoSlides(source)).toEqual(['# A', '# B\n\n## C\n\n## D'])
   })
@@ -164,6 +164,29 @@ describe('splitIntoSlides — smart heading split', () => {
   it('ignores an indented hash run, which markdown reads as a code block not a heading', () => {
     const source = '# A\n\ntext\n\n    # indented\n\n# B'
     expect(splitIntoSlides(source)).toEqual(['# A\n\ntext\n\n    # indented', '# B'])
+  })
+})
+
+// An authored rule and a heading section are two ways of saying where a slide starts, and a note can
+// carry both: the rule marks the beats the author planned, the headings mark the sections they wrote.
+// Reading one as a switch that turns the other off left the mixed note with the separators only, so a
+// heading in the middle of a long slide stayed buried however tall that slide got.
+describe('splitIntoSlides — separators and headings divide together', () => {
+  it('divides on both when a note mixes separators with heading sections', () => {
+    const source = ['intro', '', '# A', 'a', '', '---', '', '# B', 'b', '', '# C', 'c', '', '---', '', '# D', 'd'].join('\n')
+    expect(splitIntoSlides(source)).toEqual(['intro', '# A\na', '# B\nb', '# C\nc', '# D\nd'])
+  })
+
+  it('cuts no blank page where a heading falls on the slide a separator already opened', () => {
+    expect(splitIntoSlides('intro\n\n---\n\n# Two\n\nbody\n\n# Three\n\nbody')).toEqual(['intro', '# Two\n\nbody', '# Three\n\nbody'])
+  })
+
+  it('keeps a separator inside a heading section dividing as its own page does', () => {
+    expect(splitIntoSlides('# A\n\n# B\n---\n\n# C\n\nbody')).toEqual(['# A', '# B', '# C\n\nbody'])
+  })
+
+  it('still lets an authored separator keep its blank page above a heading', () => {
+    expect(splitIntoSlides('# A\n\n---\n\n---\n\n# B')).toEqual(['# A', '', '# B'])
   })
 })
 
@@ -188,6 +211,22 @@ describe('splitIntoSlides — the declared slide-level property', () => {
   it('reads the level from front matter only, never from a `slide-level` line in the body', () => {
     const source = 'slide-level: 2\n\n# A\n\nbody'
     expect(splitIntoSlides(source)).toEqual([source])
+  })
+
+  it('applies a declared level to the headings a separator deck still carries', () => {
+    const source = '---\nslide-level: 2\n---\n\n# A\n\ntext\n\n## B\n\ntext\n\n---\n\n# C\n\ntext'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\ntext', '## B\n\ntext', '# C\n\ntext'])
+  })
+
+  it('keeps headings out of the deck when the front matter turns slide-level off', () => {
+    const source = '---\nslide-level: none\n---\n\n# A\n\nbody\n\n# B\n\nbody'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\nbody\n\n# B\n\nbody'])
+    expect(splitIntoSlides('---\nslide-level: NONE\n---\n\n# A\n\nbody\n\n# B\n\nbody')).toEqual(['# A\n\nbody\n\n# B\n\nbody'])
+  })
+
+  it('still divides on separators with slide-level turned off', () => {
+    const source = '---\nslide-level: none\n---\n\n# A\n\nbody\n\n---\n\n# B'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\nbody', '# B'])
   })
 })
 
