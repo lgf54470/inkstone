@@ -284,9 +284,11 @@
   - 目标：把大屏其余部分压暗、只留一块跟随指针的亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。
   - 待设计：遮罩层与 `--bg-overlay` / `z-index` 的关系（不得重犯 B4-07 的层序错）、亮区尺寸的令牌化、`prefers-reduced-motion` 下不做缩放动画、两种指点模式是否互斥。
   - 拆出原因：评审对 P-25 的编号设计只写了激光笔，聚光灯没有可直接照抄的方案。
-- [ ] **B4-07** 缺陷修复: 黑屏/白屏覆盖层压不住放映面板
-  - 现象：`ScreenCover` 与 `[role="dialog"]` 并排且 z 取 `--z-popover`(50)，而面板 `z-[var(--z-modal)]`(250) 自带不透明底色，同层上下文里覆盖层画在面板之下——按 `B`/`.` 后大屏可能仍是幻灯片。B4-02 的激光层因此刻意渲染在面板之内。
-  - 方案：把覆盖层层序提到面板之上（或作为面板子元素），并为「幕布确实盖住了幻灯片」补浏览器断言——该路径当前无门禁覆盖，属既有缺口。
+- [x] **B4-07** 缺陷修复: 黑屏/白屏覆盖层压不住放映面板 — 已完成 (`fdb5a6b5`)
+  - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/use-presentation-session.ts`、`src/client/features/presentation/slide-stage.test.ts`、`scripts/e2e-visual.mjs`
+  - 现象：`ScreenCover` 与 `[role="dialog"]` 并排且 z 取 `--z-popover`(50)，而面板 `z-[var(--z-modal)]`(250) 自带不透明底色，同层上下文里覆盖层画在面板之下——按 `B`/`.` 后大屏可能仍是幻灯片。
+  - 方案：将 `ScreenCover` 移至 `PresentationDialog` 内部并赋予 `z-[var(--z-modal)]`；覆盖层升起时同步将 `occluded` 置为 `true` 阻断底层舞台与控件交互；浏览器视觉门禁补充命中与层叠断言。
+  - 验证：`slide-stage.test.ts` 补充黑白两色覆盖层渲染与点击清除测试；`scripts/e2e-visual.mjs` 新增 `assertPresentationScreenCover` 覆盖按键开启、点击/按键解除及元素点选命中。
 - [x] **B4-08** 健壮性: 放映按键的 target 兜底 — 已完成 (`0c2f096d`)
   - 涉及文件：`src/client/features/presentation/use-presentation-keys.ts`、`src/client/features/presentation/use-presentation-keys.test.ts`
   - 现象：`use-presentation-keys.ts` 用 `event.target?.closest(...)` 判定焦点归属，keydown 的 target 为 `document`/`window` 时（无 `closest`）抛 TypeError。单测目前按真实浏览器路径派发到 `document.body`，未掩盖该风险。
