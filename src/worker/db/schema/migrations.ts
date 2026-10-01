@@ -853,4 +853,16 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       ...BLOG_POSTS_TRASH_INDEX_STATEMENTS,
     ],
   },
+  // FEA-06: the author's own reply is a comment like any other (same threading, same moderation
+  // list), plus the two facts the reader must not lose — that the blog's author wrote it (`is_owner`)
+  // and how suspicious the spam rules found a reader submission (`spam_score`). The second one is
+  // stored rather than recomputed so the moderation list can say why a row was parked.
+  {
+    version: 57,
+    skipIfColumnExists: { table: 'blog_comments', column: 'is_owner' },
+    statements: [
+      `ALTER TABLE blog_comments ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE blog_comments ADD COLUMN spam_score INTEGER NOT NULL DEFAULT 0`,
+    ],
+  },
 ]

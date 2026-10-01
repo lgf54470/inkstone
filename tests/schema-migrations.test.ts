@@ -319,6 +319,33 @@ describe('schema migrations and convergence', () => {
     )).toBeTruthy()
   })
 
+  it('adds the reply and spam columns to an installation that predates them', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+
+    // The shape an installation had before FEA-06: no owner flag on a reply, no stored spam score.
+    await runSql(db, 'ALTER TABLE blog_comments DROP COLUMN is_owner')
+    await runSql(db, 'ALTER TABLE blog_comments DROP COLUMN spam_score')
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, parent_id, author_name, author_email, author_url,
+         author_avatar, content, status, ip, user_agent, created_at)
+       VALUES ('c-old', 'p-live', NULL, 'Reader', 'r@example.com', NULL, '', 'Hello', 'approved', NULL, NULL, 10)`,
+    )
+    await runSql(db, 'DELETE FROM schema_migrations WHERE version >= 57')
+    await runSql(db, 'DELETE FROM app_meta WHERE key = ?1', DATABASE_STATE_KEY)
+
+    await initializeDatabase(makeEnv({ ...db }))
+
+    const columns = (await queryRows(db, 'PRAGMA table_info(blog_comments)')).map((row) => row.name as string)
+    expect(columns).toContain('is_owner')
+    expect(columns).toContain('spam_score')
+    // A comment that already existed is a reader's, not the author's, and was never scored.
+    expect(await queryRows(db, 'SELECT id, is_owner, spam_score FROM blog_comments')).toEqual([
+      { id: 'c-old', is_owner: 0, spam_score: 0 },
+    ])
+  })
+
   it('rejects an incompatible schema if a required column is missing', async () => {
     const db = createD1Database()
     const env = makeEnv(db)

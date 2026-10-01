@@ -1958,3 +1958,159 @@ describe('blog recycle bin (FEA-04)', () => {
     expect(stillTrashed).toMatchObject({ n: 1 })
   })
 })
+
+/**
+ * FEA-06: the author answers a reader from the moderation list, the worker tells the author's own
+ * endpoint that a comment arrived, and a submission the rules find suspicious is stored as spam
+ * with the score that parked it — never published by itself.
+ */
+describe('blog comment replies, notifications and spam (FEA-06)', () => {
+  async function seedComment(db: D1Shim, fields: { id: string; postId: string; content?: string }): Promise<void> {
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, parent_id, author_name, author_email, author_url,
+         author_avatar, content, status, ip, user_agent, created_at, is_owner, spam_score)
+       VALUES (?1, ?2, NULL, 'Reader', 'reader@example.com', NULL, '', ?3, 'pending', NULL, NULL, ?4, 0, 0)`,
+      fields.id, fields.postId, fields.content ?? 'A question', H.now,
+    )
+  }
+
+  it('publishes the author reply under its parent, marked as the author', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'answered-post', title: 'Answered' })
+    const app = makeApp()
+    await seedComment(db, { id: 'c-parent', postId: (await firstRow(db, 'SELECT id FROM blog_posts'))?.id as string })
+    await runSql(db, 'UPDATE blog_comments SET status = ?1 WHERE id = ?2', 'approved', 'c-parent')
+
+    const replied = await postJson(app, '/api/blog/comments/c-parent/reply', { content: 'An answer' })
+    expect(replied.status).toBe(200)
+
+    const publicList = await (await request(app, '/api/blog/public/comments/answered-post')).json()
+    expect(publicList.comments).toHaveLength(2)
+    const replyRow = publicList.comments.find((comment: { isOwner: boolean }) => comment.isOwner)
+    expect(replyRow).toMatchObject({ content: 'An answer', parent_id: 'c-parent', isOwner: true })
+    const parentRow = publicList.comments.find((comment: { id: string }) => comment.id === 'c-parent')
+    expect(parentRow).toMatchObject({ isOwner: false })
+
+    const manage = await (await request(app, '/api/blog/comments')).json()
+    const reply = manage.comments.find((comment: { isOwner: boolean }) => comment.isOwner)
+    expect(reply).toMatchObject({ parentId: 'c-parent', status: 'approved', spamScore: 0 })
+    const stored = await firstRow(db, 'SELECT is_owner FROM blog_comments WHERE id = ?1', reply.id)
+    expect(stored).toMatchObject({ is_owner: 1 })
+  })
+
+  it('refuses to answer a comment that belongs elsewhere or is behind the trash', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const mine = await seedBlogPost(db, { id: 'p-mine', slug: 'mine', title: 'Mine' })
+    const theirs = await seedBlogPost(db, { id: 'p-theirs', slug: 'theirs', user_id: 'user-2' })
+    await seedComment(db, { id: 'c-mine', postId: mine.id })
+    await seedComment(db, { id: 'c-theirs', postId: theirs.id })
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/comments/c-theirs/reply', { content: 'Hi' })).status).toBe(404)
+    expect((await postJson(app, '/api/blog/comments/c-missing/reply', { content: 'Hi' })).status).toBe(404)
+    expect((await postJson(app, '/api/blog/comments/c-mine/reply', { content: '' })).status).toBe(400)
+
+    expect((await request(app, `/api/blog/posts/${mine.id}`, { method: 'DELETE' })).status).toBe(200)
+    expect((await postJson(app, '/api/blog/comments/c-mine/reply', { content: 'Hi' })).status).toBe(404)
+  })
+
+  it('parks a submission the rules find suspicious as spam, with the score that parked it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'spammy-post', title: 'Spammy' })
+    const app = makeApp()
+
+    const manyLinks = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'spammy-post',
+      authorName: 'Robot',
+      authorEmail: 'robot@example.com',
+      content: 'Buy now https://one.example https://two.example https://three.example',
+    })
+    expect(manyLinks.status).toBe(200)
+    // The sender learns the ordinary answer, not which rule fired.
+    expect((await manyLinks.json()).status).toBe('pending')
+
+    const stored = await firstRow(db, 'SELECT status, spam_score FROM blog_comments')
+    expect(stored).toMatchObject({ status: 'spam', spam_score: 3 })
+    const manage = await (await request(app, '/api/blog/comments')).json()
+    expect(manage.comments[0]).toMatchObject({ status: 'spam', spamScore: 3 })
+    expect((await (await request(app, '/api/blog/public/comments/spammy-post')).json()).comments).toEqual([])
+
+    // One link is a link, not spam: the threshold is what keeps a quoted address publishable.
+    const oneLink = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'spammy-post',
+      authorName: 'Reader',
+      authorEmail: 'reader@example.com',
+      content: 'See https://example.com for the reference',
+    })
+    expect(oneLink.status).toBe(200)
+    const second = await firstRow(db, 'SELECT spam_score FROM blog_comments ORDER BY created_at DESC')
+    expect(second).toMatchObject({ spam_score: 1 })
+  })
+
+  it('honors the blacklist the author saved in settings', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'keyword-post', title: 'Keyword' })
+    const app = makeApp()
+
+    const saved = await patchJson(app, '/api/blog/settings', { commentSpamKeywords: ['cheap loans'] })
+    expect(saved.status).toBe(200)
+
+    const built = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'keyword-post',
+      authorName: 'Reader',
+      authorEmail: 'reader@example.com',
+      content: 'This is about Cheap Loans today',
+    })
+    expect(built.status).toBe(200)
+    expect(await firstRow(db, 'SELECT status, spam_score FROM blog_comments')).toMatchObject({ status: 'spam', spam_score: 3 })
+  })
+
+  it('tells the configured webhook that a comment arrived, and survives its failure', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'notified-post', title: 'Notified' })
+    const app = makeApp()
+    await patchJson(app, '/api/blog/settings', { commentWebhookUrl: 'https://hooks.example.com/inkstone', siteName: 'My Blog' })
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok', { status: 200 }))
+    try {
+      const submitted = await postJson(app, '/api/blog/public/comments', {
+        postSlug: 'notified-post',
+        authorName: 'Reader',
+        authorEmail: 'reader@example.com',
+        content: 'First!',
+      })
+      expect(submitted.status).toBe(200)
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe('https://hooks.example.com/inkstone')
+      const payload = JSON.parse(String(init.body))
+      expect(payload).toMatchObject({ event: 'blog.comment.created', postSlug: 'notified-post', authorName: 'Reader', content: 'First!', siteName: 'My Blog' })
+      // What leaves the worker says what was written, never who wrote it beyond the name.
+      expect(JSON.stringify(payload)).not.toContain('reader@example.com')
+
+      fetchSpy.mockRejectedValueOnce(new Error('endpoint down'))
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const again = await postJson(app, '/api/blog/public/comments', {
+          postSlug: 'notified-post',
+          authorName: 'Second',
+          authorEmail: 'second@example.com',
+          content: 'Still here',
+        })
+        expect(again.status).toBe(200)
+        await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+      } finally {
+        warn.mockRestore()
+      }
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+})

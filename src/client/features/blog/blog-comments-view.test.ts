@@ -15,6 +15,7 @@ const deferred = vi.hoisted(() => {
   const updateStatus = vi.fn(() => new Promise((resolve) => { settle = resolve }))
   return {
     updateStatus,
+    reply: vi.fn(async () => ({ ok: true as const, id: 'reply-1' })),
     listComments: vi.fn(async () => ({ comments: [COMMENT_FIXTURE()], counts: COUNTS })),
     stats: vi.fn(async () => ({ stats: null })),
     settle: (value: unknown) => settle(value),
@@ -41,7 +42,7 @@ const COUNTS = { all: 1, pending: 1, approved: 0, rejected: 0, spam: 0 }
 vi.mock('../../lib/api', () => ({
   api: {
     blog: {
-      comments: { updateStatus: deferred.updateStatus, list: deferred.listComments },
+      comments: { updateStatus: deferred.updateStatus, reply: deferred.reply, list: deferred.listComments },
       stats: deferred.stats,
     },
   },
@@ -55,6 +56,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useUi.setState({ toasts: [] })
+  deferred.reply.mockClear()
   useBlogStore.setState({
     comments: [COMMENT_FIXTURE()],
     commentStats: COUNTS,
@@ -93,3 +95,62 @@ describe('comment moderation feedback', () => {
     expect(buttonByText(t('blog.approve')).disabled).toBe(false)
   })
 })
+
+// FEA-06: the author answers an approved reader comment from the list, and the answer is sent as the
+// comment it is answering — while a failed send keeps the draft where it was typed.
+describe('author reply', () => {
+  beforeEach(() => {
+    useBlogStore.setState({
+      comments: [{ ...COMMENT_FIXTURE(), status: 'approved' }],
+      commentStats: { all: 1, pending: 0, approved: 1, rejected: 0, spam: 0 },
+    })
+  })
+
+  it('opens the composer on the comment and sends it under that comment', async () => {
+    rendered = renderElement(createElement(BlogCommentsView))
+
+    await act(async () => {
+      buttonByText(t('blog.comment_reply')).click()
+    })
+
+    const box = document.body.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${t('blog.comment_reply_placeholder')}"]`)
+    expect(box, 'the reply control opened no composer').not.toBeNull()
+
+    await act(async () => {
+      setTextareaValue(box!, 'Thanks for reading')
+    })
+    await act(async () => {
+      buttonByText(t('blog.comment_reply_send')).click()
+      await Promise.resolve()
+    })
+
+    expect(deferred.reply).toHaveBeenCalledWith('comment-1', 'Thanks for reading')
+    expect(useUi.getState().toasts.map((toast) => toast.title)).toContain(t('blog.comment_reply_sent'))
+  })
+
+  it('keeps the draft open when the send is rejected', async () => {
+    deferred.reply.mockRejectedValueOnce(new Error('offline'))
+    rendered = renderElement(createElement(BlogCommentsView))
+
+    await act(async () => {
+      buttonByText(t('blog.comment_reply')).click()
+    })
+    const box = document.body.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${t('blog.comment_reply_placeholder')}"]`)
+    await act(async () => {
+      setTextareaValue(box!, 'half written')
+    })
+    await act(async () => {
+      buttonByText(t('blog.comment_reply_send')).click()
+      await Promise.resolve()
+    })
+
+    expect(box!.value).toBe('half written')
+    expect(useUi.getState().toasts.map((toast) => toast.title)).not.toContain(t('blog.comment_reply_sent'))
+  })
+})
+
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
+  setter.call(textarea, value)
+  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+}

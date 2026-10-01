@@ -126,6 +126,11 @@ export const blogCommentBatchSchema = z.object({
   commentIds: z.array(z.string()).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} comments per request`),
 })
 
+/** The author's answer to a reader (FEA-06): the same budget as a reader's comment, no more. */
+export const blogCommentReplySchema = z.object({
+  content: z.string().min(1, 'Reply content is required').max(4000),
+})
+
 /**
  * What a page-view beacon carries. The view itself is what is being reported, so the body is only
  * the post it happened on and where the reader came from; everything else (address, user-agent,
@@ -159,6 +164,10 @@ export const blogSettingsSchema = z.object({
     website: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   }).optional(),
   requireCommentApproval: z.boolean().optional(),
+  // Where a notification about a new comment goes (FEA-06). Empty is the default and means the
+  // author does not want one; a value must still be an address this app would render as a link.
+  commentWebhookUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+  commentSpamKeywords: z.array(z.string().min(1).max(50)).max(50).optional(),
   postsPerPage: z.number().optional(),
   frontendUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   appearance: z.object({

@@ -23,6 +23,8 @@ const DEFAULT_BLOG_SETTINGS: BlogSettings = {
     website: '',
   },
   requireCommentApproval: true,
+  commentWebhookUrl: '',
+  commentSpamKeywords: [],
   postsPerPage: 10,
   frontendUrl: DEFAULT_BLOG_FRONTEND_URL,
   appearance: {

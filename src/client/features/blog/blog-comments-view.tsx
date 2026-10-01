@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Reply, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
 import { Badge, Button, IconButton } from '../../components/primitives'
 import { Checkbox, Input, Segmented } from '../../components/form'
@@ -8,6 +8,7 @@ import { t } from '../../lib/i18n'
 import { fullTime } from '../../lib/time'
 import { useBlogCommentsView } from './use-blog-comments-view'
 import { BlogLoadFailure } from './blog-load-failure'
+import { CommentReplyComposer } from './blog-comment-reply'
 
 /** The comment avatar's rendered size, also declared as its intrinsic size so the row reserves it. */
 const AVATAR_SIZE_PX = 32
@@ -109,6 +110,13 @@ function commentCardBundle(view: ReturnType<typeof useBlogCommentsView>, comment
     onToggleSelect: () => view.toggleSelectComment(comment.id),
     onStatusChange: view.handleStatusChange,
     onDelete: view.handleDeleteSingle,
+    isReplyOpen: view.replyTargetId === comment.id,
+    replyDraft: view.replyDraft,
+    replyBusy: view.replyBusy,
+    onOpenReply: () => view.handleOpenReply(comment.id),
+    onCancelReply: view.handleCancelReply,
+    onReplyDraft: view.setReplyDraft,
+    onSubmitReply: view.handleSubmitReply,
   }
 }
 
@@ -270,6 +278,13 @@ interface CommentCardBundle {
   onToggleSelect: () => void
   onStatusChange: (id: string, status: BlogCommentStatus) => Promise<void>
   onDelete: (id: string) => void
+  isReplyOpen: boolean
+  replyDraft: string
+  replyBusy: boolean
+  onOpenReply: () => void
+  onCancelReply: () => void
+  onReplyDraft: (value: string) => void
+  onSubmitReply: () => void
 }
 
 function CommentCard({ bundle }: { bundle: CommentCardBundle }) {
@@ -290,6 +305,22 @@ function CommentCard({ bundle }: { bundle: CommentCardBundle }) {
         {comment.content}
       </div>
 
+      {comment.parentId && (
+        <p className='mt-2 ml-6 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {t('blog.comment_is_reply')}
+        </p>
+      )}
+
+      {bundle.isReplyOpen && (
+        <CommentReplyComposer
+          value={bundle.replyDraft}
+          busy={bundle.replyBusy}
+          onChange={bundle.onReplyDraft}
+          onCancel={bundle.onCancelReply}
+          onSubmit={bundle.onSubmitReply}
+        />
+      )}
+
       <CommentCardActions bundle={bundle} />
     </div>
   )
@@ -309,6 +340,10 @@ function CommentCardHeader({ bundle }: { bundle: CommentCardBundle }) {
           <div className='flex items-center gap-2'>
             <span className='font-semibold text-[var(--text-primary)]'>{comment.authorName}</span>
             <StatusBadge status={comment.status} />
+            {comment.isOwner && <Badge tone='accent'>{t('blog.comment_by_author')}</Badge>}
+            {Boolean(comment.spamScore) && (
+              <Badge tone='warning'>{t('blog.comment_spam_score', { value0: comment.spamScore })}</Badge>
+            )}
           </div>
           <div className='mt-0.5 flex flex-wrap items-center gap-x-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             <span>{comment.authorEmail}</span>
@@ -372,10 +407,14 @@ function StatusBadge({ status }: { status: BlogCommentStatus }) {
 }
 
 function CommentCardActions({ bundle }: { bundle: CommentCardBundle }) {
-  const { comment, isStatusBusy, onStatusChange, onDelete } = bundle
+  const { comment, isStatusBusy, onStatusChange, onDelete, onOpenReply } = bundle
 
   return (
     <div className='mt-3 flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]'>
+      {comment.status === 'approved' && !comment.isOwner && (
+        <CommentActionButton icon={<Reply size={12} className='mr-1' />} label={t('blog.comment_reply')} disabled={isStatusBusy} onClick={onOpenReply} />
+      )}
+
       {comment.status !== 'approved' && (
         <CommentActionButton icon={<CheckCircle size={12} className='mr-1' />} label={t('blog.approve')} disabled={isStatusBusy} onClick={() => void onStatusChange(comment.id, 'approved')} className='text-[var(--success)] hover:bg-[var(--success)]/10' />
       )}

@@ -234,6 +234,8 @@ interface BlogCommentRow {
   ip: string | null
   user_agent: string | null
   created_at: number
+  is_owner: number
+  spam_score: number
 }
 
 export interface BlogCommentModerationRow extends BlogCommentRow {
@@ -250,6 +252,7 @@ export interface BlogPublicCommentRow {
   author_avatar: string | null
   content: string
   created_at: number
+  is_owner: number
 }
 
 export interface BlogTimelineRow {

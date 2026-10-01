@@ -121,6 +121,12 @@ function countCommentsByStatus(comments: BlogDemoData['comments']): BlogComments
 }
 
 function registerBlogCommentRoutes(app: Hono, data: BlogDemoData): void {
+  registerBlogCommentListRoute(app, data)
+  registerBlogCommentReplyRoute(app, data)
+  registerBlogCommentModerationRoutes(app, data)
+}
+
+function registerBlogCommentListRoute(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/comments', (c) => {
     const status = c.req.query('status') ?? 'all'
     const postId = c.req.query('postId')
@@ -135,7 +141,9 @@ function registerBlogCommentRoutes(app: Hono, data: BlogDemoData): void {
       .slice(0, DEMO_COMMENTS_PAGE_LIMIT)
     return c.json({ comments: filtered, counts })
   })
+}
 
+function registerBlogCommentModerationRoutes(app: Hono, data: BlogDemoData): void {
   app.patch('/api/blog/comments/:id/status', async (c) => {
     const comment = data.comments.find((item) => item.id === c.req.param('id'))
     if (!comment) return apiError(404, 'not_found', 'Comment not found')
@@ -165,6 +173,32 @@ function registerBlogCommentRoutes(app: Hono, data: BlogDemoData): void {
       if (ids.includes(comment.id)) comment.status = status
     }
     return c.json({ ok: true as const, count: ids.length })
+  })
+}
+
+function registerBlogCommentReplyRoute(app: Hono, data: BlogDemoData): void {
+  app.post('/api/blog/comments/:id/reply', async (c) => {
+    const parent = data.comments.find((item) => item.id === c.req.param('id'))
+    if (!parent) return apiError(404, 'not_found', 'Comment not found')
+    const body = await jsonBody(c.req.raw)
+    const id = `demo-comment-${++data.seq.comment}`
+    // The worker's reply lands approved under its parent and carries the author's profile; the
+    // demo writes the same row so the moderation list shows a real one after the smoke test.
+    data.comments.push({
+      id,
+      postId: parent.postId,
+      postTitle: parent.postTitle,
+      postSlug: parent.postSlug,
+      parentId: parent.id,
+      authorName: data.settings.authorName || 'Inkstone Writer',
+      authorEmail: '',
+      content: String(body.content ?? ''),
+      status: 'approved',
+      createdAt: Date.now(),
+      isOwner: true,
+      spamScore: 0,
+    })
+    return c.json({ ok: true as const, id })
   })
 }
 

@@ -231,6 +231,8 @@ function defaultBlogSettings(): BlogSettings {
     authorAvatar: '',
     socialLinks: { github: 'https://github.com/shuaiplus/inkstone', email: 'hello@example.com' },
     requireCommentApproval: true,
+    commentWebhookUrl: '',
+    commentSpamKeywords: [],
     postsPerPage: 10,
     frontendUrl: DEFAULT_BLOG_FRONTEND_URL,
     appearance: { theme: 'system', accent: 'vermilion', background: 'paper', density: 'comfortable', language: 'zh-CN' },

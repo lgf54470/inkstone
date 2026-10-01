@@ -163,6 +163,13 @@ export interface BlogComment {
   ip?: string | null
   userAgent?: string | null
   createdAt: number
+  /** The blog's author wrote this one (FEA-06); the reader-facing view marks it as such. */
+  isOwner?: boolean
+  /**
+   * What the spam rules made of a reader's submission (FEA-06), stored when it arrived. Zero means
+   * nothing was found; the moderation list shows the number so a parked row explains itself.
+   */
+  spamScore?: number
   replies?: BlogComment[]
 }
 
@@ -204,6 +211,13 @@ export interface BlogSettings {
     website?: string
   }
   requireCommentApproval: boolean
+  /**
+   * Where the author's own service is told that a comment arrived (FEA-06). Empty means nowhere;
+   * the instance has no mail transport, so this is how a notification leaves the worker.
+   */
+  commentWebhookUrl: string
+  /** Words the spam rules look for in a submission, matched case-insensitively. */
+  commentSpamKeywords: string[]
   postsPerPage: number
   frontendUrl: string
   appearance: {

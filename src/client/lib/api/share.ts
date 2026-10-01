@@ -305,6 +305,8 @@ export const share = {
         request<{ ok: true }>(`/api/blog/comments/${id}`, { method: 'DELETE' }),
       batch: (action: 'approve' | 'reject' | 'spam' | 'delete', commentIds: string[]) =>
         request<{ ok: true; count: number }>('/api/blog/comments/batch', { method: 'POST', body: { action, commentIds } }),
+      reply: (id: string, content: string) =>
+        request<{ ok: true; id: string }>(`/api/blog/comments/${id}/reply`, { method: 'POST', body: { content } }),
     },
     links: {
       list: (params?: { status?: string; categoryId?: string; search?: string }, signal?: AbortSignal) =>

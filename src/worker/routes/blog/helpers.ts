@@ -94,6 +94,8 @@ export function toBlogComment(row: BlogCommentModerationRow): BlogComment {
     ip: row.ip,
     userAgent: row.user_agent,
     createdAt: row.created_at,
+    isOwner: row.is_owner === 1,
+    spamScore: row.spam_score,
   }
 }
 

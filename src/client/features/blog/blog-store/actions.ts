@@ -3,7 +3,7 @@ import { api } from '../../../lib/api'
 import { reportBlogMutationError, runBlogMutation } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'restorePost' | 'purgePost' | 'emptyTrash' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
+export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'restorePost' | 'purgePost' | 'emptyTrash' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'replyToComment' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
   batchMoveToFolder: (postIds, folderId) => batchMoveToFolderImpl(postIds, folderId, set, get),
   savePost: (data) => savePostImpl(data, get),
@@ -15,6 +15,7 @@ export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreS
   syncPost: (id) => syncPostImpl(id, get),
   batchPosts: (action, extraId, pinnedState) => batchPostsImpl(action, extraId, pinnedState, set, get),
   updateCommentStatus: (id, status) => updateCommentStatusImpl(id, status, get),
+  replyToComment: (id, content) => replyToCommentImpl(id, content, get),
   deleteComment: (id) => deleteCommentImpl(id, get),
   batchComments: (action) => batchCommentsImpl(action, set, get),
   createCategory: (data) => createCategoryImpl(data, get),
@@ -287,6 +288,17 @@ async function updateCommentStatusImpl(
 ): Promise<boolean> {
   return runBlogMutation(
     () => api.blog.comments.updateStatus(id, status),
+    () => Promise.all([get().loadComments(), get().loadStats()]),
+  )
+}
+
+/**
+ * The author's answer to one reader. A successful reply reloads the list (the new row is nested
+ * under its parent) and the summary, because the pending count can move with it.
+ */
+async function replyToCommentImpl(id: string, content: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.comments.reply(id, content),
     () => Promise.all([get().loadComments(), get().loadStats()]),
   )
 }

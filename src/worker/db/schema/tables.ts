@@ -420,7 +420,9 @@ export const TABLE_STATEMENTS: readonly string[] = [
       status TEXT NOT NULL DEFAULT 'pending',
       ip TEXT,
       user_agent TEXT,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      is_owner INTEGER NOT NULL DEFAULT 0,
+      spam_score INTEGER NOT NULL DEFAULT 0
     )`,
   `CREATE TABLE IF NOT EXISTS blog_visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

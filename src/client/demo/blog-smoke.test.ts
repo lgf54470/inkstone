@@ -75,6 +75,7 @@ const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/comments?status=pending' },
   { path: '/api/blog/comments?postId=demo-post-1&search=obsidian' },
   { path: '/api/blog/comments/demo-comment-2/status', init: { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) } },
+  { path: '/api/blog/comments/demo-comment-1/reply', init: json({ content: '谢谢阅读！' }) },
   { path: '/api/blog/comments/demo-comment-5', init: { method: 'DELETE' } },
   { path: '/api/blog/comments/batch', init: json({ action: 'spam', commentIds: ['demo-comment-4'] }) },
   { path: '/api/blog/comments/batch', init: json({ action: 'delete', commentIds: ['demo-comment-3'] }) },

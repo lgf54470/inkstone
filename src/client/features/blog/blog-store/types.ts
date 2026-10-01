@@ -175,6 +175,8 @@ export interface BlogStoreState {
   ) => Promise<boolean>
 
   updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<boolean>
+  /** The author's answer to one reader (FEA-06); it lands approved, nested under that comment. */
+  replyToComment: (id: string, content: string) => Promise<boolean>
   deleteComment: (id: string) => Promise<boolean>
   batchComments: (action: 'approve' | 'reject' | 'spam' | 'delete') => Promise<boolean>
 

@@ -69,6 +69,8 @@ function useSettingsFields({
   const [website, setWebsite] = useState('')
   const [frontendUrl, setFrontendUrl] = useState('')
   const [requireCommentApproval, setRequireCommentApproval] = useState(true)
+  const [commentWebhookUrl, setCommentWebhookUrl] = useState('')
+  const [spamKeywords, setSpamKeywords] = useState('')
   const [postsPerPage, setPostsPerPage] = useState(10)
   const [bots, setBots] = useState(excludeBots)
   const [selfRef, setSelfRef] = useState(excludeSelfReferrers)
@@ -76,7 +78,7 @@ function useSettingsFields({
   const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
   const [isSaving, setIsSaving] = useState(false)
   const [isCleanBusy, setIsCleanBusy] = useState(false)
-  return { siteName, setSiteName, subtitle, setSubtitle, bio, setBio, authorName, setAuthorName, authorAvatar, setAuthorAvatar, github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite, frontendUrl, setFrontendUrl, requireCommentApproval, setRequireCommentApproval, postsPerPage, setPostsPerPage, bots, setBots, selfRef, setSelfRef, owner, setOwner, retentionDays, setRetentionDays, isSaving, setIsSaving, isCleanBusy, setIsCleanBusy }
+  return { siteName, setSiteName, subtitle, setSubtitle, bio, setBio, authorName, setAuthorName, authorAvatar, setAuthorAvatar, github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite, frontendUrl, setFrontendUrl, requireCommentApproval, setRequireCommentApproval, commentWebhookUrl, setCommentWebhookUrl, spamKeywords, setSpamKeywords, postsPerPage, setPostsPerPage, bots, setBots, selfRef, setSelfRef, owner, setOwner, retentionDays, setRetentionDays, isSaving, setIsSaving, isCleanBusy, setIsCleanBusy }
 }
 
 interface SettingsFormSetters {
@@ -91,6 +93,8 @@ interface SettingsFormSetters {
   setWebsite: (v: string) => void
   setFrontendUrl: (v: string) => void
   setRequireCommentApproval: (v: boolean) => void
+  setCommentWebhookUrl: (v: string) => void
+  setSpamKeywords: (v: string) => void
   setPostsPerPage: (v: number) => void
   setBots: (v: boolean) => void
   setSelfRef: (v: boolean) => void
@@ -111,6 +115,8 @@ function applySettingsToForm(ctx: SettingsFormCtx & SettingsFormSetters): void {
   ctx.setWebsite(ctx.settings.socialLinks?.website || '')
   ctx.setFrontendUrl(ctx.settings.frontendUrl || DEFAULT_BLOG_FRONTEND_URL)
   ctx.setRequireCommentApproval(ctx.settings.requireCommentApproval !== false)
+  ctx.setCommentWebhookUrl(ctx.settings.commentWebhookUrl || '')
+  ctx.setSpamKeywords((ctx.settings.commentSpamKeywords || []).join(', '))
   ctx.setPostsPerPage(ctx.settings.postsPerPage || 10)
   ctx.setBots(ctx.excludeBots)
   ctx.setSelfRef(ctx.excludeSelfReferrers)
@@ -138,6 +144,8 @@ interface SaveSettingsCtx {
   authorAvatar: string
   frontendUrl: string
   requireCommentApproval: boolean
+  commentWebhookUrl: string
+  spamKeywords: string
   postsPerPage: number
   github: string
   twitter: string
@@ -171,6 +179,8 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
       authorAvatar: ctx.authorAvatar.trim(),
       frontendUrl: ctx.frontendUrl.trim() || DEFAULT_BLOG_FRONTEND_URL,
       requireCommentApproval: ctx.requireCommentApproval,
+      commentWebhookUrl: ctx.commentWebhookUrl.trim(),
+      commentSpamKeywords: parseSpamKeywords(ctx.spamKeywords),
       postsPerPage: Number(ctx.postsPerPage) || 10,
       socialLinks: {
         github: ctx.github.trim(),
@@ -185,6 +195,21 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
   } finally {
     ctx.setIsSaving(false)
   }
+}
+
+/**
+ * What the author typed into the blacklist box, as the list the worker's rules match: comma or
+ * newline separated, trimmed, blanks dropped and duplicates collapsed — the one shape both sides
+ * agree on. The cap mirrors the request schema, so a pasted list cannot be rejected on save.
+ */
+export function parseSpamKeywords(value: string): string[] {
+  const seen = new Set<string>()
+  for (const part of value.split(/[,\n]/)) {
+    const keyword = part.trim()
+    if (keyword && keyword.length <= 50 && !seen.has(keyword)) seen.add(keyword)
+    if (seen.size >= 50) break
+  }
+  return [...seen]
 }
 
 /** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */

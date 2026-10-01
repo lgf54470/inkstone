@@ -1,7 +1,7 @@
 import type { z } from 'zod'
 import { Hono } from 'hono'
 import type { Context } from 'hono'
-import type { BlogCommentStatus } from '@shared/types'
+import type { BlogCommentStatus, BlogSettings } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
@@ -12,6 +12,8 @@ import { blogPublicCommentSchema } from './schemas'
 import { getBlogSettings } from './settings'
 import { publicPostVisibleSql } from './publish-moment'
 import { blogOwnerOf } from './owner'
+import { COMMENT_SPAM_THRESHOLD, scoreComment } from './comment-spam'
+import { commentWaitUntil, dispatchCommentNotification } from './comment-notify'
 
 export function registerBlogPublicCommentsRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogPublicCommentsListRoute(blogPublicRoutes)
@@ -47,7 +49,7 @@ function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>
     // ceiling (the ones a reader scrolls to) and hands them back in that same render order.
     const { results } = await c.env.DB
       .prepare(`
-        SELECT id, post_id, parent_id, author_name, author_url, author_avatar, content, created_at
+        SELECT id, post_id, parent_id, author_name, author_url, author_avatar, content, created_at, is_owner
         FROM blog_comments
         WHERE post_id = ?1 AND status = 'approved'
         ORDER BY created_at DESC LIMIT ${PUBLIC_COMMENT_LIMIT}
@@ -57,7 +59,9 @@ function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>
 
     return c.json({
       allowComments: Boolean(post.allow_comments),
-      comments: [...(results || [])].reverse(),
+      // The author's own replies travel with the same shape plus the flag the page marks them by
+      // (FEA-06); the reader side decides how a reply is drawn from `parent_id`.
+      comments: [...(results || [])].reverse().map((row) => ({ ...row, isOwner: row.is_owner === 1 })),
     })
   })
 }
@@ -66,34 +70,36 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
   blogPublicRoutes.post('/comments', async (c) => {
     const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.comment)
     assertPublicCommentValid(body)
+    const prepared = await preparePublicComment(c, body)
 
-    const owner = blogOwnerOf(c)
-    const post = await loadCommentedPost(c.env.DB, owner.userId, body.postSlug)
-    if (!post.allow_comments) throw ApiError.forbidden('Comments are disabled for this post')
-
-    await assertCommentRateBudget(c.env.DB, c, owner.userId, body.postSlug)
-    if (body.parentId) await assertParentCommentOnPost(c.env.DB, body.parentId, post.id)
-
-    const settings = await getBlogSettings(c.env.DB, owner.userId)
-    const status: BlogCommentStatus = settings.requireCommentApproval ? 'pending' : 'approved'
-    // No picture means no picture: an empty value is what the reader submitted, and the admin's card
-    // (and the public page) draw an avatar locally from the name. The alternative this replaced
-    // wrote a third-party generator URL into every comment, which sent each reader's nickname to
-    // that service and put the admin's browser on it when the moderation queue was opened.
-    const avatar = body.authorAvatar?.trim() || ''
-
+    const commentId = newId()
+    const now = Date.now()
     await publicCommentInsertStatement(c.env.DB, {
-      id: newId(),
-      postId: post.id,
+      id: commentId,
+      postId: prepared.postId,
       body,
-      status,
-      ip: requestClientIp(c) || null,
-      ua: c.req.header('User-Agent') || null,
-      avatar,
-      now: Date.now(),
+      status: prepared.status,
+      spamScore: prepared.spamScore,
+      ip: prepared.ip,
+      ua: prepared.ua,
+      avatar: prepared.avatar,
+      now,
     }).run()
 
-    return c.json(publicCommentSubmitResponse(status))
+    await announcePublicComment(c, {
+      commentId,
+      postId: prepared.postId,
+      postSlug: body.postSlug,
+      authorName: body.authorName.trim(),
+      content: body.content.trim(),
+      status: prepared.status,
+      now,
+      settings: prepared.settings,
+    })
+
+    // A flagged submission is answered as if it were queued: which rule fired is the author's
+    // business, not the sender's, and the truthful status is on the row they will read.
+    return c.json(publicCommentSubmitResponse(prepared.status === 'approved' ? 'approved' : 'pending'))
   })
 }
 
@@ -131,6 +137,7 @@ function publicCommentInsertStatement(
     postId: string
     body: z.infer<typeof blogPublicCommentSchema>
     status: BlogCommentStatus
+    spamScore: number
     ip: string | null
     ua: string | null
     avatar: string
@@ -141,8 +148,8 @@ function publicCommentInsertStatement(
     .prepare(`
       INSERT INTO blog_comments (
         id, post_id, parent_id, author_name, author_email, author_url,
-        author_avatar, content, status, ip, user_agent, created_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        author_avatar, content, status, spam_score, ip, user_agent, created_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
     `)
     .bind(
       params.id,
@@ -154,10 +161,100 @@ function publicCommentInsertStatement(
       params.avatar,
       params.body.content.trim(),
       params.status,
+      params.spamScore,
       params.ip,
       params.ua,
       params.now,
     )
+}
+
+interface PreparedPublicComment {
+  postId: string
+  status: BlogCommentStatus
+  spamScore: number
+  avatar: string
+  ip: string | null
+  ua: string | null
+  settings: BlogSettings
+}
+
+/**
+ * Everything a submission has to prove before it may be stored: the addressed post is readable and
+ * open to comments, the sender is inside both budgets, the parent is on that post, and the rules
+ * have had their look. The verdict is what decides the status — spam never publishes itself,
+ * whatever the approval setting says — and the score stays on the row so the moderation list can
+ * say which rule fired (FEA-06).
+ */
+async function preparePublicComment(
+  c: Context<AppBindings>,
+  body: z.infer<typeof blogPublicCommentSchema>,
+): Promise<PreparedPublicComment> {
+  const owner = blogOwnerOf(c)
+  const post = await loadCommentedPost(c.env.DB, owner.userId, body.postSlug)
+  if (!post.allow_comments) throw ApiError.forbidden('Comments are disabled for this post')
+
+  await assertCommentRateBudget(c.env.DB, c, owner.userId, body.postSlug)
+  if (body.parentId) await assertParentCommentOnPost(c.env.DB, body.parentId, post.id)
+
+  const settings = await getBlogSettings(c.env.DB, owner.userId)
+  const verdict = scoreComment(
+    { content: body.content, authorName: body.authorName, authorUrl: body.authorUrl },
+    { keywords: settings.commentSpamKeywords },
+  )
+  return {
+    postId: post.id,
+    status: verdict.score >= COMMENT_SPAM_THRESHOLD
+      ? 'spam'
+      : settings.requireCommentApproval ? 'pending' : 'approved',
+    spamScore: verdict.score,
+    // No picture means no picture: an empty value is what the reader submitted, and the admin's card
+    // (and the public page) draw an avatar locally from the name.
+    avatar: body.authorAvatar?.trim() || '',
+    ip: requestClientIp(c) || null,
+    ua: c.req.header('User-Agent') || null,
+    settings,
+  }
+}
+
+/** Where the stored comment is announced: the author's webhook, if they configured one. */
+async function announcePublicComment(
+  c: Context<AppBindings>,
+  params: {
+    commentId: string
+    postId: string
+    postSlug: string
+    authorName: string
+    content: string
+    status: BlogCommentStatus
+    now: number
+    settings: BlogSettings
+  },
+): Promise<void> {
+  dispatchCommentNotification(
+    params.settings.commentWebhookUrl,
+    {
+      commentId: params.commentId,
+      postId: params.postId,
+      postSlug: params.postSlug,
+      postTitle: await commentedPostTitle(c.env.DB, params.postId),
+      authorName: params.authorName,
+      content: params.content,
+      status: params.status,
+      isOwner: false,
+      createdAt: params.now,
+      siteName: params.settings.siteName,
+    },
+    commentWaitUntil(c),
+  )
+}
+
+/** The title a notification names the post by; a row that vanished meanwhile is answered as blank. */
+async function commentedPostTitle(db: D1Database, postId: string): Promise<string> {
+  const row = await db
+    .prepare('SELECT title FROM blog_posts WHERE id = ?1')
+    .bind(postId)
+    .first<{ title: string }>()
+  return row?.title ?? ''
 }
 
 function publicCommentSubmitResponse(status: BlogCommentStatus): {

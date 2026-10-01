@@ -54,7 +54,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   blog_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
   blog_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   blog_categories: ['id', 'user_id', 'name', 'slug', 'description', 'color', 'icon', 'position', 'created_at', 'updated_at'],
-  blog_comments: ['id', 'post_id', 'parent_id', 'author_name', 'author_email', 'author_url', 'author_avatar', 'content', 'status', 'ip', 'user_agent', 'created_at'],
+  blog_comments: ['id', 'post_id', 'parent_id', 'author_name', 'author_email', 'author_url', 'author_avatar', 'content', 'status', 'ip', 'user_agent', 'created_at', 'is_owner', 'spam_score'],
   blog_visits: ['id', 'user_id', 'post_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner'],
   blog_links: ['id', 'user_id', 'name', 'url', 'description', 'avatar', 'email', 'category_id', 'status', 'is_pinned', 'pinned_order', 'is_favorite', 'sort_order', 'is_active', 'clicks', 'created_at', 'updated_at'],
   blog_link_categories: ['id', 'user_id', 'name', 'icon', 'parent_id', 'sort_order', 'created_at', 'updated_at'],

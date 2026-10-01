@@ -1,22 +1,72 @@
 import { Hono } from 'hono'
-import type { BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
+import type { BlogCommentsCounts, BlogCommentStatus, BlogSettings } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { newId } from '../../lib/id'
 import { escapeLike, likeAny } from '../../lib/like'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import type { BlogCommentModerationRow } from '../../db/rows'
 import { blogCommentStatusSchema } from './schemas'
-import { blogCommentBatchSchema } from './schemas'
+import { blogCommentBatchSchema, blogCommentReplySchema } from './schemas'
 import { toBlogComment } from './helpers'
+import { getBlogSettings } from './settings'
 
 /** The moderation list is a working set, not the archive: past this the reader narrows the filters. */
 export const BLOG_COMMENTS_LIST_LIMIT = 500
 
 export function registerBlogCommentsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogCommentsListRoute(blogManageRoutes)
+  registerBlogCommentReplyRoute(blogManageRoutes)
   registerBlogCommentStatusRoute(blogManageRoutes)
   registerBlogCommentDeleteRoute(blogManageRoutes)
   registerBlogCommentsBatchRoute(blogManageRoutes)
+}
+
+/**
+ * The author answers a reader (FEA-06). The reply is an ordinary comment in the same thread — it
+ * carries the parent's post and id — but it is written by the blog's author, so it is approved on
+ * arrival (nothing to moderate) and marked so the reader-facing page can say who wrote it.
+ */
+function registerBlogCommentReplyRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.post('/comments/:id/reply', async (c) => {
+    const userId = c.get('userId')!
+    const parentId = c.req.param('id')
+    const body = await readJsonValidated(c, blogCommentReplySchema, JSON_BODY_LIMITS.comment)
+    const parent = await loadReplyParent(c.env.DB, parentId, userId)
+    const identity = authorReplyIdentity(await getBlogSettings(c.env.DB, userId))
+    const replyId = newId()
+
+    await c.env.DB
+      .prepare(`
+        INSERT INTO blog_comments (
+          id, post_id, parent_id, author_name, author_email, author_url,
+          author_avatar, content, status, spam_score, ip, user_agent, created_at, is_owner
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'approved', 0, NULL, NULL, ?9, 1)
+      `)
+      .bind(replyId, parent.post_id, parentId, identity.name, '', identity.url, identity.avatar, body.content.trim(), Date.now())
+      .run()
+
+    return c.json({ ok: true, id: replyId })
+  })
+}
+
+/** The comment being answered and the post it belongs to; a trashed post's comments are not hers. */
+async function loadReplyParent(db: D1Database, id: string, userId: string): Promise<{ post_id: string }> {
+  const parent = await db
+    .prepare('SELECT c.post_id FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE c.id = ?1 AND p.user_id = ?2 AND p.deleted_at IS NULL')
+    .bind(id, userId)
+    .first<{ post_id: string }>()
+  if (!parent) throw ApiError.notFound('Comment not found')
+  return parent
+}
+
+/** How the author's own reply introduces itself: the profile name, or the blog itself as fallback. */
+function authorReplyIdentity(settings: BlogSettings): { name: string; url: string | null; avatar: string } {
+  return {
+    name: settings.authorName.trim() || settings.siteName.trim() || 'Blog author',
+    url: settings.socialLinks.website?.trim() || null,
+    avatar: settings.authorAvatar.trim(),
+  }
 }
 
 function registerBlogCommentsListRoute(blogManageRoutes: Hono<AppBindings>): void {

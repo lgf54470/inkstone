@@ -3,7 +3,7 @@ import { Database, Save, Settings, Shield, X } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
-import { Field, Input, Switch, Segmented } from '../../components/form'
+import { Field, Input, Switch, Segmented, Textarea } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogSettingsModal } from './use-blog-settings-modal'
 
@@ -118,6 +118,10 @@ interface SettingsFormBundle {
   setFrontendUrl: (v: string) => void
   requireCommentApproval: boolean
   setRequireCommentApproval: (v: boolean) => void
+  commentWebhookUrl: string
+  setCommentWebhookUrl: (v: string) => void
+  spamKeywords: string
+  setSpamKeywords: (v: string) => void
   postsPerPage: number
   setPostsPerPage: (v: number) => void
 }
@@ -247,6 +251,7 @@ function SiteSettingsTab({ form }: { form: SettingsFormBundle }) {
       <SiteBasicSection form={form} />
       <AuthorSection form={form} />
       <CommentsRulesSection form={form} />
+      <CommentNotificationsSection form={form} />
       <SocialLinksSection form={form} />
     </>
   )
@@ -329,6 +334,38 @@ function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
           className='w-16 text-center'
         />
       </div>
+    </div>
+  )
+}
+
+/**
+ * Where a new comment is announced and what the rules park on arrival (FEA-06). Both are the
+ * author's own gates on reader input, which is why they sit next to the approval switch rather
+ * than in the traffic tab.
+ */
+function CommentNotificationsSection({ form }: { form: SettingsFormBundle }) {
+  return (
+    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
+      <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
+        {t('blog.comment_notifications')}
+      </h3>
+
+      <Field label={t('blog.comment_webhook')} hint={t('blog.comment_webhook_hint')}>
+        <Input
+          value={form.commentWebhookUrl}
+          onChange={(e) => form.setCommentWebhookUrl(e.target.value)}
+          placeholder={t('blog.comment_webhook_placeholder')}
+        />
+      </Field>
+
+      <Field label={t('blog.comment_spam_keywords')} hint={t('blog.comment_spam_keywords_hint')}>
+        <Textarea
+          value={form.spamKeywords}
+          onChange={(e) => form.setSpamKeywords(e.target.value)}
+          rows={2}
+          placeholder={t('blog.comment_spam_keywords_placeholder')}
+        />
+      </Field>
     </div>
   )
 }
