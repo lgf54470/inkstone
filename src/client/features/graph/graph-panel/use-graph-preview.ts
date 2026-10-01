@@ -4,7 +4,7 @@ import { usePinnedWindows } from '../../../store/pinned-windows'
 import type { WikiLinkHoverCardState } from '../../preview'
 import type { CanvasNode, CanvasState } from './types'
 
-function computeAnchor(
+export function computeNodeAnchor(
   canvas: HTMLCanvasElement,
   state: CanvasState,
   node: CanvasNode,
@@ -55,7 +55,7 @@ export function useGraphNodePreview(
     if (node.kind !== 'note' && node.kind !== 'unresolved') return
     const canvas = canvasRef.current, anchor = anchorRef.current
     if (!canvas || !anchor) return
-    setAnchorPos(computeAnchor(canvas, stateRef.current, node))
+    setAnchorPos(computeNodeAnchor(canvas, stateRef.current, node))
     setPreviewCard({ anchor, title: node.title, noteId: node.kind === 'note' ? node.id : null, missing: node.kind === 'unresolved' })
   }, [canvasRef, stateRef])
 

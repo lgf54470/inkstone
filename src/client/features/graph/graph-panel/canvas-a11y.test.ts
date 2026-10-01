@@ -162,6 +162,39 @@ describe('keys the canvas keeps for itself', () => {
   })
 })
 
+describe('the node actions menu without a pointer (G-22)', () => {
+  it('opens the menu for the selected node with the dedicated menu key', () => {
+    const graph = mountGraphCanvas(trio)
+    pressKey(graph.canvas, 'ArrowRight')
+    pressKey(graph.canvas, 'ContextMenu')
+
+    const menu = document.body.querySelector('[role="menu"]')
+    expect(menu?.getAttribute('aria-label')).toBe(t('graph.node_actions'))
+    expect(menu?.textContent).toContain(t('graph.open_note'))
+  })
+
+  it('opens the same menu with Shift+F10 for keyboards without a menu key', () => {
+    const graph = mountGraphCanvas(trio)
+    pressKey(graph.canvas, 'ArrowRight')
+    pressKey(graph.canvas, 'F10', { shiftKey: true })
+
+    expect(document.body.querySelector('[role="menu"]')).toBeTruthy()
+  })
+
+  it('leaves the menu closed when no node is selected', () => {
+    const graph = mountGraphCanvas(trio)
+    pressKey(graph.canvas, 'ContextMenu')
+
+    expect(document.body.querySelector('[role="menu"]')).toBeNull()
+  })
+
+  it('promises the menu key in the canvas name a reader hears', () => {
+    const graph = mountGraphCanvas(trio)
+    expect(graph.canvas.getAttribute('aria-label')).toContain(t('graph.graph_canvas_accessible'))
+    expect(t('graph.graph_canvas_accessible')).toContain('Shift+F10')
+  })
+})
+
 describe('the state a reader is left in', () => {
   it('announces that the graph is only part of what matched', () => {
     const graph = mountGraphCanvas(truncated())

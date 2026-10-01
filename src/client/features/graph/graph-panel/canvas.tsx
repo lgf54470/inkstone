@@ -10,7 +10,7 @@ import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
 import { GraphOverlays } from './graph-overlays'
-import { useGraphNodePreview } from './use-graph-preview'
+import { computeNodeAnchor, useGraphNodePreview } from './use-graph-preview'
 import {
   type GraphControls,
   graphMenuItems,
@@ -50,6 +50,7 @@ interface CanvasHandlers {
   setHover: (node: CanvasNode | null) => void
   setSelectedId: (id: string | null) => void
   setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void
+  openNodeMenu: (node: CanvasNode) => void
   beginDrag: (clientX: number, clientY: number, button: number, forcePan?: boolean) => void
   moveDrag: (clientX: number, clientY: number) => void
   endDrag: (clientX: number, clientY: number, modifierKey?: boolean) => void
@@ -197,6 +198,14 @@ function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: C
   if (event.key === 'Home') {
     h.fitGraph(); event.preventDefault(); state.schedule?.(); return
   }
+  if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+    const menuNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
+    if (menuNode) {
+      h.openNodeMenu(menuNode)
+      event.preventDefault()
+    }
+    return
+  }
   if (event.key === 'Enter' && h.selectedIdRef.current) {
     const selectedNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
     if (selectedNode?.kind === 'note') {
@@ -314,6 +323,23 @@ function useGraphLegends(data: GraphResponse, prefs: GraphPreferences) {
   )
 }
 
+function useGraphNodeActions(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  stateRef: RefObject<CanvasState>,
+  setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void,
+) {
+  const openNodeMenu = useCallback((node: CanvasNode) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const anchor = computeNodeAnchor(canvas, stateRef.current, node)
+    setContext({ x: anchor.x, y: anchor.y, node })
+  }, [canvasRef, setContext, stateRef])
+  const onTogglePin = useCallback((node: CanvasNode) => {
+    node.pinned = !node.pinned; stateRef.current.schedule?.()
+  }, [stateRef])
+  return { openNodeMenu, onTogglePin }
+}
+
 function useGraphCanvasController(props: GraphCanvasProps) {
   const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
   const [hover, setHover] = useState<CanvasNode | null>(null)
@@ -346,17 +372,14 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     origEndDrag(clientX, clientY, modifierKey); setIsDragging(false)
   }, [origEndDrag])
 
-  const onTogglePin = useCallback((node: CanvasNode) => {
-    node.pinned = !node.pinned; stateRef.current.schedule?.()
-  }, [stateRef])
-
+  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext)
   const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
   useGraphControls(controlsRef, stateRef, fitGraph)
   const colorLegends = useGraphLegends(data, prefs)
 
   const handlers: CanvasHandlers = {
     stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,
-    setHover, setSelectedId, setContext,
+    setHover, setSelectedId, setContext, openNodeMenu,
     beginDrag, moveDrag, endDrag, toWorld, nodeAt, fitGraph,
     onOpenNote, onCreateNote, onClose, hover, isDragging,
   }

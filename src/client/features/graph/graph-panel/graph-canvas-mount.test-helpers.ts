@@ -93,8 +93,8 @@ export function releaseGraphCanvases(): void {
   while (contexts.length) contexts.pop()!()
 }
 
-export function pressKey(target: Element, key: string): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+export function pressKey(target: Element, key: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
   act(() => { target.dispatchEvent(event) })
   return event
 }
