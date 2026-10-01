@@ -8,7 +8,7 @@
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement, type RenderedElement } from '../../lib/test-render'
-import { LaserPointer } from './presentation-pointer'
+import { LaserPointer, Spotlight } from './presentation-pointer'
 
 let frame: (() => void) | null = null
 let frames = 0
@@ -31,6 +31,10 @@ afterEach(() => {
 
 function layer(container: HTMLElement): HTMLElement | null {
   return container.querySelector<HTMLElement>('[data-laser-pointer]')
+}
+
+function spotlightLayer(container: HTMLElement): HTMLElement | null {
+  return container.querySelector<HTMLElement>('[data-presentation-spotlight]')
 }
 
 function moveTo(x: number, y: number): void {
@@ -113,5 +117,41 @@ describe('LaserPointer — giving up the pointer', () => {
     frames = 0
     moveTo(900, 900)
     expect(frames).toBe(0)
+  })
+})
+
+describe('Spotlight — aperture layer', () => {
+  it('draws nothing while spotlight mode is off', () => {
+    const view = renderElement(createElement(Spotlight, { active: false }))
+    expect(spotlightLayer(view.container)).toBeNull()
+    view.unmount()
+  })
+
+  it('renders spotlight layer with aria-hidden', () => {
+    const view = renderElement(createElement(Spotlight, { active: true }))
+    const spot = spotlightLayer(view.container)
+    expect(spot?.getAttribute('aria-hidden')).toBe('true')
+    expect(spot?.className).toContain('presentation-spotlight')
+    view.unmount()
+  })
+
+  it('updates spotlight custom properties on pointer move', () => {
+    const view = renderElement(createElement(Spotlight, { active: true }))
+    moveTo(300, 150)
+    runFrame()
+    expect(spotlightLayer(view.container)?.style.getPropertyValue('--spotlight-x')).toBe('300px')
+    expect(spotlightLayer(view.container)?.style.getPropertyValue('--spotlight-y')).toBe('150px')
+    view.unmount()
+  })
+
+  it('stops tracking when spotlight is toggled off or unmounted', () => {
+    const view: RenderedElement = renderElement(createElement(Spotlight, { active: true }))
+    moveTo(10, 10)
+    runFrame()
+    view.rerender(createElement(Spotlight, { active: false }))
+    frames = 0
+    moveTo(800, 800)
+    expect(frames).toBe(0)
+    view.unmount()
   })
 })

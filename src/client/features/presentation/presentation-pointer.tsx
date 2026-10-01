@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react'
 // the slide a click on the slide; and the pulse is taken out under `prefers-reduced-motion`
 // rather than shortened, because its duration is built from `--dur-slow` and that token drops to
 // 1ms, which would strobe instead of breathe.
-export function LaserPointer({ active }: { active: boolean }) {
+function usePointerTracker(active: boolean, varX: string, varY: string) {
   const layerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,8 +25,8 @@ export function LaserPointer({ active }: { active: boolean }) {
       frame = 0
       const layer = layerRef.current
       if (!layer) return
-      layer.style.setProperty('--laser-x', `${x}px`)
-      layer.style.setProperty('--laser-y', `${y}px`)
+      layer.style.setProperty(varX, `${x}px`)
+      layer.style.setProperty(varY, `${y}px`)
     }
     // One write per frame whatever the pointer did in between: a trackpad reports an event per
     // hardware tick, and a dot that reads them all ends up in the same place anyway.
@@ -40,8 +40,13 @@ export function LaserPointer({ active }: { active: boolean }) {
       window.removeEventListener('pointermove', track)
       if (frame) cancelAnimationFrame(frame)
     }
-  }, [active])
+  }, [active, varX, varY])
 
+  return layerRef
+}
+
+export function LaserPointer({ active }: { active: boolean }) {
+  const layerRef = usePointerTracker(active, '--laser-x', '--laser-y')
   if (!active) return null
 
   return (
@@ -51,5 +56,14 @@ export function LaserPointer({ active }: { active: boolean }) {
       <span className='laser-trail' />
       <span className='laser-dot' />
     </div>
+  )
+}
+
+export function Spotlight({ active }: { active: boolean }) {
+  const layerRef = usePointerTracker(active, '--spotlight-x', '--spotlight-y')
+  if (!active) return null
+
+  return (
+    <div ref={layerRef} className='presentation-spotlight' data-presentation-spotlight aria-hidden='true' />
   )
 }

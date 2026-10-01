@@ -6,7 +6,7 @@ import { usePresentation } from '../../store/presentation'
 import { DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
-import { LaserPointer } from './presentation-pointer'
+import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
@@ -60,6 +60,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <SlideProgress index={session.index} count={session.deck.length} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
         {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
+        <Spotlight active={session.spotlight} />
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}
         <LaserPointer active={session.laser} />

@@ -32,8 +32,9 @@ export function railOpenFor(choice: boolean | null, fitsViewport: boolean): bool
 // The ladder `Esc` walks: the screen the presenter is looking at first, so neither the overview
 // grid nor the laser ever costs a talk its show, then the tool, then the screen, then the show.
 // Named fields because three booleans in a row say nothing about which rung is which.
-export function escapeAction({ fullscreen, laser, overview }: { fullscreen: boolean; laser: boolean; overview: boolean }): 'closeOverview' | 'clearLaser' | 'exitFullscreen' | 'close' {
+export function escapeAction({ fullscreen, laser, overview, spotlight }: { fullscreen: boolean; laser: boolean; overview: boolean; spotlight?: boolean }): 'closeOverview' | 'clearSpotlight' | 'clearLaser' | 'exitFullscreen' | 'close' {
   if (overview) return 'closeOverview'
+  if (spotlight) return 'clearSpotlight'
   if (laser) return 'clearLaser'
   return fullscreen ? 'exitFullscreen' : 'close'
 }

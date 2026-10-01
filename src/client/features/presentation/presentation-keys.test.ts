@@ -156,3 +156,19 @@ describe('presentationCommand — presenter view', () => {
   })
 })
 
+describe('presentationCommand — spotlight', () => {
+  it('toggles spotlight on T and K', () => {
+    expect(presentationCommand('t', plain)).toBe('spotlight')
+    expect(presentationCommand('T', plain)).toBe('spotlight')
+    expect(presentationCommand('k', plain)).toBe('spotlight')
+    expect(presentationCommand('K', plain)).toBe('spotlight')
+  })
+
+  it('leaves T and K to the focused control so typing is not hijacked', () => {
+    expect(presentationCommand('t', onControl)).toBeNull()
+    expect(presentationCommand('T', onControl)).toBeNull()
+    expect(presentationCommand('k', onControl)).toBeNull()
+    expect(presentationCommand('K', onControl)).toBeNull()
+  })
+})
+

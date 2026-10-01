@@ -9,13 +9,23 @@ import { renderElement } from '../../lib/test-render'
 import { usePresentationKeys, type PresentationKeysOptions } from './use-presentation-keys'
 
 function Host({ props }: { props: PresentationKeysOptions }) {
-  const { laser, overview, screenCover } = usePresentationKeys(props)
-  return createElement('span', { 'data-laser': String(laser), 'data-overview': String(overview), 'data-cover': screenCover ?? 'none' })
+  const { laser, spotlight, overview, screenCover } = usePresentationKeys(props)
+  return createElement('span', {
+    'data-laser': String(laser),
+    'data-spotlight': String(spotlight),
+    'data-overview': String(overview),
+    'data-cover': screenCover ?? 'none',
+  })
 }
 
 function state(container: HTMLElement) {
   const marker = container.querySelector('span')
-  return { laser: marker?.getAttribute('data-laser'), overview: marker?.getAttribute('data-overview'), cover: marker?.getAttribute('data-cover') }
+  return {
+    laser: marker?.getAttribute('data-laser'),
+    spotlight: marker?.getAttribute('data-spotlight'),
+    overview: marker?.getAttribute('data-overview'),
+    cover: marker?.getAttribute('data-cover'),
+  }
 }
 
 // The key arrives the way a browser sends it: nothing focused, so the event lands on the body and
@@ -146,6 +156,56 @@ describe('usePresentationKeys — the slide overview', () => {
     expect(props.goNext).toHaveBeenCalledTimes(1)
     expect(() => press('c', window)).not.toThrow()
     expect(state(view.container).laser).toBe('true')
+    view.unmount()
+  })
+})
+
+describe('usePresentationKeys — the spotlight tool', () => {
+  it('turns spotlight on and off with T and K', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('t')
+    expect(state(view.container).spotlight).toBe('true')
+    press('T')
+    expect(state(view.container).spotlight).toBe('false')
+    press('k')
+    expect(state(view.container).spotlight).toBe('true')
+    press('K')
+    expect(state(view.container).spotlight).toBe('false')
+    view.unmount()
+  })
+
+  it('enforces mutual exclusion between laser and spotlight', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('c')
+    expect(state(view.container).laser).toBe('true')
+    expect(state(view.container).spotlight).toBe('false')
+    press('t')
+    expect(state(view.container).laser).toBe('false')
+    expect(state(view.container).spotlight).toBe('true')
+    press('c')
+    expect(state(view.container).laser).toBe('true')
+    expect(state(view.container).spotlight).toBe('false')
+    view.unmount()
+  })
+
+  it('hands T and K to a focused control instead of hijacking the keystroke', () => {
+    const button = document.createElement('button')
+    document.body.append(button)
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('t', button)
+    expect(state(view.container).spotlight).toBe('false')
+    press('k', button)
+    expect(state(view.container).spotlight).toBe('false')
+    view.unmount()
+  })
+
+  it('goes out with the show', () => {
+    const props = options()
+    const view = renderElement(createElement(Host, { props }))
+    press('t')
+    expect(state(view.container).spotlight).toBe('true')
+    view.rerender(createElement(Host, { props: { ...props, open: false } }))
+    expect(state(view.container).spotlight).toBe('false')
     view.unmount()
   })
 })

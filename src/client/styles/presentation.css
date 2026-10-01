@@ -169,3 +169,24 @@
     animation: none;
   }
 }
+
+.presentation-spotlight {
+  --spotlight-radius: 120px;
+
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  pointer-events: none;
+  background: radial-gradient(
+    circle var(--spotlight-radius) at var(--spotlight-x, -100vw) var(--spotlight-y, -100vh),
+    transparent 0%,
+    transparent calc(var(--spotlight-radius) - 1px),
+    color-mix(in oklab, #000 65%, transparent) var(--spotlight-radius)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presentation-spotlight {
+    transition: none;
+  }
+}

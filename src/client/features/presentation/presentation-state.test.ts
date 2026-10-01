@@ -158,10 +158,15 @@ describe('escapeAction', () => {
     expect(escapeAction({ fullscreen: false, laser: true, overview: false })).toBe('clearLaser')
   })
 
+  it('puts the spotlight out before it costs the talk a screen or the show', () => {
+    expect(escapeAction({ fullscreen: true, laser: false, overview: false, spotlight: true })).toBe('clearSpotlight')
+    expect(escapeAction({ fullscreen: false, laser: false, overview: false, spotlight: true })).toBe('clearSpotlight')
+  })
+
   // Three booleans read as nothing in a call, and the order of the ladder is the whole rule: the
   // names are what keep a future rung from being inserted under the wrong one.
   it('puts the overview away first, since it is the screen the presenter is looking at', () => {
-    expect(escapeAction({ fullscreen: true, laser: true, overview: true })).toBe('closeOverview')
+    expect(escapeAction({ fullscreen: true, laser: true, overview: true, spotlight: true })).toBe('closeOverview')
     expect(escapeAction({ fullscreen: false, laser: false, overview: true })).toBe('closeOverview')
   })
 })

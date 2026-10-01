@@ -78,6 +78,10 @@ export interface PresentationSession {
   clearCover: () => void
   /** Whether the show is drawing its own pointer. */
   laser: boolean
+  clearLaser: () => void
+  spotlight: boolean
+  clearSpotlight: () => void
+  toggleSpotlight: () => void
   /** Whether the whole deck is laid out on top of the slide surface. */
   overview: boolean
   clearOverview: () => void
@@ -128,7 +132,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const { listProgress, onProgress } = useListProgress()
   const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes, proseFont)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter })
-  useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview })
+  useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
   useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
   // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the
