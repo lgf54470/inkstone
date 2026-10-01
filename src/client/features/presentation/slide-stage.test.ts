@@ -67,4 +67,16 @@ describe('ScreenCover', () => {
     expect(onClear).toHaveBeenCalledTimes(1)
     view.unmount()
   })
+
+  it('intercepts onContextMenu and prevents default to eliminate native menu on screen cover', () => {
+    const onClear = vi.fn()
+    const view = renderElement(createElement(ScreenCover, { cover: 'black', onClear }))
+    const cover = view.container.querySelector('[data-screen-cover="black"]')
+    expect(cover).toBeTruthy()
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    cover?.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    expect(onClear).not.toHaveBeenCalled()
+    view.unmount()
+  })
 })

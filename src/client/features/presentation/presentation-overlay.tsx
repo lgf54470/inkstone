@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react'
+import { useCallback, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -10,6 +10,7 @@ import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
+import { PresentationContextMenu, type PresentationContextMenuProps } from './presentation-context-menu'
 import { type PresentationSession, usePresentationSession } from './use-presentation-session'
 
 // The show reads its own store, which the shell hosts: that is what keeps a talk
@@ -39,6 +40,15 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
   session: PresentationSession
   onClose: () => void
 }) {
+  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault()
+    if (session.screenCover) return
+    const target = event.target as Element | null
+    const anchorEl = target?.closest<HTMLAnchorElement>('a[href]')
+    const linkUrl = anchorEl?.getAttribute('href') || anchorEl?.href || null
+    session.openContextMenu({ x: event.clientX, y: event.clientY }, linkUrl)
+  }, [session])
+
   return (
     <>
       <div
@@ -52,6 +62,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         aria-modal='true'
         aria-label={t('workspace.presentation_mode')}
         data-surface='presentation'
+        onContextMenu={handleContextMenu}
         className={cn('anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none', session.laser && 'cursor-none')}
       >
         {session.railOpen && <SlideRail {...slideSurfaceProps(session)} title={session.noteTitle} progress={session.listProgress} chromeHidden={session.chromeHidden} occluded={session.occluded} />}
@@ -64,6 +75,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}
         <LaserPointer active={session.laser} />
+        <PresentationContextMenu {...contextMenuProps(panelRef, session, onClose)} />
       </div>
       <PresentationSheets session={session} />
     </>
@@ -131,3 +143,37 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     onClose,
   }
 }
+
+function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: PresentationSession, onClose: () => void): PresentationContextMenuProps {
+  return {
+    point: session.contextPoint,
+    linkUrl: session.contextLink,
+    onClose: session.closeContextMenu,
+    onReopen: (point, linkUrl) => session.openContextMenu(point, linkUrl),
+    container: panelRef.current,
+    slideIndex: session.index,
+    slideCount: session.deck.length,
+    subPage: session.sub,
+    pageCount: session.pageCount,
+    railOpen: session.railOpen,
+    overview: session.overview,
+    following: session.following,
+    isFullscreen: session.isFullscreen,
+    laser: session.laser,
+    spotlight: session.spotlight,
+    screenCover: session.screenCover,
+    onPrev: session.goPrev,
+    onNext: session.goNext,
+    onToggleRail: session.toggleRail,
+    onToggleOverview: session.toggleOverview,
+    onToggleFollowing: session.toggleFollowing,
+    onToggleFullscreen: session.toggleFullscreen,
+    onOpenPresenter: session.openPresenter,
+    onToggleLaser: session.toggleLaser,
+    onToggleSpotlight: session.toggleSpotlight,
+    onToggleBlackout: session.toggleBlackout,
+    onToggleWhiteout: session.toggleWhiteout,
+    onExit: onClose,
+  }
+}
+

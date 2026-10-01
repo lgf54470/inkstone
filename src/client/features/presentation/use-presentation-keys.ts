@@ -13,6 +13,7 @@ export interface PresentationKeysOptions {
   toggleRail: () => void
   toggleFollowing: () => void
   openPresenter?: () => void
+  isMenuOpen?: boolean
 }
 
 function useScreenCover(open: boolean) {
@@ -101,19 +102,24 @@ function usePresentationRunner(actions: {
   }, [actions])
 }
 
-export function usePresentationKeys(options: PresentationKeysOptions): {
+export interface PresentationKeysResult {
   screenCover: ScreenCoverType
   clearCover: () => void
+  toggleBlackout: () => void
+  toggleWhiteout: () => void
   laser: boolean
   clearLaser: () => void
+  toggleLaser: () => void
   spotlight: boolean
   clearSpotlight: () => void
   toggleSpotlight: () => void
   overview: boolean
   clearOverview: () => void
   toggleOverview: () => void
-} {
-  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter } = options
+}
+
+export function usePresentationKeys(options: PresentationKeysOptions): PresentationKeysResult {
+  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter, isMenuOpen } = options
   const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
   const { laser, clearLaser, toggleLaser, spotlight, clearSpotlight, toggleSpotlight } = usePointerTools(open)
   const { overview, clearOverview, toggleOverview } = useOverviewMode(open)
@@ -131,11 +137,12 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
       // Both slide lists walk their own arrows: the rail vertically, the overview grid across rows.
       onSlideList: Boolean(target?.closest('[data-presentation-rail], [data-presentation-overview]')),
+      onMenu: Boolean(isMenuOpen || target?.closest('[role="menu"], [data-presentation-menu]')),
     })
     if (!command) return
     event.preventDefault()
     run(command)
-  }, [clearCover, run, screenCover])
+  }, [clearCover, isMenuOpen, run, screenCover])
 
   useEffect(() => {
     if (!open) return
@@ -143,5 +150,5 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, onKeyDown])
 
-  return { screenCover, clearCover, laser, clearLaser, spotlight, clearSpotlight, toggleSpotlight, overview, clearOverview, toggleOverview }
+  return { screenCover, clearCover, toggleBlackout, toggleWhiteout, laser, clearLaser, toggleLaser, spotlight, clearSpotlight, toggleSpotlight, overview, clearOverview, toggleOverview }
 }

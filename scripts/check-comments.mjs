@@ -6753,6 +6753,9 @@ const allowed = new Map([
     '// The stage reports fractional design sizes (it divides by the scale), which would print as',
     '// fractional page boxes; a PDF page is a whole number of pixels.',
   ]],
+  ['src/client/features/presentation/presentation-context-menu.tsx', [
+    '// Best-effort clipboard copy: environment or permission restrictions may reject writing.',
+  ]],
   ['src/client/features/presentation/presentation-controls.test.ts', [
     '// The toggle is found by the message it shows, which only exists once the locale has loaded.',
     '// The grid is drawn over the pill rather than beside it, so the pill\'s own buttons are the',
@@ -6781,6 +6784,7 @@ const allowed = new Map([
     '// slide list keeps the arrows it needs to walk its own items.',
     '/** The event targets a button, link or editable control. */',
     '/** The event targets a list of slides — the rail or the overview grid — which walks its own arrows. */',
+    '/** The event targets an open menu which walks its own items. */',
     '// The tools a single letter drives, all of which yield to a focused control. Written as a table',
     '// because the eight cases it replaces differed only in the letter: adding a tool is one row here.',
     '// The pointer takes C because L already drives following, and moving a shipped key would cost more',

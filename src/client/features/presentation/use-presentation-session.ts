@@ -76,9 +76,12 @@ export interface PresentationSession {
   preflight: SlidePreflightProps
   screenCover: 'black' | 'white' | null
   clearCover: () => void
+  toggleBlackout: () => void
+  toggleWhiteout: () => void
   /** Whether the show is drawing its own pointer. */
   laser: boolean
   clearLaser: () => void
+  toggleLaser: () => void
   spotlight: boolean
   clearSpotlight: () => void
   toggleSpotlight: () => void
@@ -90,6 +93,10 @@ export interface PresentationSession {
   occluded: boolean
   openPresenter: () => void
   notes: string[]
+  contextPoint: { x: number; y: number } | null
+  contextLink: string | null
+  openContextMenu: (point: { x: number; y: number }, linkUrl?: string | null) => void
+  closeContextMenu: () => void
 }
 
 function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[], proseFont?: ProseFont) {
@@ -131,7 +138,8 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes, proseFont)
-  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter })
+  const contextMenu = usePresentationContextMenu(open)
+  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
   useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
@@ -154,12 +162,33 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     toggleRail,
     toggleFollowing,
     openPresenter,
-    occluded: mode.overview || Boolean(mode.screenCover),
+    occluded: mode.overview || Boolean(mode.screenCover) || Boolean(contextMenu.contextPoint),
     ...nav,
     ...mode,
     ...exports,
+    ...contextMenu,
     preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
   }
+}
+
+function usePresentationContextMenu(open: boolean) {
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
+  const [linkUrl, setLinkUrl] = useState<string | null>(null)
+  const closeContextMenu = useCallback(() => {
+    setPoint(null)
+    setLinkUrl(null)
+  }, [])
+  const openContextMenu = useCallback((newPoint: { x: number; y: number }, newLinkUrl: string | null = null) => {
+    setPoint(newPoint)
+    setLinkUrl(newLinkUrl)
+  }, [])
+  useEffect(() => {
+    if (!open) {
+      setPoint(null)
+      setLinkUrl(null)
+    }
+  }, [open])
+  return { contextPoint: point, contextLink: linkUrl, openContextMenu, closeContextMenu }
 }
 
 function useSlideCacheKeys(deck: string[], dark: boolean, metrics: StageMetrics): string[] {
@@ -375,12 +404,12 @@ function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement |
   const report = (scope: string) => (error: unknown) => console.debug(`[inkstone] ${scope} rejected`, error)
   const enter = useCallback(() => {
     const panel = panelRef.current
-    if (!panel || document.fullscreenElement) return
+    if (!panel || document.fullscreenElement || typeof panel.requestFullscreen !== 'function') return
     const pending = panel.requestFullscreen()
-    pending.catch(report('fullscreen request'))
+    pending?.catch?.(report('fullscreen request'))
   }, [panelRef])
   const exit = useCallback(() => {
-    if (!panelRef.current || document.fullscreenElement !== panelRef.current) return
+    if (!panelRef.current || document.fullscreenElement !== panelRef.current || typeof document.exitFullscreen !== 'function') return
     void document.exitFullscreen().catch(report('exit fullscreen'))
   }, [panelRef])
   // Starting the show enters fullscreen, and the request has to happen while the

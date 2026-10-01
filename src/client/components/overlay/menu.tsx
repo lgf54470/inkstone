@@ -44,7 +44,7 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
   </div>)
 }
 
-export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, panelId, }: {
+export interface MenuProps {
   anchor: RefObject<HTMLElement | null> | {
     x: number
     y: number
@@ -59,7 +59,11 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
   // Optional: only callers that pair the menu with a trigger need the id, and the
   // rest must not be made to invent one.
   panelId?: string
-}) {
+  container?: HTMLElement | null
+  className?: string
+}
+
+export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, panelId, container, className }: MenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number; origin: string }>({ top: 0, left: 0, origin: 'top left' })
@@ -81,19 +85,21 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
   useMenuActionKeys(open, items, cursor, onClose, menuRef, submenuRef, setActiveSubmenuId, setSubmenuAnchorRect)
 
   const { handleHover, handleClick } = useMenuInteractions(setCursor, setActiveSubmenuId, setSubmenuAnchorRect, onClose)
-  if (!open)
+  const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null)
+  if (!open || !targetContainer)
     return null
   const activeItem = items.find((i) => i.id === activeSubmenuId)
   return (<>
-    {createPortal(<div ref={menuRef} id={panelId} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
+    {createPortal(<div ref={menuRef} id={panelId} role='menu' aria-label={label} tabIndex={-1} data-presentation-menu={container ? 'true' : undefined} className={cn('anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none cursor-default', className)} style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
       {items.map((item, index) => (<MenuItemRow key={item.id} item={item} index={index} cursor={cursor} onHover={handleHover} onClick={handleClick}/>))}
-    </div>, document.body)}
+    </div>, targetContainer)}
     {activeItem && activeItem.submenu && (<MenuSubmenu
       submenu={activeItem.submenu}
       submenuRef={submenuRef}
       submenuPos={submenuPos}
       zIndex={zIndex}
       onClose={onClose}
+      container={targetContainer}
       onEsc={() => {
         setActiveSubmenuId(null)
         menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)?.focus({ preventScroll: true })
@@ -126,23 +132,27 @@ function useMenuInteractions(setCursor: React.Dispatch<React.SetStateAction<numb
   return { handleHover, handleClick }
 }
 
-function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, onClose, onEsc }: {
+function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, onClose, onEsc, container }: {
   submenu: Exclude<MenuItem['submenu'], undefined>
   submenuRef: React.RefObject<HTMLDivElement | null>
   submenuPos: { top: number; left: number }
   zIndex?: number
   onClose: () => void
   onEsc: () => void
+  container?: HTMLElement | null
 }) {
   // Escape closes one level at a time: useEscape runs the top of its stack and nothing
   // else, so the menu stays open behind the submenu, and a panel nested in the submenu
   // still closes before both of them.
   useEscape(true, onEsc)
+  const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null)
+  if (!targetContainer)
+    return null
   return createPortal(
     <div
       ref={submenuRef}
       tabIndex={-1}
-      className='anim-pop fixed outline-none'
+      className='anim-pop fixed outline-none cursor-default'
       style={{
         top: submenuPos.top,
         left: submenuPos.left,
@@ -153,7 +163,7 @@ function MenuSubmenu({ submenu, submenuRef, submenuPos, zIndex, onClose, onEsc }
         ? submenu({ closeMenu: onClose })
         : submenu}
     </div>,
-    document.body
+    targetContainer
   )
 }
 

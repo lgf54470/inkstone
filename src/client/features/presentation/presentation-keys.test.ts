@@ -4,6 +4,8 @@ import { presentationCommand } from './presentation-keys'
 const plain = { onControl: false, onSlideList: false }
 const onControl = { onControl: true, onSlideList: false }
 const onSlideList = { onControl: false, onSlideList: true }
+const onMenu = { onControl: false, onSlideList: false, onMenu: true }
+const onMenuControl = { onControl: true, onSlideList: false, onMenu: true }
 
 describe('presentationCommand — navigation', () => {
   it('walks the deck with the arrow, page and space keys', () => {
@@ -171,4 +173,39 @@ describe('presentationCommand — spotlight', () => {
     expect(presentationCommand('K', onControl)).toBeNull()
   })
 })
+
+describe('presentationCommand — menu context ownership', () => {
+  it('yields vertical navigation arrows to the open menu so background slides do not flip', () => {
+    expect(presentationCommand('ArrowDown', onMenu)).toBeNull()
+    expect(presentationCommand('ArrowUp', onMenu)).toBeNull()
+    expect(presentationCommand('ArrowDown', onMenuControl)).toBeNull()
+    expect(presentationCommand('ArrowUp', onMenuControl)).toBeNull()
+  })
+
+  it('yields all other navigation and activation keys to the open menu', () => {
+    expect(presentationCommand('ArrowLeft', onMenu)).toBeNull()
+    expect(presentationCommand('ArrowRight', onMenu)).toBeNull()
+    expect(presentationCommand('PageDown', onMenu)).toBeNull()
+    expect(presentationCommand('PageUp', onMenu)).toBeNull()
+    expect(presentationCommand('Home', onMenu)).toBeNull()
+    expect(presentationCommand('End', onMenu)).toBeNull()
+    expect(presentationCommand(' ', onMenu)).toBeNull()
+    expect(presentationCommand('Enter', onMenu)).toBeNull()
+  })
+
+  it('yields single-letter tool toggles to the open menu', () => {
+    expect(presentationCommand('f', onMenu)).toBeNull()
+    expect(presentationCommand('s', onMenu)).toBeNull()
+    expect(presentationCommand('l', onMenu)).toBeNull()
+    expect(presentationCommand('c', onMenu)).toBeNull()
+    expect(presentationCommand('t', onMenu)).toBeNull()
+    expect(presentationCommand('k', onMenu)).toBeNull()
+    expect(presentationCommand('b', onMenu)).toBeNull()
+    expect(presentationCommand('w', onMenu)).toBeNull()
+    expect(presentationCommand('p', onMenu)).toBeNull()
+    expect(presentationCommand('g', onMenu)).toBeNull()
+    expect(presentationCommand('o', onMenu)).toBeNull()
+  })
+})
+
 

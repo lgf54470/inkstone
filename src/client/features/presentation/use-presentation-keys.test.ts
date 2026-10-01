@@ -209,3 +209,64 @@ describe('usePresentationKeys — the spotlight tool', () => {
     view.unmount()
   })
 })
+
+describe('usePresentationKeys — menu context isolation', () => {
+  it('blocks ArrowDown and ArrowUp navigation when isMenuOpen is true', () => {
+    const props = { ...options(), isMenuOpen: true }
+    const view = renderElement(createElement(Host, { props }))
+    press('ArrowDown')
+    press('ArrowUp')
+    expect(props.goNext).not.toHaveBeenCalled()
+    expect(props.goPrev).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('blocks navigation when focus is inside a menu element', () => {
+    const props = options()
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    const item = document.createElement('button')
+    item.setAttribute('role', 'menuitem')
+    menu.append(item)
+    document.body.append(menu)
+    const view = renderElement(createElement(Host, { props }))
+    press('ArrowDown', item)
+    press('ArrowUp', item)
+    expect(props.goNext).not.toHaveBeenCalled()
+    expect(props.goPrev).not.toHaveBeenCalled()
+    view.unmount()
+  })
+})
+
+describe('usePresentationKeys — toggle helpers', () => {
+  it('exposes direct toggle helpers for laser, blackout and whiteout', () => {
+    let api!: ReturnType<typeof usePresentationKeys>
+    function ApiHost({ props }: { props: PresentationKeysOptions }) {
+      api = usePresentationKeys(props)
+      return createElement('span')
+    }
+    const view = renderElement(createElement(ApiHost, { props: options() }))
+    act(() => {
+      api.toggleLaser()
+    })
+    expect(api.laser).toBe(true)
+    act(() => {
+      api.toggleLaser()
+    })
+    expect(api.laser).toBe(false)
+    act(() => {
+      api.toggleBlackout()
+    })
+    expect(api.screenCover).toBe('black')
+    act(() => {
+      api.toggleWhiteout()
+    })
+    expect(api.screenCover).toBe('white')
+    act(() => {
+      api.toggleWhiteout()
+    })
+    expect(api.screenCover).toBeNull()
+    view.unmount()
+  })
+})
+

@@ -54,14 +54,17 @@ function useStageGestures({
   stageRef,
   onPrev,
   onNext,
+  occluded,
 }: {
   stageRef: RefObject<HTMLDivElement | null>
   onPrev: () => void
   onNext: () => void
+  occluded: boolean
 }) {
   const touchStartX = useRef<number | null>(null)
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (occluded) return
     const target = event.target as HTMLElement | null
     if (target?.closest('a, button, input, select, textarea, [contenteditable="true"]')) return
     const stage = stageRef.current
@@ -71,7 +74,7 @@ function useStageGestures({
     const dir = stageClickDirection(clickX, rect.width)
     if (dir === 'prev') onPrev()
     else onNext()
-  }, [onPrev, onNext, stageRef])
+  }, [onPrev, onNext, stageRef, occluded])
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     touchStartX.current = event.touches[0]?.clientX ?? null
@@ -92,7 +95,7 @@ function useStageGestures({
 
 export function PresentationStage(props: PresentationStageProps) {
   const { stageRef, metrics, cacheKey, source, subPage, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
-  const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext })
+  const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext, occluded })
 
   return (
     <div
@@ -120,6 +123,10 @@ export function ScreenCover({ cover, onClear }: { cover: 'black' | 'white'; onCl
   return (
     <div
       onClick={onClear}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       data-screen-cover={cover}
       className={cover === 'black' ? 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(0_0_0)]' : 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(255_255_255)]'}
       aria-label={cover === 'black' ? 'Blackout' : 'Whiteout'}

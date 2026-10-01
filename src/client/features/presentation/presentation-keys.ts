@@ -11,9 +11,12 @@ export interface PresentationKeyContext {
   onControl: boolean
   /** The event targets a list of slides — the rail or the overview grid — which walks its own arrows. */
   onSlideList: boolean
+  /** The event targets an open menu which walks its own items. */
+  onMenu?: boolean
 }
 
 export function presentationCommand(key: string, context: PresentationKeyContext): PresentationCommand | null {
+  if (context.onMenu) return null
   switch (key) {
     case 'ArrowRight':
       return context.onSlideList ? null : 'next'
