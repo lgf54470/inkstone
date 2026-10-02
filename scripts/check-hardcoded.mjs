@@ -92,6 +92,15 @@ const PALETTE_BASELINE_PATH = path.join(import.meta.dirname, 'check-hardcoded.pa
 // never enter the baseline, so resnapshotting cannot absorb new debt there.
 const PALETTE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/share/']
 
+// Part 6 is the bare scale-step rule: `bottom-4`, `py-0.5`, `z-10`, `h-2` carry no unit and no bracket,
+// so every rule above walks past them — yet each one writes a primitive that this app keeps in a token
+// family (--sp-* for spacing and sizes, --z-* for stacking). It is enforced with zero tolerance inside
+// SCALE_ZERO_TOLERANCE_PREFIXES; elsewhere the count is printed on the pass line instead of failed, so
+// the debt a future batch has to clear stays visible rather than being quietly allowed or quietly hidden.
+const SCALE_CLASS_RE = /(^|[\s'"`])-?(p|px|py|pt|pb|pl|pr|ps|pe|m|mx|my|mt|mb|ml|mr|ms|me|gap|w|h|min-w|min-h|max-w|max-h|top|bottom|left|right|inset|z)-(?:(?:[1-9]\d*)|(?:0\.\d+))(?![\w./-])/g
+const SCALE_MESSAGE = 'bare Tailwind scale step'
+const SCALE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/presentation/']
+
 // Files whose hex literals are authored content or a self-contained
 // stylesheet, not UI values that could consume the token layer. Each entry
 // carries the reason; add a new file here only when the same argument holds.
@@ -379,11 +388,26 @@ function problemsFor(rel, text) {
     ts.forEachChild(node, visitPalette)
   }
 
+  // Part 6: a Tailwind scale step in any class string. The families named in
+  // SCALE_CLASS_RE all have a token layer, so the number itself is the violation
+  // whether it came from a bracket, a ternary branch or a plain class list.
+  function visitScaleClasses(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+      || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      for (const match of node.text.matchAll(SCALE_CLASS_RE)) {
+        push(lineOf(node), `${SCALE_MESSAGE} ${match[0].trim()} (AGENTS.md rule 2): reference the token family — var(--sp-*) for spacing and sizes, var(--z-*) for stacking`)
+      }
+      return
+    }
+    ts.forEachChild(node, visitScaleClasses)
+  }
+
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
   visitClasses(sf)
   visitTokenFamilies(sf)
   visitPalette(sf)
+  visitScaleClasses(sf)
   return found
 }
 
@@ -417,14 +441,23 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const problems = []
   const paletteCounts = new Map()
+  let scaleDebt = 0
   for (const root of ROOTS) {
     for (const file of walk(path.resolve(root))) {
       const rel = path.relative(process.cwd(), file).replaceAll('\\\\', '/')
       if (isExemptFile(rel)) continue
       if (ALLOWED_CONTENT_FILES.has(rel)) continue
       for (const problem of problemsFor(rel, fs.readFileSync(file, 'utf8'))) {
-        if (problem.includes(` ${PALETTE_MESSAGE} `)) paletteCounts.set(rel, (paletteCounts.get(rel) ?? 0) + 1)
-        else problems.push(problem)
+        if (problem.includes(` ${PALETTE_MESSAGE} `)) {
+          paletteCounts.set(rel, (paletteCounts.get(rel) ?? 0) + 1)
+          continue
+        }
+        if (problem.includes(` ${SCALE_MESSAGE} `)) {
+          if (SCALE_ZERO_TOLERANCE_PREFIXES.some((prefix) => rel.startsWith(prefix))) problems.push(problem)
+          else scaleDebt += 1
+          continue
+        }
+        problems.push(problem)
       }
     }
   }
@@ -447,7 +480,7 @@ if (isMain) {
     process.exit(1)
   }
   const debt = Object.values(baseline).reduce((total, count) => total + count, 0)
-  console.log(`hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src (${debt} palette classes grandfathered in ${Object.keys(baseline).length} files)`)
+  console.log(`hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src (${debt} palette classes grandfathered in ${Object.keys(baseline).length} files; ${scaleDebt} bare scale steps outside the token-enforced modules, ${SCALE_ZERO_TOLERANCE_PREFIXES.join(', ')} keeps none)`)
 }
 
 export { arbitraryUnitProblems, paletteDriftProblems, problemsFor }

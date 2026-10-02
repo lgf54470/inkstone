@@ -198,7 +198,7 @@ function ConnectionBadge({ connected }: { connected: boolean }) {
     >
       <span
         className={cn(
-          'h-2 w-2 rounded-full',
+          'h-[var(--sp-2)] w-[var(--sp-2)] rounded-full',
           connected ? 'bg-[var(--accent)]' : 'bg-[var(--border-default)]',
         )}
       />

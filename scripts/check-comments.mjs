@@ -413,6 +413,11 @@ const allowed = new Map([
     '// Unit values inside Tailwind arbitrary-value brackets and parens; also matches .06em.',
     '// Modules that already draw every colour from tokens keep a zero budget: they',
     '// never enter the baseline, so resnapshotting cannot absorb new debt there.',
+    '// Part 6 is the bare scale-step rule: `bottom-4`, `py-0.5`, `z-10`, `h-2` carry no unit and no bracket,',
+    '// so every rule above walks past them — yet each one writes a primitive that this app keeps in a token',
+    '// family (--sp-* for spacing and sizes, --z-* for stacking). It is enforced with zero tolerance inside',
+    '// SCALE_ZERO_TOLERANCE_PREFIXES; elsewhere the count is printed on the pass line instead of failed, so',
+    '// the debt a future batch has to clear stays visible rather than being quietly allowed or quietly hidden.',
     '// Files whose hex literals are authored content or a self-contained',
     '// stylesheet, not UI values that could consume the token layer. Each entry',
     '// carries the reason; add a new file here only when the same argument holds.',
@@ -462,6 +467,9 @@ const allowed = new Map([
     '// named-constant exemption: hoisting `text-amber-500` names the hue, it does',
     '// not theme it. Every string is read, so a hue returned from a plain helper',
     '// counts the same as one written inline in JSX.',
+    '// Part 6: a Tailwind scale step in any class string. The families named in',
+    '// SCALE_CLASS_RE all have a token layer, so the number itself is the violation',
+    '// whether it came from a bracket, a ternary branch or a plain class list.',
     '// Grandfathered palette debt, compared per file: a count may not grow, and a',
     '// count that shrank still has to be resnapshotted so the baseline keeps',
     '// describing the tree instead of the day it was written.',
@@ -6957,6 +6965,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/presentation/presentation-stage.tsx', [
     '/** The overview grid is drawn over the slide, so nothing in the slide can be reached. */',
+    '// This chip used to fade itself to 35% opacity, which composites its text to 1.67:1 against the',
+    '// slide — the axe `color-contrast` violation L-1 has been carrying. AA is the floor, so it now',
+    '// paints at the tier\'s own colour; muting it further would need a token that still clears',
+    '// contrast on this surface, not an opacity applied on top of one that already does.',
   ]],
   ['src/client/features/presentation/presentation-state.test.ts', [
     '// Three booleans read as nothing in a call, and the order of the ladder is the whole rule: the',
@@ -15311,6 +15323,10 @@ const allowed = new Map([
   ]],
   ['tests/board-library-routes.test.ts', [
     '/** A bucket that keeps what it is given, so a test can count the objects it holds. */',
+  ]],
+  ['tests/check-hardcoded.test.ts', [
+    '// Part 6: a Tailwind scale step writes a design primitive by hand even though it carries no unit, so it',
+    '// slips past every bracket-shaped rule above. The corner chip is what this rule exists for.',
   ]],
   ['tests/client-raw-controls.test.ts', [
     '/**\n * SH-49 asked for interactive controls to come from the component system, and for a `div`/`span`\n * with a click handler never to be passed off as one. That guard only read `features/share`, so the\n * shared components every feature uses kept the very shapes it forbade — the hub rows were\n * `div[role=button]` rows, and an account with any tag made the share center\'s own axe pass report\n * `button-name` and `nested-interactive` (SH-93). This reads the whole client tree instead.\n *\n * Three rules, in the order they matter:\n *\n *  1. No `div`/`span` that says `role=\'button\'`. A fake control is wrong wherever it is, so this\n *     applies everywhere, with no exceptions: the last three the rule tolerated were the kanban\n *     board\'s card, its gallery tile and its list row, and each was a card that opened a detail and\n *     held controls of its own (SH-107). Redesigning the card — the title is a real button, the card\n *     is a container — took all three entries away rather than keeping an exemption nobody needs.\n *  2. Every raw `<button>` has to carry an accessible name — `aria-label`, `aria-labelledby`,\n *     `title`, or visible text. This is the `button-name` rule axe applies, read statically, and it\n *     is what the 37 unnamed icon buttons across the app were failing. Names are read from the\n *     element\'s own attributes and its subtree: a name a wrapper component injects, or one spread\n *     in with `{...rest}`, is not something this can see, so an entry is never needed for it — but a\n *     raw button that only *looks* named because of a wrapper is not caught here either. That limit\n *     is the price of not rendering the app; the browser gates read what a real screen reader sees.\n *\n *     What counts as text was measured against a browser rather than guessed: an expression that\n *     renders an element — `{expanded ? <ChevronDown/> : <ChevronRight/>}` — is an icon, not a\n *     label, and axe reports those buttons as unnamed. Reading any expression as text (which is what\n *     this rule did at first) called eight icon-only buttons named while the browser called them\n *     nameless: the kanban board\'s row, group and list expand toggles, the attachment drive\'s two\n *     selection cells, a folder icon picker and the blog category colour swatches. `{t(\'…\')}` and\n *     `{name}` are still text: they are what a label is usually written as, and no static read can\n *     tell a bare identifier apart from a variable holding an icon.\n *  3. Inside `src/client/components` — the layer every feature shares — a raw `<button>` needs a\n *     written reason. These are the primitive implementations and the rows and cells whose geometry\n *     the primitives cannot express (a menu row stretches a flexible label between two fixed slots,\n *     a calendar cell is a grid track); the rule\'s job is to keep the next one from arriving\n *     unnoticed, not to relitigate the ones already argued.\n *  4. A container with a hit target of its own — a click or pointer-down handler on a `div`/`span`/\n *     row element — must not hold a control. This is the half of SH-107 rule 1 could not see: taking\n *     the `role` off a card that holds its own buttons leaves a click target that *looks* like a\n *     container, and the browser still reads `nested-interactive` (and, without a keyboard path, a\n *     keyboard cannot reach the card at all — the same shape SH-110 fixed in three more views). A\n *     pointer-down on a drag handle is read too: it is the other way a container becomes a hit\n *     target. What is left after both fixes is five sites, every one of them a container whose\n *     handler *stops* a click from reaching an outer one rather than being the affordance — each is\n *     listed with its reason and its count, so a new one, or a sixth in a listed file, fails here.\n *\n * Features outside that layer are not required to funnel every button through the primitives: that\n * is a per-context judgement (146 files and 397 sites today), and an allowlist of 146 entries would\n * be a graveyard rather than a reason. Rules 1 and 2 are the part that holds for them.\n *\n * Both directions fail throughout: an unlisted file that grows a violation, and an entry for a file\n * whose violation is gone.\n */',

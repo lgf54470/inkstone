@@ -109,8 +109,12 @@ export function PresentationStage(props: PresentationStageProps) {
     >
       <SlideViewport metrics={metrics} cacheKey={cacheKey} source={source} subPage={subPage} onPlan={onPlan} />
       {count > 0 && (
+        // This chip used to fade itself to 35% opacity, which composites its text to 1.67:1 against the
+        // slide — the axe `color-contrast` violation L-1 has been carrying. AA is the floor, so it now
+        // paints at the tier's own colour; muting it further would need a token that still clears
+        // contrast on this surface, not an opacity applied on top of one that already does.
         <div
-          className='pointer-events-none absolute bottom-4 right-4 z-10 select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] opacity-35 shadow-xs'
+          className='pointer-events-none absolute bottom-[var(--sp-4)] right-[var(--sp-4)] z-[var(--z-sticky)] select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] shadow-[var(--shadow-xs)]'
           aria-hidden='true'
         >
           <span data-deck-position>{formatDeckPosition({ index, count, subPage, pageCount })}</span>

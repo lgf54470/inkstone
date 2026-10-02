@@ -137,7 +137,7 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
         data-deck-position
         aria-hidden='true'
         title={describeDeckPosition(position)}
-        className='tabular min-w-14 px-[var(--sp-1)] text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'
+        className='tabular min-w-[var(--sp-16)] px-[var(--sp-1)] text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'
       >
         {formatDeckPosition(position)}
       </span>

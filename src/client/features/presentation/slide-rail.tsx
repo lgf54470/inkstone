@@ -182,7 +182,7 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
         active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]',
       )}
     >
-      <span className={cn('tabular w-[var(--sp-4)] shrink-0 pt-0.5 text-center text-[length:var(--text-11)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')} aria-hidden='true'>
+      <span className={cn('tabular w-[var(--sp-4)] shrink-0 pt-[var(--sp-0\\.5)] text-center text-[length:var(--text-11)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')} aria-hidden='true'>
         {entryIndex + 1}
       </span>
       <div className='flex min-w-0 flex-1 flex-col gap-[var(--sp-1)]'>

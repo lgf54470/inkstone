@@ -293,3 +293,41 @@ describe('decimal-token runtime escape via problemsFor', () => {
     expect(problems).toEqual([])
   })
 })
+// Part 6: a Tailwind scale step writes a design primitive by hand even though it carries no unit, so it
+// slips past every bracket-shaped rule above. The corner chip is what this rule exists for.
+describe('bare Tailwind scale steps', () => {
+  const scaleRel = 'src/client/features/presentation/presentation-stage.tsx'
+
+  it('flags a spacing step written as a number', () => {
+    const problems = problemsFor(scaleRel, `function P() { return <div className='absolute bottom-4 right-4 py-0.5'/> }`)
+    expect(problems.join('\n')).toContain('bare Tailwind scale step bottom-4')
+    expect(problems.join('\n')).toContain('bare Tailwind scale step right-4')
+    expect(problems.join('\n')).toContain('bare Tailwind scale step py-0.5')
+  })
+
+  it('flags a stacking level written as a number', () => {
+    const problems = problemsFor(scaleRel, `function P() { return <div className='z-10'/> }`)
+    expect(problems.join('\n')).toContain('bare Tailwind scale step z-10')
+  })
+
+  it('flags a size step in a conditional class string', () => {
+    const problems = problemsFor(scaleRel, `function P({on}) { return <div className={on ? 'h-2 w-2' : 'h-[var(--sp-2)]'}/> }`)
+    expect(problems.join('\n')).toContain('bare Tailwind scale step h-2')
+    expect(problems.join('\n')).toContain('bare Tailwind scale step w-2')
+  })
+
+  it('accepts the token spelling of the same primitive', () => {
+    const problems = problemsFor(scaleRel, `function P() { return <div className='absolute bottom-[var(--sp-4)] py-[var(--sp-0\\.5)] z-[var(--z-sticky)] h-[var(--sp-2)]'/> }`)
+    expect(problems).toEqual([])
+  })
+
+  it('leaves the structural zero and fractional anchors alone', () => {
+    const problems = problemsFor(scaleRel, `function P() { return <div className='fixed inset-0 top-0 left-0 m-0 opacity-0 min-w-0'/> }`)
+    expect(problems).toEqual([])
+  })
+
+  it('leaves fractions and named utilities alone', () => {
+    const problems = problemsFor(scaleRel, `function P() { return <div className='left-1/2 -translate-x-1/2 w-full h-screen max-w-md z-auto'/> }`)
+    expect(problems).toEqual([])
+  })
+})

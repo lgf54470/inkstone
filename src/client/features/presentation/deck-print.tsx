@@ -119,7 +119,7 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
         <div
           role='status'
           aria-live='polite'
-          className='fixed bottom-[var(--sp-4)] left-1/2 -translate-x-1/2 z-50 rounded-[var(--r-md)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-13)] shadow-lg backdrop-blur-md border border-[var(--border-subtle)] text-[var(--text-primary)]'
+          className='fixed bottom-[var(--sp-4)] left-1/2 -translate-x-1/2 z-[var(--z-popover)] rounded-[var(--r-md)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-13)] shadow-lg backdrop-blur-md border border-[var(--border-subtle)] text-[var(--text-primary)]'
         >
           {t('workspace.presentation_exporting_images', { value0: progress.current, value1: progress.total })}
         </div>
