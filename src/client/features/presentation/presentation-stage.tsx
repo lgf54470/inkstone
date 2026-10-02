@@ -1,6 +1,7 @@
 import { useCallback, useRef, type RefObject } from 'react'
 import { SlideViewport } from './slide-canvas'
-import { formatMicroPage, stageClickDirection, swipeDirection } from './presentation-state'
+import { stageClickDirection, swipeDirection } from './presentation-state'
+import { formatDeckPosition } from './deck-position'
 import type { StageMetrics } from './slide-stage'
 import type { SlidePlan } from './slide-pagination'
 
@@ -112,7 +113,7 @@ export function PresentationStage(props: PresentationStageProps) {
           className='pointer-events-none absolute bottom-4 right-4 z-10 select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] opacity-35 shadow-xs'
           aria-hidden='true'
         >
-          {formatMicroPage(index, count, subPage, pageCount)}
+          <span data-deck-position>{formatDeckPosition({ index, count, subPage, pageCount })}</span>
         </div>
       )}
     </div>

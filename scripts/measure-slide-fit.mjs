@@ -104,7 +104,7 @@ async function readPage(page) {
       deck: {
         rules: document.querySelectorAll('.ink-prose hr').length,
         entries: document.querySelectorAll('[data-presentation-rail] [data-slide-index]').length,
-        stepper: document.querySelector('[aria-live="polite"]')?.textContent?.trim() ?? '',
+        stepper: document.querySelector('[data-deck-position]')?.textContent?.trim() ?? '',
         nextDisabled: [...document.querySelectorAll('button')].filter((element) => (element.getAttribute('aria-label') ?? '').includes('下一页')).map((element) => element.disabled),
       },
     }

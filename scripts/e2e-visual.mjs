@@ -434,6 +434,9 @@ async function assertPresentation(page) {
       fontSize: Number.parseFloat(getComputedStyle(host).fontSize),
       slides: document.querySelectorAll('[data-presentation-rail] [data-slide-index]').length,
       overflow: visible.some((el) => el.getBoundingClientRect().bottom > box.bottom + 2),
+      positions: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+      announced: [...document.querySelectorAll('[data-presentation-chrome] [aria-live="polite"]')].map((item) => item.textContent?.trim() ?? ''),
+      digitsHidden: document.querySelector('[data-presentation-chrome] [data-deck-position]')?.getAttribute('aria-hidden') === 'true',
     }
   })
 
@@ -442,6 +445,12 @@ async function assertPresentation(page) {
   check('presentation: type is enlarged for the projector', deck.fontSize >= 24, `fontSize=${deck.fontSize}px`)
   check('presentation: slide list lists the deck', deck.slides >= 2, `slides=${deck.slides}`)
   check('presentation: no block overflows the canvas', !deck.overflow)
+  // N-11: the deck position is written by one derivation, so the pill and the corner chip cannot print
+  // two different accounts of the same page — which is what four hand-written spellings allowed.
+  check('presentation: the pill and the corner chip print one position', deck.positions.length === 2 && deck.positions[0] === deck.positions[1], JSON.stringify(deck.positions))
+  // N-13: one announcement says it in words; the digits it duplicates are the ones nobody should have to
+  // parse out loud.
+  check('presentation: the position is announced once, in a sentence', deck.announced.length === 1 && /\d/.test(deck.announced[0]) && deck.digitsHidden, JSON.stringify({ announced: deck.announced, digitsHidden: deck.digitsHidden }))
 
   await clickButton(page, LABELS.presentExit)
   await sleep(600)
@@ -561,7 +570,7 @@ async function assertPresentationPages(page) {
     const widest = Object.keys(counts).reduce((best, slide) => (counts[slide] > counts[best] ? slide : best), Object.keys(counts)[0])
     return {
       entries: entries.length,
-      slides: Number.parseInt((panel.querySelector('[aria-live="polite"]')?.textContent ?? '').split('/')[1] ?? '', 10) || 0,
+      slides: Number.parseInt((panel.querySelector('[data-deck-position]')?.textContent ?? '').split('/')[1] ?? '', 10) || 0,
       counts,
       openedOn,
       aheadEntries: counts[String(openedOn + 1)] ?? 0,
@@ -577,7 +586,7 @@ async function assertPresentationPages(page) {
   check('presentation pages: every slide lists exactly the pages the canvas measures', !mismatch, mismatch ? `slide=${mismatch.slide} entries=${mismatch.entries} pages=${mismatch.pages}` : `${counts.length} slides agree`)
 
   const second = await clickPageEntry(page, deck.widestSlide, 1)
-  check('presentation pages: clicking a page entry lands on that page', second.numerator === 2, `chip=${second.numerator}/${second.denominator}`)
+  check('presentation pages: clicking a page entry lands on that page', second.sub === 2 && second.pages > 1, `position=${second.printed}`)
 
   // The list renders the same prepared markup the projector shows — diagrams and math included —
   // and keeps doing so when the theme changes mid-talk, which is what happens to anyone on the
@@ -662,7 +671,7 @@ async function assertPresentationAccessibility(page) {
     rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await new Promise((resolve) => setTimeout(resolve, 400))
     const after = active()
-    return { before, after: after?.dataset.entryIndex ?? '', chip: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '' }
+    return { before, after: after?.dataset.entryIndex ?? '', chip: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '' }
   })
   check('a11y: the slide list walks its pages from the keyboard', walked.after !== '' && walked.after !== walked.before, JSON.stringify(walked))
   await clickPresentationControl(page, LABELS.presentExit)
@@ -1110,7 +1119,7 @@ async function assertPresentationOverview(page) {
     return {
       grid: Boolean(document.querySelector('[data-presentation-overview]')),
       open: Boolean(document.querySelector('[data-slide-canvas]')),
-      position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
       chromeInert: Boolean(chrome?.hasAttribute('inert')),
       backOnToggle: document.activeElement === toggle,
       active: document.activeElement?.tagName?.toLowerCase() ?? 'nothing',
@@ -2242,7 +2251,7 @@ async function openLayoutDeckNote(page) {
 // The deck the show is on, as the controls report it.
 async function readDeckSize(page) {
   return page.evaluate(() => {
-    const position = document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? ''
+    const position = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? ''
     const [current, total] = position.split('/').map((part) => Number.parseInt(part.trim(), 10))
     const deck = [...document.querySelectorAll('[data-presentation-rail] [data-slide-index]')].map((item) => `${Number(item.dataset.slideIndex) + 1}.${Number(item.dataset.slidePage ?? 0) + 1}`).join(' ')
     return { position, current, slides: total || 0, deck }
@@ -2261,7 +2270,7 @@ async function readFocusCard(page) {
       index: inGrid ? Number(card.getAttribute('data-overview-index')) : -1,
       top: card?.offsetTop ?? -1,
       current: current ? Number(current.getAttribute('data-overview-index')) : -1,
-      position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
     }
   })
 }
@@ -2277,7 +2286,7 @@ async function waitForRailFilled(page) {
     preflight: Boolean(document.querySelector('[data-slide-preflight]')),
     measuring: document.querySelector('[data-slide-list-measuring]')?.textContent?.trim() ?? '-',
     entries: document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length,
-    position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+    position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
     rail: Boolean(document.querySelector('[data-presentation-rail]')),
     grid: Boolean(document.querySelector('[data-presentation-overview]')),
     editor: (document.querySelector('.cm-content')?.textContent ?? '').length,
@@ -2312,9 +2321,11 @@ async function readPageCountsPerSlide(page, expected) {
     if (!clicked) continue
     await sleep(800)
     const pages = await page.evaluate(() => {
-      const panel = document.querySelector('[role="dialog"]')
-      const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
-      return chip ? Number(chip.textContent.split('/')[1]) : 1
+      // N-11 put the sub-page inside the one position string the controls print: `3 / 14 · 2/4`, whose
+      // fourth number is how many pages that slide has. A slide with two numbers only has one page.
+      const printed = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent ?? ''
+      const numbers = (printed.match(/\d+/g) ?? []).map((value) => Number.parseInt(value, 10))
+      return numbers[3] ?? 1
     })
     results.push({ slide, entries: expected[slide], pages })
   }
@@ -2334,10 +2345,9 @@ async function clickPageEntry(browser, slide, pageOffset) {
   if (!clicked) throw new Error(`slide list has no page ${pageOffset + 1} on slide ${slide}`)
   await sleep(900)
   return browser.evaluate(() => {
-    const panel = document.querySelector('[role="dialog"]')
-    const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
-    const [numerator, denominator] = (chip?.textContent ?? '').split('/')
-    return { numerator: Number(numerator), denominator: Number(denominator) }
+    const printed = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? ''
+    const numbers = (printed.match(/\d+/g) ?? []).map((value) => Number.parseInt(value, 10))
+    return { sub: numbers[2] ?? 1, pages: numbers[3] ?? 1, printed }
   })
 }
 
@@ -2349,7 +2359,7 @@ async function presentationSession(page) {
     const box = canvas?.getBoundingClientRect()
     const follow = [...(panel?.querySelectorAll('[data-presentation-chrome] button') ?? [])]
       .find((item) => /跟随|冻结|Follow|Freeze/.test(item.getAttribute('aria-label') ?? ''))
-    const position = panel?.querySelector('[aria-live="polite"]')?.textContent?.trim() ?? ''
+    const position = panel?.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
     return {
       open: Boolean(canvas),
       position,

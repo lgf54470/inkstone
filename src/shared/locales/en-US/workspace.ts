@@ -87,7 +87,6 @@ export const messages = {
 'workspace.presentation_hide_overview': 'Hide slide overview',
 'workspace.presentation_slide_number': 'Slide {value0} of {value1}',
 'workspace.presentation_slide_page_number': 'Slide {value0} of {value1}, page {value2} of {value3}',
-'workspace.presentation_page_of': 'Page {value0} of {value1}',
 'workspace.presentation_export': 'Export deck as PDF',
 'workspace.presentation_export_images': 'Export deck as images',
 'workspace.presentation_images_saved': 'Exported {value0} slide images',

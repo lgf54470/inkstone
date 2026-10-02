@@ -76,16 +76,6 @@ export function swipeDirection(deltaX: number, threshold = 50): 'prev' | 'next' 
   return null
 }
 
-export function formatMicroPage(index: number, count: number, subPage = 0, pageCount = 1): string {
-  if (count <= 0) return ''
-  const current = String(index + 1).padStart(2, '0')
-  const total = String(count).padStart(2, '0')
-  if (pageCount > 1) {
-    return `${current} / ${total} (${subPage + 1}/${pageCount})`
-  }
-  return `${current} / ${total}`
-}
-
 const SLIDE_LINK_PROTOCOLS = ['https://', 'http://', 'mailto:', 'tel:']
 
 /** A `#` jump stays inside the note, and a link with no href is not a link. */

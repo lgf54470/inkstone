@@ -5,8 +5,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
-import { t } from '../../lib/i18n'
 import type { RailEntry } from './presentation-state'
+import { describeDeckPosition } from './deck-position'
 import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, subscribeSlideHtmlKey, type SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { SlideLayout } from './slides'
@@ -62,15 +62,10 @@ export function useThumbView({ thumbWidth, designWidth, designHeight, externalIm
 }
 
 // A page's label has to name the slide as well: both lists are pages, and a presenter
-// jumping to "page 3 of 14" still needs to know which `---` slide it belongs to.
+// jumping to "page 3 of 14" still needs to know which `---` slide it belongs to. The wording is the
+// one the show's own announcement uses, so the pill, the chip and this list cannot drift apart.
 export function pageLabel(entry: RailEntry, deckLength: number): string {
-  if (entry.pageCount <= 1) return t('workspace.presentation_slide_number', { value0: entry.slide + 1, value1: deckLength })
-  return t('workspace.presentation_slide_page_number', {
-    value0: entry.slide + 1,
-    value1: deckLength,
-    value2: entry.sub + 1,
-    value3: entry.pageCount,
-  })
+  return describeDeckPosition({ index: entry.slide, count: deckLength, subPage: entry.sub, pageCount: entry.pageCount })
 }
 
 export function extractSlideHeading(source: string): string {

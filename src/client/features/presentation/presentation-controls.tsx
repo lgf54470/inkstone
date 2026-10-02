@@ -3,6 +3,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
+import { describeDeckPosition, formatDeckPosition } from './deck-position'
 
 export interface PresentationControlsProps {
   slideIndex: number
@@ -118,8 +119,9 @@ function ExportControls({ onExport, onExportImages }: { onExport: () => void; on
   )
 }
 
-// The deck position is the slide number; a slide that spans several pages shows
-// its sub-page as a separate chip so "3.2 / 14" can never be misread as a slide.
+// The deck position is one string with both numbers in it, printed left of the step buttons and read
+// out by one announcement beside it. The digits are hidden from the accessibility tree on purpose: a
+// screen reader hearing «3 / 14» and «2/4» as two live regions learns nothing about which is which.
 function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNext }: {
   slideIndex: number
   slideCount: number
@@ -128,30 +130,28 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
   onPrev: () => void
   onNext: () => void
 }) {
+  const position = { index: slideIndex, count: slideCount, subPage, pageCount }
   return (
     <>
+      <span
+        data-deck-position
+        aria-hidden='true'
+        title={describeDeckPosition(position)}
+        className='tabular min-w-14 px-[var(--sp-1)] text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'
+      >
+        {formatDeckPosition(position)}
+      </span>
+      <span className='sr-only' role='status' aria-live='polite'>{describeDeckPosition(position)}</span>
       <Tooltip label={t('workspace.presentation_prev')} side='top'>
         <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={onPrev} disabled={slideIndex === 0 && subPage === 0}>
           <ChevronLeft size={15} />
         </IconButton>
       </Tooltip>
-      <span aria-live='polite' className='tabular min-w-14 text-center text-[length:var(--text-12)] text-[var(--text-secondary)]'>
-        {slideIndex + 1} / {slideCount}
-      </span>
       <Tooltip label={t('workspace.presentation_next')} side='top'>
         <IconButton label={t('workspace.presentation_next')} size='sm' onClick={onNext} disabled={slideIndex === slideCount - 1 && subPage === pageCount - 1}>
           <ChevronRight size={15} />
         </IconButton>
       </Tooltip>
-      {pageCount > 1 && (
-        <span
-          aria-live='polite'
-          className='tabular mr-[var(--sp-1)] rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--accent)]'
-          title={t('workspace.presentation_page_of', { value0: subPage + 1, value1: pageCount })}
-        >
-          {subPage + 1}/{pageCount}
-        </span>
-      )}
     </>
   )
 }

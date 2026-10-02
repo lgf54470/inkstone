@@ -128,7 +128,7 @@ async function openShowAndSample(page) {
     const frames = window.__frames
     const tasks = window.__tasks
     const ascending = [...frames].sort((a, b) => a - b)
-    const counter = document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent ?? ''
+    const counter = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent ?? ''
     return {
       frames: frames.length,
       p50: ascending[Math.floor(ascending.length / 2)] ?? 0,

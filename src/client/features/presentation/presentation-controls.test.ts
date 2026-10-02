@@ -51,7 +51,7 @@ describe('PresentationControls', () => {
     const chrome = container.querySelector('[data-presentation-chrome]')
     expect(chrome).toBeTruthy()
 
-    const dividers = chrome?.querySelectorAll('span[aria-hidden="true"]')
+    const dividers = chrome?.querySelectorAll('span[aria-hidden="true"].w-px')
     expect(dividers?.length).toBe(3)
   })
 
@@ -103,5 +103,80 @@ describe('SlideProgress', () => {
     const { container } = renderElement(createElement(SlideProgress, { index: 1, count: 4 }))
     const bar = container.querySelector('.bg-\\[var\\(--accent\\)\\]') as HTMLElement
     expect(bar?.style.width).toBe('50%')
+  })
+})
+
+function chromeProps(overrides: Partial<Parameters<typeof PresentationControls>[0]> = {}) {
+  return {
+    slideIndex: 1,
+    slideCount: 5,
+    subPage: 0,
+    pageCount: 1,
+    isFullscreen: false,
+    railOpen: false,
+    overview: false,
+    following: false,
+    chromeHidden: false,
+    occluded: false,
+    onPrev: vi.fn(),
+    onNext: vi.fn(),
+    onToggleRail: vi.fn(),
+    onToggleOverview: vi.fn(),
+    onToggleFollowing: vi.fn(),
+    onToggleFullscreen: vi.fn(),
+    onOpenPresenter: vi.fn(),
+    onExport: vi.fn(),
+    onExportImages: vi.fn(),
+    onClose: vi.fn(),
+    ...overrides,
+  }
+}
+
+// Where the show is, is one string with two numbers in it: which slide, and which page of that slide.
+// The paginated case is the one that used to be printed as a `3 / 14` and a `2/4` in two places at once.
+const ON_PAGE_TWO_OF_FOUR = { slideIndex: 2, slideCount: 14, subPage: 1, pageCount: 4 }
+
+describe('PresentationControls — the position is said once', () => {
+  it('keeps a single live region for the whole position', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    expect(container.querySelectorAll('[aria-live]').length).toBe(1)
+  })
+
+  it('speaks a sentence carrying all four numbers, in the order the sentence reads them', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    const spoken = container.querySelector('[aria-live]')?.textContent?.trim() ?? ''
+    expect(spoken.match(/\d+/g)).toEqual(['3', '14', '2', '4'])
+  })
+})
+
+describe('PresentationControls — the digits a reader sees are not the announcement', () => {
+  it('keeps the visible digits out of the accessibility tree', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    expect(container.querySelector('[data-deck-position]')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('prints the sub-page beside the slide number it belongs to', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    const printed = container.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
+    expect(printed.match(/\d+/g)).toEqual(['3', '14', '2', '4'])
+  })
+})
+
+describe('PresentationControls — where the digits sit', () => {
+  it('prints the position before the step buttons that change it', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    const digits = container.querySelector('[data-deck-position]')
+    const prev = container.querySelector(`[aria-label="${t('workspace.presentation_prev')}"]`)
+    if (!digits || !prev) throw new Error('the position or its step button is missing')
+    expect(Boolean(digits.compareDocumentPosition(prev) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+  })
+})
+
+describe('PresentationControls — what the announcement is not', () => {
+  it('announces words rather than repeating the digits on screen', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps(ON_PAGE_TWO_OF_FOUR)))
+    const spoken = container.querySelector('[aria-live]')?.textContent?.trim() ?? ''
+    const printed = container.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
+    expect(spoken).not.toBe(printed)
   })
 })
