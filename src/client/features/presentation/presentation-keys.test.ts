@@ -6,6 +6,7 @@ const onControl = { onControl: true, onSlideList: false }
 const onSlideList = { onControl: false, onSlideList: true }
 const onMenu = { onControl: false, onSlideList: false, onMenu: true }
 const onMenuControl = { onControl: true, onSlideList: false, onMenu: true }
+const onNotesPane = { onControl: false, onSlideList: false, onNotesPane: true }
 
 describe('presentationCommand — navigation', () => {
   it('walks the deck with the arrow, page and space keys', () => {
@@ -209,3 +210,22 @@ describe('presentationCommand — menu context ownership', () => {
 })
 
 
+
+describe('presentationCommand — the speaker notes pane', () => {
+  it('hands the notes pane the keys it scrolls with, so reading notes does not flip the deck', () => {
+    expect(presentationCommand('ArrowDown', onNotesPane)).toBeNull()
+    expect(presentationCommand('ArrowUp', onNotesPane)).toBeNull()
+    expect(presentationCommand('PageDown', onNotesPane)).toBeNull()
+    expect(presentationCommand('PageUp', onNotesPane)).toBeNull()
+    expect(presentationCommand('Home', onNotesPane)).toBeNull()
+    expect(presentationCommand('End', onNotesPane)).toBeNull()
+    expect(presentationCommand(' ', onNotesPane)).toBeNull()
+  })
+
+  it('keeps the sideways turns and the tools for the show, which the notes cannot scroll', () => {
+    expect(presentationCommand('ArrowRight', onNotesPane)).toBe('next')
+    expect(presentationCommand('ArrowLeft', onNotesPane)).toBe('prev')
+    expect(presentationCommand('f', onNotesPane)).toBe('fullscreen')
+    expect(presentationCommand('p', onNotesPane)).toBe('presenter')
+  })
+})

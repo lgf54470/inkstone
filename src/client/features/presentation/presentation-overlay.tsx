@@ -10,6 +10,7 @@ import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
+import { PresenterPanel } from './presenter-view/presenter-panel'
 import { extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps } from './presentation-context-menu'
 import { type PresentationSession, usePresentationSession } from './use-presentation-session'
 
@@ -68,6 +69,10 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
       >
         {session.railOpen && <SlideRail {...slideSurfaceProps(session)} title={session.noteTitle} progress={session.listProgress} chromeHidden={session.chromeHidden} occluded={session.occluded} />}
         <PresentationStage {...stageProps(stageRef, session)} />
+        {/* Its own column rather than a panel hung off the toolbar: the toolbar it would hang from is
+            the one this panel is meant to replace, and a strip that grows the header pushes that
+            button out from under the pointer — the shape the AGENTS.md toolbar-expansion rule rules out. */}
+        {session.presenterPanel && <PresenterPanel state={session.presenterPanel} chromeHidden={session.chromeHidden} occluded={session.occluded} onClose={session.closePresenterPanel} />}
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress index={session.index} count={session.deck.length} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}

@@ -2,7 +2,8 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../lib/i18n'
 import { renderElement } from '../../../lib/test-render'
-import { PresenterWindow, usePresenterTimer, type PresenterWindowProps } from './presenter-window'
+import { PresenterWindow, type PresenterWindowProps } from './presenter-window'
+import { usePresenterTimer } from './use-presenter-timer'
 import type { PresenterSlideState } from './use-presenter-channel'
 
 beforeAll(async () => {

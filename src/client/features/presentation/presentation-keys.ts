@@ -1,8 +1,9 @@
 // The show's keymap as a pure function so it can be tested without a browser: which
 // command a key press means, given whether a control or the slide list owns the event.
 // Navigation keys always move slides so a stray focused control can never trap the
-// keyboard; Space/Enter yield to the focused control to avoid double actions, and the
-// slide list keeps the arrows it needs to walk its own items.
+// keyboard; Space/Enter yield to the focused control to avoid double actions, the slide
+// list keeps the arrows it needs to walk its own items, and the notes pane keeps every key
+// a speaker reads by scrolling.
 
 export type PresentationCommand = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'slideList' | 'follow' | 'blackout' | 'whiteout' | 'laser' | 'spotlight' | 'overview' | 'presenter'
 
@@ -11,30 +12,37 @@ export interface PresentationKeyContext {
   onControl: boolean
   /** The event targets a list of slides — the rail or the overview grid — which walks its own arrows. */
   onSlideList: boolean
+  /** The event targets the speaker notes pane, which is read by scrolling rather than by turning. */
+  onNotesPane?: boolean
   /** The event targets an open menu which walks its own items. */
   onMenu?: boolean
 }
 
 export function presentationCommand(key: string, context: PresentationKeyContext): PresentationCommand | null {
   if (context.onMenu) return null
+  const onNotes = Boolean(context.onNotesPane)
+  // The rail walks arrows and Home/End but still turns pages on PageUp/PageDown; a notes pane pages
+  // as it is read, so it keeps those too. Neither of them claims the sideways turn.
+  const ownsVertical = context.onSlideList || onNotes
   switch (key) {
     case 'ArrowRight':
       return context.onSlideList ? null : 'next'
     case 'PageDown':
-      return 'next'
+      return onNotes ? null : 'next'
     case 'ArrowLeft':
       return context.onSlideList ? null : 'prev'
     case 'PageUp':
-      return 'prev'
+      return onNotes ? null : 'prev'
     case 'ArrowDown':
-      return context.onSlideList ? null : 'next'
+      return ownsVertical ? null : 'next'
     case 'ArrowUp':
-      return context.onSlideList ? null : 'prev'
+      return ownsVertical ? null : 'prev'
     case 'Home':
-      return context.onSlideList ? null : 'first'
+      return ownsVertical ? null : 'first'
     case 'End':
-      return context.onSlideList ? null : 'last'
+      return ownsVertical ? null : 'last'
     case ' ':
+      return context.onControl || onNotes ? null : 'next'
     case 'Enter':
       return context.onControl ? null : 'next'
     case '.':

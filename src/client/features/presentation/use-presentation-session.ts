@@ -2,9 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { ProseFont } from '@shared/types'
 import { useBreakpoint, useDebounced } from '../../lib/hooks'
 import { secureRandomId } from '../../lib/id'
+import { t } from '../../lib/i18n'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
+import { useUi } from '../../store/ui'
 import { type DeckSheetPayload, useDeckExport } from './deck-export'
 import { presentedNoteContent, railOpenFor } from './presentation-state'
 import { useDialogBehavior } from './use-dialog-behavior'
@@ -14,7 +16,7 @@ import { samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
 import { splitIntoSlidesWithNotes } from './slides'
-import { openPresenterWindow, usePresenterBroadcaster } from './presenter-view/use-presenter-channel'
+import { openPresenterWindow, buildPresenterSlideState, usePresenterBroadcaster, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
 import { usePresentationKeys } from './use-presentation-keys'
 import { useSlideHtml } from './use-slide-html'
 
@@ -94,11 +96,30 @@ export interface PresentationSession {
   /** Whether the layers under the grid are out of reach: focus, clicks and Tab all stop at it. */
   occluded: boolean
   openPresenter: () => void
+  /** The console hosted inside the show, for the speaker whose browser blocked the presenter window. */
+  presenterPanel: PresenterSlideState | null
+  closePresenterPanel: () => void
   notes: string[]
   contextPoint: { x: number; y: number } | null
   contextLink: string | null
   openContextMenu: (point: { x: number; y: number }, linkUrl?: string | null) => void
   closeContextMenu: () => void
+}
+
+// The presenter console is a second window, and a browser that will not open one says nothing to the
+// page that asked: `window.open` simply returns null. The panel this show can host itself is what the
+// speaker gets instead, and the toast is what tells them the window they pressed for is not coming.
+function usePresenterFallback(open: boolean) {
+  const [panelOpen, setPanelOpen] = useState(false)
+  const openPanel = useCallback(() => {
+    setPanelOpen(true)
+    useUi.getState().toast({ title: t('workspace.presentation_popup_blocked'), tone: 'warning' })
+  }, [])
+  const closePanel = useCallback(() => setPanelOpen(false), [])
+  useEffect(() => {
+    if (!open) setPanelOpen(false)
+  }, [open])
+  return { panelOpen, openPanel, closePanel }
 }
 
 function useSessionPresenter(options: {
@@ -115,14 +136,13 @@ function useSessionPresenter(options: {
   // a document that never went through this button — a hand-typed `?presenter=1`, another tab — has no
   // channel name to speak on, and cannot ask for the speaker notes or move the projector.
   const [presenterToken, setPresenterToken] = useState<string | null>(null)
+  const fallback = usePresenterFallback(open)
   const openPresenter = useCallback(() => {
     const token = secureRandomId()
     setPresenterToken(token)
-    openPresenterWindow(token)
-  }, [])
-  usePresenterBroadcaster({
-    open,
-    token: presenterToken,
+    if (!openPresenterWindow(token)) fallback.openPanel()
+  }, [fallback.openPanel])
+  const source: PresenterStateSource = {
     noteTitle,
     slideIndex: nav.index,
     subPage: nav.sub,
@@ -133,11 +153,10 @@ function useSessionPresenter(options: {
     plans: nav.plans,
     startedAt,
     proseFont,
-    goNext: nav.goNext,
-    goPrev: nav.goPrev,
-    jumpTo: nav.jumpTo,
-  })
-  return { openPresenter }
+  }
+  usePresenterBroadcaster({ ...source, open, token: presenterToken, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo })
+  const presenterPanel: PresenterSlideState | null = fallback.panelOpen ? buildPresenterSlideState(source) : null
+  return { openPresenter, presenterPanel, closePresenterPanel: fallback.closePanel }
 }
 
 export function usePresentationSession(options: PresentationSessionOptions): PresentationSession {
@@ -156,9 +175,9 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  const { openPresenter } = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
+  const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)
-  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
+  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
   useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
@@ -180,7 +199,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     toggleFullscreen,
     toggleRail,
     toggleFollowing,
-    openPresenter,
+    ...presenter,
     occluded: mode.overview || Boolean(mode.screenCover) || Boolean(contextMenu.contextPoint),
     ...nav,
     ...mode,

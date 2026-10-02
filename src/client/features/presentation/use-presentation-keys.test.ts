@@ -270,3 +270,22 @@ describe('usePresentationKeys — toggle helpers', () => {
   })
 })
 
+
+describe('usePresentationKeys — the speaker notes pane', () => {
+  it('lets the notes the speaker is reading keep the keys they scroll with', () => {
+    const props = options()
+    const notes = document.createElement('div')
+    notes.setAttribute('data-speaker-notes', '')
+    notes.tabIndex = 0
+    document.body.append(notes)
+    const view = renderElement(createElement(Host, { props }))
+    press('ArrowDown', notes)
+    press('PageDown', notes)
+    press(' ', notes)
+    expect(props.goNext, 'a keystroke meant to scroll the notes flipped the slide').not.toHaveBeenCalled()
+    expect(props.goPrev).not.toHaveBeenCalled()
+    press('ArrowRight', notes)
+    expect(props.goNext, 'the sideways turn is not a scroll key, so the show still owns it').toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+})

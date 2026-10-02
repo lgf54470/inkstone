@@ -98,6 +98,8 @@ export const messages = {
 'workspace.presentation_follow': 'Follow the note',
 'workspace.presentation_freeze': 'Freeze this snapshot',
 'workspace.presentation_presenter': 'Presenter console',
+'workspace.presentation_presenter_panel': 'Presenter panel',
+'workspace.presentation_popup_blocked': 'The browser blocked the presenter window, so the console is shown in this window instead',
 'workspace.presentation_current_slide': 'Current slide',
 'workspace.presentation_next_slide': 'Next slide',
 'workspace.presentation_speaker_notes': 'Speaker notes',

@@ -98,6 +98,8 @@ export const messages = {
 'workspace.presentation_follow': '跟随笔记更新',
 'workspace.presentation_freeze': '冻结当前快照',
 'workspace.presentation_presenter': '演讲者视图',
+'workspace.presentation_presenter_panel': '演讲者面板',
+'workspace.presentation_popup_blocked': '浏览器拦截了演讲者窗口，已改在本窗口内显示演讲者面板',
 'workspace.presentation_current_slide': '当前幻灯片',
 'workspace.presentation_next_slide': '下一页预览',
 'workspace.presentation_speaker_notes': '演讲备忘录',

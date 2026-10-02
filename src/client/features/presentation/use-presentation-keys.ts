@@ -137,6 +137,7 @@ export function usePresentationKeys(options: PresentationKeysOptions): Presentat
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
       // Both slide lists walk their own arrows: the rail vertically, the overview grid across rows.
       onSlideList: Boolean(target?.closest('[data-presentation-rail], [data-presentation-overview]')),
+      onNotesPane: Boolean(target?.closest('[data-speaker-notes]')),
       onMenu: Boolean(isMenuOpen || target?.closest('[role="menu"], [data-presentation-menu]')),
     })
     if (!command) return
