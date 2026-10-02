@@ -19,7 +19,7 @@ export function PresenterNextSlidePane({
   font?: ProseFont
 }) {
   return (
-    <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
+    <div data-presenter-next-pane className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
       <div className='border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {t('workspace.presentation_next_slide')}
       </div>

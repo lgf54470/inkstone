@@ -61,7 +61,7 @@ export function PresenterWindow({ initialState, onCommand }: PresenterWindowProp
 
 function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
   return (
-    <div className='flex flex-[3] min-w-0 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
+    <div data-presenter-current-pane className='flex flex-[3] min-w-0 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
       <div className='flex items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         <span>{t('workspace.presentation_current_slide')}</span>
         <span className='tabular text-[var(--text-tertiary)]'>
@@ -121,7 +121,7 @@ function PresenterHeaderTimer({
   return (
     <div className='flex items-center gap-[var(--sp-4)]'>
       <div className='flex items-center gap-[var(--sp-2)]'>
-        <span className='tabular font-mono text-[length:var(--text-16)] font-semibold text-[var(--accent)]'>
+        <span data-presenter-clock className='tabular font-mono text-[length:var(--text-16)] font-semibold text-[var(--accent)]'>
           {formatElapsed(timer.elapsedSeconds)}
         </span>
         <Tooltip label={timer.isPaused ? t('workspace.presentation_timer_resume') : t('workspace.presentation_timer_pause')}>

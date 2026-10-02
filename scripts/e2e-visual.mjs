@@ -268,6 +268,18 @@ const LABELS = {
   kanbanFilterRow: localeLabel('preview.kanban_filter'),
   kanbanSortRow: localeLabel('music.sort', 'preview.kanban_sort'),
   kanbanShortcuts: localeLabel('command.keyboard_shortcuts_021cf9', 'music.keyboard_help', 'preview.kanban_shortcuts', 'templates.keyboard_shortcuts'),
+  // R2-3's close: the console window, the panel that stands in for it, and the words each one is
+  // recognised by. The two panes are read by their own labels because the deck text they carry is the
+  // assertion, and which pane said it is the thing being asked.
+  presentPresenter: localeLabel('workspace.presentation_presenter'),
+  presenterPanel: localeLabel('workspace.presentation_presenter_panel'),
+  presenterConnected: localeLabel('workspace.presentation_connected'),
+  presenterDisconnected: localeLabel('workspace.presentation_disconnected'),
+  presenterCurrentSlide: localeLabel('workspace.presentation_current_slide'),
+  presenterNextSlide: localeLabel('workspace.presentation_next_slide'),
+  presenterSpeakerNotes: localeLabel('workspace.presentation_speaker_notes'),
+  presenterPopupBlocked: localeLabel('workspace.presentation_popup_blocked'),
+  consoleClose: localeLabel('common.close'),
 }
 
 /**
@@ -1195,6 +1207,268 @@ async function readSlideLayout(page, slide) {
       pages: document.querySelectorAll(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"]`).length,
     }
   }, slide)
+}
+
+// The console the speaker asks for with the toolbar's second-to-last control is the other half of the
+// presenter surface, and until this scene no browser had ever opened one. N-04 draws its media, N-05
+// starts its clock with the show rather than with the app, N-06 hands the console to the show's own
+// column when the window is refused, N-26 decides when the show speaks at all — and all four were only
+// ever asserted in jsdom, where the two windows are one document and `window.open` is a stub. Here they
+// are two documents, a real `BroadcastChannel` between them, and a real browser deciding whether a
+// popup is allowed.
+const PRESENTER_OPENING_CUE = 'cue for the page the projector starts on'
+const PRESENTER_DIAGRAM_CUE = 'cue for the page that carries the diagram'
+const PRESENTER_DECK = [
+  `<!-- note: ${PRESENTER_OPENING_CUE} -->\n\n## Presenter opening\n\nThe page the projector starts on.`,
+  '## Presenter diagram\n\n```mermaid\nflowchart LR\n  Deck[The note] --> Console[The console]\n```\n\n' + `<!-- note: ${PRESENTER_DIAGRAM_CUE} -->`,
+  '## Presenter closing\n\nThe page after the diagram, so the next pane has something to show.',
+].join('\n\n---\n\n')
+
+async function openPresenterDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${PRESENTER_DECK}\n`, 'presenter console')
+  await sleep(1_500)
+}
+
+/** Counts what the show puts on the channel. The prototype is wrapped rather than the app's own binding,
+ * so a channel the app had already constructed is counted too, and only `sync` is: the handshake and the
+ * commands are the traffic the fix was never about. */
+async function installSyncTally(page) {
+  await page.evaluate(() => {
+    window.__presenterSyncPosts = 0
+    const proto = window.BroadcastChannel.prototype
+    if (proto.__presenterTally) return
+    const original = proto.postMessage
+    proto.__presenterTally = original
+    proto.postMessage = function (data) {
+      if (data && data.type === 'sync') window.__presenterSyncPosts += 1
+      return original.call(this, data)
+    }
+  })
+}
+
+async function readSyncTally(page) {
+  return page.evaluate(() => window.__presenterSyncPosts ?? -1)
+}
+
+async function removeSyncTally(page) {
+  await page.evaluate(() => {
+    const proto = window.BroadcastChannel.prototype
+    if (!proto.__presenterTally) return
+    proto.postMessage = proto.__presenterTally
+    delete proto.__presenterTally
+  })
+}
+
+async function findPresenterPage(browser) {
+  const pages = await browser.pages().catch(() => [])
+  return pages.find((item) => item.url().includes('presenter=')) ?? null
+}
+
+async function waitForPresenterPage(browser, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = await findPresenterPage(browser)
+    if (found) return found
+    if (Date.now() > deadline) return null
+    await sleep(250)
+  }
+}
+
+/** The console control, pressed with the pointer. Every other presentation control in this gate is
+ * clicked through `element.click()`, and that is exactly wrong here: `window.open` is only honoured on
+ * a user-activated click, so a synthetic one would open nothing and the scene would read the browser's
+ * own popup blocker as the app's fallback. */
+async function pressPresenterControl(page) {
+  const box = await page.evaluate((labels) => {
+    const button = [...document.querySelectorAll('[data-presentation-chrome] button')]
+      .find((item) => labels.includes(item.getAttribute('aria-label')))
+    if (!button) return null
+    const rect = button.getBoundingClientRect()
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+  }, LABELS.presentPresenter)
+  if (!box) return false
+  await page.mouse.click(box.x, box.y)
+  return true
+}
+
+async function readPresenterSurface(presenter) {
+  return presenter.evaluate((disconnected) => {
+    const text = (selector) => document.querySelector(selector)?.innerText?.trim() ?? ''
+    const header = text('header')
+    return {
+      clock: text('[data-presenter-clock]'),
+      current: text('[data-presenter-current-pane]'),
+      next: text('[data-presenter-next-pane]'),
+      notes: text('[data-speaker-notes]'),
+      header,
+      svg: document.querySelector('[data-presenter-current-pane]')?.querySelectorAll('svg').length ?? 0,
+      waiting: disconnected.some((label) => header.includes(label)),
+    }
+  }, LABELS.presenterDisconnected)
+}
+
+/** `mm:ss`, or `h:mm:ss` past an hour. -1 is a clock the scene could not read, so it fails every bound
+ * instead of passing a comparison against nothing. */
+function clockToSeconds(text) {
+  const parts = text.split(':').map((part) => Number.parseInt(part, 10))
+  if (parts.length < 2 || parts.length > 3 || parts.some((part) => Number.isNaN(part))) return -1
+  return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1]
+}
+
+async function assertPresenterConsole(browser, page) {
+  await openPresenterDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(1_500)
+  await waitForRailFilled(page)
+  await installSyncTally(page)
+
+  let presenter = null
+  try {
+    // Nobody has asked for a window: the deck is on screen and two turns have happened. This is the case
+    // the fix is about — the show used to recite the deck here, to a channel nothing had ever named.
+    await page.keyboard.press('ArrowRight')
+    await sleep(600)
+    await page.keyboard.press('ArrowLeft')
+    await sleep(600)
+    const idle = await readSyncTally(page)
+    check('presenter console: nothing is spoken before a window asks', idle === 0, `posts=${idle}`)
+
+    check('presenter console: the console control is on the toolbar', await pressPresenterControl(page))
+    presenter = await waitForPresenterPage(browser)
+    check('presenter console: a real press opens a second window', Boolean(presenter))
+    if (!presenter) return
+
+    await presenter.setViewport({ width: 1_100, height: 700 })
+    await presenter.waitForSelector('[data-presenter-current-pane]', { timeout: 15_000 })
+    await sleep(800)
+
+    const opened = await readPresenterSurface(presenter)
+    const arriving = await readSyncTally(page)
+    check('presenter console: the window is handed the page it landed on', opened.current.includes('Presenter opening') && opened.next.includes('Presenter diagram'), `current=${opened.current.slice(0, 40)} next=${opened.next.slice(0, 40)}`)
+    // Arrival is answered, and answered in a bounded number of messages. The bound is not pedantry: the
+    // deck's own measurement can still be landing when the window does, and a plan arriving really is a
+    // state change. What the fix forbids is the unbounded kind — the same page recited again.
+    check('presenter console: arriving is answered', arriving >= 1 && arriving <= 4, `posts=${arriving}`)
+    await sleep(1_500)
+    const settled = await readSyncTally(page)
+    check('presenter console: a settled window hears nothing until the deck moves', settled === arriving, `posts=${settled} arriving=${arriving}`)
+    check('presenter console: the window stops waiting once it has the state', !opened.waiting && LABELS.presenterConnected.some((label) => opened.header.includes(label)), `header=${opened.header.slice(0, 60)}`)
+    // The notes are the private half of the payload, and they are the reason the traffic count above is
+    // worth measuring at all: what leaks on an idle channel is what nobody on stage is meant to read.
+    check('presenter console: the cue for this page arrives with it', opened.notes.includes(PRESENTER_OPENING_CUE), `notes=${opened.notes.slice(0, 60)}`)
+    // The app has been signed in and working for minutes by this point in the run; a clock that counted
+    // from app start would be in four figures here, and that is exactly what N-05 replaced.
+    const elapsed = clockToSeconds(opened.clock)
+    check('presenter console: the clock counts this show, not the app', elapsed >= 0 && elapsed < 120, `clock=${opened.clock}`)
+
+    // One turn in the show: the page, the cue and the next pane all have to move, and the channel owes
+    // exactly one message for it.
+    await page.keyboard.press('ArrowRight')
+    await sleep(2_500)
+    const turned = await readPresenterSurface(presenter)
+    const afterTurn = await readSyncTally(page)
+    check('presenter console: a turn in the show lands in the window', turned.current.includes('Presenter diagram') && turned.next.includes('Presenter closing'), `current=${turned.current.slice(0, 40)} next=${turned.next.slice(0, 40)}`)
+    check('presenter console: the cue follows the page it belongs to', turned.notes.includes(PRESENTER_DIAGRAM_CUE), `notes=${turned.notes.slice(0, 60)}`)
+    check('presenter console: one turn is one broadcast', afterTurn === settled + 1, `posts=${afterTurn} before=${settled}`)
+    // N-04 in pixels: the diagram the console previews is drawn by this window's own enhancement chain,
+    // so there is an svg where the fence was and no fence text left to read.
+    check('presenter console: the diagram is drawn rather than pasted', turned.svg >= 1 && !turned.current.includes('flowchart'), `svg=${turned.svg}`)
+
+    // A chrome redraw is the case the old code could not tell from a page turn: the slide list opening
+    // and closing re-renders the session twice and moves nothing the console reads.
+    await clickPresentationControl(page, LABELS.presentRail)
+    await sleep(700)
+    await clickPresentationControl(page, LABELS.presentRail)
+    await sleep(700)
+    const afterChrome = await readSyncTally(page)
+    check('presenter console: a chrome redraw is not a page turn', afterChrome === afterTurn, `posts=${afterChrome} before=${afterTurn}`)
+
+    // The other direction, over the real channel: the console's own arrow moves the projector. This is
+    // the cross-window link N-07 built and no gate had yet walked.
+    const before = await readDeckSize(page)
+    await presenter.bringToFront()
+    await presenter.keyboard.press('ArrowRight')
+    await sleep(1_000)
+    const driven = await readDeckSize(page)
+    check('presenter console: a turn in the window moves the projector', driven.current === before.current + 1, `before=${before.position} after=${driven.position}`)
+
+    await presenter.evaluate(() => window.close())
+    await page.bringToFront()
+    await sleep(1_000)
+    check('presenter console: the window is really gone', (await findPresenterPage(browser)) === null)
+    // What a *closed* window leaves behind is deliberately not asserted here. React's cleanup does not
+    // run when the browser throws the document away, so the goodbye never goes out and the show keeps an
+    // audience it no longer has: measured on this very path, one real page turn (3/3 → 2/3) after the
+    // close still cost one broadcast (4 → 5 posts). Whether the answer is a `pagehide` goodbye or a
+    // timeout on silence is a behaviour decision, and the ledger carries it as L-7 rather than this gate
+    // asserting whichever way it has not yet landed. N-26 does bound the damage — it is one message per
+    // turn now, not one per render.
+
+    // The refused window. `window.open` returning null is what a blocker does to the app, and the app's
+    // answer is a column in the show itself plus one toast saying why. Overriding the call proves the
+    // fallback renders in a real browser; which browsers refuse, and when, is not something a gate can
+    // decide, so that half stays a measurement question rather than an assertion.
+    await page.keyboard.press('Home')
+    await sleep(700)
+    await page.evaluate(() => {
+      if (!window.__presenterOpenOriginal) window.__presenterOpenOriginal = window.open
+      window.open = () => null
+    })
+    check('presenter console: the console control answers again', await pressPresenterControl(page))
+    await sleep(700)
+    const refused = await page.evaluate((names) => {
+      const root = document.querySelector('[data-presenter-panel]')
+      const text = (selector) => root?.querySelector(selector)?.innerText?.trim() ?? ''
+      return {
+        open: Boolean(root),
+        labelled: names.presenterPanel.includes(root?.getAttribute('aria-label') ?? ''),
+        toast: document.querySelector('[role="status"]')?.textContent?.trim() ?? '',
+        notes: text('[data-speaker-notes]'),
+        next: text('[data-presenter-next-pane]'),
+        clock: text('[data-presenter-clock]'),
+        blockedNames: names.popupBlocked,
+      }
+    }, { presenterPanel: LABELS.presenterPanel, popupBlocked: LABELS.presenterPopupBlocked })
+    const blockedToast = refused.blockedNames.some((label) => refused.toast.includes(label))
+    check('presenter console: a refused window is said out loud', blockedToast, `toast=${refused.toast.slice(0, 80)}`)
+    check('presenter console: a refused window leaves the console in this window', refused.open && refused.labelled, `open=${refused.open} label=${refused.labelled}`)
+    check('presenter console: the panel carries the page, the cue and the clock', refused.notes.includes(PRESENTER_OPENING_CUE) && refused.next.includes('Presenter diagram') && clockToSeconds(refused.clock) >= 0, `notes=${refused.notes.slice(0, 40)} next=${refused.next.slice(0, 40)} clock=${refused.clock}`)
+    const refusedPosts = await readSyncTally(page)
+    check('presenter console: a refused window opens no second document', (await findPresenterPage(browser)) === null, 'a presenter document appeared for a window that was never opened')
+    await page.keyboard.press('ArrowRight')
+    await sleep(800)
+    const panelTurned = await page.evaluate(() => document.querySelector('[data-presenter-panel] [data-speaker-notes]')?.innerText?.trim() ?? '')
+    check('presenter console: with nobody to hear, the show still says nothing', (await readSyncTally(page)) === refusedPosts, `posts=${await readSyncTally(page)} before=${refusedPosts}`)
+    check('presenter console: a turn still moves the panel', panelTurned.includes(PRESENTER_DIAGRAM_CUE), `notes=${panelTurned.slice(0, 60)}`)
+
+    const panelClosed = await page.evaluate((labels) => {
+      const panel = document.querySelector('[data-presenter-panel]')
+      const button = [...(panel?.querySelectorAll('button') ?? [])]
+        .find((item) => labels.includes(item.getAttribute('aria-label')))
+      if (!button) return false
+      button.click()
+      return true
+    }, LABELS.consoleClose)
+    await sleep(500)
+    const closedPanel = await page.evaluate(() => document.querySelector('[data-presenter-panel]') === null)
+    check('presenter console: the panel has a close control', panelClosed)
+    check('presenter console: the panel is gone once dismissed', closedPanel)
+  } finally {
+    await page.evaluate(() => {
+      if (window.__presenterOpenOriginal) window.open = window.__presenterOpenOriginal
+    })
+    if (presenter && !presenter.isClosed()) await presenter.close().catch(() => {})
+    await removeSyncTally(page)
+    await page.bringToFront()
+    await clickButton(page, LABELS.presentExit)
+    await sleep(700)
+  }
 }
 
 async function assertSlideLayouts(page) {
@@ -8582,6 +8856,7 @@ async function main() {
     await assertDeckExport(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
+    await assertPresenterConsole(browser, page)
     await assertSlideLayouts(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)

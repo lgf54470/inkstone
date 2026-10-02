@@ -40,7 +40,7 @@ export function PresenterPanel({ state, chromeHidden, occluded, onClose }: Prese
           <span className='truncate text-[length:var(--text-11)] font-medium tracking-[var(--tracking-label)] text-[var(--text-tertiary)] uppercase'>
             {t('workspace.presentation_presenter')}
           </span>
-          <span className='tabular font-mono text-[length:var(--text-14)] font-semibold text-[var(--accent)]'>
+          <span data-presenter-clock className='tabular font-mono text-[length:var(--text-14)] font-semibold text-[var(--accent)]'>
             {formatElapsed(timer.elapsedSeconds)}
           </span>
         </div>
