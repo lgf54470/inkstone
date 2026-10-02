@@ -3,7 +3,21 @@ import type { ProseFont } from '@shared/types'
 import type { SlideLayout } from '../slides'
 import type { SlidePlan } from '../slide-pagination'
 
-export const PRESENTER_CHANNEL_NAME = 'inkstone-presenter-sync'
+const PRESENTER_CHANNEL_PREFIX = 'inkstone-presenter-sync'
+
+/** The channel of one presenter session. A `BroadcastChannel` reaches every same-origin document that
+ * knows its name, and the payload carries the author's private speaker notes and the note's source, so
+ * the name has to be the capability: a document that was never handed the token cannot name this
+ * channel, ask for that state, or move the projector. */
+export function presenterChannelName(token: string): string {
+  return `${PRESENTER_CHANNEL_PREFIX}:${token}`
+}
+
+/** The token this window was opened with. The presenter route is `?presenter=<token>`, so the query that
+ * selects the route is the token — a hand-typed `?presenter=1` in a fresh tab is not a session. */
+export function presenterTokenFromLocation(search: string): string | null {
+  return new URLSearchParams(search).get('presenter') || null
+}
 
 export type PresenterInboundCommand = 'next' | 'prev' | 'first' | 'last'
 
@@ -51,16 +65,16 @@ export function formatClock(date: Date = new Date()): string {
   return `${h}:${m}:${s}`
 }
 
-export function openPresenterWindow(): Window | null {
+export function openPresenterWindow(token: string): Window | null {
   if (typeof window === 'undefined') return null
-  const url = `${window.location.origin}${window.location.pathname}?presenter=1`
+  const url = `${window.location.origin}${window.location.pathname}?presenter=${encodeURIComponent(token)}`
   const win = window.open(url, 'inkstone-presenter', 'width=1100,height=700,menubar=no,toolbar=no,location=no,status=no')
   win?.focus()
   return win
 }
 
-export interface PresenterBroadcasterOptions {
-  open: boolean
+/** What the projector is showing: enough to draw the current and next page and the speaker notes. */
+export interface PresenterStateSource {
   noteTitle: string
   slideIndex: number
   subPage: number
@@ -71,12 +85,18 @@ export interface PresenterBroadcasterOptions {
   plans: Record<number, SlidePlan>
   startedAt: number
   proseFont?: ProseFont
+}
+
+export interface PresenterBroadcasterOptions extends PresenterStateSource {
+  open: boolean
+  /** The session the presenter window was handed, or null until one has been asked for. */
+  token: string | null
   goNext: () => void
   goPrev: () => void
   jumpTo: (index: number) => void
 }
 
-export function buildPresenterSlideState(options: PresenterBroadcasterOptions): PresenterSlideState {
+export function buildPresenterSlideState(options: PresenterStateSource): PresenterSlideState {
   const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = options
   const currentPlan = plans[slideIndex]
 
@@ -118,14 +138,15 @@ export function buildPresenterSlideState(options: PresenterBroadcasterOptions): 
 
 function useBroadcasterChannel(
   open: boolean,
+  token: string | null,
   stateRef: React.RefObject<PresenterSlideState>,
   navRef: React.RefObject<{ goNext: () => void; goPrev: () => void; jumpTo: (i: number) => void; slideCount: number }>,
 ) {
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   useEffect(() => {
-    if (!open || typeof BroadcastChannel === 'undefined') return
-    const channel = new BroadcastChannel(PRESENTER_CHANNEL_NAME)
+    if (!open || !token || typeof BroadcastChannel === 'undefined') return
+    const channel = new BroadcastChannel(presenterChannelName(token))
     channelRef.current = channel
 
     channel.onmessage = (event: MessageEvent<PresenterSyncMessage>) => {
@@ -157,13 +178,13 @@ function useBroadcasterChannel(
       channel.close()
       channelRef.current = null
     }
-  }, [open, stateRef, navRef])
+  }, [open, token, stateRef, navRef])
 
   return channelRef
 }
 
 export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): void {
-  const { open, slideCount, goNext, goPrev, jumpTo } = options
+  const { open, token, slideCount, goNext, goPrev, jumpTo } = options
   const navRef = useRef({ goNext, goPrev, jumpTo, slideCount })
   navRef.current = { goNext, goPrev, jumpTo, slideCount }
 
@@ -171,7 +192,7 @@ export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): v
   const stateRef = useRef(statePayload)
   stateRef.current = statePayload
 
-  const channelRef = useBroadcasterChannel(open, stateRef, navRef)
+  const channelRef = useBroadcasterChannel(open, token, stateRef, navRef)
 
   useEffect(() => {
     if (!open || !channelRef.current) return
@@ -196,7 +217,7 @@ function handleInboundCommand(command: PresenterInboundCommand, nav: { goNext: (
   }
 }
 
-export function usePresenterReceiver(): {
+export function usePresenterReceiver(token: string | null): {
   state: PresenterSlideState | null
   connected: boolean
   sendCommand: (command: PresenterInboundCommand) => void
@@ -214,8 +235,8 @@ export function usePresenterReceiver(): {
   }, [])
 
   useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return
-    const channel = new BroadcastChannel(PRESENTER_CHANNEL_NAME)
+    if (!token || typeof BroadcastChannel === 'undefined') return
+    const channel = new BroadcastChannel(presenterChannelName(token))
     channelRef.current = channel
 
     channel.onmessage = (event: MessageEvent<PresenterSyncMessage>) => {
@@ -239,7 +260,7 @@ export function usePresenterReceiver(): {
       channel.close()
       channelRef.current = null
     }
-  }, [])
+  }, [token])
 
   return { state, connected, sendCommand }
 }

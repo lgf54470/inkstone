@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { useBreakpoint, useDebounced } from '../../lib/hooks'
+import { secureRandomId } from '../../lib/id'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
@@ -101,9 +102,18 @@ export interface PresentationSession {
 
 function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[], proseFont?: ProseFont) {
   const startedAt = useRef(Date.now()).current
-  const openPresenter = useCallback(() => openPresenterWindow(), [])
+  // Minted per click rather than per show: the token reaches the presenter window through its route, so
+  // a document that never went through this button — a hand-typed `?presenter=1`, another tab — has no
+  // channel name to speak on, and cannot ask for the speaker notes or move the projector.
+  const [presenterToken, setPresenterToken] = useState<string | null>(null)
+  const openPresenter = useCallback(() => {
+    const token = secureRandomId()
+    setPresenterToken(token)
+    openPresenterWindow(token)
+  }, [])
   usePresenterBroadcaster({
     open,
+    token: presenterToken,
     noteTitle,
     slideIndex: nav.index,
     subPage: nav.sub,

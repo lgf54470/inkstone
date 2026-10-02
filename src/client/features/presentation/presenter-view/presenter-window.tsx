@@ -14,6 +14,7 @@ import type { SlideLayout } from '../slides'
 import {
   formatClock,
   formatElapsed,
+  presenterTokenFromLocation,
   usePresenterReceiver,
   type PresenterInboundCommand,
   type PresenterSlideState,
@@ -25,7 +26,8 @@ export interface PresenterWindowProps {
 }
 
 export function PresenterWindow({ initialState, onCommand }: PresenterWindowProps) {
-  const channel = usePresenterReceiver()
+  const token = useMemo(() => presenterTokenFromLocation(window.location.search), [])
+  const channel = usePresenterReceiver(token)
   const state = initialState ?? channel.state
   const connected = initialState ? true : channel.connected
   const sendCommand = onCommand ?? channel.sendCommand

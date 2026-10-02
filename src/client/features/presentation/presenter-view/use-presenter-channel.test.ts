@@ -1,11 +1,13 @@
 import { act, createElement, useEffect } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { renderElement } from '../../../lib/test-render'
 import {
   buildPresenterSlideState,
   formatClock,
   formatElapsed,
   openPresenterWindow,
+  presenterChannelName,
+  presenterTokenFromLocation,
   usePresenterBroadcaster,
   usePresenterReceiver,
   type PresenterBroadcasterOptions,
@@ -14,6 +16,11 @@ import {
 } from './use-presenter-channel'
 
 let mockChannels = new Set<MockBroadcastChannel>()
+
+/** Lets every `queueMicrotask` delivery above the mock does land before the assertion after it. */
+function flushed(): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, 0) })
+}
 
 class MockBroadcastChannel {
   name: string
@@ -60,13 +67,13 @@ describe('use-presenter-channel — formatElapsed and formatClock', () => {
 })
 
 describe('openPresenterWindow', () => {
-  it('opens a popup window with presenter query param and focuses it', () => {
+  it('opens a popup whose route carries the session token and focuses it', () => {
     const focusSpy = vi.fn()
     const openSpy = vi.spyOn(window, 'open').mockReturnValue({ focus: focusSpy } as unknown as Window)
 
-    const win = openPresenterWindow()
+    const win = openPresenterWindow('tok-1')
     expect(openSpy).toHaveBeenCalledWith(
-      `${window.location.origin}${window.location.pathname}?presenter=1`,
+      `${window.location.origin}${window.location.pathname}?presenter=tok-1`,
       'inkstone-presenter',
       'width=1100,height=700,menubar=no,toolbar=no,location=no,status=no',
     )
@@ -74,6 +81,18 @@ describe('openPresenterWindow', () => {
     expect(win).toBeTruthy()
 
     openSpy.mockRestore()
+  })
+})
+
+describe('presenterTokenFromLocation', () => {
+  it('reads back the token the route was opened with', () => {
+    expect(presenterTokenFromLocation('?presenter=tok-1')).toBe('tok-1')
+  })
+
+  it('yields no token for a route that carries none', () => {
+    expect(presenterTokenFromLocation('')).toBeNull()
+    expect(presenterTokenFromLocation('?presenter=')).toBeNull()
+    expect(presenterTokenFromLocation('?note=abc')).toBeNull()
   })
 })
 
@@ -88,7 +107,7 @@ function setupPresenterHarness(broadcasterProps: PresenterBroadcasterOptions) {
   }
 
   function ReceiverHarness() {
-    const { state, connected, sendCommand } = usePresenterReceiver()
+    const { state, connected, sendCommand } = usePresenterReceiver(broadcasterProps.token)
     useEffect(() => {
       receivedState = state
       isConnected = connected
@@ -109,9 +128,10 @@ function setupPresenterHarness(broadcasterProps: PresenterBroadcasterOptions) {
   }
 }
 
-function TestBroadcaster({ slide }: { slide: number }) {
+function TestBroadcaster({ slide, token = 'tok-1' }: { slide: number, token?: string | null }) {
   usePresenterBroadcaster({
     open: true,
+    token,
     noteTitle: 'Channel Test',
     slideIndex: slide,
     subPage: 0,
@@ -142,6 +162,7 @@ describe('usePresenterBroadcaster — sync and unmount', () => {
   it('broadcasts slide state and unmount close signal', async () => {
     const h = setupPresenterHarness({
       open: true,
+      token: 'tok-1',
       noteTitle: 'Keynote Demo',
       slideIndex: 1,
       subPage: 0,
@@ -175,6 +196,7 @@ describe('usePresenterReceiver — inbound commands', () => {
 
     const h = setupPresenterHarness({
       open: true,
+      token: 'tok-1',
       noteTitle: 'Demo',
       slideIndex: 1,
       subPage: 0,
@@ -217,7 +239,7 @@ describe('usePresenterReceiver — channel stability', () => {
     let receivedSlide = -1
 
     function ReceiverHarness() {
-      const { state, connected } = usePresenterReceiver()
+      const { state, connected } = usePresenterReceiver('tok-1')
       useEffect(() => {
         if (state) receivedSlide = state.slideIndex
         isConnected = connected
@@ -247,6 +269,104 @@ describe('usePresenterReceiver — channel stability', () => {
   })
 })
 
+const channelOptions: PresenterBroadcasterOptions = {
+  open: true,
+  token: 'tok-1',
+  noteTitle: 'Demo',
+  slideIndex: 1,
+  subPage: 0,
+  slideCount: 3,
+  pageCount: 1,
+  deck: ['# 1', '# 2', '# 3'],
+  // Speaker notes are the private half of what the channel carries, so the isolation cases keep a
+  // distinguishable one in slot 0 rather than three empty strings.
+  notes: ['private note', '', ''],
+  plans: {},
+  startedAt: 1000,
+  goNext: vi.fn(),
+  goPrev: vi.fn(),
+  jumpTo: vi.fn(),
+}
+
+function ShowHarness({ goNext }: { goNext: () => void }) {
+  usePresenterBroadcaster({ ...channelOptions, goNext })
+  return null
+}
+
+let tokenlessConnected = false
+let sendFromTokenlessWindow: ((cmd: PresenterInboundCommand) => void) | null = null
+
+function TokenlessPresenter() {
+  const channel = usePresenterReceiver(null)
+  tokenlessConnected = channel.connected
+  sendFromTokenlessWindow = channel.sendCommand
+  return null
+}
+
+/** Post at `name` as a same-origin document that never received the token: it may not move the projector,
+ * and nothing may come back at it — a `sync` would carry the author's private speaker notes. */
+async function probeChannelFromOutside(name: string, goNext: Mock) {
+  const rogue = new MockBroadcastChannel(name)
+  const received: unknown[] = []
+  rogue.onmessage = (event) => received.push(event.data)
+  rogue.postMessage({ type: 'ready' })
+  rogue.postMessage({ type: 'command', command: 'next' })
+  await flushed()
+  expect(goNext, name).not.toHaveBeenCalled()
+  expect(received, name).toEqual([])
+}
+
+describe('presenter session token', () => {
+  it('opens no channel before a presenter window has been asked for', async () => {
+    const broadcaster = renderElement(createElement(TestBroadcaster, { slide: 0, token: null }))
+    await flushed()
+    expect(mockChannels.size).toBe(0)
+    act(() => broadcaster.unmount())
+  })
+
+  it('ignores a document that guesses the untokenised channel name', async () => {
+    const goNext = vi.fn()
+    const h = setupPresenterHarness({ ...channelOptions, goNext })
+    await vi.waitFor(() => expect(h.getConnected()).toBe(true))
+    await probeChannelFromOutside('inkstone-presenter-sync', goNext)
+    act(() => {
+      h.broadcaster.unmount()
+      h.receiver.unmount()
+    })
+  })
+
+  it('ignores a document that guesses the channel of another show', async () => {
+    const goNext = vi.fn()
+    const h = setupPresenterHarness({ ...channelOptions, goNext })
+    await vi.waitFor(() => expect(h.getConnected()).toBe(true))
+    await probeChannelFromOutside(presenterChannelName('tok-someone-else'), goNext)
+    act(() => {
+      h.broadcaster.unmount()
+      h.receiver.unmount()
+    })
+  })
+
+  it('leaves a window that carries no token out of a running show', async () => {
+    const goNext = vi.fn()
+    tokenlessConnected = false
+    const broadcaster = renderElement(createElement(ShowHarness, { goNext }))
+    const tokenless = renderElement(createElement(TokenlessPresenter))
+    await flushed()
+
+    expect(tokenlessConnected).toBe(false)
+    expect([...mockChannels].map((channel) => channel.name)).toEqual([presenterChannelName('tok-1')])
+
+    act(() => sendFromTokenlessWindow!('next'))
+    await flushed()
+    expect(goNext).not.toHaveBeenCalled()
+
+    act(() => {
+      broadcaster.unmount()
+      tokenless.unmount()
+    })
+  })
+})
+
 const subpageTestPlans = {
   0: {
     pages: [{ from: 0, to: 2, top: 0 }, { from: 2, to: 4, top: 300 }],
@@ -258,7 +378,6 @@ describe('buildPresenterSlideState — subpage calculation', () => {
 
   it('previews next subpage when current slide has remaining subpages', () => {
     const state = buildPresenterSlideState({
-      open: true,
       noteTitle: 'Multi-page Deck',
       slideIndex: 0,
       subPage: 0,
@@ -268,9 +387,6 @@ describe('buildPresenterSlideState — subpage calculation', () => {
       notes: ['note 1', 'note 2'],
       plans: subpageTestPlans,
       startedAt: 5000,
-      goNext: vi.fn(),
-      goPrev: vi.fn(),
-      jumpTo: vi.fn(),
     })
 
     expect(state.nextSlideSource).toBe('# Page 1\n\nPart 1\n\nPart 2')
@@ -280,7 +396,6 @@ describe('buildPresenterSlideState — subpage calculation', () => {
 
   it('previews next slide when on the last subpage of current slide', () => {
     const state = buildPresenterSlideState({
-      open: true,
       noteTitle: 'Multi-page Deck',
       slideIndex: 0,
       subPage: 1,
@@ -290,9 +405,6 @@ describe('buildPresenterSlideState — subpage calculation', () => {
       notes: ['note 1', 'note 2'],
       plans: subpageTestPlans,
       startedAt: 5000,
-      goNext: vi.fn(),
-      goPrev: vi.fn(),
-      jumpTo: vi.fn(),
     })
 
     expect(state.nextSlideSource).toBe('# Page 2')
@@ -303,7 +415,6 @@ describe('buildPresenterSlideState — subpage calculation', () => {
 describe('buildPresenterSlideState — end of deck', () => {
   it('sets nextSlideSource to null on the final slide and subpage', () => {
     const state = buildPresenterSlideState({
-      open: true,
       noteTitle: 'End Deck',
       slideIndex: 1,
       subPage: 0,
@@ -313,9 +424,6 @@ describe('buildPresenterSlideState — end of deck', () => {
       notes: ['', ''],
       plans: {},
       startedAt: 5000,
-      goNext: vi.fn(),
-      goPrev: vi.fn(),
-      jumpTo: vi.fn(),
     })
 
     expect(state.nextSlideSource).toBeNull()
