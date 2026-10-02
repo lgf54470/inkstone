@@ -1,9 +1,22 @@
 import { act, createElement } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { t } from '../../lib/i18n'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { usePresentation } from '../../store/presentation'
 import { PresentationOverlay } from './presentation-overlay'
+
+function pressExportImages() {
+  const button = [...document.querySelectorAll('[data-presentation-chrome] button')]
+    .find((item) => item.getAttribute('aria-label') === t('workspace.presentation_export_images'))
+  if (!button) throw new Error('the export control is missing from the chrome')
+  act(() => { button.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+}
+
+// The export count is read out of the rendered message, so this file needs the resources loaded
+// rather than comparing one key against the same key.
+beforeAll(async () => {
+  await initI18n()
+})
 
 beforeEach(() => {
   usePresentation.setState({
@@ -145,3 +158,30 @@ describe('PresentationOverlay — context menu link actions', () => {
     view.unmount()
   })
 })
+
+// N-12: what the export says about itself has to be painted inside the show. A status layer held
+// outside the dialog is under the opaque projector no matter what number it carries for stacking, and
+// that is where this one used to live.
+describe('PresentationOverlay — the export reports itself inside the show', () => {
+  it('puts the running count inside the dialog rather than beneath it', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog).toBeTruthy()
+
+    pressExportImages()
+    expect(dialog!.querySelector('[data-export-progress]')).toBeTruthy()
+
+    view.unmount()
+  })
+
+  it('says which page of the deck it is writing, from the first one', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    pressExportImages()
+    const pill = document.querySelector('[data-export-progress]')
+    expect(pill?.textContent).toContain('0')
+    expect(pill?.textContent).toContain('2')
+    expect(document.querySelectorAll('[data-export-progress]').length).toBe(1)
+    view.unmount()
+  })
+})
+

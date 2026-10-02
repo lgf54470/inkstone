@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
 import { settleWithin } from '../../lib/async'
@@ -89,14 +89,19 @@ export function DeckPrintSheet({ pages, metrics, font, dark, onDone }: DeckSheet
   return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
 }
 
+/** One page of the deck written, out of how many the export was asked to write. */
+export interface DeckExportProgress {
+  current: number
+  total: number
+}
+
 // Exporting the deck as images uses the same pages: each is rendered to a PNG and the set is
 // archived, because a download per page is a burst a browser may block.
-export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: DeckSheetProps & { title: string; onDone: () => void }) {
+export function DeckImageSheet({ pages, metrics, font, dark, title, onProgress, onDone }: DeckSheetProps & { title: string; onProgress: (progress: DeckExportProgress) => void; onDone: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   useDeckSheetReady(sheetRef, dark, metrics, async (root) => {
     try {
-      const count = await saveDeckPages(root, metrics, title, (current, total) => setProgress({ current, total }))
+      const count = await saveDeckPages(root, metrics, title, (current, total) => onProgress({ current, total }))
       root.dataset.deckImageReady = 'true'
       useUi.getState().toast({ title: t('workspace.presentation_images_saved', { value0: count }), tone: 'success' })
     }
@@ -112,20 +117,10 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
     // off-screen for the rest of the talk, and the show keeps announcing itself as busy.
     onDone()
   }, onDone)
-  return (
-    <>
-      <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
-      {progress && (
-        <div
-          role='status'
-          aria-live='polite'
-          className='fixed bottom-[var(--sp-4)] left-1/2 -translate-x-1/2 z-[var(--z-popover)] rounded-[var(--r-md)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-13)] shadow-lg backdrop-blur-md border border-[var(--border-subtle)] text-[var(--text-primary)]'
-        >
-          {t('workspace.presentation_exporting_images', { value0: progress.current, value1: progress.total })}
-        </div>
-      )}
-    </>
-  )
+  // The sheet draws and counts. What it counts towards is announced by the show itself
+  // (`DeckExportProgress`), because this element is laid out off-screen and anything painted beside it
+  // lands under the projector.
+  return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
 }
 
 // Both exports share one lifecycle: mount the sheet, let it finish drawing what it has to draw, hand

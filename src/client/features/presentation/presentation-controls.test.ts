@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { initI18n, t } from '../../lib/i18n'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
-import { PresentationControls, SlideProgress } from './presentation-controls'
+import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 
 // The toggle is found by the message it shows, which only exists once the locale has loaded.
 beforeAll(async () => {
@@ -32,6 +32,7 @@ describe('PresentationControls', () => {
     onToggleFollowing: vi.fn(),
     onToggleFullscreen: vi.fn(),
     onOpenPresenter: vi.fn(),
+    exporting: false,
     onExport: vi.fn(),
     onExportImages: vi.fn(),
     onClose: vi.fn(),
@@ -106,8 +107,9 @@ describe('SlideProgress', () => {
   })
 })
 
-function chromeProps(overrides: Partial<Parameters<typeof PresentationControls>[0]> = {}) {
+function chromeProps(overrides: Partial<PresentationControlsProps> = {}): PresentationControlsProps {
   return {
+    exporting: false,
     slideIndex: 1,
     slideCount: 5,
     subPage: 0,
@@ -178,5 +180,30 @@ describe('PresentationControls — what the announcement is not', () => {
     const spoken = container.querySelector('[aria-live]')?.textContent?.trim() ?? ''
     const printed = container.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
     expect(spoken).not.toBe(printed)
+  })
+})
+
+// N-12's other half: the control that started the export says so on itself, so the feedback does not
+// depend on any floating layer's place in the stack.
+describe('PresentationControls — the export answers from its own button', () => {
+  it('marks the image export as working while the deck is being written', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ exporting: true })))
+    const button = container.querySelector(`[aria-label="${t('workspace.presentation_export_images')}"]`)
+    expect(button?.querySelector('[data-export-spinner]')).toBeTruthy()
+  })
+
+  it('leaves the control alone when nothing is being written', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps()))
+    expect(container.querySelectorAll('[data-export-spinner]').length).toBe(0)
+  })
+})
+
+describe('DeckExportProgress — the running count', () => {
+  it('is a polite announcement that rides above the panel it reports on', () => {
+    const { container } = renderElement(createElement(DeckExportProgress, { current: 2, total: 5 }))
+    const pill = container.querySelector('[data-export-progress]')
+    expect(pill?.getAttribute('role')).toBe('status')
+    expect(pill?.getAttribute('aria-live')).toBe('polite')
+    expect(pill?.className).toContain('z-[var(--z-toast)]')
   })
 })

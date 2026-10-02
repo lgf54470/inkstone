@@ -21,6 +21,10 @@ vi.mock('./deck-image', () => ({
 vi.mock('../../store/ui', () => ({ useUi: { getState: () => ({ toast: vi.fn() }) } }))
 
 
+// The sheet reports its own page count to whoever asked for the export; tests that do not care about it
+// hand over a sink.
+const NO_PROGRESS = () => {}
+
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const FIRST = '<p>one</p><p>two</p><h2>three</h2><p>four</p>'
 const SECOND = '<p>second slide</p>'
@@ -181,7 +185,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
   // a failed assertion that left one up would be read by the next test as its own.
   it('writes one archive for one press of the control', async () => {
     const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
-    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckImageReady === 'true')
       expect(drawn).toBe(true)
@@ -199,7 +203,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     vi.mocked(deckImage.saveDeckImages).mockImplementation(() => { steps.push('archive written') })
     const onDone = vi.fn(() => { steps.push('deck handed back') })
     const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
-    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone }))
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone }))
     try {
       const handed = await until(() => onDone.mock.calls.length > 0)
       expect(handed).toBe(true)
@@ -220,7 +224,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     const mounted = vi.fn()
     const showing = vi.fn()
     const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
-    const sheet = (onDone: () => void) => createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone })
+    const sheet = (onDone: () => void) => createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone })
     const view = renderElement(sheet(mounted))
     await flush(2)
     view.rerender(sheet(showing))
@@ -245,7 +249,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     stubFonts(new Promise<void>((resolve) => { release = resolve }))
     const onDone = vi.fn()
     const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
-    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone }))
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone }))
     await flush(2)
     view.unmount()
     release()
@@ -264,7 +268,7 @@ describe('DeckSheet — the layout a printed page is drawn in', () => {
     const columns: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1], layout: 'split' }
     const refused: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1] }
     const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false)
-    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     const drawn = await until(() => document.querySelectorAll('.deck-print-page').length === pages.length)
     try {
       expect(drawn).toBe(true)
@@ -274,7 +278,7 @@ describe('DeckSheet — the layout a printed page is drawn in', () => {
       view.unmount()
     }
     const fell = buildDeckPages(deck, cacheKeys, { 0: refused }, METRICS, false)
-    const second = renderElement(createElement(DeckImageSheet, { pages: fell, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    const second = renderElement(createElement(DeckImageSheet, { pages: fell, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     const redrawn = await until(() => document.querySelectorAll('.deck-print-page').length === fell.length)
     try {
       expect(redrawn).toBe(true)

@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Download, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { IconButton } from '../../components/primitives'
+import { IconButton, Spinner } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
+import type { DeckExportProgress } from './deck-print'
 import { describeDeckPosition, formatDeckPosition } from './deck-position'
 
 export interface PresentationControlsProps {
@@ -24,12 +25,14 @@ export interface PresentationControlsProps {
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
   onOpenPresenter: () => void
+  /** An image export is being written right now; the control that starts it shows that on itself. */
+  exporting: boolean
   onExport: () => void
   onExportImages: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -44,7 +47,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ViewControls railOpen={railOpen} overview={overview} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ExportControls onExport={onExport} onExportImages={onExportImages} />
+      <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Tooltip label={t('workspace.presentation_exit')} side='top'>
         <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
@@ -102,7 +105,7 @@ function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRai
   )
 }
 
-function ExportControls({ onExport, onExportImages }: { onExport: () => void; onExportImages: () => void }) {
+function ExportControls({ exporting, onExport, onExportImages }: { exporting: boolean; onExport: () => void; onExportImages: () => void }) {
   return (
     <>
       <Tooltip label={t('workspace.presentation_export')} side='top'>
@@ -112,10 +115,29 @@ function ExportControls({ onExport, onExportImages }: { onExport: () => void; on
       </Tooltip>
       <Tooltip label={t('workspace.presentation_export_images')} side='top'>
         <IconButton label={t('workspace.presentation_export_images')} size='sm' onClick={onExportImages}>
-          <Images size={14} />
+          {/* The control that started the write carries the sign of it, so the presenter is not left
+              depending on a floating layer's place in the stack to learn the press did anything. */}
+          {exporting ? <span data-export-spinner aria-hidden='true' className='inline-flex'><Spinner size={14} /></span> : <Images size={14} />}
         </IconButton>
       </Tooltip>
     </>
+  )
+}
+
+// What the image export is doing, painted by the show itself. The sheet it counts is laid out
+// off-screen, so a status layer held beside that sheet sits under the projector — the same paint-stack
+// mistake the laser pointer and the screen cover were pulled back from. `--z-toast` is the token for
+// "above the surface it belongs to", which is what a progress note has to be to be worth reading.
+export function DeckExportProgress({ current, total }: DeckExportProgress) {
+  return (
+    <div
+      data-export-progress
+      role='status'
+      aria-live='polite'
+      className='pointer-events-none absolute bottom-[var(--sp-12)] left-1/2 z-[var(--z-toast)] -translate-x-1/2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-13)] text-[var(--text-primary)] shadow-[var(--shadow-soft)]'
+    >
+      {t('workspace.presentation_exporting_images', { value0: current, value1: total })}
+    </div>
   )
 }
 

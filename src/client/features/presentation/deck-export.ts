@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { buildDeckPages } from './deck-print'
+import { buildDeckPages, type DeckExportProgress } from './deck-print'
 import type { SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
@@ -32,7 +32,11 @@ export interface DeckExports {
   exportDeck: () => void
   print: DeckSheetPayload | null
   exportImages: () => void
-  images: (DeckSheetPayload & { title: string }) | null
+  images: (DeckSheetPayload & { title: string; onProgress: (progress: DeckExportProgress) => void }) | null
+  /** Which page of the deck the image export is writing, or null while nothing is being written. The
+   * show paints this itself: the sheet it counts is laid out off-screen, so a status layer held beside
+   * that sheet sits under the projector — see `DeckExportProgress`. */
+  imageProgress: DeckExportProgress | null
 }
 
 export function useDeckExport(options: DeckExportOptions): DeckExports {
@@ -40,12 +44,23 @@ export function useDeckExport(options: DeckExportOptions): DeckExports {
   // The kind of export is part of what is held: both sheets read the same pages, so holding the
   // pages alone would mount the printed deck and the image deck at the same time and export both.
   const [request, setRequest] = useState<{ kind: 'print' | 'images'; pages: SlideMarkup[] } | null>(null)
+  const [imageProgress, setImageProgress] = useState<DeckExportProgress | null>(null)
+  // The count starts at zero pages rather than staying absent until the first PNG lands: a deck that
+  // takes a beat to begin drawing would otherwise give no sign that the press was heard at all.
   const build = useCallback(
-    (kind: 'print' | 'images') => setRequest({ kind, pages: buildDeckPages(deck, cacheKeys, plans, metrics, externalImages) }),
+    (kind: 'print' | 'images') => {
+      const pages = buildDeckPages(deck, cacheKeys, plans, metrics, externalImages)
+      setImageProgress(kind === 'images' ? { current: 0, total: pages.length } : null)
+      setRequest({ kind, pages })
+    },
     [deck, cacheKeys, plans, metrics, externalImages],
   )
-  const done = useCallback(() => setRequest(null), [])
+  const done = useCallback(() => {
+    setImageProgress(null)
+    setRequest(null)
+  }, [])
+  const onProgress = useCallback((progress: DeckExportProgress) => setImageProgress(progress), [])
   const print = request?.kind === 'print' ? { pages: request.pages, metrics, dark, done } : null
-  const images = request?.kind === 'images' ? { pages: request.pages, metrics, dark, title, done } : null
-  return { exportDeck: () => build('print'), exportImages: () => build('images'), print, images }
+  const images = request?.kind === 'images' ? { pages: request.pages, metrics, dark, title, done, onProgress } : null
+  return { exportDeck: () => build('print'), exportImages: () => build('images'), print, images, imageProgress }
 }

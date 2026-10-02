@@ -946,7 +946,23 @@ async function assertDeckImageExport(page) {
   // mutation re-reads the sheet it is watching and keeps the largest picture it has been shown, so
   // the read describes the export at its fullest rather than at whatever moment Node looked.
   const watching = page.evaluate(() => new Promise((resolve) => {
-    const seen = { mounts: 0, teardowns: 0, pages: 0, charts: 0, outcome: '', busy: 'never mounted' }
+    const seen = { mounts: 0, teardowns: 0, pages: 0, charts: 0, outcome: '', busy: 'never mounted', progressSeen: false, progressInsideDialog: false, progressPainted: false, progressOpacity: 0, progressZ: 0, toastZ: 0, spinnerSeen: false, countMax: 0 }
+    const sampleFeedback = () => {
+      const pill = document.querySelector('[data-export-progress]')
+      if (!pill) return
+      const box = pill.getBoundingClientRect()
+      const style = getComputedStyle(pill)
+      seen.progressSeen = true
+      seen.progressInsideDialog = Boolean(pill.closest('[role="dialog"]'))
+      seen.progressPainted = box.width > 0 && box.height > 0 && box.top >= 0 && box.bottom <= window.innerHeight
+      seen.progressOpacity = Number(style.opacity)
+      seen.progressZ = Number.parseInt(style.zIndex, 10) || 0
+      seen.toastZ = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--z-toast'), 10) || 0
+      // The first number in the message is how many pages are written: a count that never leaves zero
+      // is a reporter that never got wired to the sheet.
+      seen.countMax = Math.max(seen.countMax, Number.parseInt(pill.textContent?.match(/\d+/)?.[0] ?? '0', 10) || 0)
+      seen.spinnerSeen = seen.spinnerSeen || Boolean(document.querySelector('[data-export-spinner]'))
+    }
     const isSheet = (node) => node?.nodeType === 1 && node.hasAttribute?.('data-deck-print')
     const record = (sheet) => {
       if (!sheet) return
@@ -960,6 +976,7 @@ async function assertDeckImageExport(page) {
       resolve(seen)
     }
     const observer = new MutationObserver((mutations) => {
+      sampleFeedback()
       for (const mutation of mutations) {
         if (isSheet(mutation.target)) record(mutation.target)
         for (const node of mutation.addedNodes) { if (isSheet(node)) { seen.mounts += 1; record(node) } }
@@ -978,6 +995,12 @@ async function assertDeckImageExport(page) {
   check('export: the image export mounts one sheet and takes it down again', images.mounts === 1 && images.teardowns === 1 && images.outcome === 'true', JSON.stringify(images))
   check('export: the image export carries one page per deck page', images.pages > 1 && images.pages === entries, `images=${images.pages} rail=${entries}`)
   check('export: the image export draws its charts on the sheet', images.charts > 0, `charts=${images.charts}`)
+  // N-12: the count the show keeps has to be painted by the show. A status layer mounted beside the
+  // off-screen sheet sits under the projector whatever it says, so what is asserted here is where it
+  // is, that something drew it, and that it rides above the surface it reports on.
+  check('export: the running count is painted inside the projector, not under it', images.progressSeen && images.progressInsideDialog && images.progressPainted && images.progressOpacity === 1 && images.progressZ >= images.toastZ, JSON.stringify(images))
+  check('export: the control that started the write says so on itself', images.spinnerSeen === true, JSON.stringify({ spinnerSeen: images.spinnerSeen }))
+  check('export: the running count counts pages as they are written', images.countMax > 0, JSON.stringify({ countMax: images.countMax }))
 
   await sleep(2000)
   const saved = fs.readdirSync(downloadDir)
@@ -993,6 +1016,10 @@ async function assertDeckImageExport(page) {
     sheets: document.querySelectorAll('[data-deck-print]').length,
     busy: document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? 'absent',
   })))
+  // The count is a sign of work in progress, so it belongs to the work: a note left on screen after
+  // the archive is the same class of bug as the one that never appeared — the show saying something
+  // about an export that is over.
+  check('export: the running count goes away with the export', await page.evaluate(() => document.querySelector('[data-export-progress]') === null))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
 }

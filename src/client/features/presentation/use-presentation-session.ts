@@ -8,6 +8,7 @@ import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import { type DeckSheetPayload, useDeckExport } from './deck-export'
+import type { DeckExportProgress } from './deck-print'
 import { presentedNoteContent, railOpenFor } from './presentation-state'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
@@ -75,7 +76,9 @@ export interface PresentationSession {
   print: DeckSheetPayload | null
   /** Builds the same deck as images; the sheet appears until the PNGs are saved. */
   exportImages: () => void
-  images: (DeckSheetPayload & { title: string }) | null
+  images: (DeckSheetPayload & { title: string; onProgress: (progress: DeckExportProgress) => void }) | null
+  /** Which page of the deck the running image export has written, or null while nothing is being written. */
+  imageProgress: DeckExportProgress | null
   /** Everything the idle deck-measuring pass needs, grouped so the dialog can spread it. */
   preflight: SlidePreflightProps
   screenCover: 'black' | 'white' | null

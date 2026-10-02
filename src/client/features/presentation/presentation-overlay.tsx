@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
 import { DeckImageSheet, DeckPrintSheet } from './deck-print'
-import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
+import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
 import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
@@ -80,6 +80,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <Spotlight active={session.spotlight} />
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}
+        {session.imageProgress && <DeckExportProgress current={session.imageProgress.current} total={session.imageProgress.total} />}
         <LaserPointer active={session.laser} />
         <PresentationContextMenu {...contextMenuProps(panelRef, session, onClose)} />
       </div>
@@ -98,7 +99,7 @@ function PresentationSheets({ session }: { session: PresentationSession }) {
         <DeckPrintSheet pages={session.print.pages} metrics={session.print.metrics} font={session.proseFont} dark={session.print.dark} onDone={session.print.done} />
       )}
       {session.images && (
-        <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onDone={session.images.done} />
+        <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onProgress={session.images.onProgress} onDone={session.images.done} />
       )}
     </>
   )
@@ -137,6 +138,7 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     following: session.following,
     chromeHidden: session.chromeHidden,
     occluded: session.occluded,
+    exporting: Boolean(session.images),
     onPrev: session.goPrev,
     onNext: session.goNext,
     onToggleRail: session.toggleRail,
