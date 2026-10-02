@@ -93,8 +93,8 @@ export interface GraphTickerOptions {
   state: CanvasState
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
-  colorsRef: ThemeColors | { current: ThemeColors }
-  prefsRef: GraphPreferences | { current: GraphPreferences }
+  colorsRef: MutableRefObject<ThemeColors>
+  prefsRef: MutableRefObject<GraphPreferences>
   hoverRef: MutableRefObject<CanvasNode | null>
   selectedIdRef: MutableRefObject<string | null>
   activeNoteIdRef: MutableRefObject<string | null>

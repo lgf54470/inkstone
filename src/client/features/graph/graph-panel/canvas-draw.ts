@@ -214,8 +214,8 @@ export function drawLabels({
 
 function renderGraphScene(options: GraphTickerOptions): void {
   const { state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style } = options
-  const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
-  const colors = 'current' in colorsRef ? colorsRef.current : colorsRef
+  const prefs = prefsRef.current
+  const colors = colorsRef.current
   advancePhysics(state, prefs)
   const width = state.width || canvas.width || 800
   const height = state.height || canvas.height || 600

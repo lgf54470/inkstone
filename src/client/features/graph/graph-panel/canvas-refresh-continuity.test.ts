@@ -112,8 +112,8 @@ describe('the fit a refreshed layout asks for (PERF-06)', () => {
     const frames = manualFrames()
     const onSettled = vi.fn()
     createGraphTicker({
-      state, canvas: document.createElement('canvas'), ctx: idleContext(), colorsRef: readThemeColors(),
-      prefsRef: DEFAULT_PREFERENCES, hoverRef: { current: null }, selectedIdRef: { current: null },
+      state, canvas: document.createElement('canvas'), ctx: idleContext(), colorsRef: { current: readThemeColors() },
+      prefsRef: { current: DEFAULT_PREFERENCES }, hoverRef: { current: null }, selectedIdRef: { current: null },
       activeNoteIdRef: { current: null }, style: document.createElement('div').style, onSettled,
     })
     state.schedule?.()
