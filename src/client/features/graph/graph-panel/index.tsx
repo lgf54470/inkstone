@@ -365,6 +365,25 @@ function useGraphSearch(data: GraphResponse | null, query: string, isOnlyMatchin
   }, [data, isOnlyMatching, query])
 }
 
+/** The search line's two modes are kept together because they end together: an empty box answers nobody. */
+function useGraphSearchMode() {
+  const [search, setSearch] = useState('')
+  const query = useDebouncedQuery(search, 220)
+  const [isOnlyMatching, setIsOnlyMatching] = useState(false)
+  const changeSearch = (value: string) => {
+    setSearch(value)
+    // Erasing the line ends that search, so the next word is faded in place rather than arriving already filtered.
+    if (!value.trim()) setIsOnlyMatching(false)
+  }
+  return {
+    search,
+    query,
+    isOnlyMatching,
+    changeSearch,
+    toggleOnlyMatching: () => { setIsOnlyMatching((value) => !value) },
+  }
+}
+
 function useTagReset(prefs: GraphPreferences, changePref: <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => void) {
   const closePanel = useUi((state) => state.closePanel)
   return () => {
@@ -381,9 +400,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const [prefs, setPrefs] = useGraphPrefs()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLimitOpen, setIsLimitOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const query = useDebouncedQuery(search, 220)
-  const [isOnlyMatching, setIsOnlyMatching] = useState(false)
+  const { search, query, isOnlyMatching, changeSearch, toggleOnlyMatching } = useGraphSearchMode()
   const openNote = useNotes((state) => state.openNote)
   const folders = useNotes((state) => state.folders ?? [])
   const tags = useNotes((state) => state.tags ?? [])
@@ -412,7 +429,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, settingsId, settingsButtonRef, refs, exportActions, onClose })
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
-    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} searchState={searchState} onToggleOnlyMatching={() => setIsOnlyMatching((value) => !value)} onJumpToFirstMatch={(id) => refs.controlsRef.current?.selectNode(id)} actions={headerActions}/>
+    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={changeSearch} searchState={searchState} onToggleOnlyMatching={toggleOnlyMatching} onJumpToFirstMatch={(id) => refs.controlsRef.current?.selectNode(id)} actions={headerActions}/>
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>

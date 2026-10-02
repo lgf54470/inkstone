@@ -3579,6 +3579,8 @@ const allowed = new Map([
     '/** Focus goes into the drawer when it opens and comes back to the control that opened it when it closes. */',
     '/**\n * The search box runs in two modes, and the difference is who answers it. By default the line is matched\n * against the notes already on screen, so the graph a reader is looking at is the graph they search and\n * its links stay drawn (G-14). Turning on "only the matching notes" hands the same line to the server,\n * which is the choice a reader makes when they want fewer notes rather than a marked-up field.\n */',
     '// A response the server already narrowed has nothing left to fade.',
+    '/** The search line\'s two modes are kept together because they end together: an empty box answers nobody. */',
+    '// Erasing the line ends that search, so the next word is faded in place rather than arriving already filtered.',
   ]],
   ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
     '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
@@ -3596,6 +3598,9 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-search-focus.test.ts', [
     '/**\n * A reader who types a name into the graph\'s search box is looking for something in the graph they are\n * already looking at, not asking for a different graph (G-14). The old behaviour re-queried, which dropped\n * the links that made the note findable and, with the request throttling, blanked the canvas. These cases\n * type into the real header and count the requests it cost, read what the panel says it matched, and press\n * the two controls the search answers with.\n */',
     '// The response the faded graph is drawn from is still the whole one: Beta\'s two links are on screen.',
+    '// Emptying the box ends the choice: the next word is faded in place and costs no request at all, since',
+    '// the reader never pressed the switch again.',
+    '// A line of spaces matches nothing, so the trimmed query is empty: same request shape as an erased box.',
   ]],
   ['src/client/features/graph/graph-panel/panel-throttle.test.ts', [
     '/**\n * A throttled graph read is a state the reader has to be able to leave: the server\'s 429 has to reach\n * the panel as the localized message it will be shown, and the retry it offers has to be the thing\n * that asks again. A panel that swallowed the status would draw an empty graph over a library that\n * has one, which reads as "your notes are gone" rather than "you asked too often".\n */',

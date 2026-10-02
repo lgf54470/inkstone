@@ -151,6 +151,44 @@ describe('the search that really does narrow the graph, kept as a choice', () =>
   })
 })
 
+describe('the choice lasts as long as the search it was made for', () => {
+  it('forgets the choice once the box is empty, so the next search starts faded rather than filtered', async () => {
+    await mountGraphPanel(threeNotes)
+    typeInto(panelInput(t('graph.search_notes')), 'Beta')
+    await waitQueryDebounce()
+    click(panelButton(t('graph.only_matching_notes')))
+    await settleGraphPanel()
+    expect(searchRequests()[1]!.q).toBe('Beta')
+
+    typeInto(panelInput(t('graph.search_notes')), '')
+    await waitQueryDebounce()
+
+    typeInto(panelInput(t('graph.search_notes')), 'Gamma')
+    await waitQueryDebounce()
+
+    // Emptying the box ends the choice: the next word is faded in place and costs no request at all, since
+    // the reader never pressed the switch again.
+    expect(searchRequests().map((request) => request.q)).toEqual([undefined, 'Beta', undefined])
+    expect(panelButton(t('graph.only_matching_notes')).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('ends the choice when the line is left with nothing a search could match', async () => {
+    await mountGraphPanel(threeNotes)
+    typeInto(panelInput(t('graph.search_notes')), 'Beta')
+    await waitQueryDebounce()
+    click(panelButton(t('graph.only_matching_notes')))
+    await settleGraphPanel()
+
+    typeInto(panelInput(t('graph.search_notes')), '   ')
+    await waitQueryDebounce()
+    typeInto(panelInput(t('graph.search_notes')), 'Gamma')
+    await waitQueryDebounce()
+
+    // A line of spaces matches nothing, so the trimmed query is empty: same request shape as an erased box.
+    expect(searchRequests().map((request) => request.q)).toEqual([undefined, 'Beta', undefined])
+  })
+})
+
 function surfaceHasJump(): boolean {
   return Boolean(document.body.querySelector(`[data-surface="graph"] button[aria-label="${t('graph.jump_to_first_match')}"]`))
 }
