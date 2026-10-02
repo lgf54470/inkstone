@@ -78,6 +78,11 @@ export function panelButton(name: string): HTMLButtonElement {
   return button
 }
 
+/** A control whose accessible name is the words it draws, which is how an empty state offers its way out. */
+export function panelTextButton(text: string): HTMLButtonElement | null {
+  return Array.from(surface().querySelectorAll('button')).find((candidate) => candidate.textContent?.trim() === text) ?? null
+}
+
 export function panelInput(label: string): HTMLInputElement {
   const input = surface().querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
   if (!input) throw new Error(`the graph panel has no input named ${label}`)

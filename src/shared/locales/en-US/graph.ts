@@ -87,6 +87,8 @@ export const messages = {
 'graph.export_failed': 'Could not export the graph',
 'graph.matching_notes': '{count} matching notes',
 'graph.no_matching_notes': 'No note matches this search',
+'graph.nothing_matches_the_filters': 'No note matches these filters',
+'graph.clear_all_filters': 'Clear all filters',
 'graph.only_matching_notes': 'Show only the matching notes',
 'graph.jump_to_first_match': 'Jump to the first match',
 'graph.legend_filter': 'Highlight this colour, or filter to it',

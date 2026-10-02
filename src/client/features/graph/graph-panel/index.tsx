@@ -302,10 +302,12 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
   )
 }
 
-function GraphBody({ data, loadError, onRetry, children }: {
+function GraphBody({ data, loadError, isNarrowed, onRetry, onClearFilters, children }: {
   data: GraphResponse | null
   loadError: string | null
+  isNarrowed: boolean
   onRetry: () => void
+  onClearFilters: () => void
   children: (data: GraphResponse) => React.ReactNode
 }) {
   if (loadError)
@@ -314,7 +316,12 @@ function GraphBody({ data, loadError, onRetry, children }: {
   if (!data)
     return <LoadingBlock label={t('graph.building_graph')}/>
   if (data.nodes.length === 0)
-    return <Empty art='notes' title={t('graph.nothing_to_graph_yet')} description={t('graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here')}/>
+    // A graph the reader narrowed to nothing is not a library with nothing in it: the second copy describes
+    // notes that were never linked, and leaves them no way back out of the first.
+    return isNarrowed
+      ? <Empty art='notes' title={t('graph.nothing_matches_the_filters')}
+        action={<Button size='sm' variant='secondary' onClick={onClearFilters}>{t('graph.clear_all_filters')}</Button>}/>
+      : <Empty art='notes' title={t('graph.nothing_to_graph_yet')} description={t('graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here')}/>
   return children(data)
 }
 
@@ -408,6 +415,17 @@ function useTagReset(prefs: GraphPreferences, changePref: <K extends keyof Graph
   }
 }
 
+/** One press gives the whole graph back: the line, the single tag, the folder, and the tag selection. */
+function clearAllGraphFilters(
+  changeSearch: (value: string) => void,
+  changePref: <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => void,
+): void {
+  changeSearch('')
+  changePref('tag', '')
+  changePref('folderId', '')
+  clearTagSelection()
+}
+
 export function GraphPanel({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -439,6 +457,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   }
   useFolderFilterRepair(prefs, folders, changePref)
   const resetTagFilters = useTagReset(prefs, changePref)
+  const isNarrowed = Boolean(query || prefs.tag || prefs.folderId || selectedTags.length)
   const exportActions = useGraphExport(refs.stateRef, prefs)
   const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, settingsId, settingsButtonRef, refs, exportActions, onClose })
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
@@ -446,7 +465,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={changeSearch} searchState={searchState} onToggleOnlyMatching={toggleOnlyMatching} onJumpToFirstMatch={(id) => refs.controlsRef.current?.selectNode(id)} actions={headerActions}/>
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
-        <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
+        <GraphBody data={data} loadError={loadError} isNarrowed={isNarrowed} onRetry={() => setReload((value) => value + 1)} onClearFilters={() => { clearAllGraphFilters(changeSearch, changePref) }}>
           {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} legendQuery={search || undefined} onLegendSelect={cycleLegend} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
         <GraphRefreshBadge visible={isLoading && Boolean(data)}/>

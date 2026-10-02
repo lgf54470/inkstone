@@ -87,6 +87,8 @@ export const messages = {
 'graph.export_failed': '无法导出图谱',
 'graph.matching_notes': '{count} 个匹配笔记',
 'graph.no_matching_notes': '没有笔记匹配这个搜索',
+'graph.nothing_matches_the_filters': '没有笔记匹配这些筛选',
+'graph.clear_all_filters': '清除全部筛选',
 'graph.only_matching_notes': '只显示匹配的笔记',
 'graph.jump_to_first_match': '跳到第一个匹配',
 'graph.legend_filter': '高亮这一色，或只看这一色',
