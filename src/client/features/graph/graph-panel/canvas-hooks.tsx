@@ -117,18 +117,27 @@ export function useDynamicGraphPrefs(stateRef: RefObject<CanvasState>, prefs: Gr
   }, [prefs.colorGroups, stateRef])
 }
 
+/**
+ * The controls the header's zoom, fit and keyboard-jump buttons reach for. They are handed over in an
+ * effect, not during the render: a component is free to render without ever committing (a sibling throws,
+ * StrictMode renders it twice), and a control written then would point at state the reader never saw.
+ * Every caller reads it from inside an event, which is after the commit, so the later handover costs
+ * nothing (G-39).
+ */
 export function useGraphControls(
   controlsRef: MutableRefObject<GraphControls | null>,
   stateRef: RefObject<CanvasState>,
   fitGraph: () => void,
   selectNode: (id: string) => void,
 ) {
-  controlsRef.current = {
-    zoomIn: () => { stateRef.current.scale = Math.min(4, stateRef.current.scale + 0.2); stateRef.current.schedule?.() },
-    zoomOut: () => { stateRef.current.scale = Math.max(0.2, stateRef.current.scale - 0.2); stateRef.current.schedule?.() },
-    fit: fitGraph,
-    selectNode,
-  }
+  useEffect(() => {
+    controlsRef.current = {
+      zoomIn: () => { stateRef.current.scale = Math.min(4, stateRef.current.scale + 0.2); stateRef.current.schedule?.() },
+      zoomOut: () => { stateRef.current.scale = Math.max(0.2, stateRef.current.scale - 0.2); stateRef.current.schedule?.() },
+      fit: fitGraph,
+      selectNode,
+    }
+  }, [controlsRef, stateRef, fitGraph, selectNode])
 }
 
 /**

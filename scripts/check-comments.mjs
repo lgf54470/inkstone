@@ -3499,6 +3499,7 @@ const allowed = new Map([
     '// carry is `LIMITS.graphNodeLimitMax` (the route clamps to it, and the setting cannot ask for more),',
     '// which is three orders of magnitude below the argument ceiling. Raising that bound means rewriting',
     '// these two lines as a reduction — the same premise the review records as V-04 (G-21).',
+    '/**\n * The controls the header\'s zoom, fit and keyboard-jump buttons reach for. They are handed over in an\n * effect, not during the render: a component is free to render without ever committing (a sibling throws,\n * StrictMode renders it twice), and a control written then would point at state the reader never saw.\n * Every caller reads it from inside an event, which is after the commit, so the later handover costs\n * nothing (G-39).\n */',
     '/**\n * The hit set belongs to the frame, not to the response: a search that locates its matches repaints the\n * nodes the layout already holds, so a new building never starts and the positions a reader dragged stay.\n */',
     '/**\n * Putting the search\'s first hit under the reader: the same path an arrow key takes, so a jumped-to node is\n * selected, kept inside the viewport, and announced like one the reader reached themselves (G-14).\n */',
     '/**\n * Whether a press has become a drag. Travel is counted on both axes because the reader can move the pointer\n * diagonally while dragging, and this is the one line the click and the card are measured against.\n */',
