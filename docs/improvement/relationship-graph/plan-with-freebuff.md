@@ -33,12 +33,12 @@
 | **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | 🟢 4/4 已收尾（2.1 `17dc66de`、2.2 `023e1e7d`、2.3 `6e3ed4c2`、2.4 `e21bde8c`；收尾门禁 test:unit 624 文件 / e2e 177 / e2e-visual 682 / contrast 全绿 / budget:check 退出码 0） |
 | **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | 🟢 5/5 已收尾（3.1 `4c24d686`、3.2 `50ea81cc`、3.3 `d4c40a6a`、3.4 `01a9df9f` + `4d00b9f3`、3.5 `fbb3d235`；收尾门禁 test:unit 625 文件 / e2e 177 / e2e-visual 685 / contrast 全绿（含图谱两套主题）/ budget:check 退出码 0；一条已登记 flake 已复核） |
 | **批次 4｜无障碍关系与键盘语义** | G-23、G-24、G-25、G-26、G-27 | 方向键按空间序且选中可见；标签节点可辨、可操作；设置抽屉关系完整；色板热区达标；说明关联与取消播报补全 | 5 | ≈2 人日 | 🟢 5/5 已收尾（4.1 `4c4286dd` + 真实浏览器门禁 `a2e7acc2`、4.2 `752cfeb8`、4.3 `7cabe676`、4.4 `a67c28a5`、4.5 `7fd27668`；收尾门禁 test:unit 625 文件 / 5487 + 1 跳过（1 条已登记 flake 单跑通过）/ budget:check 退出码 0 / e2e 177 / e2e-visual 690 / contrast 两套主题全绿，明细见 §4「批次 4 收尾门禁」） |
-| **批次 5｜交互与检索语义** | G-14、G-15、G-16、G-18、G-19、G-20、G-21 | 搜索是定位不是重查；空态有出口；拖拽期间不悬停预览；窄屏不重叠、触屏提示到位；伴随图谱复用偏好；上限/深度可调 | 7 | ≈6 人日 | ⬜ 0/7 |
+| **批次 5｜交互与检索语义** | G-14、G-15、G-16、G-18、G-19、G-20、G-21 | 搜索是定位不是重查；空态有出口；拖拽期间不悬停预览；窄屏不重叠、触屏提示到位；伴随图谱复用偏好；上限/深度可调 | 7 | ≈6 人日 | 🟡 0/7 编号关闭（5.1a `eea50690` + `a40b2886` 已落地 G-14 ①②③，④ 待 5.1b；其余 6 项未开始） |
 | **批次 6｜设置与工程卫生** | G-11 + G-32、G-35、G-36、G-37、G-39、G-07 步骤 2、G-33（两步两提交） | 滑块走组件库且不逐事件落盘；文案/默认值/常量单一来源；pin 跨会话持久；死重载与渲染期写 ref 清除 | 7 | ≈3 人日 | ⬜ 0/7 |
 | **批次 7｜收尾与对标** | G-05 + G-45、G-12、G-13、G-17、G-34、G-42、G-44 | 导出有隐私选项；字体读取策略有据；绘制异常不静默停帧；滚轮非 passive；死键清零；单篇排除；方向过滤 | 8 | ≈4.5 人日 | ⬜ 0/8 |
 | **决策闸门** | G-08、G-10、G-47 | 按批次 0 的数字定 G-08/G-10；G-47 需归属决策而非数字；结论（含「不做」）必须登记为以证据关闭 | 3 | 由证据决定 | ⬜ 未开始 |
 | **不挂批次** | G-43 ②③、G-46、G-48 | 持久化契约变更 / 跨模块色板语义 / 候选清单 | 3 | 另立 | ⬜ 不排期 |
-| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 21/48（批次 1–4 已收尾；批次 5 未开始）** |
+| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 21/48（批次 1–4 已收尾；批次 5 进行中，G-14 差 ④ 故未计入关闭）** |
 
 > G-07 跨批次 1（步骤 1）与批次 6（步骤 2），编号只计一次（记在批次 1）。G-28 随 G-22 落地、不单独提交。G-04 的 ②（共享范围判定）与 G-43 的 ②③（`links` 增类型/附件节点）属**另立事项**，不进本计划排期。
 
@@ -409,14 +409,30 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 
 > 完成判据：搜索输入不再白屏/重排，未命中只变暗且可跳到首个命中；筛选致空有出口；拖拽期间预览卡消失、松手后重锚；窄屏图例与徽标不重叠；触屏能看到「长按」等价提示；伴随图谱与全屏图谱偏好一致；上限与局部深度可调。
 
-- [ ] **5.1 G-14｜搜索从「重新查询」升级为「定位」（客户端变暗 + 图例可交互）**
+- [x] **5.1a G-14 ①②③｜搜索从「重新查询」升级为「定位」（客户端变暗 + 仅显示匹配 + 跳到首个命中）**
   - 台账：§3.3 G-14
-  - 文件：`index.tsx`、`canvas-draw.ts`（dim 集合入参）、`helpers.ts`、`graph-overlays.tsx`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
-  - 要点：① 引入「变暗模式」：命中集合在客户端算（复用已有 `graphFilterMatches`），未命中节点/边降透明度，**不发起请求**（因此绕开 G-06）；② 保留服务端过滤作为「仅显示匹配」开关（默认关）；③ 命中数 > 0 时提供「跳到第一个命中」；④ 图例改为可聚焦的 `button`（点击高亮 / 双击过滤），补键盘路径
-  - 先红后绿：补「输入搜索词不触发第二次请求且未命中节点变暗」与「图例可键盘聚焦并触发高亮」用例
-  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 文件：`index.tsx`、`canvas-draw.ts`（dim 集合入参）、`helpers.ts`、`canvas-hooks.tsx`、`types.ts`、`constants.ts`、`graph-export.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点：① 引入「变暗模式」：命中集合在客户端算（复用已有 `graphFilterMatches`），未命中节点/边降透明度，**不发起请求**（因此绕开 G-06）；② 保留服务端过滤作为「仅显示匹配」开关（默认关）；③ 命中数 > 0 时提供「跳到第一个命中」
+  - 落地口径（实际）：① 命中集在 `helpers.ts` 的 `graphSearchHits()` 里算，返回 `null` 表示「没有可用的搜索表达」（空串/纯空白/纯停用词），此时绘制路径与改动前逐字节一致；`tag:`/`path:`/`-term` 走 `src/shared/graph-filter-expression.ts`，与 worker 的 `title LIKE` + `tag:` 语义是同一份语法；② 「仅显示匹配」把 `query` 交给 `useGraphQueryRequest`（`effectiveQuery = isOnlyMatching ? query : ''`），该式在 memo **之外**算——请求身份不随变暗变化，所以不发第二次请求；③ 跳跃经新增的公开入口 `GraphControls.selectNode`（`useGraphNodeFocus`：选中 + `ensureNodeVisible` + 重画），不暴露 `CanvasState`
+  - 优先级（本项的行为定义）：悬停焦点、悬停邻居、正在读的笔记**永远盖过变暗**；变暗只落在三者都没认领的节点上。边只在两端都未命中时降到 `GRAPH_SEARCH_DIM_EDGE_ALPHA`
+  - 先红后绿（已跑）：新用例先跑 → **canvas-search-dim 7 failed / 1 passed**、**panel-search-focus 12 failed**，红在 alpha 序列 `[1, 1, 1]`（无变暗）、`expected 2 to be 1`（第二次 `api.graph`）与 `document.body` 上找不到 `data-graph-search-status`；转绿后 canvas-search-dim 8、helpers 27、panel-search-focus 7、graph-export 22 全绿
+  - 验证命令（已跑）：图谱聚合 `npx vitest run src/client/features/graph src/client/lib/graph-settings.test.ts src/shared/graph-filter-expression.test.ts src/shared/graph-tag-nodes.test.ts tests/graph-routes.test.ts` → `eea50690` 后 **27 文件 / 202 条全绿**（提交后同一棵树复跑，非改前旧数），`a40b2886` 后 **27 文件 / 204 条全绿**；单跑 `src/client/features/graph` 为 23 文件 / 164 条；12 项静态门禁全绿（`comments:check` 12929→12934 条 / 1375 文件、`i18n:check` 3911 键、`labels:check` 150 条、`size:check` 1915 文件 / 47 豁免、`surfaces:check` 8 表面）；`npm run test:unit` **627 文件 / 5509 + 5511 passed + 1 跳过**（170.48s 与 173.87s 两轮，均无 flake）；提交钩子 `vitest related` 420 文件 / 3520 条全绿（`eea50690`）、7 文件 / 30 条全绿（`a40b2886`）
+  - 变异（9 项全部被具名用例杀死）：去掉 `isSearchMissed` 的边分支、把 alpha 写成 1、`graphSearchHits` 空串返回空集（而非 null）、`effectiveQuery` 移进 memo（typing 触发重查 → 杀 5 条）、跳跃不 `ensureNodeVisible`、开关持久化进 prefs、导出沿用 `state.searchHits`、tag 节点不按自己标题匹配、悬停邻居被变暗
+  - 边界（如实登记）：① 导出**刻意不变暗**（`graph-export.ts` 置 `searchHits: null`——文件画的是整张图，不是读者当时的搜索），该行为有断言（`graph-export.test.ts` 的 ctx 桩现在记录 `globalAlpha`）；② 13 处 `CanvasState` 测试夹具补 `searchHits: null`，因为该字段是必需的（不选可选是为了让「忘记接线」在类型检查就失败）；③ `size:check` 一度把 `useGraphCanvasController` 顶过 50 行，故两个新 hook 落在 `canvas-hooks.tsx`；④ 面板搜索框仍有 220ms 防抖（属 G-06 已收尾的既有行为，本项未改）
+  - 补口（②「默认关」的同一项第二提交，已跑）：「默认关」是**每一次搜索**的默认，不是本次访问的默认——清空搜索框后 `isOnlyMatching` 仍留着，读者重新输入一个词，图谱会在没有再按任何键的情况下直接返回**已过滤**的结果。先写用例 → **1 failed / 7 passed**，红在请求序列 `[undefined, 'Beta', undefined, 'Gamma']` 对 `[undefined, 'Beta', undefined]`（多发了一次带 `q` 的过滤请求，且按钮 `aria-pressed` 仍是 `'true'`）；转绿后该文件 9 条全绿。实现是把这些状态收进 `useGraphSearchMode()`（框文本、防抖后的 `query`、开关与两个处理函数同生同灭），清空**或只剩空白**的行都结束这次选择；两条变异各由一条具名用例杀死（删掉 reset 那一行 → 「forgets the choice once the box is empty」；`value.trim()` 改 `value.length` → 「ends the choice when the line is left with nothing a search could match」）。附带：`size:check` 因 `GraphPanel` 与最后一个 `describe` 回调双双越过 50 行而失败，故抽出该 hook 并把 describe 拆成两个
   - 依赖：1.1（坐标继承与不重建是它的前提）
   - 代价：M（2–3 人日）｜提交建议：`feat(graph)`
+  - 提交哈希：`eea50690`（①②③ 主体）+ `a40b2886`（②「默认关」补口）｜状态：✅ 已完成（2026-10-02，G-14 整体仍差 ④，见 5.1b）
+
+- [ ] **5.1b G-14 ④｜图例改为可聚焦按钮，单击循环「高亮 → 过滤 → 清除」**
+  - 台账：§3.3 G-14（④，随本提交 G-14 编号整体关闭）
+  - 文件：`graph-overlays.tsx`、`helpers.ts`（`buildColorLegends` 需带 `query`）、`index.tsx`
+  - 要点：④ 图例条目改为可聚焦的语义 `button`，点击高亮该色组、再击过滤、三击清除；补键盘路径（Tab 可达、Enter/Space 触发、`aria-pressed`）
+  - 落地口径（原要点「点击高亮 / 双击过滤」已改）：**双击没有键盘与触屏等价物**（AGENTS.md 规则 13 的可访问性红线），改为单击三态循环；需要一条可见的状态提示，否则读者不知道自己在第几态
+  - 先红后绿：补「图例可键盘聚焦并触发高亮」「同一色组第二次点击变成过滤」用例
+  - 验证命令：统一命令 + `npx vitest run src/client/features/graph`
+  - 依赖：5.1a（过滤态复用 `graphSearchHits` 与 `searchHits` 通路）
+  - 代价：S（1 人日）｜提交建议：`feat(graph)`
   - 提交哈希：待登记｜状态：⬜ 待开始
 
 - [ ] **5.2 G-15｜筛选致空时的文案分流与「清除全部筛选」出口**
@@ -674,3 +690,4 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 | F-03 | 「未创建」节点（`unresolved`）的播报仍只有标题与出入度，与普通笔记节点同形；`graph.unresolved_short` 是形如「' unresolved'」的残片，不宜直接当 kind 标签 | `src/client/features/graph/graph-panel/canvas.tsx`、`src/shared/locales/*/graph.ts` | 低（读屏可辨性，与 G-24 同类） | 不排期 | 不做（本次）：G-24 的判据是「标签节点 vs 笔记节点不可辨」，已修；给第三种 kind 补一个名词 key 需新开条目，G-34 删 `unresolved_short` 时一并看 |
 | F-04 | 标签节点的预览卡不画（`showPreview` 对 `kind !== 'note' && 'unresolved'` 直接 return），这是有意为之；但 4.1 登记的 `assertGraphKeyboardWalk` 用预览锚点框读位置，走到一个标签节点上读数会停在上一个节点 | `src/client/features/graph/graph-panel/use-graph-preview.ts`、`scripts/e2e-visual.mjs` | 低（门禁覆盖边界） | 批次 7 | 不做：4.1 边界 ② 已如实登记，且 `showTagNodes` 默认关、真实浏览器场景走不到标签节点；门禁改读 `state.nodes` 坐标属另一项 |
 | F-05 | 批次 4 的四项修复（4.3 抽屉 role/焦点、4.4 色板热区、4.5 描述与取消播报）都只有 jsdom 证据：热区断言读的是类名而不是像素，播报与 role 只在假 matchMedia 下验过 | `scripts/e2e-visual.mjs`、`src/client/features/graph/graph-panel/settings*.tsx` | 中（门禁覆盖缺口，不是产品缺陷） | 批次 7 | 不做（本次）：补法是在 `e2e-visual` 的 graph 场景里开一次设置抽屉，点「添加颜色规则」后量色板 `getBoundingClientRect()` ≥ 24px，并读 `role`/`aria-modal`/`aria-describedby`；只差一个可跑的场景，不值得为它单开一个提交 |
+| F-06 | `panel-throttle.test.ts` 的重试场景在 React 下发 `An update to GraphPanel inside a test was not wrapped in act(...)` | `src/client/features/graph/graph-panel/panel-throttle.test.ts` | 低（测试卫生，不是产品缺陷；该文件两条断言仍通过） | 不排期 | 不做（本次）：先证实它早于 5.1 —— 在 `ecfc3e5e`（5.1 之前）与 `eea50690` 两个 `git archive` 快照上单跑同一文件，各命中 1 次同样的警告，故非本次搜索改动引入；铁律 14 要求另开条目。补法是把重试点击之后到达的那次状态更新包进 `act`（或在用例里等到它落地再断言） |
