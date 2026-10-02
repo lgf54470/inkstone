@@ -1,21 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { RefObject } from 'react'
-import { ChevronLeft, ChevronRight, FileText, Pause, Play, Presentation, RotateCcw } from 'lucide-react'
-import type { ProseFont } from '@shared/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Pause, Play, Presentation, RotateCcw } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { IconButton, Spinner } from '../../../components/primitives'
 import { Tooltip } from '../../../components/overlay'
-import { useSession } from '../../../store/session'
-import { createFenceBodies } from '../../../lib/markdown/fence-bodies'
-import { SlideProse } from '../slide-prose'
-import { useIsDarkTheme } from '../presentation-theme'
-import { renderSlideSource, slicePageHtml, slideMarkup } from '../slide-html'
-import { usePresenterSlideMedia } from './use-presenter-slide-media'
-import type { SlideMarkup } from '../slide-html'
-import type { SlidePlan } from '../slide-pagination'
-import { measureStage, SLIDE_PAD_X, SLIDE_PAD_Y, type StageMetrics } from '../slide-stage'
-import type { SlideLayout } from '../slides'
+import { PresenterSlidePreview } from './presenter-slide-preview'
+import { PresenterNextSlidePane, PresenterSpeakerNotesPane } from './presenter-panes'
 import {
   formatClock,
   formatElapsed,
@@ -85,67 +75,6 @@ function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
           sub={state.subPage}
           font={state.proseFont}
         />
-      </div>
-    </div>
-  )
-}
-
-function PresenterNextSlidePane({
-  nextSource,
-  nextLayout,
-  nextPlan,
-  nextSubPage,
-  font,
-}: {
-  nextSource: string | null
-  nextLayout?: SlideLayout
-  nextPlan?: SlidePlan
-  nextSubPage?: number
-  font?: ProseFont
-}) {
-  return (
-    <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
-      <div className='border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
-        {t('workspace.presentation_next_slide')}
-      </div>
-      <div className='flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[var(--bg-editor)] p-[var(--sp-2)]'>
-        {nextSource ? (
-          <PresenterSlidePreview
-            source={nextSource}
-            layout={nextLayout}
-            plan={nextPlan}
-            sub={nextSubPage}
-            font={font}
-          />
-        ) : (
-          <div className='text-[length:var(--text-14)] italic text-[var(--text-tertiary)]'>
-            {t('workspace.presentation_end_of_deck')}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PresenterSpeakerNotesPane({ notes }: { notes: string }) {
-  return (
-    <div className='flex min-h-0 flex-[1.2] flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
-      <div className='flex items-center gap-[var(--sp-1)] border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
-        <FileText size={13} />
-        <span>{t('workspace.presentation_speaker_notes')}</span>
-      </div>
-      <div
-        data-speaker-notes
-        tabIndex={0}
-        className='flex-1 overflow-y-auto p-[var(--sp-4)] text-[length:var(--text-16)] leading-relaxed text-[var(--text-primary)] outline-none'
-      >
-        {notes ? (
-          <div className='whitespace-pre-wrap font-sans'>{notes}</div>
-        ) : (
-          <p className='text-[length:var(--text-14)] italic text-[var(--text-tertiary)]'>
-            {t('workspace.presentation_no_notes')}
-          </p>
-        )}
       </div>
     </div>
   )
@@ -274,105 +203,6 @@ function ConnectionBadge({ connected }: { connected: boolean }) {
       />
       {connected ? t('workspace.presentation_connected') : t('workspace.presentation_disconnected')}
     </span>
-  )
-}
-
-function useStageAutoMetrics(containerRef: React.RefObject<HTMLDivElement | null>): StageMetrics {
-  const [metrics, setMetrics] = useState(() => measureStage(640, 360))
-  useLayoutEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const apply = () => {
-      const m = measureStage(el.clientWidth, el.clientHeight)
-      setMetrics((prev) => (prev.scale === m.scale ? prev : m))
-    }
-    apply()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => apply())
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [containerRef])
-  return metrics
-}
-
-function PresenterScaledSlide({
-  metrics,
-  html,
-  hostRef,
-  font,
-  layout,
-}: {
-  metrics: StageMetrics
-  html: string
-  hostRef?: RefObject<HTMLDivElement | null>
-  font: ProseFont
-  layout?: SlideLayout
-}) {
-  return (
-    <div
-      className='relative shrink-0 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-editor)]'
-      style={{
-        width: metrics.designWidth * metrics.scale,
-        height: metrics.designHeight * metrics.scale,
-      }}
-    >
-      <div
-        className='ink-slide absolute top-0 left-0'
-        style={{
-          width: metrics.designWidth,
-          height: metrics.designHeight,
-          transform: `scale(${metrics.scale})`,
-          transformOrigin: 'top left',
-        }}
-      >
-        <div
-          className='absolute inset-x-0'
-          style={{ top: SLIDE_PAD_Y, left: SLIDE_PAD_X, right: SLIDE_PAD_X }}
-        >
-          <SlideProse html={html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={layout} hostRef={hostRef} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function PresenterSlidePreview({
-  source,
-  layout,
-  plan,
-  sub = 0,
-  font,
-}: {
-  source: string
-  layout?: SlideLayout
-  plan?: SlidePlan
-  sub?: number
-  font?: ProseFont
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const hostRef = useRef<HTMLDivElement>(null)
-  const metrics = useStageAutoMetrics(containerRef)
-  const dark = useIsDarkTheme()
-  const defaultFont = useSession((s) => s.settings.appearance.proseFont) ?? 'sans'
-  const proseFont = font ?? defaultFont
-
-  const slide = useMemo<SlideMarkup>(() => {
-    if (!source) return { html: '', fences: createFenceBodies() }
-    const markup = slideMarkup(renderSlideSource(source, true))
-    if (plan && plan.pages.length > 0) {
-      return { html: slicePageHtml(markup.html, plan, sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences }
-    }
-    return markup
-  }, [source, plan, sub, metrics.contentWidth, metrics.contentHeight])
-
-  usePresenterSlideMedia({ hostRef, html: slide.html, fences: slide.fences, dark, metrics })
-
-  const effectiveLayout = plan?.layout ?? layout
-
-  return (
-    <div ref={containerRef} className='relative flex h-full w-full items-center justify-center overflow-hidden'>
-      <PresenterScaledSlide metrics={metrics} html={slide.html} hostRef={hostRef} font={proseFont} layout={effectiveLayout} />
-    </div>
   )
 }
 
