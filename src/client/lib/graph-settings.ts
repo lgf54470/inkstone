@@ -13,6 +13,9 @@ export interface GraphColorGroup {
 /** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */
 export const GRAPH_COLOR_GROUP_LIMIT = 5
 
+/** How many pins a page can carry: past a screenful the picture is no longer the reader's own. */
+export const GRAPH_PINNED_MAX = 200
+
 export interface GraphPreferences {
   mode: 'global' | 'local'
   depth: number
@@ -22,6 +25,11 @@ export interface GraphPreferences {
   includeUnresolved: boolean
   /** Draw each tag as a node of its own, pulling notes that share it into one cluster. */
   showTagNodes: boolean
+  /**
+   * The nodes the reader pinned, by id: a pin is a decision about the picture, so it outlives the panel
+   * that drew it (G-07 step 2). Ids only — a name would collide with a note renamed since.
+   */
+  pinnedNodeIds: string[]
   arrows: boolean
   labels: boolean
   groupBy: GroupBy

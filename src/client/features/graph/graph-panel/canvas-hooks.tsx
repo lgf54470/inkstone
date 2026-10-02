@@ -6,6 +6,7 @@ import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { GRAPH_CLICK_TRAVEL_MAX, PHYSICS_FRAME_LIMIT } from './constants'
 import { colorGroupsByNodeId, ensureNodeVisible } from './helpers'
+import { computeNodeAnchor } from './use-graph-preview'
 import type { CanvasNode, CanvasState, GraphDragOptions } from './types'
 
 export interface GraphControls {
@@ -271,6 +272,27 @@ export function useGraphDrag(options: GraphDragOptions) {
   }, [onCreateNote, onOpenNote, onSelectNode, setSelectedId, stateRef])
 
   return { beginDrag, moveDrag, endDrag }
+}
+
+/** Where the node menu opens, and what its pin item does — the panel owns persistence, see `onPinChange`. */
+export function useGraphNodeActions(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  stateRef: RefObject<CanvasState>,
+  setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void,
+  onPinChange: ((id: string, pinned: boolean) => void) | undefined,
+) {
+  const openNodeMenu = useCallback((node: CanvasNode) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const anchor = computeNodeAnchor(canvas, stateRef.current, node)
+    setContext({ x: anchor.x, y: anchor.y, node })
+  }, [canvasRef, setContext, stateRef])
+  const onTogglePin = useCallback((node: CanvasNode) => {
+    node.pinned = !node.pinned
+    onPinChange?.(node.id, node.pinned === true)
+    stateRef.current.schedule?.()
+  }, [stateRef, onPinChange])
+  return { openNodeMenu, onTogglePin }
 }
 
 export interface GraphMenuItemsOptions {

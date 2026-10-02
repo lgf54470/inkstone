@@ -3,7 +3,7 @@ import type { GraphResponse, GraphNode } from '@shared/types'
 import { initI18n, t } from '../../../lib/i18n'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { previewProbe } from './preview-stub.test-helpers'
-import { mountGraphCanvas, pressKey, pressPointer, releaseGraphCanvases, stubPointerDevice, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
+import { mountGraphCanvas, placeNodes, pressKey, pressPointer, releaseGraphCanvases, stubPointerDevice, walkRightTo, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
 
 /**
  * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it
@@ -40,31 +40,9 @@ function liveRegion(container: HTMLElement): HTMLElement {
   return container.querySelector('[aria-live="polite"]') as HTMLElement
 }
 
-/**
- * Puts the fixture's nodes where the case wants them. The arrow keys read the drawing's own layout
- * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —
- * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel's.
- */
-function place(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
-  for (const node of graph.state.nodes) {
-    const point = byTitle[node.title]
-    if (point) { node.x = point[0]; node.y = point[1] }
-  }
-}
-
 /** The text the canvas describes itself with, wherever the panel keeps it. */
 function describedHint(graph: GraphCanvasMount): HTMLElement {
   return document.getElementById(graph.canvas.getAttribute('aria-describedby')!)!
-}
-
-/**
- * Walks the keyboard onto the node placed to the right of the first one: the first press enters at
- * the first node of the response, the second steps right to the neighbour the case placed there.
- */
-function walkRightTo(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
-  place(graph, byTitle)
-  pressKey(graph.canvas, 'ArrowRight')
-  pressKey(graph.canvas, 'ArrowRight')
 }
 
 /** The press pair on a point no node is drawn on: what a reader does to put a node down. */
@@ -124,7 +102,7 @@ describe('canvas made readable', () => {
 describe('arrow keys that move by place (G-23)', () => {
   it('moves the selection the way the arrow points, entering at an end when nothing is selected', () => {
     const graph = mountGraphCanvas(trio)
-    place(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
+    placeNodes(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
 
     pressKey(graph.canvas, 'ArrowRight')
     expect(liveRegion(graph.container).textContent).toContain('Alpha')
@@ -142,7 +120,7 @@ describe('arrow keys that move by place (G-23)', () => {
 
   it('enters at the last node when the first arrow points left', () => {
     const graph = mountGraphCanvas(trio)
-    place(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
+    placeNodes(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
     pressKey(graph.canvas, 'ArrowLeft')
 
     expect(liveRegion(graph.container).textContent).toContain('Gamma')
@@ -150,7 +128,7 @@ describe('arrow keys that move by place (G-23)', () => {
 
   it('brings the node the arrow reached into the viewport', () => {
     const graph = mountGraphCanvas(trio)
-    place(graph, { Alpha: [0, 0], Beta: [2_400, 0], Gamma: [0, -120] })
+    placeNodes(graph, { Alpha: [0, 0], Beta: [2_400, 0], Gamma: [0, -120] })
     // jsdom lays no canvas out, so the resizer leaves the viewport at zero: the case gives the state
     // the box the camera math reads, the way a real mount measures one before any key arrives.
     graph.state.width = 800
@@ -220,7 +198,7 @@ describe('telling a tag node from a note node (G-24)', () => {
 
   it('leaves a note node announced without a kind, which is what it is', () => {
     const graph = mountGraphCanvas(withTag)
-    place(graph, { Alpha: [0, 0], work: [120, 0] })
+    placeNodes(graph, { Alpha: [0, 0], work: [120, 0] })
     pressKey(graph.canvas, 'ArrowRight')
 
     expect(liveRegion(graph.container).textContent).toBe(announcement('Alpha', 1, 0))

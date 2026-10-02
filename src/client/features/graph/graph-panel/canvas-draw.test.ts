@@ -78,6 +78,21 @@ describe('buildInitialLayout', () => {
     expect(state.edges).toHaveLength(2)
     expect(state.frame).toBe(360)
   })
+
+  it('re-pins the nodes the reader pinned in an earlier session (G-07)', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })))
+    const state = createInitialState()
+
+    buildInitialLayout(sampleData, { ...DEFAULT_PREFERENCES, pinnedNodeIds: ['note-2'] }, state)
+
+    expect(state.nodes.find((node) => node.id === 'note-2')?.pinned).toBe(true)
+    expect(state.nodes.find((node) => node.id === 'note-1')?.pinned).toBeFalsy()
+  })
 })
 
 describe('theme following', () => {

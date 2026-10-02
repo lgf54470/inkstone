@@ -3440,9 +3440,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas-a11y.test.ts', [
     '/**\n * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it\n * answers to has a keyboard equivalent. These cases mount the real panel surface, drive it with keys\n * instead of a mouse, and read the end state a reader would hear: the canvas name, the announcement of\n * the node that got selected, the badge drawn for it, and the note opened from it.\n */',
-    '/**\n * Puts the fixture\'s nodes where the case wants them. The arrow keys read the drawing\'s own layout\n * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —\n * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel\'s.\n */',
     '/** The text the canvas describes itself with, wherever the panel keeps it. */',
-    '/**\n * Walks the keyboard onto the node placed to the right of the first one: the first press enters at\n * the first node of the response, the second steps right to the neighbour the case placed there.\n */',
     '/** The press pair on a point no node is drawn on: what a reader does to put a node down. */',
     '// jsdom has no pointer capture, and the canvas takes it on every press.',
     '// The stub\'s render budget is per selection, not per file: the cases here move the selection more',
@@ -3508,6 +3506,7 @@ const allowed = new Map([
     '// The card hangs from a place worked out while the node was still under the pointer, and a drag never',
     '// works it out again: past the click the node is gone from under it, so the drag puts the card away',
     '// rather than leave it floating over empty canvas (G-16).',
+    '/** Where the node menu opens, and what its pin item does — the panel owns persistence, see `onPinChange`. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
@@ -3515,6 +3514,9 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-physics.test.ts', [
     '/**\n * The force layout is the one part of the panel that runs on its own after the reader stops touching it,\n * so these cases drive the frame source by hand and read three promises: the layout converges and the\n * loop stops asking for frames, a node the reader pinned or is holding never drifts, and the camera is\n * fitted once the graph has spread out rather than on the frame that still holds the starting spiral.\n */',
     '/** A frame source the test drives one tick at a time, so a layout that never converges is counted instead of hanging the run. */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-pin-persistence.test.ts', [
+    '/**\n * A pin the reader placed is a decision about the picture, so it has to outlive the panel that drew it\n * (G-07 step 2). The canvas cannot persist anything itself — the preferences belong to the panel that\n * owns them — so what it owes is a call: the node it just pinned, and whether it is now pinned.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-pointer-layout.test.ts', [
     '/**\n * A drag reads the pointer\'s place in the graph on every move, and the canvas box that reading is\n * measured against does not move while the pointer does. Asking the layout engine for that box on each\n * event forced a synchronous layout per move; the box is now kept beside the numbers the resize\n * observer already watches. This case counts the box reads one drag costs.\n */',
@@ -3558,6 +3560,7 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '/** The nodes the search box hit, or null while nothing is being located. */',
     '/** The filter line the search box holds, and what to do when a legend row is pressed (G-14 ④). */',
+    '/**\n   * The canvas cannot persist a pin of its own — the preferences belong to the panel that owns them — so\n   * it reports the change instead. Without this a pin lives exactly as long as the panel does\n   * (G-07 step 2). Left unset where a pin is a view of the moment: the note\'s companion graph.\n   */',
     '/** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */',
     '/** Speaks to the same live region the selection announcement uses, for keys that answer with words. */',
     '/** What Enter does to the node the reader is on: it opens what can be opened, and filters by what cannot. */',
@@ -3592,8 +3595,11 @@ const allowed = new Map([
     '/**\n * Mounting the graph surface needs a canvas that paints, a physics state the test can read, and the\n * callbacks the panel calls back into. Tests that drive the panel by hand share this scaffolding; what\n * each of them asserts stays in its own file.\n */',
     '/** The graph inside a note has no tag filter to narrow, and mounts the canvas without the callback. */',
     '/** The set the search box hit; absent means no search is being located by. */',
+    '/** The panel the canvas reports a pin to; absent means the pin is not persisted (G-07). */',
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
     '/** Releases every canvas mounted by the current test, so a stray effect cannot reach the next one. */',
+    '/**\n * Puts the fixture\'s nodes where the case wants them. The arrow keys read the drawing\'s own layout\n * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —\n * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel\'s.\n */',
+    '/**\n * Walks the keyboard onto the node placed to the right of the first one: the first press enters at\n * the first node of the response, the second steps right to the neighbour the case placed there.\n */',
     '/**\n * What the device answers when the app asks whether it has a coarse pointer. The panel reads that to\n * decide which gestures its own description names, so a case that cares about the wording says what\n * the hardware is rather than leaving the question to the environment\'s default.\n */',
     '/**\n * A pointer press as the canvas reads it: jsdom has no PointerEvent and no pointer capture, so the\n * gesture carries the fields the handlers read and the capture call is stubbed by the cases.\n */',
     '/** A pointer move as the canvas reads it: the middle of a gesture `pressPointer` opens and closes. */',
@@ -3652,12 +3658,17 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/helpers.test.ts', [
     '/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */',
     '// The bounds are the server\'s own, so a slider cannot offer a number the route would refuse.',
+    '// Duplicates collapse here: a pin held twice would be drawn once and counted twice.',
+    '// A pin that arrives twice is stored once: the panel dedupes on the way in, so ordering is the only rule left.',
     '/** The rows a single note produces on its own, which is the colour it is drawn under. */',
     '/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */',
   ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
+    '/** A Crockford base-32 ULID, which is what this app hands out for note and folder ids. */',
     '/**\n * The node an arrow key should land on: the one lying the way the key points, which is what a reader\n * means by "right" and what the response order cannot answer — that order is degree and time, not\n * place (G-23). A candidate in the arrow\'s half-plane is scored by its distance divided by how\n * squarely it sits on the axis, so a node straight ahead beats a nearer one off to the side; the\n * floor keeps a node barely past the axis from winning on distance alone. Returns -1 when nothing\n * lies that way, so the caller can leave the selection where it is.\n */',
     '/**\n * Pans the camera just far enough to hold the node the keyboard reached, so an arrow key never moves\n * the selection off screen (G-23). Only the offset changes: the layout\'s own coordinates and the\n * zoom the reader chose are theirs. Before the canvas has been measured there is no viewport to\n * bring anything into, so the state is left alone.\n */',
+    '/**\n * A pin names a node, and only two things can be a node: a note\'s ULID or a tag\'s `tag:` key. Anything\n * else under this key did not come from this app, so it is dropped rather than trusted (G-07).\n */',
+    '/**\n * The pin list after the reader pins or unpins one node. A fresh pin goes last so the stored order follows\n * the order the reader pinned in, and unpinning drops every copy rather than just the last one.\n */',
     '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
     '/**\n * Which of the ten graph tag colours a name lands on. The slot is theme-independent, so a flip\n * changes the values behind the slots and never which tag wears which.\n */',
     '/** The token a slot\'s colour lives in, so the DOM legend can name it and let the theme paint it. */',
@@ -3693,6 +3704,7 @@ const allowed = new Map([
     '// A legend row is a filter line the reader did not have to type: press it to fade to that colour, press it',
     '// again to ask the server for only that colour, a third time to put the graph back.',
     '/** One press gives the whole graph back: the line, the single tag, the folder, and the tag selection. */',
+    '// A pin is a preference like any other, which is the only way it survives the panel being closed (G-07).',
   ]],
   ['src/client/features/graph/graph-panel/panel-bottom-band.test.ts', [
     '/**\n * The colour legend hangs bottom-left and the node detail badge bottom-centre, and both used to be measured\n * from the same `bottom-4`. Measured in a browser at 375px: three rule rows make the legend 16→184px and the\n * badge 126→249px on the same line, so 58px of the badge was laid across the rows a reader presses to filter\n * (G-18). jsdom lays nothing out, so what a case can pin here is the structure that layout comes from — one\n * band holding both, stacked, with no band of its own on either child. The pixels are the browser\'s answer.\n */',
@@ -3739,6 +3751,12 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
     '/**\n * The server answers up to `LIMITS.graphNodeLimitMax` nodes and the panel used to ask for the same 350\n * however full the library got, so the only sign a reader had of the ceiling was the badge counting what\n * came back (G-21). The limit is now a preference like the others that decide what is sent.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-pin-persistence.test.ts', [
+    '/**\n * The whole point of a pin is that the picture the reader arranged is the picture they come back to\n * (G-07 step 2). These cases take the shortest real path — keyboard onto a node, the actions menu, pin\n * it — and then read what the panel left in storage, which is what a reload would start from.\n */',
+    '/** The pin item of the actions menu, whichever way the selected node currently stands. */',
+    '// One press enters the response at its first node; the badge says which one that turned out to be,',
+    '// so the case never has to guess the order the panel laid the pair out in.',
   ]],
   ['src/client/features/graph/graph-panel/panel-search-focus.test.ts', [
     '/**\n * A reader who types a name into the graph\'s search box is looking for something in the graph they are\n * already looking at, not asking for a different graph (G-14). The old behaviour re-queried, which dropped\n * the links that made the note findable and, with the request throttling, blanked the canvas. These cases\n * type into the real header and count the requests it cost, read what the panel says it matched, and press\n * the two controls the search answers with.\n */',
@@ -8941,8 +8959,10 @@ const allowed = new Map([
   ['src/client/lib/graph-settings.ts', [
     '/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */',
     '/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */',
+    '/** How many pins a page can carry: past a screenful the picture is no longer the reader\'s own. */',
     '/** How many nodes to ask the server for, inside the bounds it clamps to (G-21). */',
     '/** Draw each tag as a node of its own, pulling notes that share it into one cluster. */',
+    '/**\n   * The nodes the reader pinned, by id: a pin is a decision about the picture, so it outlives the panel\n   * that drew it (G-07 step 2). Ids only — a name would collide with a note renamed since.\n   */',
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',
     '/** Whether clearing the sidebar selection also closes the graph panel. */',

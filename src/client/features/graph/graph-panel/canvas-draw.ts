@@ -293,7 +293,7 @@ export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences,
       tagColor: node.kind === 'tag' ? tagColors.get(node.title.toLowerCase()) ?? null : null,
       colorGroup: ruleColors.get(node.id)?.color ?? null,
     }
-    if (before?.pinned) laidOut.pinned = true
+    if (before?.pinned || prefs.pinnedNodeIds.includes(node.id)) laidOut.pinned = true
     return laidOut
   })
   const byId = new Map(state.nodes.map((node) => [node.id, node]))

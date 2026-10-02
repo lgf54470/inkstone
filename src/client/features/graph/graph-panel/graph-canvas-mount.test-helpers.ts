@@ -31,6 +31,8 @@ export interface GraphCanvasMountOptions {
   withoutTagFilter?: boolean
   /** The set the search box hit; absent means no search is being located by. */
   searchHits?: ReadonlySet<string> | null
+  /** The panel the canvas reports a pin to; absent means the pin is not persisted (G-07). */
+  onPinChange?: (id: string, pinned: boolean) => void
 }
 
 const mounted: RenderedElement[] = []
@@ -76,6 +78,7 @@ export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountO
     onCreateNote: create,
     onClose: close,
     onMakeLocal: local,
+    onPinChange: options.onPinChange,
     onFilterByTag: options.withoutTagFilter ? undefined : filterByTag,
     controlsRef: { current: null },
   }))
@@ -96,6 +99,28 @@ export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountO
 export function releaseGraphCanvases(): void {
   while (mounted.length) mounted.pop()!.unmount()
   while (contexts.length) contexts.pop()!()
+}
+
+/**
+ * Puts the fixture's nodes where the case wants them. The arrow keys read the drawing's own layout
+ * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —
+ * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel's.
+ */
+export function placeNodes(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
+  for (const node of graph.state.nodes) {
+    const point = byTitle[node.title]
+    if (point) { node.x = point[0]; node.y = point[1] }
+  }
+}
+
+/**
+ * Walks the keyboard onto the node placed to the right of the first one: the first press enters at
+ * the first node of the response, the second steps right to the neighbour the case placed there.
+ */
+export function walkRightTo(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
+  placeNodes(graph, byTitle)
+  pressKey(graph.canvas, 'ArrowRight')
+  pressKey(graph.canvas, 'ArrowRight')
 }
 
 /**

@@ -3,9 +3,12 @@ import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
-import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
+import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, GRAPH_PINNED_MAX, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_CAMERA_PADDING, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
 import type { CanvasNode, CanvasState } from './types'
+
+/** A Crockford base-32 ULID, which is what this app hands out for note and folder ids. */
+const GRAPH_NODE_ID = /^[0-9a-hjkmnp-tv-z]{26}$/
 
 export function graphScaleAfterWheel(scale: number, deltaY: number): number {
   if (!Number.isFinite(deltaY) || deltaY === 0) return scale
@@ -89,11 +92,12 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       labels: booleanPreference(stored.labels, DEFAULT_PREFERENCES.labels),
       groupBy: stored.groupBy === 'folder' || stored.groupBy === 'tag' ? stored.groupBy : 'none',
       colorGroups: colorGroupsPreference(stored.colorGroups),
-      folderId: typeof stored.folderId === 'string' && /^[0-9a-hjkmnp-tv-z]{26}$/.test(stored.folderId)
+      folderId: typeof stored.folderId === 'string' && GRAPH_NODE_ID.test(stored.folderId)
         ? stored.folderId
         : '',
       tag: typeof stored.tag === 'string' ? truncateText(stored.tag.trim(), 60) : '',
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
+      pinnedNodeIds: pinnedIdsPreference(stored.pinnedNodeIds),
       clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
       clearClosesPanel: booleanPreference(stored.clearClosesPanel, DEFAULT_PREFERENCES.clearClosesPanel),
       repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, GRAPH_FORCE_RANGE.repulsion.min, GRAPH_FORCE_RANGE.repulsion.max),
@@ -113,6 +117,31 @@ function boundedPreference(value: unknown, fallback: number, min: number, max: n
 
 function booleanPreference(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+/**
+ * A pin names a node, and only two things can be a node: a note's ULID or a tag's `tag:` key. Anything
+ * else under this key did not come from this app, so it is dropped rather than trusted (G-07).
+ */
+function pinnedIdsPreference(value: unknown): string[] {
+  const candidates = Array.isArray(value) ? value as unknown[] : []
+  const ids: string[] = []
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue
+    if (!GRAPH_NODE_ID.test(candidate) && !candidate.startsWith('tag:')) continue
+    if (!ids.includes(candidate)) ids.push(candidate)
+    if (ids.length >= GRAPH_PINNED_MAX) break
+  }
+  return ids
+}
+
+/**
+ * The pin list after the reader pins or unpins one node. A fresh pin goes last so the stored order follows
+ * the order the reader pinned in, and unpinning drops every copy rather than just the last one.
+ */
+export function nextPinnedIds(current: readonly string[], id: string, pinned: boolean): string[] {
+  const others = current.filter((existing) => existing !== id)
+  return pinned ? [...others, id] : others
 }
 
 /** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */

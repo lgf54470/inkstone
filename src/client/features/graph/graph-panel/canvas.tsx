@@ -11,7 +11,7 @@ import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
 import { GraphOverlays } from './graph-overlays'
-import { computeNodeAnchor, useGraphNodePreview } from './use-graph-preview'
+import { useGraphNodePreview } from './use-graph-preview'
 import {
   type GraphControls,
   graphMenuItems,
@@ -19,6 +19,7 @@ import {
   useGraphControls,
   useGraphDrag,
   useGraphFit,
+  useGraphNodeActions,
   useGraphNodeFocus,
   useGraphSearchDim,
   useGraphWorldMath,
@@ -46,6 +47,12 @@ interface GraphCanvasProps {
   onCreateNote: (title: string) => void
   onClose: () => void
   onMakeLocal: () => void
+  /**
+   * The canvas cannot persist a pin of its own — the preferences belong to the panel that owns them — so
+   * it reports the change instead. Without this a pin lives exactly as long as the panel does
+   * (G-07 step 2). Left unset where a pin is a view of the moment: the note's companion graph.
+   */
+  onPinChange?: (id: string, pinned: boolean) => void
   /** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */
   onFilterByTag?: (tag: string) => void
   controlsRef: MutableRefObject<GraphControls | null>
@@ -388,23 +395,6 @@ function useGraphLegends(data: GraphResponse, prefs: GraphPreferences) {
   )
 }
 
-function useGraphNodeActions(
-  canvasRef: RefObject<HTMLCanvasElement | null>,
-  stateRef: RefObject<CanvasState>,
-  setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void,
-) {
-  const openNodeMenu = useCallback((node: CanvasNode) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const anchor = computeNodeAnchor(canvas, stateRef.current, node)
-    setContext({ x: anchor.x, y: anchor.y, node })
-  }, [canvasRef, setContext, stateRef])
-  const onTogglePin = useCallback((node: CanvasNode) => {
-    node.pinned = !node.pinned; stateRef.current.schedule?.()
-  }, [stateRef])
-  return { openNodeMenu, onTogglePin }
-}
-
 function useGraphCanvasController(props: GraphCanvasProps) {
   const { data, prefs, searchHits, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
   const [hover, setHover] = useState<CanvasNode | null>(null)
@@ -440,7 +430,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     origEndDrag(clientX, clientY, modifierKey); setIsDragging(false)
   }, [origEndDrag])
 
-  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext)
+  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext, props.onPinChange)
   const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
   const selectNode = useGraphNodeFocus(stateRef, setSelectedId)
   useGraphControls(controlsRef, stateRef, fitGraph, selectNode)

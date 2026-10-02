@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LIMITS } from '@shared/constants'
-import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGES, type GraphColorGroup } from '../../../lib/graph-settings'
+import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGES, GRAPH_PINNED_MAX, type GraphColorGroup } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_PREFS_KEY } from './constants'
 import {
   buildColorLegends,
@@ -12,6 +12,7 @@ import {
   graphScaleAfterWheel,
   graphSearchHits,
   loadPreferences,
+  nextPinnedIds,
   nodeColor,
   pickNeighborInDirection,
   tagColorsByName,
@@ -88,6 +89,45 @@ describe('graph panel preferences', () => {
       localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ [control.prefKey]: control.min / 100 }))
       expect(loadPreferences(null)[control.prefKey]).toBe(control.min)
     }
+  })
+
+})
+
+describe('graph panel stored pins', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps only ids a graph can hold in the stored pins (G-07)', () => {
+    const noteId = 'a'.repeat(26)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ pinnedNodeIds: [noteId, 'tag:work', 'nonsense', '', 42, null, noteId] }))
+
+    // Duplicates collapse here: a pin held twice would be drawn once and counted twice.
+    expect(loadPreferences(null).pinnedNodeIds).toEqual([noteId, 'tag:work'])
+  })
+
+  it('refuses a stored pin list longer than a page can show (G-07)', () => {
+    const ids = Array.from({ length: GRAPH_PINNED_MAX + 25 }, (_unused, index) => `tag:t${index}`)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ pinnedNodeIds: ids }))
+
+    expect(loadPreferences(null).pinnedNodeIds).toHaveLength(GRAPH_PINNED_MAX)
+  })
+
+  it('treats anything that is not a list of strings as no pins at all (G-07)', () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ pinnedNodeIds: 'note-1' }))
+    expect(loadPreferences(null).pinnedNodeIds).toEqual([])
+    localStorage.setItem(GRAPH_PREFS_KEY, '{not json')
+    expect(loadPreferences(null).pinnedNodeIds).toEqual([])
+  })
+
+  it('puts a fresh pin last and drops every copy of the one the reader let go (G-07)', () => {
+    const first = 'a'.repeat(26)
+    const second = 'b'.repeat(26)
+
+    // A pin that arrives twice is stored once: the panel dedupes on the way in, so ordering is the only rule left.
+    expect(nextPinnedIds([first], second, true)).toEqual([first, second])
+    expect(nextPinnedIds([first], first, true)).toEqual([first])
+    expect(nextPinnedIds([first, second, first], first, false)).toEqual([second])
   })
 })
 
