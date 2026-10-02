@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
 import { DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
+import { CoverAnnouncement, PresentationStage, ScreenCover, stageProps } from './presentation-stage'
 import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
@@ -77,6 +77,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <SlideProgress index={session.index} count={session.deck.length} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
         {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
+        <CoverAnnouncement cover={session.screenCover} />
         <Spotlight active={session.spotlight} />
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}

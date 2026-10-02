@@ -113,6 +113,8 @@ export const messages = {
 'workspace.presentation_spotlight': 'Spotlight',
 'workspace.presentation_blackout': 'Blackout',
 'workspace.presentation_whiteout': 'Whiteout',
+'workspace.presentation_cover_on': 'The projector is covered: {value0}',
+'workspace.presentation_cover_off': 'The cover is lifted',
 'workspace.presentation_context_menu': 'Presentation menu',
 'workspace.remote_image': 'Remote image',
 'workspace.resize_editor_and_preview_panes': 'Resize editor and preview panes',

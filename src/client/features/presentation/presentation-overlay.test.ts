@@ -185,3 +185,14 @@ describe('PresentationOverlay — the export reports itself inside the show', ()
   })
 })
 
+
+// N-14's wiring, not its wording: the announcement has to live inside the dialog, because that is the
+// surface the cover belongs to and the only one a reader is inside while the projector is flat colour.
+describe('PresentationOverlay — the cover announcement is in the dialog', () => {
+  it('keeps the cover status region beside the slide surface', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    const region = document.querySelector('[role="dialog"] [data-cover-status]')
+    expect(region?.getAttribute('aria-live')).toBe('polite')
+    view.unmount()
+  })
+})

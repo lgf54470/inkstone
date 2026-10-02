@@ -1,8 +1,15 @@
-import { createElement } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, createElement } from 'react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
-import { ScreenCover } from './presentation-stage'
+import { initI18n, t } from '../../lib/i18n'
+import { CoverAnnouncement, ScreenCover } from './presentation-stage'
 import { measureStage, SLIDE_DESIGN_HEIGHT, SLIDE_DESIGN_WIDTH, SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
+
+// The cover's accessible name is a resource string, so the resources have to be loaded for the
+// assertion to compare anything but a key against itself.
+beforeAll(async () => {
+  await initI18n()
+})
 
 describe('measureStage', () => {
   it('returns fallback metrics for non-positive dimensions', () => {
@@ -74,9 +81,63 @@ describe('ScreenCover', () => {
     const cover = view.container.querySelector('[data-screen-cover="black"]')
     expect(cover).toBeTruthy()
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    // What stopping propagation buys is the menu behind the cover never hearing the press, so that
+    // is what gets asserted — the flag itself is not readable on a dispatched event.
+    let reachedAncestor = false
+    const guard = () => { reachedAncestor = true }
+    document.body.addEventListener('contextmenu', guard)
     cover?.dispatchEvent(event)
+    document.body.removeEventListener('contextmenu', guard)
     expect(event.defaultPrevented).toBe(true)
+    expect(reachedAncestor).toBe(false)
     expect(onClear).not.toHaveBeenCalled()
+    view.unmount()
+  })
+})
+
+// N-14: the cover is a control the speaker presses, not a painted rectangle that happens to answer
+// clicks. Its name comes from the resources — the same surface has to read the same thing in either
+// language — and it is the one thing a keyboard user can act on while the projector is covered.
+describe('ScreenCover — a control, not a painted rectangle', () => {
+  it('is a real button that names itself from the resources', () => {
+    const view = renderElement(createElement(ScreenCover, { cover: 'black', onClear: vi.fn() }))
+    const cover = document.querySelector('[data-screen-cover="black"]')
+    expect(cover?.tagName).toBe('BUTTON')
+    expect(cover?.getAttribute('type')).toBe('button')
+    expect(cover?.getAttribute('aria-label')).toBe(t('workspace.presentation_blackout'))
+    view.unmount()
+  })
+
+  it('takes the keyboard when it takes the screen', () => {
+    const view = renderElement(createElement(ScreenCover, { cover: 'white', onClear: vi.fn() }))
+    expect(document.activeElement).toBe(document.querySelector('[data-screen-cover="white"]'))
+    view.unmount()
+  })
+})
+
+// The reason this lives in a live region rather than in the button: covering the screen and uncovering
+// it are the two things a flat colour cannot show, and the button is gone by the time the second one
+// happens.
+describe('CoverAnnouncement — the change a flat colour hides', () => {
+  const announced = () => document.querySelector('[role="status"]')?.textContent?.trim() ?? ''
+
+  it('says nothing when nothing has changed', () => {
+    const view = renderElement(createElement(CoverAnnouncement, { cover: null }))
+    expect(announced()).toBe('')
+    view.unmount()
+  })
+
+  it('names the cover when the projector goes flat', () => {
+    const view = renderElement(createElement(CoverAnnouncement, { cover: null }))
+    act(() => { view.rerender(createElement(CoverAnnouncement, { cover: 'black' })) })
+    expect(announced()).toContain(t('workspace.presentation_blackout'))
+    view.unmount()
+  })
+
+  it('says the cover is lifted when the screen comes back', () => {
+    const view = renderElement(createElement(CoverAnnouncement, { cover: 'white' }))
+    act(() => { view.rerender(createElement(CoverAnnouncement, { cover: null })) })
+    expect(announced()).toContain(t('workspace.presentation_cover_off'))
     view.unmount()
   })
 })

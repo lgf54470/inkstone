@@ -279,6 +279,10 @@ const LABELS = {
   presenterNextSlide: localeLabel('workspace.presentation_next_slide'),
   presenterSpeakerNotes: localeLabel('workspace.presentation_speaker_notes'),
   presenterPopupBlocked: localeLabel('workspace.presentation_popup_blocked'),
+  // N-14: the cover's own name, and the two things it says when it goes on and comes off.
+  presentationBlackout: localeLabel('workspace.presentation_blackout'),
+  presentationWhiteout: localeLabel('workspace.presentation_whiteout'),
+  presentationCoverOff: localeLabel('workspace.presentation_cover_off'),
   consoleClose: localeLabel('common.close'),
 }
 
@@ -819,23 +823,37 @@ async function assertPresentationScreenCover(page) {
 
   await page.keyboard.press('b')
   await sleep(200)
-  const blackout = await page.evaluate(({ x, y }) => {
+  const blackout = await page.evaluate(({ x, y, names }) => {
     const cover = document.querySelector('[data-screen-cover]')
     const dialog = document.querySelector('[role="dialog"]')
     const hit = document.elementFromPoint(x, y)
+    // The cover's own hook, not the dialog's first status region: the slide list announces its
+    // measuring pass from one of those, and an empty text there would read as silence either way.
+    const said = document.querySelector('[role="dialog"] [data-cover-status]')?.textContent ?? ''
     return {
       active: cover?.getAttribute('data-screen-cover'),
       insideDialog: Boolean(dialog && cover && dialog.contains(cover)),
       hitIsCover: hit === cover,
       bg: cover ? getComputedStyle(cover).backgroundColor : '',
+      isButton: cover?.tagName === 'BUTTON',
+      isButtonType: cover?.getAttribute('type') === 'button',
+      named: names.blackout.includes(cover?.getAttribute('aria-label') ?? ''),
+      focused: Boolean(cover) && document.activeElement === cover,
+      saysCover: names.blackout.some((label) => said.includes(label)),
     }
-  }, point)
+  }, { ...point, names: { blackout: LABELS.presentationBlackout } })
+  check('cover: the blackout is a control the keyboard is standing on', blackout.isButton && blackout.isButtonType && blackout.named && blackout.focused, JSON.stringify(blackout))
+  check('cover: the blackout says itself out loud', blackout.saysCover, JSON.stringify(blackout))
   check('cover: B covers the projector in black', blackout.active === 'black' && blackout.insideDialog && blackout.hitIsCover, JSON.stringify(blackout))
 
   await page.keyboard.press(' ')
   await sleep(200)
-  const dismissedBlack = await page.evaluate(() => !document.querySelector('[data-screen-cover]'))
-  check('cover: pressing a key lifts the blackout', dismissedBlack)
+  const dismissedBlack = await page.evaluate((names) => ({
+    lifted: !document.querySelector('[data-screen-cover]'),
+    saysLifted: names.off.some((label) => (document.querySelector('[role="dialog"] [data-cover-status]')?.textContent ?? '').includes(label)),
+  }), { off: LABELS.presentationCoverOff })
+  check('cover: pressing a key lifts the blackout', dismissedBlack.lifted)
+  check('cover: lifting the blackout is said too', dismissedBlack.saysLifted, JSON.stringify(dismissedBlack))
 
   await page.keyboard.press('w')
   await sleep(200)

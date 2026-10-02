@@ -1,4 +1,6 @@
-import { useCallback, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { t } from '../../lib/i18n'
+import { cn } from '../../lib/cn'
 import { SlideViewport } from './slide-canvas'
 import { stageClickDirection, swipeDirection } from './presentation-state'
 import { formatDeckPosition } from './deck-position'
@@ -124,18 +126,52 @@ export function PresentationStage(props: PresentationStageProps) {
   )
 }
 
-export function ScreenCover({ cover, onClear }: { cover: 'black' | 'white'; onClear: () => void }) {
+export type PresentationCover = 'black' | 'white'
+
+// The cover is a control the speaker presses, so it is a button: a painted rectangle that answers
+// clicks has no accessible name to read, no focus to receive, and no key that lifts it. Its label
+// comes from the resources — the same surface has to say the same thing in either language — and it
+// takes the focus on the way in, because while it is up the rest of the chrome is inert.
+export function ScreenCover({ cover, onClear }: { cover: PresentationCover; onClear: () => void }) {
+  const controlRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    controlRef.current?.focus()
+  }, [cover])
   return (
-    <div
+    <button
+      ref={controlRef}
+      type='button'
       onClick={onClear}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
       }}
       data-screen-cover={cover}
-      className={cover === 'black' ? 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(0_0_0)]' : 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(255_255_255)]'}
-      aria-label={cover === 'black' ? 'Blackout' : 'Whiteout'}
+      className={cn('absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none', cover === 'black' ? 'bg-[rgb(0_0_0)]' : 'bg-[rgb(255_255_255)]')}
+      aria-label={t(cover === 'black' ? 'workspace.presentation_blackout' : 'workspace.presentation_whiteout')}
     />
+  )
+}
+
+// Covering and uncovering are invisible to anyone who cannot see the projector: the screen goes flat
+// colour, or comes back. This says which of the two just happened, in the one place that is allowed
+// to announce — it does not fire on mount, so opening a show that is not covered stays silent.
+export function CoverAnnouncement({ cover }: { cover: PresentationCover | null }) {
+  const [message, setMessage] = useState('')
+  const previous = useRef<PresentationCover | null>(cover)
+  useEffect(() => {
+    if (previous.current === cover) return
+    const lifted = cover === null
+    const mode = cover ?? previous.current
+    previous.current = cover
+    setMessage(lifted
+      ? t('workspace.presentation_cover_off')
+      : t('workspace.presentation_cover_on', { value0: t(mode === 'black' ? 'workspace.presentation_blackout' : 'workspace.presentation_whiteout') }))
+  }, [cover])
+  return (
+    <span data-cover-status className='sr-only' role='status' aria-live='polite'>
+      {message}
+    </span>
   )
 }
 

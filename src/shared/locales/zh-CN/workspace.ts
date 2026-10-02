@@ -113,6 +113,8 @@ export const messages = {
 'workspace.presentation_spotlight': '聚光灯',
 'workspace.presentation_blackout': '黑屏模式',
 'workspace.presentation_whiteout': '白屏模式',
+'workspace.presentation_cover_on': '放映画面已被遮挡：{value0}',
+'workspace.presentation_cover_off': '遮挡已解除',
 'workspace.presentation_context_menu': '演示控制菜单',
 'workspace.remote_image': '网络图片',
 'workspace.resize_editor_and_preview_panes': '调整编辑与预览宽度',
