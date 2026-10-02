@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
 import {
   buildPresentationMenuItems,
+  extractAnchorHrefFromPoint,
   extractLinkHref,
   PresentationContextMenu,
   type PresentationContextMenuProps,
@@ -135,6 +136,93 @@ describe('buildPresentationMenuItems — link protocol whitelist', () => {
     const items = buildPresentationMenuItems({ ...baseOptions(), linkUrl: href })
     expect(items.map((item) => item.id).slice(0, 2)).toEqual(['link-open', 'link-copy'])
     expect(items.find((item) => item.id === 'prev')?.separatorBefore).toBe(true)
+  })
+})
+
+// The hit stack comes back in paint order, so the first element under the pointer is what the show is
+// drawing. Searching past it reaches a link hidden under an opaque surface, and reaching outside the panel
+// reaches the application behind the projector — either way the menu would offer a link nobody aimed at.
+function withStack(elements: Element[], run: () => void) {
+  const original = document.elementsFromPoint
+  document.elementsFromPoint = vi.fn().mockReturnValue(elements)
+  try {
+    run()
+  }
+  finally {
+    document.elementsFromPoint = original
+  }
+}
+
+function element(tag: 'a' | 'div' | 'p', href?: string) {
+  const node = document.createElement(tag)
+  if (href) node.setAttribute('href', href)
+  return node
+}
+
+describe('extractAnchorHrefFromPoint — what the projector shows', () => {
+  it('resolves the link the projector is showing', () => {
+    const panel = element('div')
+    const anchor = element('a', 'https://example.com/on-stage')
+    panel.append(anchor)
+    document.body.append(panel)
+    withStack([anchor, panel], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBe('https://example.com/on-stage')
+    })
+    panel.remove()
+  })
+
+  it('ignores a link that sits under an opaque surface of its own', () => {
+    const panel = element('div')
+    const cover = element('div')
+    const hidden = element('a', 'https://example.com/under-the-cover')
+    panel.append(cover, hidden)
+    document.body.append(panel)
+    withStack([cover, hidden], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
+    })
+    panel.remove()
+  })
+})
+
+describe('extractAnchorHrefFromPoint — what the projector hides', () => {
+  it('ignores a link outside the projector panel', () => {
+    const panel = element('div')
+    const stage = element('p')
+    panel.append(stage)
+    document.body.append(panel)
+    const outside = element('a', 'https://example.com/behind-the-show')
+    document.body.append(outside)
+    withStack([stage, panel, outside], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
+    })
+    panel.remove()
+    outside.remove()
+  })
+
+  it('looks past the open menu itself when the second right click lands on one of its rows', () => {
+    const panel = element('div')
+    const anchor = element('a', 'https://example.com/re-aimed')
+    const menu = element('div')
+    menu.setAttribute('role', 'menu')
+    const row = element('div')
+    menu.append(row)
+    panel.append(anchor, menu)
+    document.body.append(panel)
+    const backdrop = element('div')
+    backdrop.setAttribute('data-presentation-menu-backdrop', '')
+    withStack([row, backdrop, anchor], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, row, panel)).toBe('https://example.com/re-aimed')
+    })
+    panel.remove()
+  })
+
+  it('resolves nothing when the menu has no panel to constrain it to', () => {
+    const anchor = element('a', 'https://example.com/orphan')
+    document.body.append(anchor)
+    withStack([anchor], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, null)).toBeNull()
+    })
+    anchor.remove()
   })
 })
 
@@ -296,39 +384,48 @@ describe('PresentationContextMenu — backdrop interaction', () => {
   })
 })
 
+// The show's own panel is what the menu is allowed to read a link out of: the backdrop covers the whole
+// viewport, and everything the projector hides — the note list, the sidebar — is still in the document
+// under it.
+function renderOverPanel() {
+  const onReopen = vi.fn()
+  const panel = document.createElement('div')
+  document.body.append(panel)
+  const view = renderElement(createElement(PresentationContextMenu, {
+    ...baseOptions(),
+    point: { x: 100, y: 100 },
+    onClose: vi.fn(),
+    onReopen,
+    container: panel,
+  }))
+  const backdrop = panel.querySelector('[data-presentation-menu-backdrop]')
+  expect(backdrop).toBeTruthy()
+  return { panel, view, backdrop, onReopen }
+}
+
+function rightClick(backdrop: Element | null, x: number, y: number) {
+  const contextEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y })
+  backdrop?.dispatchEvent(contextEvent)
+  expect(contextEvent.defaultPrevented).toBe(true)
+}
+
 describe('PresentationContextMenu — backdrop link and stacking', () => {
   it('reopens menu with extracted link when right clicking over an underlying anchor via elementsFromPoint', () => {
-    const onReopen = vi.fn()
-    const props: PresentationContextMenuProps = {
-      ...baseOptions(),
-      point: { x: 100, y: 100 },
-      onClose: vi.fn(),
-      onReopen,
-    }
-    const view = renderElement(createElement(PresentationContextMenu, props))
-    const backdrop = document.querySelector('[data-presentation-menu-backdrop]')
-    expect(backdrop).toBeTruthy()
+    const { panel, view, backdrop, onReopen } = renderOverPanel()
 
     const anchor = document.createElement('a')
     anchor.setAttribute('href', 'https://example.com/slide-link')
-    document.body.append(anchor)
+    panel.append(anchor)
 
     const originalElementsFromPoint = document.elementsFromPoint
     document.elementsFromPoint = vi.fn().mockReturnValue([backdrop, anchor])
 
-    const contextEvent = new MouseEvent('contextmenu', {
-      bubbles: true,
-      cancelable: true,
-      clientX: 300,
-      clientY: 400,
-    })
-    backdrop?.dispatchEvent(contextEvent)
-    expect(contextEvent.defaultPrevented).toBe(true)
+    rightClick(backdrop, 300, 400)
     expect(onReopen).toHaveBeenCalledWith({ x: 300, y: 400 }, 'https://example.com/slide-link')
 
     document.elementsFromPoint = originalElementsFromPoint
-    anchor.remove()
     view.unmount()
+    panel.remove()
   })
 
   it('sets backdrop z-index to Z_INDEX.menu to ensure it stacks above slide overlays and overview grid', () => {
@@ -342,5 +439,28 @@ describe('PresentationContextMenu — backdrop link and stacking', () => {
     const backdrop = document.querySelector<HTMLElement>('[data-presentation-menu-backdrop]')
     expect(backdrop?.style.zIndex).toBe('260')
     view.unmount()
+  })
+})
+
+describe('PresentationContextMenu — a link behind the projector is not a link on it', () => {
+  it('reopens with no link when the point lands on the slide and an anchor lives behind the projector', () => {
+    const { panel, view, backdrop, onReopen } = renderOverPanel()
+
+    const stage = document.createElement('p')
+    panel.append(stage)
+    const outside = document.createElement('a')
+    outside.setAttribute('href', 'https://example.com/behind-the-show')
+    document.body.append(outside)
+
+    const originalElementsFromPoint = document.elementsFromPoint
+    document.elementsFromPoint = vi.fn().mockReturnValue([backdrop, stage, panel, outside])
+
+    rightClick(backdrop, 300, 400)
+    expect(onReopen).toHaveBeenCalledWith({ x: 300, y: 400 }, null)
+
+    document.elementsFromPoint = originalElementsFromPoint
+    view.unmount()
+    panel.remove()
+    outside.remove()
   })
 })

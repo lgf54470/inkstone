@@ -6802,11 +6802,21 @@ const allowed = new Map([
   ['src/client/features/presentation/presentation-context-menu.test.ts', [
     '// The left click on the projector and these two menu items are the same action on the same href, so',
     '// they consult one whitelist: an href the slide refuses may not get an offer the slide would not act on.',
+    '// The hit stack comes back in paint order, so the first element under the pointer is what the show is',
+    '// drawing. Searching past it reaches a link hidden under an opaque surface, and reaching outside the panel',
+    '// reaches the application behind the projector — either way the menu would offer a link nobody aimed at.',
+    '// The show\'s own panel is what the menu is allowed to read a link out of: the backdrop covers the whole',
+    '// viewport, and everything the projector hides — the note list, the sidebar — is still in the document',
+    '// under it.',
   ]],
   ['src/client/features/presentation/presentation-context-menu.tsx', [
     '// The href comes out of the rendered note, so these two items exist only for a protocol the projector is',
     '// willing to open. Left click and right click are one action on one href; they must not be two judgements.',
     '// Best-effort clipboard copy: environment or permission restrictions may reject writing.',
+    '// The stack comes back in paint order, and a `pointer-events: none` layer is not in it at all (measured',
+    '// in Chrome), so the first element that is neither the menu\'s backdrop nor the menu is what the',
+    '// projector is showing under the pointer. Searching deeper would offer a link hidden under an opaque',
+    '// surface; not stopping at the panel\'s edge would offer one from the application behind the show.',
   ]],
   ['src/client/features/presentation/presentation-controls.test.ts', [
     '// The toggle is found by the message it shows, which only exists once the locale has loaded.',

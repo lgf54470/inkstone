@@ -216,16 +216,15 @@ export function extractLinkHref(anchor: Element | null | undefined): string | nu
   return null
 }
 
-export function extractAnchorHrefFromPoint(x: number, y: number, fallbackTarget: Element | null): string | null {
+export function extractAnchorHrefFromPoint(x: number, y: number, fallbackTarget: Element | null, surface?: Element | null): string | null {
   if (typeof document !== 'undefined' && typeof document.elementsFromPoint === 'function') {
-    const elements = document.elementsFromPoint(x, y)
-    for (const el of elements) {
-      if (el.hasAttribute('data-presentation-menu-backdrop') || el.closest('[role="menu"]')) {
-        continue
-      }
-      const anchor = el.closest<HTMLAnchorElement>('a[href]')
-      if (anchor) return extractLinkHref(anchor)
-    }
+    // The stack comes back in paint order, and a `pointer-events: none` layer is not in it at all (measured
+    // in Chrome), so the first element that is neither the menu's backdrop nor the menu is what the
+    // projector is showing under the pointer. Searching deeper would offer a link hidden under an opaque
+    // surface; not stopping at the panel's edge would offer one from the application behind the show.
+    const top = document.elementsFromPoint(x, y)
+      .find((el) => !el.hasAttribute('data-presentation-menu-backdrop') && !el.closest('[role="menu"]'))
+    if (top) return surface?.contains(top) ? extractLinkHref(top.closest<HTMLAnchorElement>('a[href]')) : null
   }
   const fallbackAnchor = fallbackTarget?.closest<HTMLAnchorElement>('a[href]')
   return extractLinkHref(fallbackAnchor)
@@ -265,7 +264,7 @@ export function PresentationContextMenu(props: PresentationContextMenuProps) {
           onContextMenu={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            const resolvedLink = extractAnchorHrefFromPoint(e.clientX, e.clientY, e.target as Element | null)
+            const resolvedLink = extractAnchorHrefFromPoint(e.clientX, e.clientY, e.target as Element | null, container ?? null)
             onReopen({ x: e.clientX, y: e.clientY }, resolvedLink)
           }}
         />,
