@@ -24,10 +24,10 @@
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[x]` 四条提交全部落地（N-07 `7120d1c2`、N-10 `07d97b7f`、N-08 `f3309972`、N-09 `c26cdd70` + 用例归位 `2e4fb18a`），每条各自带变异电池与静态门禁，回填时又在最终字节上复跑一遍电池；批次收尾四条重型门禁已跑，视觉门禁红数与 L-1 基线逐条同名、无本批新增红 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[x]` 四条提交全部落地（N-04 `d165436e`、N-05 `4174b9e6`、N-06 `d06bdb3e`（前置拆分 `227aa9ca`）、N-26 `7507b92e`），每条各自带变异电池与静态门禁；批次收尾已跑（场景 `87a6c751` + 本条回填），四条重型门禁各一遍，本批共同的「演讲者侧只有 jsdom 证据」由新增的 `assertPresenterConsole`（25 条）收掉，收尾实测另开 **L-7**（窗被关后仍在广播）与 **L-8**（看板焦点断言间歇红） |
 | **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[x]` **11 条全部落地，四条重型门禁已在最终字节上各跑一遍**（见本批末「批次收尾」）· 逐条： N-11 + N-13（`f9dd10b8`）、N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则；顺带解掉 L-1 的 axe 红，L-1 余 6 条）、N-12（`de17c3b3`）、N-14（`df32164b`，遮罩语义化 + 开合播报）、N-19（`4d843bd8`，跟随断裂与启动失败改为有声；同次把放映的「跟随」一半拆进 `use-presented-note.ts`，浏览器侧证据缺位另立 **L-10**）、N-15（`3add5fbb`，列表不再吞掉横向翻页键——**报告的前提「初始焦点落侧栏」实测为假**，真的死键在焦点进列之后）、N-20（`886385b2`，激光笔与聚光灯开启即有落点）、N-21（`5f6ba715`，进度条改按页计数 + 列表去掉重复的当前态）、N-22（`82ca2fff`，流落到 `useDeckIndex` 头上的注释归位；95 对注释/函数逐条读过，仅此一处错位）、N-30（`2374f80d`，全屏被拒与页面增强失败改为有声；同次把原生全屏归属拆进 `use-fullscreen-toggle.ts`） |
-| **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 进行中 · 已落地 N-23（`974d8640`，缓存上限随 deck 规模放开；**同一趟实验否证了它是 L-1 缩略图红的成因**）、N-25（`81c9220d`，缓存命中不再重跑整篇 markdown），余 4 条 |
+| **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 进行中 · 已落地 N-23（`974d8640`，缓存上限随 deck 规模放开；**同一趟实验否证了它是 L-1 缩略图红的成因**）、N-25（`81c9220d`，缓存命中不再重跑整篇 markdown）、N-29（`22d4cb11`，淡出按帧合并 + 被打断的页面准备会重做 + 按键监听不再随渲染重挂；顺带否证了报告给本条拟的 resize 测法），余 3 条（N-27 / N-28 / N-24） |
 | **R2-6** | 信息量与功能补全 | N-36, N-32, N-37, N-38, N-17, N-18+N-35, N-31, N-33 | 低 → 高 | `[ ]` 待办（按此顺序做） |
 | **R2-7** | 观众侧同步放映 | N-34 | 高 | `[ ]` 待办（**公共契约变更，先写 ADR**） |
-| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9, L-10, L-11, L-12 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开，L-10 由 N-19 的浏览器侧证据缺位新开，L-11 由 N-20 那轮视觉门禁首次红新开，L-12 由 N-22 逐条核注释时顺手发现新开） |
+| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9, L-10, L-11, L-12, L-13 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开，L-10 由 N-19 的浏览器侧证据缺位新开，L-11 由 N-20 那轮视觉门禁首次红新开，L-12 由 N-22 逐条核注释时顺手发现新开，L-13 由 N-29 的浏览器探针实测新开） |
 
 **若只允许做三件事**：N-01（地基性正确性）· N-07+N-08（安全红线，`AGENTS.md` 不允许例外）· N-11+N-36+N-12（用户两张截图里直接可见的三项）。
 
@@ -230,8 +230,16 @@
   - 涉及文件：`slide-rail.tsx`、`slide-thumb.tsx`、overview 网格卡
   - 目标：加 `memo`，或把 `plans` 订阅细粒度化（先例：`subscribeSlideHtml` 按 key，`slide-thumb.tsx:128`）。
   - 代价：低-中
-- [ ] **N-29** 三处高频路径未节流 / 未收敛（`低`）
+- [x] **N-29** 三处高频路径未节流 / 未收敛（`低`）— 已提交 `22d4cb11`
+  - 涉及文件：`use-chrome-auto-hide.ts`（自 `use-presentation-session.ts` 拆出）、`use-presentation-session.ts`、`use-slide-html.ts`、`slide-html.ts`、`slide-preflight.tsx`、`use-presentation-keys.ts`，新用例 `use-chrome-auto-hide.test.ts` / `tests/slide-cache-writes.test.ts`，改 `use-slide-html.test.ts` / `use-presentation-keys.test.ts`
+  - 目标：指针唤醒按帧合并；页面准备的命中判定不再把纯文本当成品；放映的 window keydown 监听不随渲染重挂。
   - 代价：低
+  - 落地：①控制条淡出的 `reveal` 改成 `wake`——`pointermove`/`pointerdown`/`keydown` 先占一个 `requestAnimationFrame` 名额，一帧内多次事件只排一次唤醒，卸载时取消未绘制的帧；`arm()` 仍每次都 `clearTimeout` + 重挂，因为「截止时间跟着最后一次移动」就是这条路径的语义。②准备的命中判定从「缓存里有东西」改成「这一页已增强（`SlideMarkup.prepared`）或已确认失败」——被中途打断的那次在缓存里留下的只是纯文本，旧判定把它当成品，于是**那一页的图在整场放映里再也不会出现**（切页回来、翻回去都一样），现在回来会重做；`fingerprint` 入参一并去掉（`key` 自己从 `deck[index]` 取，两个调用点少一处可能说谎的输入），依赖从 13 项收到 5 项：`deck`/`content`/`noteTitle`/`index`/`dark`/内容盒都由 `key` 钉住，改笔记别处不再取消在途增强。③命令执行器改读最新 `actions` 引用（本仓成例：`slide-canvas.tsx:145`、`pinned-windows-layer.tsx:111`），`run`/`onKeyDown` 身份稳定后，六次渲染只挂一个监听。
+  - 红先在案：**2 红 / 5 绿**（淡出那文件首跑）——`re-arms the fade once per frame…`：`expected 201 to be 2`，即 200 个 pointermove 换来 **201 次淡出计时器重挂**；`commits nothing for a move…`：`expected 2 to be 1`（同一次静置移动仍产生一次提交）。按键那文件另得 **1 红**：`expected 6 to be 1`（6 次渲染挂 6 次 window keydown）。准备那文件的红被签名变更污染（旧 `useSlideHtml` 仍要 `fingerprint`，夹具的键与实现的键不同），故其承重改由变异逐条证明。
+  - 变异在案：`/tmp/mut-n29.mjs` 9 个变异体，control **5 文件 / 54 例**先绿，**killed 9/9**——M1a 去掉按帧合并（`schedules one wake per frame`）、M1c 去掉 `arm()` 里的 `clearTimeout`（`restarts the idle window from the last move`）、M2a 读闭包里的 `actions`（`hands the keystroke to the action the current render passed in`）、M2b 执行器依赖回到 `[actions]`（`hangs one listener and keeps it…`）、M3a 命中判定接受纯文本（`prepares the page again when the presenter comes back to it`）、M3b 依赖带上 `content`（`lets the page on screen finish…`）、M3c/M3d 两处成品写入不标记（源码规则 `names which of the two states each writer leaves under the key`）、M3e 失败页不再算终点（`does not start a second run for a page it already called broken`）。**幸存者一名**：M1b（把 `if (!shown)` 换成无条件 `setHidden(false)`）在合并之后杀不掉——等于值的 dispatch 由 React 自己吸收，于是那个本地镜像被删（`铁律 5` / KISS：不被断言承重的分支不留）。两轮电池因锚点漂移与 ANSI 前缀各报过一次 INVALID/abort，均在写盘前中止、还原后复跑。
+  - 门禁在案：`npm run typecheck` rc=0；14 项静态门禁逐条 rc=0（白名单 13543 → **13594** 条 / 1383 文件；`size:check` **1922 文件 / 52 祖父级**——两个新 describe 因越 50 行先红一次，按 N-25 的成例拆分后复绿；`i18n:check` 键数仍 **3908**，本条没有新文案）；`npm run test:unit` 全量 **629 文件通过 / 1 红**，红的是一条 `Tests 1 failed | 6127 passed | 1 skipped`——`blog-comments-window > mounts one page of rows and grows on demand`，**单跑 1 例绿**，与本条改动无交集（既往记录的负载敏感超时同族）。此前两轮在全仓并发（另一台 worktree 的 `tsc -b` + 我自己的重复三轮）下分别报 13 红 / 3 红，逐条都是 5000 ms 超时且**单跑全绿**（`tests/merge-preflight` / `radiogroup-names` / `music-*` / `calendar` 那族），只记为负载噪声，不记为结论。钩子另跑增量 `tsc -b` 与 `vitest related` 全绿。
+  - 浏览器实测在案（`/tmp/probe-n29.mjs`，:7712 实实例，headless shell，8/8）：淡出照常发生（quiet > 2.6 s → `inert` + `invisible`）、一次 `page.mouse.move` 即唤醒、停止移动后仍会淡出；**3.6 s 连续移动 190 帧，控制条一次都没有掉**（采样 60+ 次未见 hidden）；**同一任务里同步派发 200 个 `pointermove` 只排 1 次唤醒、只重挂 1 次淡出计时器**（改前该形态即 jsdom 量到的 201）；按键 `ArrowRight` 在淡出状态下照常唤醒。
+  - 落地取舍与残留：①报告 §十 替本条拟的测法是「拖窗口连续 resize 200 次数 `applySlidePage`」——**该假设不成立**：`slide-stage.ts:47-56` 的 `applySlidePage` 上游已有 `sameMetrics` 等值守卫，且 `ResizeObserver` 本身就按帧回调，改前改后都是「尺寸真的变了才重量一次」，故本条没有动那一路。②「每帧一次」用的是 rAF 而不是固定毫秒窗，代价是标签页被冻结时唤醒会随帧停摆——那时画面也不动，且 `pointerdown`/`keydown` 仍会各自排一帧，不构成功能缺口。③准备的「被打断即重做」把一次浪费换成了正确性：同一键上极端情况会有一次重复的 off-DOM 增强（放映台与量测趟同时问同一页时），有界于每场一到几次，未加在途去重——那需要一个跨调用点的新状态，而现在的证据不足以说明它值这个复杂度。
 - [ ] **N-24** PNG 导出是 O(页数 × 全量 CSS)，且每页新建大 canvas（`高` · `[需实测]`）
   - 涉及文件：`deck-image.ts`、`deck-print.tsx`、`element-image.ts`
   - 目标：只内联本页真正用到的 `@font-face`；canvas 复用同一实例并及时置空；blob 增量喂 zip（`client-zip` 支持流式）。
@@ -358,12 +366,17 @@
   - 归属：不在 N-20 内顺手修（`铁律 14`）——N-20 只动放映的指针层，与导图提交链无交集；本条与 L-3 同族（都是「导图写回笔记的读数面」），可并做一次。
   - 采样累加在案（N-21 轮，`772 passed, 7 failed`，第 6 份完整跑）：**绿**（`✓ mindmap: alt+arrow reorders the node in the note`），六份里**红 1 绿 5**，即间歇性质成立；「换成 `waitForNoteBody` 轮询再连采三轮」的测法仍未执行，本条保持 `[需实测]`。
   - 采样累加（N-30 轮，`771 passed, 8 failed`，第 7 份完整跑）：再**绿**，七份里**红 1 绿 6**；测法（换成 `waitForNoteBody` 轮询再连采）仍未做。
+  - 代价：低（大概率是断言的等待方式）
 - [ ] **L-12** N-22 顺手发现：`useDeckIndex` 的索引夹取没有直接用例（`低` · 测试面）
   - 实测在案：放映的位置有三层夹取，各有去处——子页夹取有 `slide-pagination.test.ts > clamps a sub-page into the current plan instead of rendering off-plan`，切片页索引有 `slide-slice.test.ts > clamps a page index past the end instead of dropping the page`，而**幻灯片级的 `useDeckIndex`**（开场 `initialSlideIndex` 夹进 deck、deck 变短把位置拉回末页、`goTo` 不越两端）只有间接经过：`presentation-keys.test.ts` / `use-presentation-keys.test.ts` 用 `slideCount` 走一遍按键，从不构造「deck 在放映中变短」这一步。
   - 为什么值得补：N-19 之后「跟随」会让 deck 在放映中随时因外部写入重切，「讲到第 8 张时另一台设备删掉了后半部分」正是这条夹取存在的理由，而现在它红不红没人知道。测法：在会话那一层用 `rerender` 把 deck 从 5 页缩到 2 页，断位置落在末页而不是停在第 5 页；若能把夹取像 `deckProgress` 那样表达成 `presentation-state.ts` 里的纯函数，用例就不必挂载整个放映。
   - 归属：不在 N-22 内补（`铁律 14`，那条只改注释）。
   - 代价：低
-  - 代价：低（大概率是断言的等待方式）
+- [ ] **L-13** N-29 浏览器实测副产物：headless shell 里放映会**自发掉出**浏览器全屏（`低` · 门禁面）
+  - 实测在案（:7712、headless shell）：在 `page.evaluate` 里 `.click()` 放映自己的全屏按钮，应用侧按钮文案翻成「退出全屏」（即 `document.fullscreenElement === panelRef.current` 曾真成立），约 1.2 s 后同一处再读却是 `fullscreenElement === null`；此时 `useChromeAutoHide(open && isFullscreen)` 已回到未启动态，**淡出断言量的是一条根本没挂监听的路径**。补一次真实按键（`page.keyboard.press('f')`）后 `fullscreenElement` 又为真。
+  - 为什么记它：这不是产品缺陷（真机浏览器不复现，且 `use-fullscreen-toggle.ts` 的 `isFullscreen` 严格由 `fullscreenchange` 派生、无乐观态），而是**取证面的坑**——任何按「放映已进入全屏」取数的场景都必须把 `document.fullscreenElement` 轮询到位再读，否则得到的是静默的空证据。N-29 的临时探针正是先被判据骗过一次（第一次跑 6/8，两条淡出断言假红），改成「轮询到浏览器自己承认全屏为止」后 8/8。
+  - 待办：给 `scripts/e2e-visual.mjs` 里按全屏态取证的场景补一条前置断言（进入全屏后先确认 `document.fullscreenElement` 仍在，掉了就重新按 `f`），并确认现有断言里哪些依赖控制条淡出（N-15 那轮的 `faded` 只是**报告**值、不是判定值，故当前不会因它误红——但也不会因它证明淡出有效）。
+  - 代价：低（改判据，不改产品代码）
 
 | 范围 | 命令 | 频率 |
 | :--- | :--- | :--- |
@@ -553,3 +566,10 @@
   - 变异在案：`/tmp/mut-n25.mjs` 3 个变异体全在 `slide-canvas.tsx`，control **12/12** 先绿，**killed 3/3**：M1 退回无条件渲染（2 条具名）、M2 漏掉 `prepared` 依赖 → 中途落下的准备结果不上画面（1 条，正是那条接线用例）、M3 两路对调（3 条）。每轮收集总数都等于 12、每轮按保存字节还原；因 `size:check` 报出一条 `longFns`（新 describe 越 50 行）而把夹具与 `beforeEach` 提到文件级、拆成两个 describe 之后，电池在最终字节上重跑，仍是 3/3。
   - 门禁在案：`npm run typecheck` rc=0（中途红一处：`renderSlideSourceMock.mockClear` 在 `as` 别名下没有 mock 类型，改用 `vi.mocked()` 包住真函数后绿）；14 项静态门禁逐条 rc=0（白名单 13536 → 13543 条 / 1380 文件；`size:check` 1920 文件 / 52 祖父级）；`npm run test:unit` 全量**两轮**：第一轮 4 红（`radiogroup-names`、`share-collections > locks the collection gate on repeated guesses`、`blog-comments-window`、`music-track-table`）——四条**单跑四文件 48 例全绿**，且与本条改动的文件无交集；随后安静复跑一遍全量 **628 文件 / 6112 通过 + 1 跳过 / 0 失败**（把并发负载当作成因记下，不当作结论：这四条同时红的形态与既往记录的负载敏感超时同族）。钩子另跑增量 `tsc -b` 与 `vitest related` **9 文件 / 65 例**全绿。
   - 落地取舍与残留：①省下的是「命中之后再渲染一遍」的 markdown 工作，本条**没有**量它值多少毫秒——`measure-slide-cache.mjs` 量的是量测趟整体与回页成本，要把这一条折成数字需要另一把尺子（数一次准备完一页的 wall-clock 差），归 N-28（列表重渲染）那类测量一起做更划算。②`useSyncExternalStore` 每次订阅都读 `readSlideHtml(cacheKey)`，命中后仍会跑一次 map 查找——那是订阅的价格，不是渲染的价格。
+- 2026-10-03 · R2-5 / N-29（`22d4cb11`）：放映的三处高频路径按帧收敛，被打断的页面准备会重做。控制条淡出拆成 `use-chrome-auto-hide.ts` 并按 rAF 合并唤醒；准备命中判定改认 `prepared`；命令执行器改读最新引用。11 文件 +583/−85。
+  - 方案在案：①三条路径的**承重不一样**，不能同一把尺子量——淡出那条是「每事件的定时器翻动 + 一次多余提交」（实测 200 事件→201 次重挂、1 次多余提交），准备那条是**正确性**（被打断的那页在整场放映里再也不会画图），监听那条只是「每次渲染 remove+add」。所以前者按帧合并、后者按引用收敛，中间那条把判定改成「是否成品」，而不是给淡出也加一层缓存。②`key` 既然已经装了页文本、页序、明暗与内容盒，就把 13 项依赖收到 5 项，并顺手把 `fingerprint` 从入参里拿掉——两个调用点各自算一次指纹、算错一次没人知道，现在只剩一处。③没做「在途去重」：同一页被放映台与量测趟同时问到时确实会多跑一次 off-DOM 增强，但有界（每场一到几次），而为它引入一个跨调用点的状态集合，现有证据不值。
+  - 红先在案：淡出 2 红 / 5 绿（`expected 201 to be 2`、`expected 2 to be 1`），按键 1 红（`expected 6 to be 1`），准备那组因签名变更（旧 `useSlideHtml` 仍要 `fingerprint`）与实现红混在一起，承重改由变异逐条代偿——这条**记为红证据的缺口**，不以「后来全绿」冒充「先前见红」。
+  - 变异在案：`/tmp/mut-n29.mjs` 9 个变异体，control 5 文件 / 54 例先绿，**killed 9/9**（各由一条具名断言杀死，名单见条目）。**幸存者一名并已删码**：把 `if (!shown)` 换成无条件 `setHidden(false)` 杀不掉——合并之后每帧至多一次等值 dispatch，React 自己吸收，于是删掉那个本地镜像（不留不被断言承重的分支）。电池自身红过两次：一次锚点随代码演进漂移（在**写盘前**中止，树未被改动），一次把 vitest 的 `⎯⎯ Failed Tests 1 ⎯⎯` 段落头当成了总计行（ANSI 前缀使 `^\s*Tests` 失配）→ 全部误标 INVALID；修法是剥 ANSI + 「总计行必须含 passed」，并在 control 里钉死文件数。
+  - 门禁在案：`npm run typecheck` rc=0（红过两处自己的问题：新用例漏 `type RenderedElement` 导入、`size:check` 报两个新 describe 越 50 行→拆分后复绿）；14 项静态门禁逐条 rc=0（白名单 13543 → **13594** / 1383 文件，`size:check` **1922 文件**，`i18n:check` **3908** 键不变，`hardcoded:check` 演示模块裸阶梯仍 0）；`npm run test:unit` 全量在安静机器上 **629 文件通过 / 6127 例通过 + 1 跳过**，唯一红是 `blog-comments-window > mounts one page of rows and grows on demand`（**单跑绿**，既往在案的负载敏感用例）；此前的 13 红 / 3 红两轮是并发负载造成的 5000 ms 超时族，逐条单跑全绿，只记为噪声。重型门禁按批留给 R2-5 收尾（约定 3）。
+  - 浏览器实测在案：`/tmp/probe-n29.mjs` 对 :7712 实实例 **8/8**——淡出发生、一次移动唤醒、停下再淡出、**3.6 s / 190 帧连续移动控制条不掉**、**同一任务 200 个 pointermove 只排 1 次唤醒只重挂 1 次计时器**、按键照常唤醒。该探针第一轮 **6/8**：它先被「应用按钮文案说已进入全屏」骗过一次，量的其实是未挂载淡出的路径（headless shell 会自发掉出浏览器全屏），改为轮询到 `document.fullscreenElement` 为真再取数后才成立——这一条已单独开成 **L-13**，因为它同样适用于视觉门禁。
+  - 落地取舍与残留：①报告 §十 给本条拟的「200 次 resize 数 `applySlidePage`」**未做，因为前提不成立**——`slide-stage.ts` 的量测入口已有 `sameMetrics` 等值守卫，`ResizeObserver` 又天然按帧回调，那一路改前改后同形。②淡出的「每帧一次」依赖 rAF：标签页被冻结时唤醒随帧停摆，但那时画面也停，且 `pointerdown`/`keydown` 各会再排一帧，不构成缺口；此判断由实测的第 (b) 组与 jsdom 的 8 例共同支撑，未在真机冻结场景取证。③N-30 残留里那条「没有全屏就没有自动隐藏」（iPad / 无全屏环境）本条**没有**改变：合并只让淡出更省，不放宽 `active` 的条件。④下一项按台账顺序是 N-27（跟随模式一次编辑跑 4 遍全篇扫描，`[需实测]`，先照 `measure-preflight.mjs` 的窗法量一份 200 KB 笔记）。
