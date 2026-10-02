@@ -7,7 +7,7 @@ import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import { type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
-import { railOpenFor } from './presentation-state'
+import { deckProgress, railOpenFor } from './presentation-state'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheKey } from './slide-html'
@@ -46,6 +46,10 @@ export interface PresentationSession {
   index: number
   sub: number
   pageCount: number
+  /** Which page of the whole show this is, counted over the pages every slide measures. */
+  page: number
+  /** How many pages the show has — the same list the slide rail walks and the grid roams. */
+  pageTotal: number
   railOpen: boolean
   following: boolean
   /** True once the note behind the show is gone: the deck holds its last snapshot and nothing follows. */
@@ -187,6 +191,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     notes,
     cacheKeys,
     railOpen,
+    ...deckProgress({ deckLength: deck.length, plans: nav.plans, index: nav.index, sub: nav.sub }),
     following,
     followLost,
     chromeHidden,

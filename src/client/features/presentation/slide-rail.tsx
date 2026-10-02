@@ -172,7 +172,6 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
       data-entry-index={entryIndex}
       data-slide-index={entry.slide}
       data-slide-page={entry.sub}
-      aria-current={active ? 'true' : undefined}
       aria-label={pageLabel(entry, deckLength)}
       tabIndex={active ? 0 : -1}
       onClick={() => onSelectPage(entry.slide, entry.sub)}

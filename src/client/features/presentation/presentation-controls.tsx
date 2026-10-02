@@ -189,13 +189,16 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
   )
 }
 
-export function SlideProgress({ index, count, chromeHidden: _chromeHidden }: { index: number; count: number; chromeHidden?: boolean }) {
+// How much of the show has been reached. It counts the pages the deck measures rather than the slides
+// the author wrote, so a one-slide note that paginates into fourteen is not drawn finished before it
+// has been turned. Decoration: the position itself is announced by the pill, not by this bar.
+export function SlideProgress({ page, pageTotal }: { page: number; pageTotal: number }) {
   return (
     <div
       className='pointer-events-none absolute inset-x-0 bottom-0 h-[var(--sp-0\\.5)] bg-[var(--border-subtle)]'
       aria-hidden='true'
     >
-      <div className='h-full bg-[var(--accent)] transition-[width] duration-[var(--dur-base)] ease-[var(--ease-out)]' style={{ width: `${Math.round(((index + 1) / count) * 100)}%` }} />
+      <div data-slide-progress className='h-full bg-[var(--accent)] transition-[width] duration-[var(--dur-base)] ease-[var(--ease-out)]' style={{ width: `${Math.round((page / pageTotal) * 100)}%` }} />
     </div>
   )
 }

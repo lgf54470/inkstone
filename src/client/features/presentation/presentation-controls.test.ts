@@ -101,10 +101,31 @@ describe('PresentationControls', () => {
 })
 
 describe('SlideProgress', () => {
-  it('renders progress bar with correct width percentage', () => {
-    const { container } = renderElement(createElement(SlideProgress, { index: 1, count: 4 }))
-    const bar = container.querySelector('.bg-\\[var\\(--accent\\)\\]') as HTMLElement
-    expect(bar?.style.width).toBe('50%')
+  const widthOf = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-slide-progress]')?.style.width
+
+  it('draws the share of the show that has been reached', () => {
+    const { container } = renderElement(createElement(SlideProgress, { page: 1, pageTotal: 4 }))
+    expect(widthOf(container)).toBe('25%')
+  })
+
+  // N-21: read by slide, a one-slide note that paginates into fourteen pages was drawn as `1 / 1` —
+  // a talk that had not been turned was already reported as finished.
+  it('keeps a paginating slide from reading as the whole deck', () => {
+    const first = renderElement(createElement(SlideProgress, { page: 1, pageTotal: 14 }))
+    const last = renderElement(createElement(SlideProgress, { page: 14, pageTotal: 14 }))
+    expect(widthOf(first.container)).toBe('7%')
+    expect(widthOf(last.container)).toBe('100%')
+  })
+
+  it('reads a show of one page as the whole deck', () => {
+    const { container } = renderElement(createElement(SlideProgress, { page: 1, pageTotal: 1 }))
+    expect(widthOf(container)).toBe('100%')
+  })
+
+  it('is decoration the reader is not sent through', () => {
+    const { container } = renderElement(createElement(SlideProgress, { page: 2, pageTotal: 3 }))
+    const track = container.querySelector('[data-slide-progress]')?.closest('[aria-hidden]')
+    expect(track?.getAttribute('aria-hidden')).toBe('true')
   })
 })
 

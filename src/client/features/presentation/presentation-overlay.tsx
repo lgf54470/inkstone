@@ -74,7 +74,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
             button out from under the pointer — the shape the AGENTS.md toolbar-expansion rule rules out. */}
         {session.presenterPanel && <PresenterPanel state={session.presenterPanel} chromeHidden={session.chromeHidden} occluded={session.occluded} onClose={session.closePresenterPanel} />}
         <PresentationControls {...controlProps(session, onClose)} />
-        <SlideProgress index={session.index} count={session.deck.length} />
+        <SlideProgress page={session.page} pageTotal={session.pageTotal} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
         {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
         <CoverAnnouncement cover={session.screenCover} />

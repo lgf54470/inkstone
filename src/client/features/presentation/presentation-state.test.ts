@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { entryIndexOf, escapeAction, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { deckProgress, entryIndexOf, escapeAction, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -58,6 +58,32 @@ describe('railEntries', () => {
   it('numbers pages in the order the arrow keys walk them', () => {
     const entries = railEntries(2, { 0: planOf(2), 1: planOf(2) })
     expect(entries.map((entry) => `${entry.slide}.${entry.sub}`)).toEqual(['0.0', '0.1', '1.0', '1.1'])
+  })
+})
+
+// N-21: the bar under the show has to count the pages the deck measures, not the slides the author
+// wrote — otherwise a slide that paginates into fourteen reads as one step of a short deck, and a
+// one-slide note is drawn finished before it has been turned.
+describe('deckProgress — where the show sits in the page list', () => {
+  it('counts a paginating slide as the pages it has', () => {
+    expect(deckProgress({ deckLength: 1, plans: { 0: planOf(14) }, index: 0, sub: 0 })).toEqual({ page: 1, pageTotal: 14 })
+    expect(deckProgress({ deckLength: 1, plans: { 0: planOf(14) }, index: 0, sub: 13 })).toEqual({ page: 14, pageTotal: 14 })
+  })
+
+  it('walks past the pages of the slides already shown', () => {
+    const plans = { 0: planOf(3), 1: planOf(2) }
+    expect(deckProgress({ deckLength: 2, plans, index: 1, sub: 0 })).toEqual({ page: 4, pageTotal: 5 })
+    expect(deckProgress({ deckLength: 2, plans, index: 1, sub: 1 })).toEqual({ page: 5, pageTotal: 5 })
+  })
+
+  it('floors an unmeasured deck at one page rather than dividing by zero', () => {
+    expect(deckProgress({ deckLength: 0, plans: {}, index: 0, sub: 0 })).toEqual({ page: 1, pageTotal: 1 })
+  })
+
+  it('lands on the slide it is on when the page a show asked for is gone', () => {
+    // A re-measure can shrink a slide to fewer pages than the position the presenter is holding; the
+    // bar still has to say a page the list has, not a fifth of four.
+    expect(deckProgress({ deckLength: 2, plans: { 0: planOf(1), 1: planOf(1) }, index: 1, sub: 4 })).toEqual({ page: 2, pageTotal: 2 })
   })
 })
 

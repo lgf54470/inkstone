@@ -50,22 +50,24 @@ const defaultRailProps = {
   onSelectPage: vi.fn(),
 }
 
+// The rail scrolls its active page into view and each thumbnail watches the viewport, so every case
+// in this file runs with those two browser objects stood up rather than missing.
+beforeEach(() => {
+  window.HTMLElement.prototype.scrollIntoView = vi.fn()
+  class ObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal('IntersectionObserver', ObserverStub)
+})
+
+afterEach(() => {
+  document.body.innerHTML = ''
+  vi.unstubAllGlobals()
+})
+
 describe('SlideRail ARIA semantics', () => {
-  beforeEach(() => {
-    window.HTMLElement.prototype.scrollIntoView = vi.fn()
-    class ObserverStub {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    }
-    vi.stubGlobal('IntersectionObserver', ObserverStub)
-  })
-
-  afterEach(() => {
-    document.body.innerHTML = ''
-    vi.unstubAllGlobals()
-  })
-
   it('declares tablist and tab roles with accurate setsize and posinset', () => {
     const { container } = renderElement(createElement(SlideRail, defaultRailProps))
     const tablist = container.querySelector('[role="tablist"]')
@@ -89,5 +91,18 @@ describe('SlideRail ARIA semantics', () => {
   it('takes the list out of reach once the chrome has faded', () => {
     const { container } = renderElement(createElement(SlideRail, { ...defaultRailProps, chromeHidden: true }))
     expect(container.querySelector('[data-presentation-rail]')?.hasAttribute('inert')).toBe(true)
+  })
+})
+
+// N-21: a tab says which one it is once. `aria-current` next to `aria-selected` was that same fact
+// spelled twice, and this list has no tabpanel either of them could point at.
+describe('SlideRail current page', () => {
+  it('names the current page in the one attribute the tablist owns', () => {
+    const { container } = renderElement(createElement(SlideRail, defaultRailProps))
+    const tabs = [...container.querySelectorAll('[role="tab"]')]
+    const selected = tabs.filter((tab) => tab.getAttribute('aria-selected') === 'true')
+    expect(selected).toHaveLength(1)
+    expect(selected[0]?.getAttribute('aria-current')).toBeNull()
+    expect(tabs.some((tab) => tab.hasAttribute('aria-current'))).toBe(false)
   })
 })

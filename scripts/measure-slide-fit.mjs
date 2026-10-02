@@ -55,7 +55,7 @@ async function readPage(page) {
   return page.evaluate((designWidth) => {
     const canvas = document.querySelector('[data-slide-canvas]')
     const host = canvas?.querySelector('[data-slide-page]')
-    const current = document.querySelector('[data-presentation-rail] [aria-current="true"]')
+    const current = document.querySelector('[data-presentation-rail] [aria-selected="true"]')
     if (!canvas || !host || !current) return null
     const slide = Number(current.dataset.slideIndex)
     const own = [...document.querySelectorAll(`[data-presentation-rail] [data-slide-index="${slide}"]`)].length

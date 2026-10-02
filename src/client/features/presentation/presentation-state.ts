@@ -128,6 +128,16 @@ export function railEntries(deckLength: number, plans: Record<number, SlidePlan>
   return entries
 }
 
+// Which page of the whole show the presenter is on, counted over the pages every slide measures:
+// the same list the slide rail walks and the overview grid roams, so the bar under the projector
+// cannot tell a different story about the same moment. A position the deck no longer has (a slide
+// re-measured shorter mid-talk) falls back to that slide's own first page, and an empty deck floors
+// at one page rather than dividing by zero.
+export function deckProgress({ deckLength, plans, index, sub }: { deckLength: number; plans: Record<number, SlidePlan>; index: number; sub: number }): { page: number; pageTotal: number } {
+  const entries = railEntries(deckLength, plans)
+  return { page: Math.max(entryIndexOf(entries, index, sub), 0) + 1, pageTotal: Math.max(entries.length, 1) }
+}
+
 // Which slide an idle preflight pass should measure next: deck order so the slide list
 // fills top-down, skipping the slides that already have a plan and the ones a stalled
 // measure gave up on (the canvas still measures those when the show reaches them).

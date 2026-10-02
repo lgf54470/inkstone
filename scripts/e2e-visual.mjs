@@ -594,6 +594,17 @@ async function readChartBox(page) {
   })
 }
 
+// The bar under the projector and the page the list says is current, read together: the two are only
+// comparable if they come from the same drive, so one evaluate reads both from one paint.
+async function readProgressBar(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const entries = [...panel.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
+    const width = panel.querySelector('[data-slide-progress]')?.style.width ?? ''
+    return { entries: entries.length, at: entries.findIndex((entry) => entry.getAttribute('aria-selected') === 'true'), width, percent: Number.parseFloat(width) || 0 }
+  })
+}
+
 async function assertPresentationPages(page) {
   // The flip this scenario is about can only be observed from the "system" setting, and the account
   // arrives on whatever ran before this gate (scripts/e2e.mjs leaves it dark), so the setting is
@@ -612,7 +623,7 @@ async function assertPresentationPages(page) {
     const entries = [...panel.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
     const counts = {}
     for (const entry of entries) counts[entry.dataset.slideIndex] = (counts[entry.dataset.slideIndex] ?? 0) + 1
-    const current = entries.find((entry) => entry.getAttribute('aria-current') === 'true')
+    const current = entries.find((entry) => entry.getAttribute('aria-selected') === 'true')
     const openedOn = Number(current?.dataset.slideIndex ?? 0)
     const widest = Object.keys(counts).reduce((best, slide) => (counts[slide] > counts[best] ? slide : best), Object.keys(counts)[0])
     return {
@@ -634,6 +645,17 @@ async function assertPresentationPages(page) {
 
   const second = await clickPageEntry(page, deck.widestSlide, 1)
   check('presentation pages: clicking a page entry lands on that page', second.sub === 2 && second.pages > 1, `position=${second.printed}`)
+
+  // N-21: the bar has to count the page list the rail walks, not the slides the author wrote. Those two
+  // readings differ only *inside* a slide, so the drive below is the discriminating one: a bar that
+  // counted slides would sit still while the presenter walks a long slide's pages.
+  await clickPageEntry(page, deck.widestSlide, 0)
+  const barFirst = await readProgressBar(page)
+  await clickPageEntry(page, deck.widestSlide, 1)
+  const barSecond = await readProgressBar(page)
+  const expectBar = (read) => (read.entries > 0 && read.at >= 0 ? Math.round(((read.at + 1) / read.entries) * 100) : -1)
+  check('presentation pages: the bar measures the same page list the rail walks', Math.abs(barFirst.percent - expectBar(barFirst)) <= 1 && Math.abs(barSecond.percent - expectBar(barSecond)) <= 1, JSON.stringify({ first: barFirst, second: barSecond }))
+  check('presentation pages: two pages of one slide move the bar', barFirst.percent !== barSecond.percent && barSecond.percent > barFirst.percent, JSON.stringify({ first: barFirst.percent, second: barSecond.percent }))
 
   // The list renders the same prepared markup the projector shows — diagrams and math included —
   // and keeps doing so when the theme changes mid-talk, which is what happens to anyone on the
@@ -712,7 +734,7 @@ async function assertPresentationAccessibility(page) {
   // arrows, and the counter follows it there.
   const walked = await page.evaluate(async () => {
     const rail = document.querySelector('[data-presentation-rail]')
-    const active = () => rail.querySelector('[data-entry-index][aria-current="true"]')
+    const active = () => rail.querySelector('[data-entry-index][aria-selected="true"]')
     active()?.focus()
     const before = active()?.dataset.entryIndex ?? ''
     rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
@@ -2241,7 +2263,7 @@ async function readRenderedMarkup(page) {
     })
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
-    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-thumb .ink-prose')
+    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-selected="true"] .ink-slide-thumb .ink-prose')
     return {
       theme: document.documentElement.dataset.theme ?? '',
       stage: artifacts(stage),
@@ -2259,7 +2281,7 @@ async function readRenderedMarkup(page) {
 // byte, like the sheet's own painted read: this asks whether the frame holds a chart at all.
 async function readStillPixels(page) {
   return page.evaluate(async () => {
-    const still = document.querySelector('[data-presentation-rail] [aria-current="true"] img.chartjs-still')
+    const still = document.querySelector('[data-presentation-rail] [aria-selected="true"] img.chartjs-still')
     if (!still) return -1
     try {
       const image = new Image()
