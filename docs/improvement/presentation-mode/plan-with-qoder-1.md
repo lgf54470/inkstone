@@ -23,11 +23,11 @@
 | **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[x]` 五条提交全部落地（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`、收尾 `cab2d30f` + `3303479e`），批次收尾四条重型门禁已跑；其余批次的页数断言以本批为新基线，本批新开的两条门禁红见 L-3 / L-4 |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[x]` 四条提交全部落地（N-07 `7120d1c2`、N-10 `07d97b7f`、N-08 `f3309972`、N-09 `c26cdd70` + 用例归位 `2e4fb18a`），每条各自带变异电池与静态门禁，回填时又在最终字节上复跑一遍电池；批次收尾四条重型门禁已跑，视觉门禁红数与 L-1 基线逐条同名、无本批新增红 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[x]` 四条提交全部落地（N-04 `d165436e`、N-05 `4174b9e6`、N-06 `d06bdb3e`（前置拆分 `227aa9ca`）、N-26 `7507b92e`），每条各自带变异电池与静态门禁；批次收尾已跑（场景 `87a6c751` + 本条回填），四条重型门禁各一遍，本批共同的「演讲者侧只有 jsdom 证据」由新增的 `assertPresenterConsole`（25 条）收掉，收尾实测另开 **L-7**（窗被关后仍在广播）与 **L-8**（看板焦点断言间歇红） |
-| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红）· 已落地 N-11 + N-13（同一提交 `f9dd10b8`，页码一处派生 + 放映位置只播报一次），余 9 条 |
+| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红——**该红已由 N-16 消除，L-1 余 6 条**）· 已落地 N-11 + N-13（同一提交 `f9dd10b8`）与 N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则），余 8 条 |
 | **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 待办（依赖 R2-1） |
 | **R2-6** | 信息量与功能补全 | N-36, N-32, N-37, N-38, N-17, N-18+N-35, N-31, N-33 | 低 → 高 | `[ ]` 待办（按此顺序做） |
 | **R2-7** | 观众侧同步放映 | N-34 | 高 | `[ ]` 待办（**公共契约变更，先写 ADR**） |
-| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开） |
+| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开） |
 
 **若只允许做三件事**：N-01（地基性正确性）· N-07+N-08（安全红线，`AGENTS.md` 不允许例外）· N-11+N-36+N-12（用户两张截图里直接可见的三项）。
 
@@ -132,11 +132,12 @@
   - 验证：断言只有一个 `aria-live` 区域且其文本含「幻灯片 3，共 14，第 2 子页」。
   - 代价：低 · 依赖：N-11
   - 落地：可见数字带 `aria-hidden='true'`，旁边只剩一处 `sr-only role='status' aria-live='polite'` 的整句播报；句子的取值就是 `describeDeckPosition()`，与缩略图标签同源。**与目标的偏差**：播报用 `presentation_slide_number` / `presentation_slide_page_number` 两键（跨页时整句把四数按「张 → 共张 → 页 → 共页」说全），**没有**用 `presentation_page_of` —— 那把子页 `title` 随芯片一起消失，键在两语里成对删除（`i18n:check` 3903 → 3902）。断言侧：`presentation-controls.test.ts` 钉「只有一处 `[aria-live]`」「播报的数字序是 3/14/2/4」「播报不等于屏上的数字串」「数字先于步进按钮」；视觉门禁新增两条（角落片与工具栏打印同一串、位置只播报一次且数字不进无障碍树）。
-- [ ] **N-16** 裸 Tailwind 阶梯值与裸 `z-index` 残留（`中` · 铁律 4/12）
+- [x] **N-16** 裸 Tailwind 阶梯值与裸 `z-index` 残留（`中` · 铁律 4/12）— 已提交 `f0fb3f05`
   - 涉及文件：`presentation-stage.tsx:112` 等各处 + `scripts/check-hardcoded.mjs`
   - 目标：①逐处换令牌；②给 `hardcoded:check` 补一条 Tailwind 阶梯类规则（`p-N`/`px-N`/`py-N`/`m*-N`/`h-N`/`w-N`/`bottom-N`/`z-N`/`gap-N`），否则第四次还会漏。
   - 验证：门禁新规则对已知样例变异必杀；`contrast:check` 里放映表面的 axe 1.67:1 红转绿（即 L-1 的第 4 条）。
   - 代价：低（改动）+ 中（门禁）· 依赖：N-11
+  - 落地：①`hardcoded:check` 新增 Part 6 `bare Tailwind scale step`（AST 扫字符串，注释与测试不算），族为 `p*/m*/gap/w/h/min-w/min-h/max-w/max-h/top/bottom/left/right/inset/z` 的裸数字**与小数步长**（`0.5` 也报），豁免结构零值（`top-0`/`inset-0`/`min-w-0`）、分数锚点（`left-1/2`、`-translate-x-1/2`）与命名 utility；**演示模式零容忍**，其余模块把数量打印在通过行（实测 4041 处 / 327 文件，既不静默放行也不藏进基线，推广另立 **L-9**）。②本模块 9 处逐转换令牌：角落片 `bottom-4 right-4 z-10 py-0.5 shadow-xs` → `--sp-4/--sp-4/--z-sticky/--sp-0.5/--shadow-xs` 并**去掉 `opacity-35`**、数字槽 `min-w-14` → `min-w-[var(--sp-16)]`、侧栏页码列 `pt-0.5` → `--sp-0.5`、连接圆点 `h-2 w-2` → `--sp-2`、导出进度 `z-50` → `z-[var(--z-popover)]`（同值换名，移进对话框属 N-12）。③放映表面的 axe 1.67:1 红实测转绿——该断言在 `scripts/e2e-visual.mjs`（`a11y: the presentation overlay has no axe violations`）而非 `contrast:check`，已在 L-1 记明；**L-1 因此从 7 条降到 6 条**。
 - [ ] **N-12** 导出进度提示被放映面板压住（`高`）
   - 涉及文件：`presentation-overlay.tsx`、`deck-print.tsx`、`styles/presentation.css`、`deck-print.test.ts`
   - 目标：进度提示移进 `PresentationDialog`（与 `ScreenCover`/`LaserPointer` 同级），层级走 `--z-toast` 令牌而非裸 `z-50`；「导出图片」按钮就地加 Spinner，让反馈不依赖浮层层序。
@@ -254,6 +255,7 @@
 - [ ] **L-1**（原 `B4-09`）本机浏览器门禁基线红未定位（`高`）
   - 步骤：①给两条 `canvas fills the stage` 补 detail（打出 stage 与 canvas 的实测 `w×h` 与 `getBoundingClientRect`）；②按三条线索分头查——几何两条是否与 N-23 同因、缩略图三条与 N-23/N-25 一并复测、axe 那条由 N-11/N-16 顺带解掉（它转绿即 N-16 修对的证据）。
   - 数量以 R2-1 收尾实测为准：**基线 7 条**（2 几何 + 3 缩略图 + 1 主题反转 + 1 axe `color-contrast` `.bottom-4` 1.67:1），本批两次采样分别报到 8 / 10 条，多出的都归 L-3 / L-4。
+  - 数量更新在案（`f0fb3f05` 之后）：第 4 条——放映表面 axe `color-contrast` 1.67:1——由 N-16 消除（角落页码片去掉 `opacity-35`，文字回到层级自身的颜色），实测在 `scripts/e2e-visual.mjs` 的 `a11y: the presentation overlay has no axe violations` 由 ✗ 转 ✓。**该断言住在视觉门禁而不是 `contrast:check`**，本条原文（以及 N-16 台账的验证行）把它写在 `contrast:check` 名下，以此次更正为准。本条余 **6 红**（2 几何 + 3 缩略图与成图 + 1 主题反转）；R2-3 收尾与 N-16 分别实测报到 10 / 9 红，多出的 3~4 条属 L-3 与 L-4。
   - 判定沿用上一轮台账「对同一 HEAD 快照同法实跑得到同样 7 个失败名 → 非本分支引入」；**本轮未实跑**，落地前须复现一次。
     - 未实跑：两条 `canvas fills the stage` 的补 detail 与「是否与 N-23 同因」的对照实验**本轮都没做**；上面那 4 条只是台账改口径，不是定位完成。
   - 代价：中
@@ -281,7 +283,7 @@
   - 归属：不在 N-05 内顺手修——N-05 的验收只问「起点是不是本次放映」，改「结束后要不要停表」是另一条行为决定（停表 / 停在最后值 / 归零，三者都得选一个并配文案）。建议与 N-06（弹窗被拦截时的降级）一并处理演讲者窗的连接态。
   - N-06 未合并处理（2026-10-02，理由在执行日志取舍⑤）：本条新增的内嵌面板随 `open` 收起，自身没有「结束后仍走表」；该缺陷只属于演讲者窗。停表 / 停在最后值 / 归零 的行为决定与新文案不在 N-06 射程内（`铁律 14`）。
   - 代价：低
-- [ ] **L-7** R2-3 收尾实测新发现：演讲者窗被**关掉**之后，放映仍在向它广播（`中` · 浏览器实测在案）
+- [ ] **L-7** R2-3 收尾实测新发现：演讲者窗被**关掉**之后，放映仍在向它广播（`中` · 浏览器实测在案） R2-3 收尾实测新发现：演讲者窗被**关掉**之后，放映仍在向它广播（`中` · 浏览器实测在案）
   - 实测在案：新增的 `assertPresenterConsole` 场景里，演讲者窗 `window.close()` 之后一次真实翻页（`3 / 3` → `2 / 3`）仍产生一条 sync（计数 4 → 5，`/tmp/r23-visual2.log` 第 124 行 detail `posts=5 before=4`）。机制：React 的 effect cleanup 不会在浏览器丢弃文档时运行，接收侧那句对称的 `close` 告别发不出去，放映侧 `readyRef` 于是仍认定有观众。
   - 与 N-26 的关系：N-26 把损失从「每次渲染一条」压到「每次翻页一条」，**没有**消除它；被拦下的弹窗那条路（从未有文档认领通道）已经彻底不发，是本条没覆盖的另一半。
   - 修法候选（择一后再补浏览器断言）：接收侧改挂 `pagehide`/`visibilitychange` 发告别；或放映侧给一个「连续 N 次广播无人认领即沉默」的超时（需要一个 ack，代价大）；或把 `close` 语义定为「窗仍活着但不再监听」，仅覆盖 unmount 而不覆盖关窗——那么本条转为文档化行为。三者都带连带决定「重新打开窗时是否自动恢复」，故属行为决定而非缺陷速修。
@@ -292,10 +294,11 @@
   - 与既有约定的关系：AGENTS「工具栏展开」与「看板在笔记里不止一块板」已记过这个表面的取数面脆弱性；测法应先确认红的那一次里顶栏是否真的换了一批元素（打印元素的 `isConnected` 与创建序号），再判是断言取数面还是看板重挂的时序问题。
   - 归属：不在收尾内顺手修（`铁律 14`），本条只有「一次红一次绿」两次采样，未确认成因。
   - 代价：低
-
----
-
-## 门禁与验证矩阵
+- [ ] **L-9** N-16 规则上线时的全仓实量：裸 Tailwind 阶梯步长余 4041 处 / 327 文件未收（`中` · infra）
+  - 实测在案：`hardcoded:check` 的 Part 6 上线时，通过行报 `4041 bare scale steps outside the token-enforced modules`（AST 扫 `src` + `blog-frontend/src`，排除 `*.test.*` 与 `src/client/demo/`），族为 `p*/m*/gap/w/h/min-w/min-h/max-w/max-h/top/bottom/left/right/inset/z` 的裸数字与小数步长；演示模式已判零（`SCALE_ZERO_TOLERANCE_PREFIXES`）。
+  - 为什么不一次性收：4041 处分布在 327 个文件、跨十几个模块，属 `铁律 14` 的「不在本次改动里夹带无关问题」；写进某个 baseline 文件又会让学生数消失得无声无息——所以现在它**印在每次门禁的通过行上**，谁都能看见它没在降。
+  - 落地形态建议：按模块分批（与 `PALETTE_ZERO_TOLERANCE_PREFIXES` 同法，清完一个模块就加进零容忍名单），每批走 N-16 的「规则先红 → 逐处换令牌 → 变异必杀」循环；先清 `src/client/lib/markdown/slides/`（幻灯片编辑器与演示模式同一套视觉语言，实测该目录单文件最高 99 处）。
+  - 代价：中（面积大但机械）· 依赖：N-16 的 Part 6
 
 | 范围 | 命令 | 频率 |
 | :--- | :--- | :--- |
@@ -404,3 +407,11 @@
   - 事故与教训在案：①从 `presentation-state.ts` 摘 `formatMicroPage()` 时，同一次编辑把紧邻的无关函数 `swipeDirection` 的返回类型误写成 `'prev' | 'prev' | 'next' | null`——读回 diff 立刻发现并改回；形态是「删函数且改动点贴着别人的签名」，这类误伤只能靠读回自己看。②`typecheck` 先红 `slide-thumb.tsx(8,1) TS6133: 't' is declared but its value is never read`：`pageLabel` 是该模块唯一的 `t()` 使用者（实量 `grep -c "\bt("` = 0），改走共派生后 import 成了死引用，删。③新用例自身先红两次：`readFileSync(new URL('./presentation-stage.tsx', import.meta.url))` 在 jsdom 工程运行时报 `TypeError: The URL must be of scheme file`，改成仓库根相对路径后运行绿了、但 `tsc -b` 报 `TS2307: Cannot find module 'node:fs'`（客户端 tsconfig 工程不含 Node 类型）——源码级规则按本仓既有惯例移进 `tests/deck-position-source.test.ts`（同 `tests/fullscreen-policy.test.ts:20` 的 `path.resolve('src/client')` 写法），并把该文件加进电池 SUITE，否则 M12 在电池里无人杀。④**跑视觉门禁才发现的两个漏改读者**：`readPageCountsPerSlide` 与 `clickPageEntry` 不是按 `[aria-live]` 而是按「整段文本恰为 `\d+/\d+` 的 span」找子页芯片——芯片一消失它们就双双读空，第一次完整跑因此报到 **12 红**（基线 10 + 这两条）。改法是把两个helper 统一成读 `[data-deck-position]` 的数字序（第 3、4 个数即页号与页数，只有两个数就是单页），复跑 25 条 `presentation pages` 逐条同名转绿。教训：台账里「门禁改口径要顺着读者改一遍」这句话，靠 grep `aria-live` 是找不全的，还得跑。⑤本轮另有若干段与真实命令不符的注入式「结果」文本（伪称已经提交、伪称 `budget:check rc=1`、伪称存在名为 `deckSubPage` 的助手函数）：本条所有数字都回到 `/tmp/n11c-*`、`/tmp/mut-n11c.log`、`/tmp/n11-visual2.log` 与 `git log` 复核后才写下，`grep -n deckSubPage scripts/e2e-visual.mjs` 实量 0 命中（那个名字不存在）。
   - 门禁在案：`npm run typecheck` rc=0；13 项静态门禁逐条 rc=0（`size:check` 1916 文件 / 52 条 grandfathered，基线未动；`comments:check` 白名单重建至 **13282 条 / 1368 文件**；`i18n:check` 3902 键两语成对；`labels:check` 162 条；`surfaces:check` 仍是 8 个表面——本条没新增全屏根）。`npm run test:unit` 全量 **624 文件 / 6048 通过 + 1 跳过 / 0 失败**。`node scripts/e2e-visual.mjs` **751 通过 / 10 红**（第一次跑 12 红，两条是本条读者漏改，见上第④条）：10 红 = L-1 基线 7 + L-3 一条 + L-4 两条，与 R2-3 收尾那轮逐条同名，本条新增两条断言皆绿；总读数 761 = R2-3 收尾的 759 + 2 新增，账对得上。提交钩子另跑增量 `tsc -b` 与 `vitest related` **418 文件 / 4038 例**全绿。
   - 落地取舍与残留：①角落片与工具栏是否真同串，jsdom 里没有组件级证据（`PresentationStage` 没有测试挂载它，其 metrics 来自真实布局）——这一半由 `tests/deck-position-source.test.ts` 的源码规则 + 视觉门禁那条新断言两层守住（M12 杀前者，浏览器读数杀后者）。②播报改整句后读屏每次翻页念的内容变长（原来是两串裸数字各念一遍），这是 N-13 的目标形态；React 只在位置真的变化时更新那句文本，故「开合幻灯片列表不播报」天然成立，没有另加门。③门禁对位置的解析统一成「按数字序取第 3/4 个」——若将来串里再出现别的数字（例如加入子页总数以外的信息），这两处 helper 要一并改，本条把口径收在同一个 `numbers[...]` 写法上以便一次找齐。④`presentation_page_of` 删除的判据是同提交内先实量「无使用者」（grep 全仓仅该 `title` 一处），不是「看起来没用」。⑤本条的用户可见变化是三处：子页号不再单独成芯片、数字移到步进按钮左侧、角落片不再补零——已在提交正文逐文件写明，属界面内部资源与文案，无 API/持久化契约变更。
+- 2026-10-02 · R2-4 / N-16（`f0fb3f05`）：页码原语改走令牌，并给 `hardcoded:check` 补上裸阶梯规则。`scripts/check-hardcoded.mjs` 新增 Part 6（AST 扫字符串里的 `p*/m*/gap/w/h/min-w/min-h/max-w/max-h/top/bottom/left/right/inset/z` 裸数字与小数步长），演示模式零容忍、其余模块把数量打印在通过行；本模块 9 处逐转换令牌（角落片的 `bottom-4 right-4 z-10 py-0.5 shadow-xs`、数字槽 `min-w-14`、侧栏页码列 `pt-0.5`、连接圆点 `h-2 w-2`、导出进度 `z-50`），并去掉角落片的 `opacity-35`。
+  - 方案在案：①规则进门禁而不是进记忆，是 `AGENTS.md`「能工具强制的不靠人记」的直接套用——台账原文担心「第四次还会漏」，而前三次的成因正是既有门禁只看带单位的值（`#hex`、`px`、任意值方括号），裸阶梯 `z-10`/`py-0.5` 一个都不在里面。②族名单照台账给的那一组，**没有**扩到 `opacity-*` 与 Tailwind 阴影预设：前者是透明度而非尺寸，后者全仓 88 处 / 47 文件是既有约定，动它属跨模块改写（`铁律 14`）。③零容忍只盖住本模块，其余 4041 处（327 文件）既不判红也不写进基线，只印在通过行——数字可见、不假装覆盖，推广另立 **L-9**。
+  - 红先在案：规则的 5 例新用例先对着**没有 Part 6 的门禁**跑，`Test Files 1 failed` 报 3 条红（`flags a spacing step written as a number`、`flags a stacking level written as a number`、`flags a size step in a conditional class string`）；另 2 例（令牌写法必放、结构零与分数锚不误伤）在无规则时天然绿，不构成红先，如实记为「只有报出问题的那 3 例是真红」。规则上线后门禁对着**未修的原语**跑：`hardcoded value check failed: 9 violation(s)`，逐条点到 5 个文件的 9 处；换完令牌 rc=0，通过行开始报 `4041 bare scale steps outside the token-enforced modules`。
+  - 变异在案（这次的杀手是门禁本身）：`/tmp/mut-n16.mjs` 把 8 处已转换的位置逐个退回裸步长，判据是 `npm run hardcoded:check` 退出码非 0 **且输出点名该文件**（只判退出码会把别人的红算成这一例被杀）。control `rc=0` 先跑；M1 `bottom-4 right-4`、M2 `z-10`、M3 `py-0.5`、M5 `min-w-14`、M6 `pt-0.5`、M7 `h-2 w-2`、M8 `z-50` 全部 **KILLED**（named=true）；M4（退回 `opacity-35 shadow-xs`）**SURVIVED**——它不在规则的族里，这是正确行为，它的判据换了一层：视觉门禁的放映表面 axe 断言（见下条）。另设两条**反向**变异（结构零 `bottom-0 right-0`、分数锚 `left-1/2 -translate-x-1/2`）必须不被报，两条都成立，证明规则没有过度伸手。八个变异体跑完都按保存字节还原（`tree restored byte-for-byte`）。
+  - 无障碍红转绿在案（本条的另一半验收）：`a11y: the presentation overlay has no axe violations` 从 ✗ 转 ✓（detail 原为 `color-contrast` 1.67:1，前景 `#c3c3c3` 落在 `#faf9f6` 上，`html` 里带着 `.bottom-4`）。视觉门禁总读数不变（761 条），通过 **751 → 752**、红 **10 → 9**，差值恰好是这一条——**L-1 因此从 7 条降到 6 条**。同时更正台账原文：这条断言住在 `scripts/e2e-visual.mjs`，不在 `npm run contrast:check`（后者是外壳/面板的对比度量测，两轮都 rc=0），N-16 条目与 L-1 都已按实测位置改写。
+  - 取舍与偏差在案：①子页的表达早已由 N-11 收进同一串，本条只换它承载的原语来源，不动形态。②`min-w-14`（56px）→ `min-w-[var(--sp-16)]`（64px）是九处里唯一有可见宽度变化的一处：数字槽的最窄值变宽 8px，跨页时整串本就长过 64px，故只在短串（`1 / 5`）时多留一点白；侧栏页码列早已用 `w-[var(--sp-4)]`，取法一致。③`z-50` → `z-[var(--z-popover)]` 是同值换名，把它移进对话框并改用 `--z-toast` 属 N-12 的行为决定，本条不预支。④`shadow-xs` → `shadow-[var(--shadow-xs)]` 同值；`shadow-lg` 与 `backdrop-blur-md` 留在原地（见方案②）。⑤去掉 `opacity-35` 会让角落片在投影上比原先显眼——AA 优先于「不显眼」，这条理由写在 `presentation-stage.tsx` 的注释里，避免下一次有人为了「淡一点」把它加回来。
+  - 门禁在案：`npm run typecheck` rc=0；13 项静态门禁逐条 rc=0；`npm run test:unit` 全量 **624 文件 / 6054 通过 + 1 跳过 / 0 失败**——第一轮曾报 1 红，是 `blog-comments-window.test.ts > mounts one page of rows and grows on demand` 的 `Error: Test timed out in 5000ms`，单跑该文件 **1 例全绿**、复跑全量 0 红（与 N-06、R2-2 那两处负载敏感超时同族）；`npm run budget:check` rc=0；`npm run contrast:check` rc=0；`node scripts/e2e-visual.mjs` **752 通过 / 9 红**，红集合 = L-1 的 6 + L-3 的 1 + L-4 的 2，一条不多不少。提交钩子另跑增量 `tsc -b` 与 `vitest related` **14 文件 / 155 例**全绿。
+  - 残留：①**L-9**（其余 327 个文件 4041 处的推广）本条未做。②L-1 余下 6 条仍在（2 几何 + 3 缩略图与成图 + 1 主题反转），本条只消掉它的 axe 那一条。③演讲者窗与降级面板的对比度不在本条断言覆盖内——那条 axe 只跑放映对话框；两处新加的表面若要同等证据，属 R2-4 之后的 a11y 批次（N-22）。④新规则对 `opacity`/阴影预设刻意不管，若日后要收它们，得先决定它们算不算设计原语（本仓的 `--shadow-*` 家族确实存在，但 Tailwind 预设仍被 47 个文件当约定用着）。
