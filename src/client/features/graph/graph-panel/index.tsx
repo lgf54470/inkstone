@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Download, ImageDown, Maximize2, Minus, Plus, Search, Settings2, X } from 'lucide-react'
+import { CornerDownRight, Download, ImageDown, ListChecks, Maximize2, Minus, Plus, Search, Settings2, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
 import type { GraphQuery, GraphResponse } from '@shared/types'
 import { api } from '../../../lib/api'
@@ -24,8 +24,8 @@ import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
 import { DEFAULT_PREFERENCES } from './constants'
-import { countWikiLinkEdges, graphNodeCounts, graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
-import type { GraphHeaderActionsProps, GraphHeaderProps } from './types'
+import { countWikiLinkEdges, graphNodeCounts, graphPrefsStorageKey, graphSearchHits, loadPreferences, normalizedResponse } from './helpers'
+import type { GraphHeaderActionsProps, GraphHeaderProps, GraphSearchState } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
@@ -179,6 +179,43 @@ function GraphSearchBox({ search, onSearchChange }: {
   )
 }
 
+/**
+ * What the search box says about the graph it is standing in front of: how many notes it located, whether
+ * it is only showing them, and a way onto the first one. The count is read off the canvas rather than from
+ * a second request, so it is the answer to "where is it" rather than "what else is there" (G-14).
+ */
+function GraphSearchFeedback({ state, onToggleOnlyMatching, onJumpToFirstMatch }: {
+  state: GraphSearchState
+  onToggleOnlyMatching: () => void
+  onJumpToFirstMatch: (id: string) => void
+}) {
+  const firstHitId = state.firstHitId
+  return (
+    <div className='flex items-center gap-1'>
+      <span role='status' data-graph-search-status='' className='whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]'>
+        {state.hits > 0 ? t('graph.matching_notes', { count: state.hits }) : t('graph.no_matching_notes')}
+      </span>
+      <Tooltip label={t('graph.only_matching_notes')}>
+        <IconButton
+          size='sm'
+          label={t('graph.only_matching_notes')}
+          active={state.isOnlyMatching}
+          onClick={onToggleOnlyMatching}
+        >
+          <ListChecks size={13}/>
+        </IconButton>
+      </Tooltip>
+      {firstHitId && (
+        <Tooltip label={t('graph.jump_to_first_match')}>
+          <IconButton size='sm' label={t('graph.jump_to_first_match')} onClick={() => onJumpToFirstMatch(firstHitId)}>
+            <CornerDownRight size={13}/>
+          </IconButton>
+        </Tooltip>
+      )}
+    </div>
+  )
+}
+
 function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
   const { hasGraph, isSettingsOpen, isExporting, settingsId, settingsButtonRef, onZoomOut, onFit, onZoomIn, onExportPng, onExportSvg, onToggleSettings, onClose } = actions
   const drawerIsDialog = useBreakpoint() === 'mobile'
@@ -250,7 +287,7 @@ function useSettingsDisclosureFocus(isOpen: boolean): RefObject<HTMLButtonElemen
   return triggerRef
 }
 
-function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, actions }: GraphHeaderProps) {
+function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, searchState, onToggleOnlyMatching, onJumpToFirstMatch, actions }: GraphHeaderProps) {
   return (
     <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
       <div className='mr-1 flex min-w-0 items-baseline gap-2.5'>
@@ -259,6 +296,7 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
       </div>
       <GraphScopeToggle mode={prefs.mode} onModeChange={onModeChange} hasActiveNote={hasActiveNote} />
       <GraphSearchBox search={search} onSearchChange={onSearchChange}/>
+      {searchState && <GraphSearchFeedback state={searchState} onToggleOnlyMatching={onToggleOnlyMatching} onJumpToFirstMatch={onJumpToFirstMatch}/>}
       <GraphHeaderActions actions={actions}/>
     </header>
   )
@@ -305,6 +343,28 @@ function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | nu
   ])
 }
 
+/**
+ * The search box runs in two modes, and the difference is who answers it. By default the line is matched
+ * against the notes already on screen, so the graph a reader is looking at is the graph they search and
+ * its links stay drawn (G-14). Turning on "only the matching notes" hands the same line to the server,
+ * which is the choice a reader makes when they want fewer notes rather than a marked-up field.
+ */
+function useGraphSearch(data: GraphResponse | null, query: string, isOnlyMatching: boolean): GraphSearchState | null {
+  return useMemo(() => {
+    if (!data || !query) return null
+    const matched = isOnlyMatching
+      ? new Set(data.nodes.map((node) => node.id))
+      : graphSearchHits(data.nodes, query) ?? new Set<string>()
+    return {
+      hits: matched.size,
+      firstHitId: data.nodes.find((node) => matched.has(node.id))?.id ?? null,
+      // A response the server already narrowed has nothing left to fade.
+      dimSet: isOnlyMatching ? null : matched,
+      isOnlyMatching,
+    }
+  }, [data, isOnlyMatching, query])
+}
+
 function useTagReset(prefs: GraphPreferences, changePref: <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => void) {
   const closePanel = useUi((state) => state.closePanel)
   return () => {
@@ -323,6 +383,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const [isLimitOpen, setIsLimitOpen] = useState(false)
   const [search, setSearch] = useState('')
   const query = useDebouncedQuery(search, 220)
+  const [isOnlyMatching, setIsOnlyMatching] = useState(false)
   const openNote = useNotes((state) => state.openNote)
   const folders = useNotes((state) => state.folders ?? [])
   const tags = useNotes((state) => state.tags ?? [])
@@ -337,8 +398,9 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     if (selectedTags.length < LIMITS.tagSelectionMax)
       setIsLimitOpen(false)
   }, [selectedTags.length])
-  const request = useGraphQueryRequest(prefs, activeNoteId, query, selectedTags)
+  const request = useGraphQueryRequest(prefs, activeNoteId, isOnlyMatching ? query : '', selectedTags)
   const { data, loadError, isLoading, setReload } = useGraphData(request)
+  const searchState = useGraphSearch(data, query, isOnlyMatching)
   const settingsId = useId()
   const settingsButtonRef = useSettingsDisclosureFocus(isSettingsOpen)
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
@@ -350,11 +412,11 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, settingsId, settingsButtonRef, refs, exportActions, onClose })
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
-    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} actions={headerActions}/>
+    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} searchState={searchState} onToggleOnlyMatching={() => setIsOnlyMatching((value) => !value)} onJumpToFirstMatch={(id) => refs.controlsRef.current?.selectNode(id)} actions={headerActions}/>
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
-          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
+          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
         <GraphRefreshBadge visible={isLoading && Boolean(data)}/>
       </main>

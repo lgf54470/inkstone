@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_PREFERENCES } from './constants'
+import { DEFAULT_PREFERENCES, GRAPH_SEARCH_DIM_ALPHA } from './constants'
 import { readThemeColors } from './canvas-draw'
 import {
   graphExportBounds,
@@ -31,7 +31,7 @@ function node(overrides: Partial<CanvasNode> = {}): CanvasNode {
 function createState(nodes: CanvasNode[], edges: Array<{ a: CanvasNode; b: CanvasNode }> = []): CanvasState {
   return {
     nodes, edges, scale: 1.5, offsetX: 40, offsetY: 60, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null, frame: 360, raf: 0, schedule: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: 360, raf: 0, schedule: null,
   }
 }
 
@@ -138,10 +138,11 @@ interface PaintCalls {
   setTransform: number[][]
   arc: number[][]
   fillText: string[]
+  globalAlpha: number[]
 }
 
 function emptyPaintCalls(): PaintCalls {
-  return { canvas: null, setTransform: [], arc: [], fillText: [] }
+  return { canvas: null, setTransform: [], arc: [], fillText: [], globalAlpha: [] }
 }
 
 function encodesPng(done: (blob: Blob | null) => void): void {
@@ -158,7 +159,7 @@ function stubPainting(encode: (done: (blob: Blob | null) => void) => void): () =
     writable: true,
     value: function paint(this: HTMLCanvasElement) {
       calls.canvas = this
-      return {
+      const painted: Record<string, unknown> = {
         setTransform: (...args: number[]) => { calls.setTransform.push(args) },
         fillRect: () => {}, clearRect: () => {}, save: () => {}, restore: () => {},
         beginPath: () => {}, closePath: () => {}, fill: () => {}, stroke: () => {},
@@ -167,6 +168,15 @@ function stubPainting(encode: (done: (blob: Blob | null) => void) => void): () =
         fillText: (text: string) => { calls.fillText.push(String(text)) },
         strokeText: () => {},
       }
+      // Every weight the drawing chose, in the order it was set: the faded ones are what a file must not carry.
+      let alpha = 1
+      Object.defineProperty(painted, 'globalAlpha', {
+        configurable: true,
+        enumerable: true,
+        get: () => alpha,
+        set: (value: number) => { alpha = value; calls.globalAlpha.push(value) },
+      })
+      return painted
     },
   })
   Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', { configurable: true, writable: true, value: encode })
@@ -213,6 +223,13 @@ describe('graph raster painting (FEAT-05)', () => {
     expect(calls.setTransform[0]).toEqual([2, 0, 0, 2, 68, 68])
     expect(calls.canvas?.width).toBe(356)
     expect(calls.canvas?.height).toBe(282)
+  })
+
+  it('saves the whole graph while a search is still fading the canvas', async () => {
+    restore = startPainting()
+    await png({ ...pair(), searchHits: new Set(['note-1']) })
+    expect(calls.fillText).toEqual(['Note 1', 'Note 2'])
+    expect(calls.globalAlpha).not.toContain(GRAPH_SEARCH_DIM_ALPHA)
   })
 })
 

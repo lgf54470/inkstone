@@ -36,7 +36,7 @@ const first: CanvasNode = {
 function createState(): CanvasState {
   return {
     nodes: [first], edges: [], scale: 1.5, offsetX: 40, offsetY: 60, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null, frame: 360, raf: 0, schedule: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: 360, raf: 0, schedule: null,
   }
 }
 

@@ -78,6 +78,31 @@ export function panelButton(name: string): HTMLButtonElement {
   return button
 }
 
+export function panelInput(label: string): HTMLInputElement {
+  const input = surface().querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
+  if (!input) throw new Error(`the graph panel has no input named ${label}`)
+  return input
+}
+
+/** Text as a reader types it, so React owns the value the same way it does in the browser. */
+export function typeInto(input: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+  act(() => {
+    setter.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+/** The search box is debounced, so a case that waits for what it decided has to wait for that timer too. */
+export async function waitQueryDebounce(ms = 320): Promise<void> {
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, ms)) })
+  await settleGraphPanel()
+}
+
+export function panelStatusText(marker: string): string | null {
+  return surface().querySelector(`[data-graph-${marker}='']`)?.textContent ?? null
+}
+
 export function panelDrawer(label: string): HTMLElement | null {
   // The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).
   return surface().querySelector<HTMLElement>(`aside[aria-label="${label}"], [role="dialog"][aria-label="${label}"], [role="region"][aria-label="${label}"]`)

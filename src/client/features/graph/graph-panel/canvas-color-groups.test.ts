@@ -27,7 +27,7 @@ const lifeRule: GraphColorGroup = { id: 'r2', query: 'path:life', color: '#ea580
 function createState(): CanvasState {
   return {
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null, frame: 0, raf: 0, schedule: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: 0, raf: 0, schedule: null,
   }
 }
 

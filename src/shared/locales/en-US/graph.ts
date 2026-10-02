@@ -85,4 +85,8 @@ export const messages = {
 'graph.export_svg': 'Export as SVG',
 'graph.export_done': 'Graph exported',
 'graph.export_failed': 'Could not export the graph',
+'graph.matching_notes': '{count} matching notes',
+'graph.no_matching_notes': 'No note matches this search',
+'graph.only_matching_notes': 'Show only the matching notes',
+'graph.jump_to_first_match': 'Jump to the first match',
 }

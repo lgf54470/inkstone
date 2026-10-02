@@ -5,13 +5,15 @@ import { t } from '../../../lib/i18n'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { PHYSICS_FRAME_LIMIT } from './constants'
-import { colorGroupsByNodeId } from './helpers'
+import { colorGroupsByNodeId, ensureNodeVisible } from './helpers'
 import type { CanvasNode, CanvasState, GraphDragOptions } from './types'
 
 export interface GraphControls {
   zoomIn: () => void
   zoomOut: () => void
   fit: () => void
+  /** Put a named node under the reader: the selection, the camera and the announcement of it. */
+  selectNode: (id: string) => void
 }
 
 export function useGraphCanvasRefs(activeNoteId: string | null = null) {
@@ -23,7 +25,7 @@ export function useGraphCanvasRefs(activeNoteId: string | null = null) {
   const stateRef = useRef<CanvasState>({
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0,
     width: 0, height: 0, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null,
     frame: 0, raf: 0, schedule: null,
   })
   const controlsRef = useRef<GraphControls | null>(null)
@@ -111,12 +113,43 @@ export function useDynamicGraphPrefs(stateRef: RefObject<CanvasState>, prefs: Gr
   }, [prefs.colorGroups, stateRef])
 }
 
-export function useGraphControls(controlsRef: MutableRefObject<GraphControls | null>, stateRef: RefObject<CanvasState>, fitGraph: () => void) {
+export function useGraphControls(
+  controlsRef: MutableRefObject<GraphControls | null>,
+  stateRef: RefObject<CanvasState>,
+  fitGraph: () => void,
+  selectNode: (id: string) => void,
+) {
   controlsRef.current = {
     zoomIn: () => { stateRef.current.scale = Math.min(4, stateRef.current.scale + 0.2); stateRef.current.schedule?.() },
     zoomOut: () => { stateRef.current.scale = Math.max(0.2, stateRef.current.scale - 0.2); stateRef.current.schedule?.() },
     fit: fitGraph,
+    selectNode,
   }
+}
+
+/**
+ * The hit set belongs to the frame, not to the response: a search that locates its matches repaints the
+ * nodes the layout already holds, so a new building never starts and the positions a reader dragged stay.
+ */
+export function useGraphSearchDim(stateRef: RefObject<CanvasState>, searchHits: ReadonlySet<string> | null | undefined) {
+  useEffect(() => {
+    stateRef.current.searchHits = searchHits ?? null
+    stateRef.current.schedule?.()
+  }, [searchHits, stateRef])
+}
+
+/**
+ * Putting the search's first hit under the reader: the same path an arrow key takes, so a jumped-to node is
+ * selected, kept inside the viewport, and announced like one the reader reached themselves (G-14).
+ */
+export function useGraphNodeFocus(stateRef: RefObject<CanvasState>, setSelectedId: (id: string) => void) {
+  return useCallback((id: string) => {
+    const node = stateRef.current.nodes.find((candidate) => candidate.id === id)
+    if (!node) return
+    setSelectedId(id)
+    ensureNodeVisible(stateRef.current, node)
+    stateRef.current.schedule?.()
+  }, [setSelectedId, stateRef])
 }
 
 function applyDragMove(

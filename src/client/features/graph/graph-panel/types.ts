@@ -31,6 +31,9 @@ export interface CanvasState {
   dragging: { node: CanvasNode | null; startX: number; startY: number; ox: number; oy: number } | null
   pointers: Map<number, { x: number; y: number }>
   pinch: { distance: number; scale: number; centerX: number; centerY: number } | null
+  /** The nodes the search box hit, or null when nothing is being located. Held here rather than passed
+   * to the drawing functions because the ticker paints from this object alone (G-14). */
+  searchHits: ReadonlySet<string> | null
   frame: number
   raf: number
   schedule: (() => void) | null
@@ -149,5 +152,19 @@ export interface GraphHeaderProps {
   onModeChange: (mode: GraphPreferences['mode']) => void
   search: string
   onSearchChange: (value: string) => void
+  /** What the search box located on the graph already on screen, or null while the box is empty (G-14). */
+  searchState: GraphSearchState | null
+  onToggleOnlyMatching: () => void
+  onJumpToFirstMatch: (id: string) => void
   actions: GraphHeaderActionsProps
+}
+
+export interface GraphSearchState {
+  /** Notes the line hit, counted on the canvas rather than by a second request. */
+  hits: number
+  /** The first hit in response order, or null when the line hit nothing to jump to. */
+  firstHitId: string | null
+  /** The set the canvas fades to, or null when the server was asked to leave only the matches. */
+  dimSet: ReadonlySet<string> | null
+  isOnlyMatching: boolean
 }

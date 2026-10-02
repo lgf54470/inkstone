@@ -25,6 +25,10 @@ export const GRAPH_LABEL_HALO = 3
 export const GRAPH_EDGE_ALPHA = 0.42
 export const GRAPH_LABEL_ALPHA = 0.72
 export const GRAPH_PIN_ALPHA = 0.8
+/** A search that locates its matches leaves the rest of the graph on screen: lighter than the hover
+ * focus, which hides the whole field, because these nodes are the context the match sits in (G-14). */
+export const GRAPH_SEARCH_DIM_ALPHA = 0.22
+export const GRAPH_SEARCH_DIM_EDGE_ALPHA = 0.12
 export const GRAPH_ARROW_SIZE = 5
 export const GRAPH_TAG_RING_GAP = 2
 export const GRAPH_TAG_RING_WIDTH = 1.5

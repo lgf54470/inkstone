@@ -273,6 +273,23 @@ export function buildColorLegends(
   return [...map.entries()].slice(0, 10).map(([label, color]) => ({ label, color }))
 }
 
+/**
+ * The nodes the search box hit, worked out on the graph that is already on screen (G-14). The same filter
+ * grammar the server runs decides the set, so the fading and the `tag:` / `path:` a reader writes mean one
+ * thing. A tag node answers for its own name, since the notes filed under it are what it stands for.
+ * Returns null for an empty line: with no search running, nothing on the canvas is asked to fade.
+ */
+export function graphSearchHits(nodes: readonly GraphNode[], query: string): Set<string> | null {
+  const expression = parseGraphFilter(query)
+  if (!expression.text && !expression.terms.length) return null
+  const hits = new Set<string>()
+  for (const node of nodes) {
+    const tags = node.kind === 'tag' ? [{ name: node.title }] : node.tags
+    if (graphFilterMatches({ title: node.title, folderName: node.folderName, tags }, expression)) hits.add(node.id)
+  }
+  return hits
+}
+
 export function graphNodeCounts(nodes: readonly GraphNode[]): { notes: number; tags: number; unresolved: number } {
   let notes = 0, tags = 0, unresolved = 0
   for (const node of nodes) {

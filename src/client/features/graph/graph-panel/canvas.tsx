@@ -18,6 +18,8 @@ import {
   useGraphControls,
   useGraphDrag,
   useGraphFit,
+  useGraphNodeFocus,
+  useGraphSearchDim,
   useGraphWorldMath,
   useIsDarkTheme,
 } from './canvas-hooks'
@@ -27,6 +29,8 @@ export type { GraphControls }
 interface GraphCanvasProps {
   data: GraphResponse
   prefs: GraphPreferences
+  /** The nodes the search box hit, or null while nothing is being located. */
+  searchHits?: ReadonlySet<string> | null
   activeNoteId: string | null
   canvasRef: RefObject<HTMLCanvasElement | null>
   stateRef: RefObject<CanvasState>
@@ -398,7 +402,7 @@ function useGraphNodeActions(
 }
 
 function useGraphCanvasController(props: GraphCanvasProps) {
-  const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
+  const { data, prefs, searchHits, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
   const [hover, setHover] = useState<CanvasNode | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
@@ -410,6 +414,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   const prefsRef = useRef(prefs)
   useEffect(() => { prefsRef.current = prefs }, [prefs])
   useDynamicGraphPrefs(stateRef, prefs)
+  useGraphSearchDim(stateRef, searchHits)
   const fitGraph = useGraphFit(canvasRef, stateRef)
   useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph })
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef)
@@ -431,7 +436,8 @@ function useGraphCanvasController(props: GraphCanvasProps) {
 
   const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext)
   const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
-  useGraphControls(controlsRef, stateRef, fitGraph)
+  const selectNode = useGraphNodeFocus(stateRef, setSelectedId)
+  useGraphControls(controlsRef, stateRef, fitGraph, selectNode)
   const colorLegends = useGraphLegends(data, prefs)
 
   const handlers: CanvasHandlers = {

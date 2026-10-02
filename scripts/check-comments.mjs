@@ -3422,6 +3422,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas-draw.ts', [
     '/** The three corners of an arrow head: the tip sits just outside the node it points at. */',
+    '/** A node the search did not hit. Only a canvas with a search on it fades anything at all. */',
+    '// The node being hovered, its neighbours and the note being read are never faded: a search narrows',
+    '// what a reader is looking at, it does not remove what they are holding on to (G-14).',
     '// Colour says which group a node belongs to, so the ring says what the node is instead: a double',
     '// ring reads apart from a plain note and a hollow ghost whatever palette the tagging is using.',
     '// A tag with no colour of its own reads one of these. With no stylesheet in reach (tests, the',
@@ -3439,8 +3442,11 @@ const allowed = new Map([
     '// The mount already anneals once; a reader tunes the forces after the picture has come to rest.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-hooks.tsx', [
+    '/** Put a named node under the reader: the selection, the camera and the announcement of it. */',
     '// Read off the document rather than the store: the account menu is out of reach while the graph is',
     '// open, and a follow-the-system flip reaches the attribute without a store change.',
+    '/**\n * The hit set belongs to the frame, not to the response: a search that locates its matches repaints the\n * nodes the layout already holds, so a new building never starts and the positions a reader dragged stay.\n */',
+    '/**\n * Putting the search\'s first hit under the reader: the same path an arrow key takes, so a jumped-to node is\n * selected, kept inside the viewport, and announced like one the reader reached themselves (G-14).\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
@@ -3460,6 +3466,9 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-preview-theme.test.ts', [
     '/**\n * A theme flip can reach the panel with nothing it is subscribed to: the account menu is out of reach\n * while the graph is open, so a "follow the system" flip only writes the document attribute, and another\n * tab\'s flip never touches this store at all. The preview card is React, not canvas, so the attribute has\n * to schedule a render — these cases flip it and read the flag the card was handed.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-search-dim.test.ts', [
+    '/**\n * A search that locates its matches leaves the rest of the graph on screen, drawn fainter (G-14). The\n * dimming is a property of the frame, not of the response, so these cases paint the same layout twice —\n * once with no search on the canvas, once with a hit set — and read the alpha each thing was drawn with.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-selection-loop.test.ts', [
     '/**\n * Selecting a node asks the panel for two things it holds in state: the announcement and the preview card.\n * Both used to be handed an object whose identity changed on every render, and because the effect that\n * writes them listed that object as a dependency, each write scheduled the next one: the panel never came\n * back. These cases count the paints one selection costs.\n */',
     '// The first arrow enters the graph at the first node (G-23), so one press is one selection.',
@@ -3470,6 +3479,7 @@ const allowed = new Map([
     '/**\n * Frames are queued rather than run inline: a synchronous `requestAnimationFrame` would make the physics\n * loop re-enter itself, and the id it hands back would be written after the loop had already cleared it,\n * leaving the panel looking like a frame was still in flight.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
+    '/** The nodes the search box hit, or null while nothing is being located. */',
     '/** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */',
     '/** Speaks to the same live region the selection announcement uses, for keys that answer with words. */',
     '/** What Enter does to the node the reader is on: it opens what can be opened, and filters by what cannot. */',
@@ -3490,10 +3500,12 @@ const allowed = new Map([
     '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
     '/** A title is cut to this many characters, however it is drawn. */',
     '/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */',
+    '/** A search that locates its matches leaves the rest of the graph on screen: lighter than the hover\n * focus, which hides the whole field, because these nodes are the context the match sits in (G-14). */',
   ]],
   ['src/client/features/graph/graph-panel/graph-canvas-mount.test-helpers.ts', [
     '/**\n * Mounting the graph surface needs a canvas that paints, a physics state the test can read, and the\n * callbacks the panel calls back into. Tests that drive the panel by hand share this scaffolding; what\n * each of them asserts stays in its own file.\n */',
     '/** The graph inside a note has no tag filter to narrow, and mounts the canvas without the callback. */',
+    '/** The set the search box hit; absent means no search is being located by. */',
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
     '/** Releases every canvas mounted by the current test, so a stray effect cannot reach the next one. */',
     '/**\n * A pointer press as the canvas reads it: jsdom has no PointerEvent and no pointer capture, so the\n * gesture carries the fields the handlers read and the capture call is stubbed by the cases.\n */',
@@ -3502,6 +3514,7 @@ const allowed = new Map([
     '/**\n * An export has to put the whole graph, and only the graph, into a file: the box is computed from the\n * nodes rather than the viewport, the vector emitter draws what the canvas draws, and the raster path\n * hands the browser a picture it can actually allocate. These cases pin the box, the file, and the\n * promise that a picture the reader asked for either arrives or says why it did not.\n */',
     '// Read by hand from the rule the panel draws with: the tip sits 2 units short of the rim of the node',
     '// at (100, 40) r 20, and the two arms are 5 units long at ±30 degrees off the link.',
+    '// Every weight the drawing chose, in the order it was set: the faded ones are what a file must not carry.',
   ]],
   ['src/client/features/graph/graph-panel/graph-export.ts', [
     '/** Device pixels per world unit in the exported picture, so the file is sharper than the panel. */',
@@ -3509,6 +3522,7 @@ const allowed = new Map([
     '/** The picture is drawn at world scale, so type and line widths match the panel at zoom 1 however far the graph is fitted. */',
     '/** Clearance around the outermost node, so a label is not cropped by the edge of the file. */',
     '/** The canvas the picture needs: two device pixels per world unit, unless the whole graph would not fit. */',
+    '// An exported picture is the graph, not the search the reader was running on it (G-14).',
     '/** Draws the whole graph into a file, named by the scope it was built for. */',
     '/** Two decimals place a node exactly and keep the file readable. */',
     '/** A colour or a font name arrives from CSS, so it goes into an attribute only after escaping. */',
@@ -3522,6 +3536,8 @@ const allowed = new Map([
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
     '/** Lets the graph request that is already in flight land, which is when the canvas appears. */',
     '/** Mounts the panel with its graph already on screen. */',
+    '/** Text as a reader types it, so React owns the value the same way it does in the browser. */',
+    '/** The search box is debounced, so a case that waits for what it decided has to wait for that timer too. */',
     '// The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).',
     '/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */',
     '/** React only sees a value the browser itself wrote, so a test types through the native setter. */',
@@ -3549,6 +3565,7 @@ const allowed = new Map([
     '/** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */',
     '/** A node nobody links to is only worth a title once the graph is zoomed in far enough to read it. */',
     '/** A tag with no colour of its own is named by its token, so the legend follows the theme on its own. */',
+    '/**\n * The nodes the search box hit, worked out on the graph that is already on screen (G-14). The same filter\n * grammar the server runs decides the set, so the fading and the `tag:` / `path:` a reader writes mean one\n * thing. A tag node answers for its own name, since the notes filed under it are what it stands for.\n * Returns null for an empty line: with no search running, nothing on the canvas is asked to fade.\n */',
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
   ]],
   ['src/client/features/graph/graph-panel/index.tsx', [
@@ -3556,9 +3573,12 @@ const allowed = new Map([
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
+    '/**\n * What the search box says about the graph it is standing in front of: how many notes it located, whether\n * it is only showing them, and a way onto the first one. The count is read off the canvas rather than from\n * a second request, so it is the answer to "where is it" rather than "what else is there" (G-14).\n */',
     '/* Beside the canvas the drawer is a column of this panel, so claiming a popup dialog there was a\n          claim about something this control does not open (G-25). */',
     '/** A folder filter whose folder is gone would keep narrowing the graph to nothing, so it is dropped. */',
     '/** Focus goes into the drawer when it opens and comes back to the control that opened it when it closes. */',
+    '/**\n * The search box runs in two modes, and the difference is who answers it. By default the line is matched\n * against the notes already on screen, so the graph a reader is looking at is the graph they search and\n * its links stay drawn (G-14). Turning on "only the matching notes" hands the same line to the server,\n * which is the choice a reader makes when they want fewer notes rather than a marked-up field.\n */',
+    '// A response the server already narrowed has nothing left to fade.',
   ]],
   ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
     '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
@@ -3572,6 +3592,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-search-focus.test.ts', [
+    '/**\n * A reader who types a name into the graph\'s search box is looking for something in the graph they are\n * already looking at, not asking for a different graph (G-14). The old behaviour re-queried, which dropped\n * the links that made the note findable and, with the request throttling, blanked the canvas. These cases\n * type into the real header and count the requests it cost, read what the panel says it matched, and press\n * the two controls the search answers with.\n */',
+    '// The response the faded graph is drawn from is still the whole one: Beta\'s two links are on screen.',
   ]],
   ['src/client/features/graph/graph-panel/panel-throttle.test.ts', [
     '/**\n * A throttled graph read is a state the reader has to be able to leave: the server\'s 429 has to reach\n * the panel as the localized message it will be shown, and the retry it offers has to be the thing\n * that asks again. A panel that swallowed the status would draw an empty graph over a library that\n * has one, which reads as "your notes are gone" rather than "you asked too often".\n */',
@@ -3601,9 +3625,14 @@ const allowed = new Map([
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
     '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
     '/** The canvas box\'s viewport offset, kept by the resizer: pointer math subtracts it instead of\n   * asking the layout engine for the box on every move, which forced a synchronous layout per event. */',
+    '/** The nodes the search box hit, or null when nothing is being located. Held here rather than passed\n   * to the drawing functions because the ticker paints from this object alone (G-14). */',
     '/** The ten tag colours of the theme, in slot order, read from the --graph-tag-* tokens. */',
     '/** The drawer this control opens, for `aria-controls`. */',
     '/** Focus returns here when the drawer closes, whichever control closed it. */',
+    '/** What the search box located on the graph already on screen, or null while the box is empty (G-14). */',
+    '/** Notes the line hit, counted on the canvas rather than by a second request. */',
+    '/** The first hit in response order, or null when the line hit nothing to jump to. */',
+    '/** The set the canvas fades to, or null when the server was asked to leave only the matches. */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-export.test.ts', [
     '/**\n * Exporting is the one graph action that leaves the app: the reader presses a button and a file\n * appears somewhere else. So the button has to stay shut while the picture is being painted, the\n * failure has to reach the reader rather than vanish, and the graph that gets drawn is the one on\n * screen. The file itself is the subject of `graph-export.test.ts`; here the promise is held open on\n * purpose to watch what the panel does around it.\n */',

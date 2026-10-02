@@ -9,6 +9,7 @@ import {
   graphNodeCounts,
   graphPrefsStorageKey,
   graphScaleAfterWheel,
+  graphSearchHits,
   loadPreferences,
   nodeColor,
   pickNeighborInDirection,
@@ -238,7 +239,7 @@ describe('the node counts the header and the badge share (G-38)', () => {
 function canvasState(): CanvasState {
   return {
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null, frame: 0, raf: 0, schedule: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: 0, raf: 0, schedule: null,
   }
 }
 
@@ -291,5 +292,48 @@ describe('arrow keys that move by place rather than by response order (G-23)', (
     const state = { ...canvasState(), width: 0, height: 0 }
     ensureNodeVisible(state, placed('far', 5_000, 5_000))
     expect({ x: state.offsetX, y: state.offsetY }).toEqual({ x: 0, y: 0 })
+  })
+})
+
+function searchNode(
+  id: string,
+  title: string,
+  options: Partial<GraphResponse['nodes'][number]> = {},
+): GraphResponse['nodes'][number] {
+  return {
+    id, title, kind: 'note', degree: 0, inDegree: 0, outDegree: 0,
+    folderId: null, folderName: null, folderColor: null, tags: [], ...options,
+  }
+}
+
+const searched: GraphResponse['nodes'] = [
+  searchNode('note-1', 'Quarterly review', { folderName: 'Work', tags: [{ name: 'work', color: null }] }),
+  searchNode('note-2', 'Reading list', { folderName: 'Life' }),
+  searchNode('tag:work', 'work', { kind: 'tag' }),
+]
+
+describe('the nodes a search hit, counted on the canvas rather than by the server (G-14)', () => {
+  it('answers nothing at all when there is no search to locate by', () => {
+    expect(graphSearchHits(searched, '')).toBeNull()
+    expect(graphSearchHits(searched, '   ')).toBeNull()
+  })
+
+  it('hits the note whose title carries the words, and leaves the rest out', () => {
+    expect(graphSearchHits(searched, 'reading')).toEqual(new Set(['note-2']))
+  })
+
+  it('answers an empty set when nothing matches, so the whole field can fade', () => {
+    expect(graphSearchHits(searched, 'atlas')).toEqual(new Set())
+  })
+
+  it('reads tag: and path: the way the filter line means them, and keeps the tag node of a tag hit', () => {
+    expect(graphSearchHits(searched, 'tag:work')).toEqual(new Set(['note-1', 'tag:work']))
+    expect(graphSearchHits(searched, 'path:life')).toEqual(new Set(['note-2']))
+    expect(graphSearchHits(searched, '-tag:work')).toEqual(new Set(['note-2']))
+  })
+
+  it('takes the whole line as one filter, so a word and a qualifier have to hold together', () => {
+    expect(graphSearchHits(searched, 'review tag:work')).toEqual(new Set(['note-1']))
+    expect(graphSearchHits(searched, 'review tag:none')).toEqual(new Set())
   })
 })

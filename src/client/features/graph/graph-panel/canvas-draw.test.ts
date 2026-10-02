@@ -47,7 +47,7 @@ function createInitialState(): CanvasState {
     viewTop: 0,
     dragging: null,
     pointers: new Map(),
-    pinch: null,
+    pinch: null, searchHits: null,
     frame: 0,
     raf: 0,
     schedule: null,

@@ -51,7 +51,7 @@ const data: GraphResponse = {
 function idleState(): CanvasState {
   return {
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null, frame: PHYSICS_FRAME_LIMIT, raf: 0, schedule: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: PHYSICS_FRAME_LIMIT, raf: 0, schedule: null,
   }
 }
 

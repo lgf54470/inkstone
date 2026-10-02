@@ -85,4 +85,8 @@ export const messages = {
 'graph.export_svg': '导出为 SVG',
 'graph.export_done': '图谱已导出',
 'graph.export_failed': '无法导出图谱',
+'graph.matching_notes': '{count} 个匹配笔记',
+'graph.no_matching_notes': '没有笔记匹配这个搜索',
+'graph.only_matching_notes': '只显示匹配的笔记',
+'graph.jump_to_first_match': '跳到第一个匹配',
 }

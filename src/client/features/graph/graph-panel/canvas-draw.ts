@@ -1,7 +1,7 @@
 import type { MutableRefObject } from 'react'
 import { ORGANIZER_COLORS } from '@shared/organizer-colors'
 import type { GraphResponse } from '@shared/types'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, GRAPH_TAG_RING_GAP, GRAPH_TAG_RING_WIDTH, PHYSICS_FRAME_LIMIT } from './constants'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SEARCH_DIM_ALPHA, GRAPH_SEARCH_DIM_EDGE_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, GRAPH_TAG_RING_GAP, GRAPH_TAG_RING_WIDTH, PHYSICS_FRAME_LIMIT } from './constants'
 import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, graphTagTokenName, nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
@@ -111,8 +111,9 @@ export function drawEdges({ ctx, state, colors, emphasizedId, arrows }: DrawEdge
   ctx.lineWidth = 1 / state.scale
   for (const edge of state.edges) {
     const related = emphasizedId === edge.a.id || emphasizedId === edge.b.id
+    const missed = isSearchMissed(state, edge.a.id) && isSearchMissed(state, edge.b.id)
     ctx.strokeStyle = related ? colors.accent : colors.edge
-    ctx.globalAlpha = related ? 0.9 : emphasizedId ? 0.14 : GRAPH_EDGE_ALPHA
+    ctx.globalAlpha = related ? 0.9 : emphasizedId ? 0.14 : missed ? GRAPH_SEARCH_DIM_EDGE_ALPHA : GRAPH_EDGE_ALPHA
     ctx.beginPath(); ctx.moveTo(edge.a.x, edge.a.y); ctx.lineTo(edge.b.x, edge.b.y); ctx.stroke()
     if (arrows)
       drawArrowHead({ ctx, from: edge.a, to: edge.b, color: related ? colors.accent : colors.edge, scale: state.scale })
@@ -127,6 +128,11 @@ export function getConnectedNeighborIds(state: CanvasState, targetId: string | n
     else if (edge.b.id === targetId) neighbors.add(edge.a.id)
   }
   return neighbors
+}
+
+/** A node the search did not hit. Only a canvas with a search on it fades anything at all. */
+function isSearchMissed(state: CanvasState, id: string): boolean {
+  return state.searchHits !== null && !state.searchHits.has(id)
 }
 
 export function drawNodes({
@@ -145,7 +151,13 @@ export function drawNodes({
     const isNeighbor = neighborIds.has(node.id)
     ctx.beginPath(); ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2)
     ctx.fillStyle = active || emphasized ? colors.accent : nodeColor(node, { groupBy, fallback: colors.node, tagPalette: colors.tagPalette })
-    ctx.globalAlpha = emphasizedId && !emphasized && !active && !isNeighbor ? 0.18 : 1
+    // The node being hovered, its neighbours and the note being read are never faded: a search narrows
+    // what a reader is looking at, it does not remove what they are holding on to (G-14).
+    if (!emphasized && !active && !isNeighbor) {
+      ctx.globalAlpha = isSearchMissed(state, node.id) ? GRAPH_SEARCH_DIM_ALPHA : emphasizedId ? 0.18 : 1
+    } else {
+      ctx.globalAlpha = 1
+    }
     if (node.kind === 'unresolved') {
       ctx.strokeStyle = ctx.fillStyle
       ctx.lineWidth = 1.5 / state.scale
@@ -192,7 +204,7 @@ export function drawLabels({
     const isNeighbor = neighborIds.has(node.id)
     if (!emphasized && !isNeighbor && !graphLabelVisible(node, scale)) continue
     ctx.fillStyle = emphasized ? colors.accent : colors.text
-    ctx.globalAlpha = emphasized || isNeighbor ? 1 : emphasizedId ? 0.18 : GRAPH_LABEL_ALPHA
+    ctx.globalAlpha = emphasized || isNeighbor ? 1 : isSearchMissed(state, node.id) ? GRAPH_SEARCH_DIM_ALPHA : emphasizedId ? 0.18 : GRAPH_LABEL_ALPHA
     const label = graphNodeLabel(node)
     ctx.lineWidth = GRAPH_LABEL_HALO / scale
     ctx.strokeStyle = colors.bgBase

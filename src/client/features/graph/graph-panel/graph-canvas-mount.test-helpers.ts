@@ -29,6 +29,8 @@ export interface GraphCanvasMountOptions {
   activeNoteId?: string | null
   /** The graph inside a note has no tag filter to narrow, and mounts the canvas without the callback. */
   withoutTagFilter?: boolean
+  /** The set the search box hit; absent means no search is being located by. */
+  searchHits?: ReadonlySet<string> | null
 }
 
 const mounted: RenderedElement[] = []
@@ -56,12 +58,13 @@ export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountO
   const filterByTag = vi.fn()
   const state: CanvasState = {
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
-    dragging: null, pointers: new Map(), pinch: null,
+    dragging: null, pointers: new Map(), pinch: null, searchHits: null,
     frame: 0, raf: 0, schedule: null,
   }
   const rendered = renderElement(createElement(GraphCanvas, {
     data,
     prefs: options.prefs ?? DEFAULT_PREFERENCES,
+    searchHits: options.searchHits ?? null,
     activeNoteId: options.activeNoteId ?? null,
     canvasRef: { current: null },
     stateRef: { current: state },

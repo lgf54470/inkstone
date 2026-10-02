@@ -110,7 +110,8 @@ export async function graphExportPng(
   ctx.setTransform(geometry.scale, 0, 0, geometry.scale, -bounds.minX * geometry.scale, -bounds.minY * geometry.scale)
   ctx.fillStyle = colors.bgBase
   ctx.fillRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
-  const scene: CanvasState = { ...state, scale: EXPORT_DRAW_SCALE, width: bounds.width, height: bounds.height }
+  // An exported picture is the graph, not the search the reader was running on it (G-14).
+  const scene: CanvasState = { ...state, searchHits: null, scale: EXPORT_DRAW_SCALE, width: bounds.width, height: bounds.height }
   const unselected: { current: null } = { current: null }
   drawEdges({ ctx, state: scene, colors, emphasizedId: null, arrows: prefs.arrows })
   ctx.globalAlpha = 1
