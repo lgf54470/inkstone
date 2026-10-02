@@ -74,7 +74,10 @@ function parseFenceOpening(line: string, languages: readonly string[]): FenceOpe
   const match = /^( {0,3})(`{3,}|~{3,})[ \t]*([^\n]*)$/.exec(line)
   if (!match) return null
   const info = match[3]!
-  if (!isRecordedLanguage(info, languages)) return null
+  // An empty list accepts any fence on that line: a caller whose markup is known to match the text
+  // (the preview only writes while the rendered document and the note agree) may not be able to name
+  // the language up front — a code block written as `{ts title="x"}` only reveals it after parsing.
+  if (languages.length > 0 && !isRecordedLanguage(info, languages)) return null
   return { indent: match[1]!, marker: match[2]!.charAt(0), length: match[2]!.length, info }
 }
 

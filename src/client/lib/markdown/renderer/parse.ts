@@ -119,7 +119,7 @@ export function parseFenceInfo(source: string): FenceInfo {
   }
 }
 
-function parseLineSpec(source: string): number[] {
+export function parseLineSpec(source: string): number[] {
   const lines = new Set<number>()
   for (const part of source.split(/[ ,]+/).filter(Boolean).slice(0, 200)) {
     const range = /^(\d+)-(\d+)$/.exec(part)

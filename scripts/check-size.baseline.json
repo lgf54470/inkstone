@@ -75,6 +75,9 @@
   "src/client/features/music/music-track-table.test.ts": {
     "lines": 532
   },
+  "src/client/features/preview/code-block-toolbar.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },
@@ -136,6 +139,9 @@
   "src/client/lib/markdown/kanban/ui/kanban-view-tabs-selection.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/renderer/code-options.ts": {
+    "deepFns": 1
+  },
   "src/client/lib/markdown/renderer/containers.ts": {
     "longFns": 1
   },
@@ -193,13 +199,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 573
+    "lines": 593
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 573
+    "lines": 593
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908

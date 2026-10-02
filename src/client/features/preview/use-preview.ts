@@ -13,7 +13,7 @@ import { useSession } from '../../store/session'
 import { createPreviewClickHandler } from './preview-interactions'
 import { moveMarkdownTabFocus } from './markdown-tabs'
 import { closeLayoutPopoverFromEvent } from './tabs-interactive'
-import { closeExampleOverlayFromEvent } from './example-layout'
+import { closeBlockToolbarOverlay } from './block-actions'
 import { nextCommittedDocument, prepareStagedHtml } from './preview-stage'
 import type { WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { useLinkHover } from './link-hover'
@@ -372,7 +372,7 @@ function usePreviewInteractions(opts: {
 
 /** Escape closes the innermost open block overlay and hands focus back to the control that opened it. */
 function closeBlockOverlays(target: HTMLElement): boolean {
-  const trigger = closeLayoutPopoverFromEvent(target) ?? closeExampleOverlayFromEvent(target)
+  const trigger = closeLayoutPopoverFromEvent(target) ?? closeBlockToolbarOverlay(target)
   if (!trigger) return false
   trigger.focus()
   return true

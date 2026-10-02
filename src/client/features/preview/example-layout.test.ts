@@ -99,18 +99,18 @@ describe('enhanceExampleLayoutsInRoot', () => {
   it('injects the toolbar and settings panel for both families', () => {
     const root = mount('~~~md-example\n# hi\n~~~\n\n~~~javascript-example\nconst x = 1\n~~~')
     enhanceExampleLayoutsInRoot(root)
-    expect(root.querySelectorAll('.markdown-example-tools')).toHaveLength(2)
-    expect(root.querySelectorAll('.markdown-example-layout-popover [data-example-val]')).toHaveLength(8)
-    expect(root.querySelectorAll('.markdown-example-settings')).toHaveLength(2)
+    expect(root.querySelectorAll('.block-tools')).toHaveLength(2)
+    expect(root.querySelectorAll('.block-popover [data-example-val]')).toHaveLength(8)
+    expect(root.querySelectorAll('.block-settings')).toHaveLength(2)
     // The runnable block keeps its own controls; the layout tools sit beside them.
-    expect(root.querySelector('.js-example-controls > .markdown-example-tools')).not.toBeNull()
-    expect(root.querySelector('.markdown-example-settings [data-example-ratio-input]')).not.toBeNull()
+    expect(root.querySelector('.js-example-controls > .block-tools')).not.toBeNull()
+    expect(root.querySelector('.block-settings [data-example-ratio-input]')).not.toBeNull()
   })
 
   it('marks the active direction in the popover', () => {
     const root = mount('~~~md-example layout=rl\n# hi\n~~~')
     enhanceExampleLayoutsInRoot(root)
-    expect(root.querySelector('.example-layout-opt.is-active')?.getAttribute('data-example-val')).toBe('rl')
+    expect(root.querySelector('.block-icon-opt.is-active')?.getAttribute('data-example-val')).toBe('rl')
   })
 
   it('leaves an example inside a note embed alone', () => {
@@ -120,7 +120,7 @@ describe('enhanceExampleLayoutsInRoot', () => {
     embed.append(...root.childNodes)
     root.append(embed)
     enhanceExampleLayoutsInRoot(root)
-    expect(root.querySelector('.markdown-example-tools')).toBeNull()
+    expect(root.querySelector('.block-tools')).toBeNull()
   })
 })
 
@@ -164,7 +164,7 @@ describe('executeExampleLayoutAction — ratio', () => {
     const onEdit = vi.fn()
     executeExampleLayoutAction('set-ratio', button, '~~~md-example\n# hi\n~~~', onEdit, vi.fn())
     expect(onEdit).toHaveBeenCalledWith('~~~md-example ratio="3:7"\n# hi\n~~~')
-    expect(root.querySelector('.markdown-example-layout-popover')?.hasAttribute('hidden')).toBe(true)
+    expect(root.querySelector('.block-popover')?.hasAttribute('hidden')).toBe(true)
   })
 
   it('applies a manually typed ratio', () => {
@@ -217,9 +217,9 @@ describe('example overlays', () => {
     enhanceExampleLayoutsInRoot(root)
     const trigger = actionButton(root, '[data-example-action="toggle-settings"]')
     executeExampleLayoutAction('toggle-settings', trigger, '', vi.fn(), vi.fn())
-    expect(root.querySelector('.markdown-example-settings')?.hasAttribute('hidden')).toBe(false)
+    expect(root.querySelector('.block-settings')?.hasAttribute('hidden')).toBe(false)
     expect(closeExampleOverlayFromEvent(trigger)).toBe(trigger)
-    expect(root.querySelector('.markdown-example-settings')?.hasAttribute('hidden')).toBe(true)
+    expect(root.querySelector('.block-settings')?.hasAttribute('hidden')).toBe(true)
   })
 
   it('closes an open overlay when the pointer lands elsewhere in the surface', () => {
@@ -229,10 +229,10 @@ describe('example overlays', () => {
     enhanceExampleLayoutsInRoot(container)
     const trigger = actionButton(container, '[data-example-action="toggle-layout"]')
     executeExampleLayoutAction('toggle-layout', trigger, '', vi.fn(), vi.fn())
-    expect(container.querySelector('.markdown-example-layout-popover')?.hasAttribute('hidden')).toBe(false)
+    expect(container.querySelector('.block-popover')?.hasAttribute('hidden')).toBe(false)
     const outside = document.createElement('p')
     container.append(outside)
     dismissExampleOverlays(outside)
-    expect(container.querySelector('.markdown-example-layout-popover')?.hasAttribute('hidden')).toBe(true)
+    expect(container.querySelector('.block-popover')?.hasAttribute('hidden')).toBe(true)
   })
 })

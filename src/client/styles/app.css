@@ -6,6 +6,7 @@
 @import './prose/lists.css';
 @import './prose/blocks.css';
 @import './prose/widgets.css';
+@import './prose/block-tools.css';
 @import './prose/js-example.css';
 @import './prose/code.css';
 @import './prose/content.css';

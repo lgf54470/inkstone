@@ -121,4 +121,14 @@ export {
   formatExampleSplitInfo,
 } from './split'
 export type { ExampleFamily, ExampleLayout, ExampleSplitOptions } from './split'
+export {
+  CODE_OPTION_DEFAULTS,
+  codeTheme,
+  parseCollapseValue,
+  readCodeOptions,
+  readHighlightInput,
+  writeCodeOptions,
+} from './code-options'
+export type { CodeBlockOptions, CodeTheme } from './code-options'
+export { infoFlag, infoOption, infoTokens } from './info-string'
 export { escapeAttr } from './util'

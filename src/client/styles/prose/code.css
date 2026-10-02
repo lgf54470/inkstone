@@ -113,6 +113,18 @@
 .ink-prose .code-block.is-code-collapsed pre {
   overflow-y: hidden;
 }
+.ink-prose .code-block[data-code-wrap='true'] pre {
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.ink-prose .code-block[data-code-wrap='true'] :is(code, .line) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.ink-prose .code-block > .block-settings .block-text-input.is-title {
+  flex-basis: 190px;
+}
 
 
 .ink-prose .code-block .line {

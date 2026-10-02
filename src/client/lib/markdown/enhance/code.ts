@@ -86,9 +86,22 @@ export async function highlightCodeBlocks(root: HTMLElement): Promise<void> {
 }
 let generatedCodeBlockId = 0
 
+/**
+ * How many lines this block folds beyond: its own `collapse=` when it wrote one (0 meaning it never
+ * folds), otherwise the preview's setting. A block states its own preference because the note is
+ * what a reader shares, while the setting is only this account's default.
+ */
+function blockThreshold(block: HTMLElement, fallback: number): number {
+  const own = block.dataset.codeCollapseAt
+  if (own === undefined || own === '') return fallback
+  const value = Number(own)
+  return Number.isInteger(value) && value >= 0 ? value : fallback
+}
+
 export function configureCodeBlockCollapsing(root: HTMLElement, collapseLines: number): void {
-  const threshold = Number.isInteger(collapseLines) && collapseLines >= 8 ? collapseLines : 0
+  const fallback = Number.isInteger(collapseLines) && collapseLines >= 8 ? collapseLines : 0
   root.querySelectorAll<HTMLElement>('.code-block:not(.markdown-example-code)').forEach((block) => {
+    const threshold = blockThreshold(block, fallback)
     const button = block.querySelector<HTMLButtonElement>('[data-code-collapse]')
     const pre = block.querySelector<HTMLElement>(':scope > pre')
     const lineCount = block.querySelectorAll(':scope pre code > .line').length

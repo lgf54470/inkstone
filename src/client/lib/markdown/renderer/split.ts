@@ -8,6 +8,8 @@
  * write — there is no per-block state to keep in sync.
  */
 
+import { infoFlag, infoOption, infoTokens } from './info-string'
+
 export type ExampleLayout = 'lr' | 'rl' | 'tb' | 'bt'
 export type ExampleFamily = 'md' | 'js'
 
@@ -54,16 +56,6 @@ const LAYOUTS: Record<string, ExampleLayout> = {
 
 const MANAGED_KEYS = new Set(['layout', 'direction', 'ratio'])
 
-function optionToken(value: string): { key: string; value: string } | null {
-  const clean = value.replace(/^["']|["']$/g, '').trim()
-  const separator = clean.indexOf('=')
-  if (separator === -1) return null
-  return {
-    key: clean.slice(0, separator).toLowerCase().trim(),
-    value: clean.slice(separator + 1).trim().replace(/^["']|["']$/g, ''),
-  }
-}
-
 /** `a:b` in parts, each 1–99: a share of 0 would collapse a panel, which is not a ratio. */
 export function parseExampleRatio(value: string): [number, number] | null {
   const match = /^(\d{1,3})\s*:\s*(\d{1,3})$/.exec(value.trim())
@@ -105,15 +97,15 @@ export function parseExampleSplit(info: string, defaults: ExampleSplitOptions): 
     layout: defaults.layout,
     ratio: [defaults.ratio[0], defaults.ratio[1]],
   }
-  for (const raw of info.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []) {
-    const token = optionToken(raw)
+  for (const raw of infoTokens(info)) {
+    const token = infoOption(raw)
     if (!token || !MANAGED_KEYS.has(token.key)) continue
     if (token.key === 'ratio') {
       const ratio = parseExampleRatio(token.value)
       if (ratio) options.ratio = ratio
       continue
     }
-    const layout = LAYOUTS[token.value.toLowerCase()]
+    const layout = LAYOUTS[infoFlag(token.value)]
     if (layout) options.layout = layout
   }
   return options
@@ -130,11 +122,10 @@ export function formatExampleSplitInfo(
   next: ExampleSplitOptions,
   defaults: ExampleSplitOptions,
 ): string {
-  const kept = (info.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [])
-    .filter((raw) => {
-      const token = optionToken(raw)
-      return !token || !MANAGED_KEYS.has(token.key)
-    })
+  const kept = infoTokens(info).filter((raw) => {
+    const token = infoOption(raw)
+    return !token || !MANAGED_KEYS.has(token.key)
+  })
   if (next.layout !== defaults.layout) kept.push(`layout=${next.layout}`)
   if (!sameRatio(next.ratio, defaults.ratio)) kept.push(`ratio="${exampleRatioLabel(next.ratio)}"`)
   return kept.join(' ')

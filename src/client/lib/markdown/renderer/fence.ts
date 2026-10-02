@@ -10,6 +10,7 @@ import { detectSlidesMode, BENTO_SLIDES_LANGUAGES } from '../slides'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
+import { readCodeOptions } from './code-options'
 import { EXAMPLE_SPLIT_DEFAULTS, exampleRatioLabel, parseExampleSplit } from './split'
 import type { ExampleFamily } from './split'
 import type { FenceInfo } from './types'
@@ -132,8 +133,17 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
   if ((BENTO_SLIDES_LANGUAGES as readonly string[]).includes(info.language))
     return renderBentoSlidesBlock(token, line, rendererEnv)
   const title = info.title || info.language || t('markdown.code')
+  const code = readCodeOptions(token.info)
+  const optionAttrs = [
+    info.lineNumbers ? ' data-line-numbers="true"' : '',
+    info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : '',
+    code.title ? ` data-code-title="${escapeAttr(code.title)}"` : '',
+    code.wrap ? ' data-code-wrap="true"' : '',
+    code.collapse === null ? '' : ` data-code-collapse-at="${code.collapse}"`,
+    code.theme === 'auto' ? '' : ` data-code-theme="${code.theme}"`,
+  ].join('')
   return [
-    `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
+    `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}"${line} data-lang="${escapeAttr(info.language)}" data-code-start="${info.startLine}"${optionAttrs}>`,
     `<div class="code-block-head">`,
     `<span class="code-title">${escapeHtml(title)}</span>`,
     info.title && info.language ? `<span class="code-lang">${escapeHtml(info.language)}</span>` : '',
