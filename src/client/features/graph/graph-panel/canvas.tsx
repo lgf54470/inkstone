@@ -437,8 +437,8 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     origEndDrag(clientX, clientY, modifierKey); setIsDragging(false)
   }, [origEndDrag])
 
-  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext, props.onPinChange)
-  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onExcludeChange: props.onExcludeChange, excludedNoteIds: prefs.excludedNoteIds, onFilterByTag })
+  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext, props.onPinChange, onFilterByTag)
+  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin: props.onPinChange ? onTogglePin : undefined, onExcludeChange: props.onExcludeChange, excludedNoteIds: prefs.excludedNoteIds, onFilterByTag })
   const selectNode = useGraphNodeFocus(stateRef, setSelectedId)
   useGraphControls(controlsRef, stateRef, fitGraph, selectNode)
   const colorLegends = useGraphLegends(data, prefs)

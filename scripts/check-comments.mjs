@@ -3525,7 +3525,9 @@ const allowed = new Map([
     '/**\n * Which frame broke, held where the surface can say so (G-13). The canvas stops drawing on its own and\n * the reader needs both a word about it and a way back, so this sits beside the loop that reports it.\n */',
     '// `raf` is back at 0 when a frame is refused, so the same ask that drives every other repaint is',
     '// the way back here too.',
+    '/**\n * Whether the actions menu has anything at all to say about a node. An empty popup is worse than no\n * popup: it takes the focus and returns nothing to press (G-07, F-10).\n */',
     '/** Where the node menu opens, and what its pin item does — the panel owns persistence, see `onPinChange`. */',
+    '/** Absent where a pin cannot be stored: the graph inside a note reads the preferences, it never writes them (G-07, F-10). */',
     '/** Absent where a note cannot be taken out of the picture: the graph inside a note is that note (G-42). */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
@@ -3542,6 +3544,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas-pin-persistence.test.ts', [
     '/**\n * A pin the reader placed is a decision about the picture, so it has to outlive the panel that drew it\n * (G-07 step 2). The canvas cannot persist anything itself — the preferences belong to the panel that\n * owns them — so what it owes is a call: the node it just pinned, and whether it is now pinned.\n */',
+    '// The companion panel reads the preferences and never writes them, so a pin placed there lives exactly',
+    '// as long as the note stays open — offering it would promise a second of the two.',
+    '// The note\'s own graph: no tag filter to narrow with, and no preferences to write a pin into.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-pointer-layout.test.ts', [
     '/**\n * A drag reads the pointer\'s place in the graph on every move, and the canvas box that reading is\n * measured against does not move while the pointer does. Asking the layout engine for that box on each\n * event forced a synchronous layout per move; the box is now kept beside the numbers the resize\n * observer already watches. This case counts the box reads one drag costs.\n */',

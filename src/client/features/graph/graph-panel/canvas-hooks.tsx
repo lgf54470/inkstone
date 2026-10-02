@@ -319,19 +319,30 @@ export function useGraphPaintError(stateRef: RefObject<CanvasState>) {
   }
 }
 
+/**
+ * Whether the actions menu has anything at all to say about a node. An empty popup is worse than no
+ * popup: it takes the focus and returns nothing to press (G-07, F-10).
+ */
+export function nodeHasMenuActions(node: CanvasNode, actions: { canPin: boolean, canFilterByTag: boolean }): boolean {
+  if (node.kind !== 'tag') return true
+  return actions.canPin || actions.canFilterByTag
+}
+
 /** Where the node menu opens, and what its pin item does — the panel owns persistence, see `onPinChange`. */
 export function useGraphNodeActions(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   stateRef: RefObject<CanvasState>,
   setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void,
   onPinChange: ((id: string, pinned: boolean) => void) | undefined,
+  onFilterByTag: ((tag: string) => void) | undefined,
 ) {
   const openNodeMenu = useCallback((node: CanvasNode) => {
+    if (!nodeHasMenuActions(node, { canPin: Boolean(onPinChange), canFilterByTag: Boolean(onFilterByTag) })) return
     const canvas = canvasRef.current
     if (!canvas) return
     const anchor = computeNodeAnchor(canvas, stateRef.current, node)
     setContext({ x: anchor.x, y: anchor.y, node })
-  }, [canvasRef, setContext, stateRef])
+  }, [canvasRef, onFilterByTag, onPinChange, setContext, stateRef])
   const onTogglePin = useCallback((node: CanvasNode) => {
     node.pinned = !node.pinned
     onPinChange?.(node.id, node.pinned === true)
@@ -346,7 +357,8 @@ export interface GraphMenuItemsOptions {
   onCreateNote: (title: string) => void
   onClose: () => void
   onMakeLocal: () => void
-  onTogglePin: (node: CanvasNode) => void
+  /** Absent where a pin cannot be stored: the graph inside a note reads the preferences, it never writes them (G-07, F-10). */
+  onTogglePin?: (node: CanvasNode) => void
   /** Absent where a note cannot be taken out of the picture: the graph inside a note is that note (G-42). */
   onExcludeChange?: (id: string, excluded: boolean) => void
   excludedNoteIds?: readonly string[]
@@ -356,15 +368,17 @@ export interface GraphMenuItemsOptions {
 export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onExcludeChange, excludedNoteIds, onFilterByTag }: GraphMenuItemsOptions): MenuItem[] {
   if (!context) return []
   const node = context.node
-  const pinItem: MenuItem = { id: 'pin', label: node.pinned ? t('graph.unpin_node') : t('graph.pin_node'), icon: <Pin size={14}/>, onSelect: () => onTogglePin(node) }
+  const pinItem: MenuItem | null = onTogglePin
+    ? { id: 'pin', label: node.pinned ? t('graph.unpin_node') : t('graph.pin_node'), icon: <Pin size={14}/>, onSelect: () => onTogglePin(node) }
+    : null
   if (node.kind === 'tag') {
-    if (!onFilterByTag) return [pinItem]
+    if (!onFilterByTag) return pinItem ? [pinItem] : []
     return [
       { id: 'filter', label: t('graph.filter_by_tag', { value: node.title }), icon: <Tag size={14}/>, onSelect: () => {
         onFilterByTag(node.title)
         onClose()
       } },
-      { ...pinItem, separatorBefore: true },
+      ...(pinItem ? [{ ...pinItem, separatorBefore: true }] : []),
     ]
   }
   const isExcluded = excludedNoteIds?.includes(node.id) ?? false
@@ -383,7 +397,7 @@ export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onM
       onClose()
     } },
     { id: 'right', label: t('graph.open_to_right'), icon: <PanelRightClose size={14}/>, disabled: node.kind === 'unresolved', onSelect: () => { void onOpenNote(node.id, { pane: 'secondary' }) } },
-    pinItem,
+    ...(pinItem ? [pinItem] : []),
     ...(excludeItem ? [excludeItem] : []),
     { id: 'local', label: t('graph.make_local_center'), icon: <CircleDot size={14}/>, disabled: node.kind === 'unresolved', separatorBefore: true, onSelect: () => {
       void onOpenNote(node.id)
