@@ -3611,6 +3611,8 @@ const allowed = new Map([
     '// Read by hand from the rule the panel draws with: the tip sits 2 units short of the rim of the node',
     '// at (100, 40) r 20, and the two arms are 5 units long at ±30 degrees off the link.',
     '// Every weight the drawing chose, in the order it was set: the faded ones are what a file must not carry.',
+    '// The box has to be measured with the same flag the drawing uses, or an untitled file carries a',
+    '// band of empty ground where the names used to be.',
   ]],
   ['src/client/features/graph/graph-panel/graph-export.ts', [
     '/** Device pixels per world unit in the exported picture, so the file is sharper than the panel. */',
@@ -3618,8 +3620,10 @@ const allowed = new Map([
     '/** The picture is drawn at world scale, so type and line widths match the panel at zoom 1 however far the graph is fitted. */',
     '/** Clearance around the outermost node, so a label is not cropped by the edge of the file. */',
     '/** The canvas the picture needs: two device pixels per world unit, unless the whole graph would not fit. */',
+    '// A transparent file is the graph and nothing else: the ground belongs to wherever it gets pasted (G-45).',
     '// An exported picture is the graph, not the search the reader was running on it (G-14).',
     '/** Draws the whole graph into a file, named by the scope it was built for. */',
+    '/** What the file draws of what the panel shows: the reader can hand over the graph without its names (G-05). */',
     '/** Two decimals place a node exactly and keep the file readable. */',
     '/** A colour or a font name arrives from CSS, so it goes into an attribute only after escaping. */',
   ]],
@@ -3661,6 +3665,7 @@ const allowed = new Map([
     '// The bounds are the server\'s own, so a slider cannot offer a number the route would refuse.',
     '// Duplicates collapse here: a pin held twice would be drawn once and counted twice.',
     '// A pin that arrives twice is stored once: the panel dedupes on the way in, so ordering is the only rule left.',
+    '// A stored string is not a switch: the default is what a reader who never chose gets.',
     '/** The rows a single note produces on its own, which is the colour it is drawn under. */',
     '/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */',
   ]],
@@ -3737,6 +3742,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
     '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-export-options.test.ts', [
+    '/**\n * An exported graph is the picture a reader pastes somewhere else, so the two choices that decide what\n * leaves the app — the note names and the ground under it — belong with the rest of the picture\'s\n * settings (G-05, G-45). These cases open the drawer the reader opens and follow one switch from the\n * drawer into storage, which is what the next export reads.\n */',
   ]],
   ['src/client/features/graph/graph-panel/panel-force-slider.test.ts', [
     '/**\n * A force slider is the one control a reader drags through dozens of values in a second, so these cases\n * ask what a single drag costs: how many times the panel is told, and how many times storage is written\n * (G-11). The other half pins that the track a reader drags on and the clamp a stored value passes\n * through are the same numbers, read from one table (G-32).\n */',
@@ -8967,6 +8975,8 @@ const allowed = new Map([
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
+    '/** Leave the note titles out of the exported file: a pasted picture carries whatever the canvas shows (G-05). */',
+    '/** Export without a ground colour, so the picture sits on whatever surface it is pasted onto (G-45). */',
     '/** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */',
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
     '/**\n * The boolean defaults, keyed by preference. `DEFAULT_PREFERENCES` spreads this rather than writing the\n * seven values out again, so the manifest is the only place a default is decided (G-36).\n */',

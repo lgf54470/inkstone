@@ -77,15 +77,19 @@ export function graphExportSvg(
   prefs: GraphPreferences,
   fontFamily: string,
 ): string {
-  const bounds = graphExportBounds(state.nodes, prefs.labels)
+  const titles = exportTitles(prefs)
+  const bounds = graphExportBounds(state.nodes, titles)
   const box = `${num(bounds.minX)} ${num(bounds.minY)} ${num(bounds.width)} ${num(bounds.height)}`
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${num(bounds.width)}" height="${num(bounds.height)}" viewBox="${box}">`,
-    `<rect x="${num(bounds.minX)}" y="${num(bounds.minY)}" width="${num(bounds.width)}" height="${num(bounds.height)}" fill="${attr(colors.bgBase)}"/>`,
   ]
+  // A transparent file is the graph and nothing else: the ground belongs to wherever it gets pasted (G-45).
+  if (!prefs.exportTransparentBackground) {
+    parts.push(`<rect x="${num(bounds.minX)}" y="${num(bounds.minY)}" width="${num(bounds.width)}" height="${num(bounds.height)}" fill="${attr(colors.bgBase)}"/>`)
+  }
   for (const edge of state.edges) parts.push(svgEdge(edge, colors, prefs.arrows))
   for (const node of state.nodes) parts.push(svgNode(node, colors, prefs.groupBy))
-  if (prefs.labels) {
+  if (titles) {
     for (const node of state.nodes) {
       if (graphLabelVisible(node, EXPORT_DRAW_SCALE)) parts.push(svgLabel(node, colors, fontFamily))
     }
@@ -100,7 +104,8 @@ export async function graphExportPng(
   prefs: GraphPreferences,
   fontFamily: string,
 ): Promise<Blob> {
-  const bounds = graphExportBounds(state.nodes, prefs.labels)
+  const titles = exportTitles(prefs)
+  const bounds = graphExportBounds(state.nodes, titles)
   const geometry = graphExportGeometry(bounds)
   const canvas = document.createElement('canvas')
   canvas.width = geometry.width
@@ -108,8 +113,10 @@ export async function graphExportPng(
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('a 2d canvas is unavailable')
   ctx.setTransform(geometry.scale, 0, 0, geometry.scale, -bounds.minX * geometry.scale, -bounds.minY * geometry.scale)
-  ctx.fillStyle = colors.bgBase
-  ctx.fillRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
+  if (!prefs.exportTransparentBackground) {
+    ctx.fillStyle = colors.bgBase
+    ctx.fillRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
+  }
   // An exported picture is the graph, not the search the reader was running on it (G-14).
   const scene: CanvasState = { ...state, searchHits: null, scale: EXPORT_DRAW_SCALE, width: bounds.width, height: bounds.height }
   const unselected: { current: null } = { current: null }
@@ -117,7 +124,7 @@ export async function graphExportPng(
   ctx.globalAlpha = 1
   drawNodes({ ctx, state: scene, colors, emphasizedId: null, neighborIds: new Set(), groupBy: prefs.groupBy, selectedIdRef: unselected, activeNoteIdRef: unselected })
   ctx.globalAlpha = 1
-  drawLabels({ ctx, state: scene, colors, emphasizedId: null, neighborIds: new Set(), fontFamily, scale: EXPORT_DRAW_SCALE, labels: prefs.labels })
+  drawLabels({ ctx, state: scene, colors, emphasizedId: null, neighborIds: new Set(), fontFamily, scale: EXPORT_DRAW_SCALE, labels: titles })
   ctx.globalAlpha = 1
   return await canvasToPng(canvas)
 }
@@ -164,6 +171,11 @@ function svgNode(node: CanvasNode, colors: ThemeColors, groupBy: GraphPreference
 function svgLabel(node: CanvasNode, colors: ThemeColors, fontFamily: string): string {
   const y = num(node.y + node.r + GRAPH_LABEL_OFFSET)
   return `<text x="${num(node.x)}" y="${y}" font-family="${attr(fontFamily)}" font-size="${GRAPH_LABEL_FONT_SIZE}" text-anchor="middle" fill="${attr(colors.text)}" stroke="${attr(colors.bgBase)}" stroke-width="${GRAPH_LABEL_HALO}" paint-order="stroke" opacity="${GRAPH_LABEL_ALPHA}">${escapeHtml(graphNodeLabel(node))}</text>`
+}
+
+/** What the file draws of what the panel shows: the reader can hand over the graph without its names (G-05). */
+function exportTitles(prefs: GraphPreferences): boolean {
+  return prefs.labels && !prefs.exportWithoutTitles
 }
 
 /** Two decimals place a node exactly and keep the file readable. */

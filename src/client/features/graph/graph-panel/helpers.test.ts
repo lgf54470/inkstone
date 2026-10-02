@@ -131,6 +131,22 @@ describe('graph panel stored pins', () => {
   })
 })
 
+describe('graph panel export switches', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps the two export switches, and refuses anything that is not a switch (G-05, G-45)', () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ exportWithoutTitles: true, exportTransparentBackground: true }))
+    expect(loadPreferences(null).exportWithoutTitles).toBe(true)
+    expect(loadPreferences(null).exportTransparentBackground).toBe(true)
+
+    // A stored string is not a switch: the default is what a reader who never chose gets.
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ exportWithoutTitles: 'yes' }))
+    expect(loadPreferences(null).exportWithoutTitles).toBe(false)
+  })
+})
+
 describe('graph panel visuals', () => {
   it('clamps graph scale during mouse wheel zoom within bounds', () => {
     expect(graphScaleAfterWheel(1, 100)).toBeCloseTo(0.92)

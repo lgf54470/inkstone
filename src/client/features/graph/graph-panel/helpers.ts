@@ -98,6 +98,8 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       tag: typeof stored.tag === 'string' ? truncateText(stored.tag.trim(), 60) : '',
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
       pinnedNodeIds: pinnedIdsPreference(stored.pinnedNodeIds),
+      exportWithoutTitles: booleanPreference(stored.exportWithoutTitles, DEFAULT_PREFERENCES.exportWithoutTitles),
+      exportTransparentBackground: booleanPreference(stored.exportTransparentBackground, DEFAULT_PREFERENCES.exportTransparentBackground),
       clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
       clearClosesPanel: booleanPreference(stored.clearClosesPanel, DEFAULT_PREFERENCES.clearClosesPanel),
       repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, GRAPH_FORCE_RANGE.repulsion.min, GRAPH_FORCE_RANGE.repulsion.max),

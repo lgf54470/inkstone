@@ -1,10 +1,11 @@
 import { useEffect, useId, useState, type ElementType, type ReactNode } from 'react'
-import { ArrowDownToLine, ArrowRight, ChevronRight, Filter, Info, Network, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowRight, ChevronRight, Download, Filter, Info, Network, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
 import type { Folder, Tag } from '@shared/types'
 import {
   GRAPH_APPEARANCE_TOGGLES,
   GRAPH_CLEAR_TOGGLES,
+  GRAPH_EXPORT_TOGGLES,
   GRAPH_DEPTHS,
   GRAPH_FORCE_RANGES,
   GRAPH_SHOW_TOGGLES,
@@ -57,6 +58,11 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           <GraphColorRules groups={prefs.colorGroups} onChange={(value) => onChange('colorGroups', value)}/>
           {GRAPH_APPEARANCE_TOGGLES.map((control) => (
             <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
+          ))}
+        </GraphSection>
+        <GraphSection icon={<Download size={13}/>} title={t('graph.export_options')}>
+          {GRAPH_EXPORT_TOGGLES.map((control) => (
+            <GraphToggle key={control.prefKey} label={t(control.labelKey)} hint={control.hintKey ? t(control.hintKey) : undefined} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
           ))}
         </GraphSection>
         <GraphSection icon={<ArrowRight size={13}/>} title={t('graph.forces')}>

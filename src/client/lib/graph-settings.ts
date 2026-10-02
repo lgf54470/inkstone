@@ -42,6 +42,10 @@ export interface GraphPreferences {
   clearResetsTag: boolean
   /** Whether clearing the sidebar selection also closes the graph panel. */
   clearClosesPanel: boolean
+  /** Leave the note titles out of the exported file: a pasted picture carries whatever the canvas shows (G-05). */
+  exportWithoutTitles: boolean
+  /** Export without a ground colour, so the picture sits on whatever surface it is pasted onto (G-45). */
+  exportTransparentBackground: boolean
   repulsion: number
   linkDistance: number
   nodeScale: number
@@ -72,6 +76,8 @@ export const GRAPH_SETTINGS_TOGGLES: ReadonlyArray<GraphToggleControl> = [
   { prefKey: 'showTagNodes', labelKey: 'graph.show_tags', default: false },
   { prefKey: 'arrows', labelKey: 'graph.show_arrows', default: true },
   { prefKey: 'labels', labelKey: 'graph.show_labels', default: true },
+  { prefKey: 'exportWithoutTitles', labelKey: 'graph.export_without_titles', hintKey: 'graph.export_without_titles_hint', default: false },
+  { prefKey: 'exportTransparentBackground', labelKey: 'graph.export_transparent_background', hintKey: 'graph.export_transparent_background_hint', default: false },
 ]
 
 /**
@@ -85,6 +91,7 @@ export const GRAPH_TOGGLE_DEFAULTS = Object.fromEntries(
 export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel')
 export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved' || control.prefKey === 'showTagNodes')
 export const GRAPH_APPEARANCE_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'arrows' || control.prefKey === 'labels')
+export const GRAPH_EXPORT_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'exportWithoutTitles' || control.prefKey === 'exportTransparentBackground')
 
 /**
  * The three force sliders: their bounds, their step and their default, in one table. The drawer draws

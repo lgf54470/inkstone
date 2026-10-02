@@ -138,11 +138,12 @@ interface PaintCalls {
   setTransform: number[][]
   arc: number[][]
   fillText: string[]
+  fillRect: number[][]
   globalAlpha: number[]
 }
 
 function emptyPaintCalls(): PaintCalls {
-  return { canvas: null, setTransform: [], arc: [], fillText: [], globalAlpha: [] }
+  return { canvas: null, setTransform: [], arc: [], fillText: [], fillRect: [], globalAlpha: [] }
 }
 
 function encodesPng(done: (blob: Blob | null) => void): void {
@@ -161,7 +162,8 @@ function stubPainting(encode: (done: (blob: Blob | null) => void) => void): () =
       calls.canvas = this
       const painted: Record<string, unknown> = {
         setTransform: (...args: number[]) => { calls.setTransform.push(args) },
-        fillRect: () => {}, clearRect: () => {}, save: () => {}, restore: () => {},
+        fillRect: (...args: number[]) => { calls.fillRect.push(args) },
+        clearRect: () => {}, save: () => {}, restore: () => {},
         beginPath: () => {}, closePath: () => {}, fill: () => {}, stroke: () => {},
         moveTo: () => {}, lineTo: () => {},
         arc: (...args: number[]) => { calls.arc.push(args) },
@@ -310,4 +312,43 @@ describe('graph export file (FEAT-05)', () => {
   })
 })
 
+describe('a picture meant to be shared (G-05, G-45)', () => {
+  const sharedPair = (): CanvasState => createState([linked, far], [{ a: linked, b: far }])
+  const withPrefs = (overrides: Partial<GraphPreferences>): GraphPreferences => ({ ...DEFAULT_PREFERENCES, ...overrides })
+  const vector = (overrides: Partial<GraphPreferences>): string => graphExportSvg(sharedPair(), readThemeColors(), withPrefs(overrides), 'Inter')
 
+  it('writes each title and a background into the file by default', () => {
+    const svg = vector({})
+    expect(svg.match(/<text/g)?.length).toBe(2)
+    expect(svg).toContain('<rect')
+  })
+
+  it('leaves the note names out of the vector file when the reader asks for untitled', () => {
+    expect(vector({ exportWithoutTitles: true })).not.toContain('<text')
+  })
+
+  it('leaves the background out of the vector file when the reader asks for transparent', () => {
+    expect(vector({ exportTransparentBackground: true })).not.toContain('<rect')
+  })
+
+  it('draws no title and paints no ground in the picture either', async () => {
+    restore = startPainting()
+    await graphExportPng(sharedPair(), readThemeColors(), withPrefs({ exportWithoutTitles: true, exportTransparentBackground: true }), 'Inter')
+    expect(calls.fillText).toEqual([])
+    expect(calls.fillRect).toEqual([])
+  })
+
+  it('still paints the ground it did take, and the titles it left on', async () => {
+    restore = startPainting()
+    await png(sharedPair())
+    expect(calls.fillRect).toHaveLength(1)
+    expect(calls.fillText).toEqual(['Note 1', 'Note 2'])
+  })
+
+  it('asks for a shorter file when it is not going to draw the titles', () => {
+    // The box has to be measured with the same flag the drawing uses, or an untitled file carries a
+    // band of empty ground where the names used to be.
+    const height = (svg: string): number => Number(svg.match(/height="([\d.]+)"/)?.[1] ?? 0)
+    expect(height(vector({}))).toBeGreaterThan(height(vector({ exportWithoutTitles: true })))
+  })
+})
