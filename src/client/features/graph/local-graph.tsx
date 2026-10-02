@@ -109,6 +109,7 @@ function useLocalGraphData(noteId: string, reload: number, prefs: GraphPreferenc
       limit: prefs.limit,
       includeOrphans: prefs.includeOrphans,
       includeUnresolved: prefs.includeUnresolved,
+      direction: prefs.direction,
       showTagNodes: prefs.showTagNodes,
     }
     void (async () => {

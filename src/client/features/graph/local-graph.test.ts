@@ -236,6 +236,16 @@ describe('the reach the companion panel answers for (G-21)', () => {
     unmount()
   })
 
+  it('asks for the direction the reader set for the whole picture (G-44)', async () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ mode: 'local', direction: 'incoming' }))
+    vi.mocked(api.graph).mockResolvedValue(taggedGraph)
+    const { unmount } = renderElement(createElement(LocalGraphPanel, { noteId: 'note-1' }))
+    await settleGraphPanel()
+
+    expect(companionAsked().direction).toBe('incoming')
+    unmount()
+  })
+
   it('widens the neighbourhood from its own header without rewriting the reader’s settings', async () => {
     localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ depth: 1 }))
     vi.mocked(api.graph).mockResolvedValue(taggedGraph)

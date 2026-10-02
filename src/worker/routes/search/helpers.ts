@@ -364,6 +364,17 @@ export function parseExcludedNoteIds(
 
 
 /**
+ * Which side of a link a local graph walks (G-44). `incoming` is the notes that point at the centre —
+ * who references it — `outgoing` is what it points at, and `both` is the neighbourhood the panel has
+ * always drawn. Unknown spellings answer `both`, so a stale preference cannot empty the picture.
+ */
+export type GraphLinkDirection = 'both' | 'incoming' | 'outgoing'
+
+export function parseGraphLinkDirection(raw: string | undefined): GraphLinkDirection {
+  return raw === 'incoming' || raw === 'outgoing' ? raw : 'both'
+}
+
+/**
  * The clause that leaves a reader's excluded notes out of a graph page. The whole list travels as one
  * bound json_each argument, so its length never runs into D1's hundred-variable ceiling, and one id can
  * be kept in — the centre of a local graph is the note the reader is standing on (G-42).
@@ -371,4 +382,35 @@ export function parseExcludedNoteIds(
 export function excludedNoteClause(excluded: readonly string[], keepId: string | null): { filter: string, bind: string } | null {
   const kept = excluded.filter((id) => id !== keepId)
   return kept.length === 0 ? null : { filter: 'n.id NOT IN (SELECT value FROM json_each(?))', bind: JSON.stringify(kept) }
+}
+
+/**
+ * The walk itself, with only one thing varying by direction (G-44): which end of a link has to be the
+ * note already reached, and therefore which end the next note is. `both` keeps the two-sided test the
+ * panel has always used, so an unset direction answers exactly what it did before.
+ */
+export function localNeighborhoodSql(direction: GraphLinkDirection): string {
+  const reached = direction === 'incoming'
+    ? 'l.target_note_id = neighborhood.id'
+    : direction === 'outgoing'
+      ? 'l.source_note_id = neighborhood.id'
+      : '(l.source_note_id = neighborhood.id OR l.target_note_id = neighborhood.id)'
+  const neighbour = direction === 'incoming'
+    ? 'l.source_note_id'
+    : direction === 'outgoing'
+      ? 'l.target_note_id'
+      : 'CASE WHEN l.source_note_id = neighborhood.id THEN l.target_note_id ELSE l.source_note_id END'
+  return `WITH RECURSIVE neighborhood(id, depth, path) AS (
+    SELECT ? AS id, 0 AS depth, ',' || ? || ',' AS path
+    UNION
+    SELECT adjacent.id,
+      neighborhood.depth + 1,
+      neighborhood.path || adjacent.id || ','
+    FROM neighborhood
+    JOIN links l ON l.user_id = ? AND l.target_note_id IS NOT NULL
+      AND ${reached}
+    JOIN notes adjacent ON adjacent.id = ${neighbour}
+      AND adjacent.user_id = l.user_id AND adjacent.deleted_at IS NULL AND adjacent.is_archived = 0
+    WHERE neighborhood.depth < ? AND INSTR(neighborhood.path, ',' || adjacent.id || ',') = 0
+  ), nearby AS (SELECT id, MIN(depth) AS depth FROM neighborhood GROUP BY id)`
 }

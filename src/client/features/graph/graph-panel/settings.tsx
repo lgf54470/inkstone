@@ -8,6 +8,7 @@ import {
   GRAPH_EXPORT_TOGGLES,
   GRAPH_DEPTHS,
   GRAPH_FORCE_RANGES,
+  GRAPH_LINK_DIRECTIONS,
   GRAPH_SHOW_TOGGLES,
   type GraphPreferences,
   type GroupBy,
@@ -120,7 +121,11 @@ function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLi
         <Button type='button' variant='ghost' size='sm' onClick={onRestoreAllExcluded} className='h-6 shrink-0 px-1.5 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-transparent hover:underline'>{t('graph.restore_all_notes')}</Button>
       </div>}
       <GraphRange label={t('graph.node_limit')} min={LIMITS.graphNodeLimitMin} max={LIMITS.graphNodeLimitMax} step={GRAPH_LIMIT_STEP} value={prefs.limit} onCommit={(value) => onChange('limit', value)}/>
-      {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={GRAPH_DEPTHS.map((depth) => [String(depth), String(depth)] as [string, string])}/>}
+      {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={GRAPH_DEPTHS.map((depth) => [String(depth), String(depth)] as [string, string])}
+      />}
+      {prefs.mode === 'local' && <GraphSelect label={t('graph.link_direction')} value={prefs.direction}
+        onChange={(value) => onChange('direction', value as GraphPreferences['direction'])}
+        options={GRAPH_LINK_DIRECTIONS.map((option) => [option.value, t(option.labelKey)] as [string, string])}/>}
     </GraphSection>
   )
 }

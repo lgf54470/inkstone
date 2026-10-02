@@ -80,6 +80,7 @@ function graphRequest(prefs: GraphPreferences, activeNoteId: string | null, quer
     includeUnresolved: prefs.includeUnresolved,
     showTagNodes: prefs.showTagNodes,
     excluded: prefs.excludedNoteIds.length ? prefs.excludedNoteIds : undefined,
+    direction: prefs.mode === 'local' ? prefs.direction : undefined,
     limit: prefs.limit,
   }
 }
@@ -351,6 +352,7 @@ function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | nu
     prefs.includeUnresolved,
     prefs.showTagNodes,
     prefs.excludedNoteIds,
+    prefs.direction,
     query,
     selectedTags,
   ])

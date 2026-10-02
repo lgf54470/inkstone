@@ -48,5 +48,7 @@ export interface GraphQuery {
   showTagNodes?: boolean
   /** Notes the reader took out of the graph. Sent comma-separated, like `tags` (G-42). */
   excluded?: string[]
+  /** Which side of a link a local graph walks. Only meaningful with `mode: 'local'` (G-44). */
+  direction?: 'both' | 'incoming' | 'outgoing'
   limit?: number
 }

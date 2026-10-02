@@ -2771,6 +2771,7 @@ const allowed = new Map([
     '// keeps the pair free of an import cycle.',
   ]],
   ['src/client/demo/backend.test.ts', [
+    '/** Three notes, one folder and one tag: enough for a filter line to have something to narrow. */',
     '// A note with no folder has no path to exclude, so the negation keeps it.',
   ]],
   ['src/client/demo/backend/helpers/info.ts', [
@@ -2841,6 +2842,7 @@ const allowed = new Map([
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
   ['src/client/demo/backend/routes/search.ts', [
+    '/** Which end of a link the walk may step to, in the demo backend as in the route (G-44). */',
     '// The same bounds the worker clamps to and the settings offer, so the demo cannot answer a request the',
     '// real app would refuse (G-21).',
   ]],
@@ -3709,6 +3711,7 @@ const allowed = new Map([
     '/**\n * Pans the camera just far enough to hold the node the keyboard reached, so an arrow key never moves\n * the selection off screen (G-23). Only the offset changes: the layout\'s own coordinates and the\n * zoom the reader chose are theirs. Before the canvas has been measured there is no viewport to\n * bring anything into, so the state is left alone.\n */',
     '/**\n * An id list a reader can hold as a preference. Only two things can name a node on the canvas: a note\'s\n * ULID or a tag\'s `tag:` key, and a list entry that is neither did not come from this app — it is dropped\n * rather than trusted, and the list is capped so a stored value cannot outgrow what the route accepts\n * (G-07, G-42).\n */',
     '/**\n * The list after the reader adds or removes one id. A fresh entry goes last so the stored order follows\n * the order the reader made them in, and removing one drops every copy rather than just the last.\n */',
+    '/** A stored direction the route does not know is no direction at all: the neighbourhood goes back to both ways. */',
     '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
     '/**\n * Which of the ten graph tag colours a name lands on. The slot is theme-independent, so a flip\n * changes the values behind the slots and never which tag wears which.\n */',
     '/** The token a slot\'s colour lives in, so the DOM legend can name it and let the theme paint it. */',
@@ -3793,6 +3796,11 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-legend-cycle.test.ts', [
     '/**\n * The legend has always said which colour means what; a reader who wants *only* that colour had to type the\n * filter line out (G-14 ④). Every row is already a line the search box understands — a rule carries its own\n * query, a tag row its `tag:`, a folder row its `path:` — so pressing one writes into the search line rather\n * than inventing a third way to narrow a graph: first press fades to it, second asks the server for only it,\n * third puts the graph back.\n */',
     '// The rules are preferences, so the legend they draw is on screen only because a reader wrote them.',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-link-direction.test.ts', [
+    '/**\n * Who points at a note and what it points at are two different questions, and the local graph has only\n * ever answered both (G-44). The choice belongs beside the depth it narrows, in the surface that is\n * already centred on a note — the overview has no centre to point from.\n */',
+    '/** The scope toggle names its options by their visible text, not by an aria-label of their own. */',
+    '// The local graph is centred on the note the reader is reading, so the case puts one under the cursor.',
   ]],
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
@@ -9007,6 +9015,7 @@ const allowed = new Map([
     '// the panel cannot toggle, or a toggle that governs nothing, fails here.',
   ]],
   ['src/client/lib/graph-settings.ts', [
+    '/**\n * The three directions a local graph can walk, with the words each one is offered by. The drawer renders\n * this list and `loadPreferences` validates against it, so a choice the route does not know cannot be\n * stored (G-44).\n */',
     '/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */',
     '/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */',
     '/** How many pins a page can carry: past a screenful the picture is no longer the reader\'s own. */',
@@ -9014,6 +9023,7 @@ const allowed = new Map([
     '/** Draw each tag as a node of its own, pulling notes that share it into one cluster. */',
     '/**\n   * The nodes the reader pinned, by id: a pin is a decision about the picture, so it outlives the panel\n   * that drew it (G-07 step 2). Ids only — a name would collide with a note renamed since.\n   */',
     '/**\n   * Notes the reader took out of the graph. Ids, for the same reason as a pin: a title would follow a\n   * rename and un-take a note the reader never put back (G-42).\n   */',
+    '/** Which side of a link the local graph walks around the note it is built on (G-44). */',
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
@@ -13323,6 +13333,7 @@ const allowed = new Map([
     '/** How multiple tags combine: `any` (default) for union, `all` for intersection. */',
     '/** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */',
     '/** Notes the reader took out of the graph. Sent comma-separated, like `tags` (G-42). */',
+    '/** Which side of a link a local graph walks. Only meaningful with `mode: \'local\'` (G-44). */',
   ]],
   ['src/shared/types/list.ts', [
     '/** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */',
@@ -14889,7 +14900,9 @@ const allowed = new Map([
     '// deletes can reach a row without scanning the table), and an unscoped query would answer with',
     '// whatever note happens to hold the term inside its id.',
     '/**\n * The notes a reader took out of the graph. An entry that is not a note id is dropped rather than\n * answered 400: a preference can outlive the note it named, and a stale entry must not cost the reader\n * the whole picture. The list travels as one bound json_each argument, so it never reaches D1\'s\n * hundred-variable ceiling however long it is (G-42).\n */',
+    '/**\n * Which side of a link a local graph walks (G-44). `incoming` is the notes that point at the centre —\n * who references it — `outgoing` is what it points at, and `both` is the neighbourhood the panel has\n * always drawn. Unknown spellings answer `both`, so a stale preference cannot empty the picture.\n */',
     '/**\n * The clause that leaves a reader\'s excluded notes out of a graph page. The whole list travels as one\n * bound json_each argument, so its length never runs into D1\'s hundred-variable ceiling, and one id can\n * be kept in — the centre of a local graph is the note the reader is standing on (G-42).\n */',
+    '/**\n * The walk itself, with only one thing varying by direction (G-44): which end of a link has to be the\n * note already reached, and therefore which end the next note is. `both` keeps the two-sided test the\n * panel has always used, so an unset direction answers exactly what it did before.\n */',
   ]],
   ['src/worker/routes/search/query.ts', [
     '// Drain synchronously (up to the read-path cap) before querying: a search',
@@ -15338,6 +15351,7 @@ const allowed = new Map([
     '// 55 notes plus the three above, 3 of them moved into the excluded folder: the page keeps 50 of the',
     '// 55 that are left, and the count the overflow falls back to has to read the folder join too.',
     '// The state a runaway loop leaves behind: the account\'s read key is locked for a minute.',
+    '// centre ← incoming, centre → outgoing: the two sides of the centre\'s neighbourhood.',
     '// Ids the route accepts are Crockford base-32, so these seeds avoid the letters it excludes.',
     '// A preference can outlive a note, and a stale entry has to be dropped, not answered 400.',
     '// The local graph is built around the note the reader is standing on. Taking that note out of the',

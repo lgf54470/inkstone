@@ -9,7 +9,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
 import { clampInt } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
-import { excludedNoteClause, GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX, parseExcludedNoteIds } from './helpers'
+import { excludedNoteClause, GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX, localNeighborhoodSql, parseExcludedNoteIds, parseGraphLinkDirection, type GraphLinkDirection } from './helpers'
 import { escapeLike } from './helpers'
 import { applyUnresolvedNodes } from './graph-nodes'
 import { consumeGraphReadBudget } from './read-budget'
@@ -35,6 +35,7 @@ interface GraphParams {
   includeUnresolved: boolean
   showTagNodes: boolean
   excluded: string[]
+  direction: GraphLinkDirection
   rawCenter: string
   rawFolderId: string
   legacyTag: string
@@ -138,6 +139,7 @@ function parseGraphParams(c: Context<AppBindings>): GraphParams {
     includeUnresolved: c.req.query('includeUnresolved') === '1',
     showTagNodes: c.req.query('tagNodes') === '1',
     excluded: parseExcludedNoteIds(c.req.query('excluded'), isValidId, LIMITS.graphExcludedMax),
+    direction: parseGraphLinkDirection(c.req.query('direction')),
     rawCenter,
     rawFolderId,
     legacyTag,
@@ -241,20 +243,7 @@ async function runLocalGraphQuery(
   filters: string[],
   filterBinds: unknown[],
 ): Promise<{ rows: GraphRow[]; totalNodes: number }> {
-  const neighborhood = `WITH RECURSIVE neighborhood(id, depth, path) AS (
-    SELECT ? AS id, 0 AS depth, ',' || ? || ',' AS path
-    UNION
-    SELECT adjacent.id,
-      neighborhood.depth + 1,
-      neighborhood.path || adjacent.id || ','
-    FROM neighborhood
-    JOIN links l ON l.user_id = ? AND l.target_note_id IS NOT NULL
-      AND (l.source_note_id = neighborhood.id OR l.target_note_id = neighborhood.id)
-    JOIN notes adjacent ON adjacent.id = CASE
-      WHEN l.source_note_id = neighborhood.id THEN l.target_note_id ELSE l.source_note_id END
-      AND adjacent.user_id = l.user_id AND adjacent.deleted_at IS NULL AND adjacent.is_archived = 0
-    WHERE neighborhood.depth < ? AND INSTR(neighborhood.path, ',' || adjacent.id || ',') = 0
-  ), nearby AS (SELECT id, MIN(depth) AS depth FROM neighborhood GROUP BY id)`
+  const neighborhood = localNeighborhoodSql(params.direction)
   const prefixBinds = [params.centerId, params.centerId, params.userId, params.depth]
   const result = await db.prepare(
     `${neighborhood}

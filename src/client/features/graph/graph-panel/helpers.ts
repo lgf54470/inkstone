@@ -3,7 +3,7 @@ import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
-import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, GRAPH_PINNED_MAX, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
+import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, GRAPH_LINK_DIRECTIONS, GRAPH_PINNED_MAX, type GraphColorGroup, type GraphLinkDirection, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_CAMERA_PADDING, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
 import type { CanvasNode, CanvasState } from './types'
 
@@ -99,6 +99,7 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
       pinnedNodeIds: idListPreference(stored.pinnedNodeIds, GRAPH_PINNED_MAX, true),
       excludedNoteIds: idListPreference(stored.excludedNoteIds, LIMITS.graphExcludedMax, false),
+      direction: storedDirection(stored.direction),
       exportWithoutTitles: booleanPreference(stored.exportWithoutTitles, DEFAULT_PREFERENCES.exportWithoutTitles),
       exportTransparentBackground: booleanPreference(stored.exportTransparentBackground, DEFAULT_PREFERENCES.exportTransparentBackground),
       clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
@@ -144,6 +145,12 @@ function idListPreference(value: unknown, max: number, allowTagKeys: boolean): s
  * The list after the reader adds or removes one id. A fresh entry goes last so the stored order follows
  * the order the reader made them in, and removing one drops every copy rather than just the last.
  */
+/** A stored direction the route does not know is no direction at all: the neighbourhood goes back to both ways. */
+function storedDirection(value: unknown): GraphLinkDirection {
+  const known = GRAPH_LINK_DIRECTIONS.map((option) => option.value)
+  return known.includes(value as GraphLinkDirection) ? value as GraphLinkDirection : 'both'
+}
+
 export function nextIdList(current: readonly string[], id: string, added: boolean): string[] {
   const others = current.filter((existing) => existing !== id)
   return added ? [...others, id] : others

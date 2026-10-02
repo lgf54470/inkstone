@@ -166,6 +166,21 @@ describe('graph panel excluded notes', () => {
   })
 })
 
+describe('the direction a local graph walks', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps a direction the route knows and falls back to both ways (G-44)', () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ direction: 'incoming' }))
+    expect(loadPreferences(null).direction).toBe('incoming')
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ direction: 'sideways' }))
+    expect(loadPreferences(null).direction).toBe('both')
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({}))
+    expect(loadPreferences(null).direction).toBe('both')
+  })
+})
+
 describe('graph panel visuals', () => {
   it('clamps graph scale during mouse wheel zoom within bounds', () => {
     expect(graphScaleAfterWheel(1, 100)).toBeCloseTo(0.92)

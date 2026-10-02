@@ -72,18 +72,25 @@ function buildGraphEdges(linkRecords: GraphLinkRecord[]): {
   return { uniqueEdges, degree, incoming, outgoing }
 }
 
+/** Which end of a link the walk may step to, in the demo backend as in the route (G-44). */
+function neighborhoodEdges(direction: string): Array<'in' | 'out'> {
+  return direction === 'incoming' ? ['in'] : direction === 'outgoing' ? ['out'] : ['in', 'out']
+}
+
 function localNeighborhood(
   centerId: string,
   depth: number,
   uniqueEdges: Array<{ source: string; target: string }>,
+  direction: string,
 ): Set<string> {
+  const sides = neighborhoodEdges(direction)
   const result = new Set([centerId])
   let frontier = new Set([centerId])
   for (let level = 0; level < depth; level++) {
     const next = new Set<string>()
     for (const edge of uniqueEdges) {
-      if (frontier.has(edge.source) && !result.has(edge.target)) next.add(edge.target)
-      if (frontier.has(edge.target) && !result.has(edge.source)) next.add(edge.source)
+      if (sides.includes('out') && frontier.has(edge.source) && !result.has(edge.target)) next.add(edge.target)
+      if (sides.includes('in') && frontier.has(edge.target) && !result.has(edge.source)) next.add(edge.source)
     }
     for (const id of next) result.add(id)
     frontier = next
@@ -201,7 +208,7 @@ function graphResponse(c: Context, state: DemoState): Response {
   const { uniqueEdges, degree, incoming, outgoing } = buildGraphEdges(linkRecords)
   let allowed = new Set(active.map((note) => note.id))
   if (mode === 'local' && centerId) {
-    allowed = localNeighborhood(centerId, depth, uniqueEdges)
+    allowed = localNeighborhood(centerId, depth, uniqueEdges, c.req.query('direction') ?? 'both')
   }
   const filtered = filterGraphNotes(active, graphNoteFilter(c, state, allowed, degree))
   const shown = filtered.slice(0, limit)

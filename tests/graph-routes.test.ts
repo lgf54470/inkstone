@@ -585,6 +585,47 @@ describe('the node limit the interface can ask for (G-21)', () => {
   })
 })
 
+describe('the direction a local graph follows (G-44)', () => {
+  // centre ← incoming, centre → outgoing: the two sides of the centre's neighbourhood.
+  async function star(): Promise<string> {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('centre'), userId, NOW + 4)
+    await seedNote(vid('inc'), userId, NOW + 3)
+    await seedNote(vid('out'), userId, NOW + 2)
+    await seedLink(userId, vid('inc'), vid('centre'))
+    await seedLink(userId, vid('centre'), vid('out'))
+    return userId
+  }
+
+  const localPath = (query: string) => `/api/search/graph?mode=local&center=${vid('centre')}${query}`
+
+  it('walks only the notes that link in, when the reader asks for who points here', async () => {
+    const userId = await star()
+
+    const body = await graphBody(localPath('&direction=incoming'), userId)
+
+    expect(nodeIds(body).sort()).toEqual([vid('centre'), vid('inc')].sort())
+  })
+
+  it('walks only the notes it links to, when the reader asks for where it points', async () => {
+    const userId = await star()
+
+    const body = await graphBody(localPath('&direction=outgoing'), userId)
+
+    expect(nodeIds(body).sort()).toEqual([vid('centre'), vid('out')].sort())
+  })
+
+  it('walks both ways by default, and an unknown direction does not change the answer', async () => {
+    const userId = await star()
+
+    expect(nodeIds(await graphBody(localPath(''), userId)).sort())
+      .toEqual([vid('centre'), vid('inc'), vid('out')].sort())
+    expect(nodeIds(await graphBody(localPath('&direction=sideways'), userId)).sort())
+      .toEqual([vid('centre'), vid('inc'), vid('out')].sort())
+  })
+})
+
 describe('the note a reader took out of the graph (G-42)', () => {
   it('leaves the excluded note out of the page, and out of the links beside it', async () => {
     await makeDb()

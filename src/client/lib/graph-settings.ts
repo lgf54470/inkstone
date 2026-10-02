@@ -3,6 +3,19 @@ import type { MessageKey } from '@shared/locales/en-US'
 
 export type GroupBy = 'none' | 'folder' | 'tag'
 
+export type GraphLinkDirection = 'both' | 'incoming' | 'outgoing'
+
+/**
+ * The three directions a local graph can walk, with the words each one is offered by. The drawer renders
+ * this list and `loadPreferences` validates against it, so a choice the route does not know cannot be
+ * stored (G-44).
+ */
+export const GRAPH_LINK_DIRECTIONS: ReadonlyArray<{ value: GraphLinkDirection, labelKey: MessageKey }> = [
+  { value: 'both', labelKey: 'graph.direction_both' },
+  { value: 'incoming', labelKey: 'graph.direction_incoming' },
+  { value: 'outgoing', labelKey: 'graph.direction_outgoing' },
+]
+
 /** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */
 export interface GraphColorGroup {
   id: string
@@ -35,6 +48,8 @@ export interface GraphPreferences {
    * rename and un-take a note the reader never put back (G-42).
    */
   excludedNoteIds: string[]
+  /** Which side of a link the local graph walks around the note it is built on (G-44). */
+  direction: GraphLinkDirection
   arrows: boolean
   labels: boolean
   groupBy: GroupBy
