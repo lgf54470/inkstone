@@ -127,7 +127,7 @@ export function tagSource(getSources: () => CompletionSources) {
 }
 const LANGUAGES = [
   'javascript', 'typescript', 'tsx', 'jsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift',
-  'c', 'cpp', 'csharp', 'php', 'ruby', 'sql', 'bash', 'shell', 'powershell', 'json', 'yaml',
+  'c', 'cpp', 'csharp', 'php', 'ruby', 'lua', 'sql', 'bash', 'shell', 'powershell', 'json', 'yaml',
   'toml', 'xml', 'html', 'css', 'scss', 'markdown', 'diff', 'dockerfile', 'nginx', 'mermaid',
   'chart', 'mindmap', 'excalidraw', 'kanban', 'bento-slides', 'slides', 'ppt',
 ]
