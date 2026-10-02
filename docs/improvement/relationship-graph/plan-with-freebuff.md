@@ -562,7 +562,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① 伴随面板跟随设置的延迟从「同帧」变成「约 300ms」——同页广播事件挂在写盘之后（G-20 的机制不变，只是被 debounce 挡了一程），`local-graph.test.ts` 两条跟随用例因此从 `settleGraphPanel` 改为 `settlePersist`；② 拖动过程中画布不再实时重排，松手才改（要点 ③ 的字面结果），若产品要实时预览需要另设「拖动中只改本地渲染」的通路；③ 表里三个 default 与旧硬编码同值，因此没动过设置的人存储内容一字不变；④ `GRAPH_FORCE_RANGES` 的**数字本身**无断言（改表不会红），断言钉的是「抽屉与 clamp 读同一份」这一关系；⑤ 长按方向键连发会产生多次提交，但同一 300ms 窗口内只落一次盘（M6 那条断言）；⑥ jsdom 无 PointerEvent，松手/取消都用同名 `Event` 模拟，真实触控板与触屏的手势路径由批次 6 收尾的浏览器门禁与本项之外的手工确认覆盖；⑦ 计划文件清单里的 `canvas-hooks.tsx` 未改，理由见「落地口径」
   - 依赖：无（合并约束 2）
   - 代价：S（1 人日）｜提交建议：`fix(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`82044cdd`｜状态：✅ 已完成（2026-10-02）
 
 - [x] **6.2 G-35｜Tooltip 可见文案与可访问名称统一为 `graph.fit`**
   - 台账：§3.6 G-35
@@ -575,7 +575,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① 源码扫描只覆盖 `index.tsx` 与 `local-graph.tsx` 两个文件（图谱自己的头部），别模块的 Tooltip/控件成对性不在本项；② 正则要求 Tooltip 与控件写在同一行相邻位置（本模块 13 对都是这种写法），换行排版或中间插元素会漏抓——因此那条「至少 10 对」的下限断言是防漏抓的主要哨兵；③ `graph.reset` 删除是 G-34 的前置之一，G-34 其余文案项未动；④ 渲染名用例只钉了适应画布这一颗（缺陷所在那颗），其余 12 对由源码扫描兜
   - 依赖：无
   - 代价：XS（0.1 人日）｜提交建议：`fix(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`688658cb`｜状态：✅ 已完成（2026-10-02）
 
 - [x] **6.3 G-36｜默认值的唯一来源与守卫**
   - 台账：§3.6 G-36
@@ -588,7 +588,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① 「`DEFAULT_PREFERENCES[key] === control.default`」这条断言在派生设计下是恒真的，本项仍留着它（读代码的人期望看到这条，且它能在有人**改回**内联字面量时立刻失效），但真正的守卫是集合断言；② `covers exactly the boolean graph preferences without duplicates` 里那份 7 个键名的字面清单仍是「副本」——它钉的是覆盖集合而非默认值，删掉会让 F2 少一道闸，故保留；③ 非布尔的默认值（`groupBy: 'none'`、`tagsMatch: 'any'`、`mode: 'global'`、`colorGroups: []`、两个 id/文本键）不在 manifest 表内，仍写在 `DEFAULT_PREFERENCES` 里，这是它们的唯一一处，不构成重复；④ 数值项（depth/limit/三个力）在 5.7 与 6.1 已分别归到 `LIMITS` 与 `GRAPH_FORCE_RANGE`，本项不再动
   - 依赖：无
   - 代价：XS（0.2 人日）｜提交建议：`refactor(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`0ee0cd4f`｜状态：✅ 已完成（2026-10-02）
 
 - [x] **6.4 G-37｜魔法数字提具名常量（跨端共享的放共享层）**
   - 台账：§3.6 G-37
@@ -600,7 +600,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① 值本身一个都没改，因此线上行为不变；② ULID 正则的重复按台账附注**不在本项做**（全仓 10+ 处，另立共享事项，§5 第 8 条）；③ 三个服务端常量仍是 worker 私有，客户端要知道「查询最长 200」目前只能靠错误文案；④ 加括号那条不改变结合顺序，故无断言可写；⑤ 计时器值被改错不会被现有用例发现（见 F-08）
   - 依赖：无
   - 代价：S（0.5 人日）｜提交建议：`refactor(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`2c5859c5`｜状态：✅ 已完成（2026-10-02）
 
 - [x] **6.5 G-39｜`useGraphControls` 不在 render 阶段写 ref**
   - 台账：§3.6 G-39
@@ -612,7 +612,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① 无新断言（理由见上），改动的正确性靠「行为等价 + 既有覆盖」；② deps 含 `selectNode`，若它在上游变成每次渲染新建的函数，这个 effect 会每次提交都重跑一次赋值——语义无害（写同一个 ref），但会多一次函数对象分配，未做 memo 化（上游 `canvas.tsx:446` 传的是 `useGraphNodeFocus` 返回的回调）；③ 渲染期写 ref 的自动守卫缺位（F-09）
   - 依赖：无
   - 代价：XS（0.2 人日）｜提交建议：`refactor(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`1eaead2f`｜状态：✅ 已完成（2026-10-02）
 
 - [x] **6.6 G-07 步骤 2｜pin 跨会话持久化（步骤 1 已随 1.1 落地）**
   - 台账：§3.2 G-07
@@ -625,7 +625,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 边界（如实登记）：① **伴随面板不持久 pin**——它按 G-20 只读不写偏好，本项因此刻意不给它 `onPinChange`（在笔记里钉的节点只活到那次挂载），要让它也持久需要先决定「第二个写者」还是「把 pin 交给全屏面板」，已登记为 §8 F-10；② pin 存的是 id，笔记被删或改名后那条 pin 静默失效且不会被清理（只在写盘时按 `GRAPH_PINNED_MAX` 截断），存储不会自己变干净；③ tag 节点的 pin 同样按 `tag:` 键持久，标签改名即成孤儿；④ `nextPinnedIds` 把新 pin 排在末尾，这个顺序目前没有任何 UI 消费；⑤ jsdom 量不到「真的重载一次还在」——面板用例读的是 `localStorage`，那正是一次重载会起步的地方，但重启动作本身未被任何用例执行，留给批次 6 收尾的浏览器门禁；⑥ 本项没有跑 `test:unit` 全量与 e2e，按批次惯例在收尾一次性跑
   - 依赖：1.1（坐标继承）与 1.2（键盘入口）——两者均已落地，本项的端到端用例正是从键盘进入菜单钉住的
   - 代价：S（0.5 人日）｜提交建议：`feat(graph)`
-  - 提交哈希：待登记｜状态：✅ 已完成（2026-10-02）
+  - 提交哈希：`e4872948`｜状态：✅ 已完成（2026-10-02）
 
 - [ ] **6.7 G-33｜`createGraphTicker` 双形态签名清理（两步两提交）**
   - 台账：§3.6 G-33
