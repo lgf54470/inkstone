@@ -23,11 +23,11 @@
 | **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[x]` 五条提交全部落地（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`、收尾 `cab2d30f` + `3303479e`），批次收尾四条重型门禁已跑；其余批次的页数断言以本批为新基线，本批新开的两条门禁红见 L-3 / L-4 |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[x]` 四条提交全部落地（N-07 `7120d1c2`、N-10 `07d97b7f`、N-08 `f3309972`、N-09 `c26cdd70` + 用例归位 `2e4fb18a`），每条各自带变异电池与静态门禁，回填时又在最终字节上复跑一遍电池；批次收尾四条重型门禁已跑，视觉门禁红数与 L-1 基线逐条同名、无本批新增红 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[x]` 四条提交全部落地（N-04 `d165436e`、N-05 `4174b9e6`、N-06 `d06bdb3e`（前置拆分 `227aa9ca`）、N-26 `7507b92e`），每条各自带变异电池与静态门禁；批次收尾已跑（场景 `87a6c751` + 本条回填），四条重型门禁各一遍，本批共同的「演讲者侧只有 jsdom 证据」由新增的 `assertPresenterConsole`（25 条）收掉，收尾实测另开 **L-7**（窗被关后仍在广播）与 **L-8**（看板焦点断言间歇红） |
-| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办 · 已落地 N-11 + N-13（`f9dd10b8`）、N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则；顺带解掉 L-1 的 axe 红，L-1 余 6 条）、N-12（`de17c3b3`）、N-14（`df32164b`，遮罩语义化 + 开合播报）、N-19（`4d843bd8`，跟随断裂与启动失败改为有声；同次把放映的「跟随」一半拆进 `use-presented-note.ts`，浏览器侧证据缺位另立 **L-10**）、N-15（`3add5fbb`，列表不再吞掉横向翻页键——**报告的前提「初始焦点落侧栏」实测为假**，真的死键在焦点进列之后），余 4 条 |
+| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办 · 已落地 N-11 + N-13（`f9dd10b8`）、N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则；顺带解掉 L-1 的 axe 红，L-1 余 6 条）、N-12（`de17c3b3`）、N-14（`df32164b`，遮罩语义化 + 开合播报）、N-19（`4d843bd8`，跟随断裂与启动失败改为有声；同次把放映的「跟随」一半拆进 `use-presented-note.ts`，浏览器侧证据缺位另立 **L-10**）、N-15（`3add5fbb`，列表不再吞掉横向翻页键——**报告的前提「初始焦点落侧栏」实测为假**，真的死键在焦点进列之后）、N-20（`886385b2`，激光笔与聚光灯开启即有落点），余 3 条 |
 | **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 待办（依赖 R2-1） |
 | **R2-6** | 信息量与功能补全 | N-36, N-32, N-37, N-38, N-17, N-18+N-35, N-31, N-33 | 低 → 高 | `[ ]` 待办（按此顺序做） |
 | **R2-7** | 观众侧同步放映 | N-34 | 高 | `[ ]` 待办（**公共契约变更，先写 ADR**） |
-| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9, L-10 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开，L-10 由 N-19 的浏览器侧证据缺位新开） |
+| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9, L-10, L-11 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开，L-10 由 N-19 的浏览器侧证据缺位新开，L-11 由 N-20 那轮视觉门禁首次红新开） |
 
 **若只允许做三件事**：N-01（地基性正确性）· N-07+N-08（安全红线，`AGENTS.md` 不允许例外）· N-11+N-36+N-12（用户两张截图里直接可见的三项）。
 
@@ -160,10 +160,12 @@
   - 目标：初始焦点落在控制胶囊而非侧栏（同时改善 N-11「用户不知道从哪开始」）。
   - 代价：中（要重跑焦点契约测试）
   - 落地：①**「初始焦点落侧栏」在现码上不成立**——真实 Chrome 实测（`/tmp/n15/measure.mjs`，:7712，三页 deck）：开放映后 `document.activeElement` 是 `div[role="dialog"]`（可访问名称「演示模式」），不是列表 tab；直接按 `→` 从 `1 / 3` 走到 `2 / 3`，按空格走到 `3 / 3`。成因在 `useDialogFocus(open, panelRef, panelRef)`：它把对话框自己当初始目标，而列表是 `role=tab` 的漫游 tabindex 列表，排在可聚焦序列里但没人给它聚焦。故 ①（改初始焦点）**不做**——那条行为在测量里已经是好的，改它属于给不存在的问题写代码；改为补两条门禁断言把这个事实钉住（`presentation keys: the opened show keeps the keyboard on the projector` / `the first sideways turn lands without touching anything`）。②**报告描述的「方向键全部失效」是真的，但触发点是焦点进列之后**（一次 Tab 或一次点缩略图就到了）：实测焦点在列表里时 `→` 与 `←` 都停在 `3 / 3` 不动。根因是键表把两个列表当同一个 `onSlideList` 让渡——`presentation-keys.ts` 让出 `ArrowLeft/Right`，可列表自己的 `useRailKeyboard` 只走 `ArrowUp/Down/Home/End`，横向转两边都不认领；讽刺的是同一文件第 24-25 行的注释写的正是「谁都不认领横向转」。修法是把让渡拆成两个上下文：`onSlideList`（列表，纵向 + Home/End）与新增 `onOverviewGrid`（总览网格，`overviewMove` 真的按行漫游，横向纵向都要），`ownsSideways = onGrid`、`ownsVertical` 并入网格；判定侧按 `[data-presentation-rail]` / `[data-presentation-overview]` 分别取。③空格维持原样：焦点在列表 tab 上时 `onControl` 为真，空格归那个 tab（选中该页），不让给放映——否则一次按下既选页又翻页。⑤门禁侧新读一个 `presentationFocus(page)`（落点 + 列表内序号），列表场景的驱动改成**真实指针按下**，且按下前先把指针晃一下：`chromeHidden` 一到就把 `<nav>` 设为 `inert`，第一遍实测 `region=dialog`、`faded=true`——点在一张已被应用刻意移出可达范围的列表上，测的就不是这条行为。⑥焦点归还与初始焦点的可发现性（N-11「不知道从哪开始」）不在本条，仍归 N-15 之外：焦点环在放映对话框自身上，Tab 的第一站是列表，这条现在由 `presentation session: focus is never left inside the closed overlay` 与本条新增断言共同守。
-- [ ] **N-20** 激光笔开启后全屏无光标且无残留指示（`中` · a11y）
+- [x] **N-20** 激光笔开启后全屏无光标且无残留指示（`中` · a11y）— 已提交 `886385b2`
   - 涉及文件：`presentation-stage.tsx`（`LaserPointer`）、`presentation-controls.tsx`
   - 目标：胶囊保留开启态高亮；键盘给一个默认落点（画面中心）。
   - 代价：低
+  - 落地：①涉及文件写错已在案更正——`LaserPointer` / `Spotlight` 与它们共用的 `usePointerTracker` 都在 **`presentation-pointer.tsx`**（`presentation-stage.tsx` 只有幻灯片面与遮罩）。②缺陷的真实形状是「样式表把标记停在 `-100vw / -100vh` 待命位，而组件只在第一次 `pointermove` 之后才写坐标」：激光笔一开就 `cursor-none`，于是键盘开启或手不动的 presenter 看到的是一台既没光标也没红点的投影仪；聚光灯更糟——它是一层遮罩， park 在屏外等于**整幅压暗 65% 而找不到那个清晰圆**，读起来像放映坏了而不是工具开着。③修法是「开启即有落点」：`usePointerTracker` 在 `active` 变真的那次 effect 里把两个变量写成视口中心，真实指针在下一帧接管（播种不申请帧，`takes no extra frame` 那条用例钉住这点）；激光点与聚光灯共用同一个 hook，一处改动覆盖两个工具。④**「胶囊保留开启态高亮」这半条不做，因为它没有对象**：实读 `presentation-controls.tsx`，胶囊里根本没有这两个工具的按钮（`laser` 一词在该文件只出现过一次，是在讲 z-index 取舍的注释里），开关只存在于右键菜单（`presentation-context-menu.tsx:137`）与按键上。加一颗胶囊按钮是新增控件（还要过「工具栏不得内联承载展开面板」与 chrome 淡出即 `inert` 这两条约定），不属本条射程；本条把「工具开着」改成**屏幕上永远看得见**——那颗点本身就是残留指示。键位无处可查是 N-17，按钮要不要进胶囊留给 R2-6 一并判。⑤键盘只拿到**落点**，没拿到**操纵**：方向键刚由 N-15 判定归放映翻页，再让键盘挪光点就要先决定抢哪一对键，属行为改造，本条不做也不另立（报告要的只是「键盘用户不至于看见一个既无光标又无标记的屏幕」）。
+  - 验证：jsdom 三条新用例 + 真实 Chrome 两条（键盘按 C 之后、指针未动之前读 `.laser-dot` 的矩形，断它既在视口内又坐在画面正中）；`prefers-reduced-motion` 那两条既有断言不受影响（播种是位置，不是动效）。
 - [ ] **N-21** 死参数与冗余 ARIA 状态（`低` · 铁律 5）
   - 涉及文件：`presentation-controls.tsx`（`SlideProgress` 的 `chromeHidden: _chromeHidden`）、`use-presentation-session.ts:310-312`（错位注释）
   - 行号更新在案（`4d843bd8` 之后）：`SlideProgress` 现在是 `presentation-controls.tsx:192`（唯一调用方 `presentation-overlay.tsx:77`，仍不传该参数），`slide-rail.tsx` 的 `aria-current` 在 175 行；`use-presentation-session.ts` 里挂在 `useDeckIndex` 头上的那段错位注释因 N-19 的拆分从 307-309 移到 **310-312**（拆分只搬走它上面的「跟随」那几个 hook）。
@@ -277,6 +279,7 @@
   - 采样累加在案（本会话 7 份完整视觉跑，日志逐一可查）：R2-3 收尾两轮（`748/12`、`749/10`）**双红**、N-11 轮（`751/10`）**双红**、N-16 轮（`752/9`）**双红**、N-12 轮（`755/10`）**双红**；N-14 两轮（`759/9`、`761/7`）**双绿**（其间的 2 红是门禁读者自己选错播报区，与该条无关，见 N-14 执行日志）。加上本条原有的四份（绿红绿红），累计 11 份里**红 7 绿 4**，仍是「同一份代码逐次翻转」。N-14 把遮罩改成语义按钮并让它挂载即持焦之后连续两轮皆绿——**不足以判因果**（样本太少，且原细节 `insideDialog:false` 指向的是按键根本没到放映面板，与遮罩语义无直接关系），故本条不转绿也不关闭，留一次跨批次的连续采样再判。
   - 采样再累加在案（N-19 轮，`761 passed, 7 failed`，第 12 份完整跑）：两条 `cover:` 均**绿**（`✓ cover: pressing a key lifts the blackout`、`✓ cover: W covers the projector in white`），累计 12 份里**红 7 绿 5**；N-19 未触碰遮罩路径（只动 follow 一侧），相关性无变化，本条仍不关闭。
   - 采样三度累加在案（N-15 两轮，`763/12` 与 `768/7`，第 13、14 份）：两条 `cover:` 两份都**绿**（其中一份的 5 条额外红与 2 条连带红全属我新加的列表驱动本身，与遮罩无关），累计 14 份里**红 7 绿 7**。
+  - 采样四度累加在案（N-20 轮，`768 passed, 9 failed`，第 15 份）：两条仍**绿**（`✓ cover: pressing a key lifts the blackout`），累计 15 份里**红 7 绿 8**；本轮那两条红另有其数（L-8 与新开的 L-11），与本条无关。
   - 与既有条目的关系：白屏/黑屏元素正是 N-14 要重写的非语义控件（**已重写**，见 `df32164b`），键盘解除路径的另一半——焦点归还——在 **N-15** 的射程内。先实测「红的时候键到底有没有被放映面板收到」，再决定是单开一条还是并入 N-15 的验收断言。
   - 代价：待实测
 - [ ] **L-5** N-04 变异副产品：`preview.mermaid` 关掉后，放映与演讲者两处仍把图画出来（`中` · `[需实测]`）
@@ -304,6 +307,7 @@
   - 采样累加在案（后续三轮实跑）：N-16 那轮（`visual e2e: 752 passed, 9 failed`）不在红集合里，即**绿**；N-12 那轮（`755 passed, 10 failed`）再次**红**（detail 仍是 `{"opener":"button[全屏]","active":"button[全屏]","inherited":"","returned":false}`）；N-14 那轮（`761 passed, 7 failed`）**绿**。同一条断言六份完整跑里**红 3 绿 3**，且红的三轮都含本会话新写的场景，即与本批改动无因果——间歇性质坐实，成因仍未定位。
   - 采样再累加在案（N-19 轮，`761 passed, 7 failed`，第 7 份完整跑）：该断言**绿**（`✓ surface keyboard: the kanban board hands focus back to the control it was opened from`），七份里**红 3 绿 4**。N-19 没碰看板与焦点归还路径，仍不关闭本条。
   - 采样三度累加在案（N-15 两轮，`763/12` 与 `768/7`，第 8、9 份）：两份都**绿**，九份里**红 3 绿 6**；N-15 只改放映的键表，看板路径未动。
+  - 采样四度累加在案（N-20 轮，`768 passed, 9 failed`，第 10 份）：**红**，且 detail 换了形态——`{"opener":"button[全屏]","active":"body","inherited":"","returned":false}`，`active` 是 `body` 而不是既往那种「同名而不同元素」。两种形态指向同一处：归还那一刻它认定的目标不在原地；`body` 这一种更弱，说明焦点在关闭浮层后被浏览器自己清掉了。十份里**红 4 绿 6**，仍不判成因；测法补一条：在断言前打印顶栏元素的 `isConnected` 与创建序号，同时打印关闭动作之后 `document.activeElement` 的落点序列（是「先归还再被抢」还是「压根没归还」）。
   - 代价：低
 - [ ] **L-9** N-16 规则上线时的全仓实量：裸 Tailwind 阶梯步长余 4041 处 / 327 文件未收（`中` · infra）
   - 实测在案：`hardcoded:check` 的 Part 6 上线时，通过行报 `4041 bare scale steps outside the token-enforced modules`（AST 扫 `src` + `blog-frontend/src`，排除 `*.test.*` 与 `src/client/demo/`），族为 `p*/m*/gap/w/h/min-w/min-h/max-w/max-h/top/bottom/left/right/inset/z` 的裸数字与小数步长；演示模式已判零（`SCALE_ZERO_TOLERANCE_PREFIXES`）。
@@ -315,6 +319,11 @@
   - 可行路径（择一，先实测它稳不稳再动门禁）：①**第二标签页**——同账号再开一个 page，在那里按真实交互删除，靠 SyncHub / 轮询把删除推回报映所在的标签。这正是「跟随」设计上要覆盖的场景，代价是要把跨标签时序写成可控等待（本仓的间歇红前例见 L-4 / L-8）。②给视觉门禁一条**专用笔记**（自建自删，不碰主夹具），放映开着时用 `page.evaluate` 触发它自己那一行的删除——走的是应用自己的 store action，但指针落点不真实，这一点要写进断言名字里。
   - 归属：不在 N-19 内顺手补（`铁律 14`），也不阻塞 R2-4 收尾；它补的是「证据」，不是「未实现的行为」。
   - 代价：低-中
+- [ ] **L-11** N-20 视觉门禁复证：`mindmap: alt+arrow reorders the node in the note` 首次红（`低-中` · `[需实测]`）
+  - 实测在案：本会话前 4 份完整跑（N-14 一轮、N-19 一轮、N-15 两轮）该断言皆**绿**，N-20 那轮（`768 passed, 9 failed`）**首次红**，detail 是 `selected=true Live block > Keyboard sibling > Split child > Two way editing → Live block > Keyboard sibling > Split child > Two way editing`——即 `selected=true`（选择到位、键也送进了导图），但按下 Alt+↑ 之后**笔记正文里的顺序一字未变**。
+  - 待测假设（由读源码得到，未实测）：这条断言在按键后用 `sleep(1_200)` 定长等待再读笔记正文，而紧邻它的同类写入（`mindmap: undo brings the node back and the note follows the map`）走的是 `waitForNoteBody` 轮询，其注释自己写明「the undone map writes through the same debounce, and the body this reads is the one the note was last *committed* with」。导图重排经同一条 debounce + 自动保存链，1.2 s 不是保证。测法：把这条也换成按同一套约定的 `waitForNoteBody`，然后连采三轮——三轮全绿即判据取数面（等错东西），仍红才怀疑写入真丢了（那时再查 `writeFence` 那一侧）。
+  - 归属：不在 N-20 内顺手修（`铁律 14`）——N-20 只动放映的指针层，与导图提交链无交集；本条与 L-3 同族（都是「导图写回笔记的读数面」），可并做一次。
+  - 代价：低（大概率是断言的等待方式）
 
 | 范围 | 命令 | 频率 |
 | :--- | :--- | :--- |
@@ -462,3 +471,10 @@
   - 视觉门禁在案：第一轮 **763 / 12**——除基线 7 条外，我自己新加的 3 条红（`region=dialog`：那一次真实指针按下落在已被 `chromeHidden` 设为 `inert` 的列表上，浏览器不接受对 inert 子树的聚焦与点击），外加 2 条**我自己造成的连带红**（驱动留在 `3 / 4`，把「越过移动端断点仍停在同一页」两条比成了不同页）。处置：把列表驱动搬到退出键之前（其后不再比较页位），并按 presenter 的真实顺序先晃指针再按下，同时把 `faded` 打进那条「列表可达」的 detail。最终一轮 **768 通过 / 7 红**，总读数 **775** = 上一轮 768 + 本条 7 条新断言，7 红 = L-1 的 6 + L-3 的 1，与本批前几轮同名同数。
   - 门禁在案：`npm run typecheck` rc=0；14 项静态门禁逐条 rc=0（`size:check` 中途红过一次——`presentation-keys.test.ts` 的 `describe` 越过 50 行，按职责把「两个列表各拥有什么」拆成独立 describe 后转绿，1917 文件 / 52 祖父级；`comments:check` 白名单 13382 → **13401** 条 / 1374 文件；`i18n:check` 3906 未变；`labels:check` 165 未变；`hardcoded:check` 0 违规）；`npm run test:unit` 全量 **625 文件 / 6080 通过 + 1 跳过**，唯一红是既有的负载敏感超时 `blog-comments-window.test.ts > mounts one page of rows and grows on demand`（5 s），**单跑该文件 1 passed**；提交钩子另跑增量 `tsc -b` 与 `vitest related` **10 文件 / 98 例**全绿。
   - 落地取舍与残留：①报告 ①（初始焦点落控制胶囊）**不做**，理由是测量显示默认状态的键盘已经能用，而把焦点移进一颗按钮会让「焦点环在淡出的 chrome 里」成为常态（`chromeHidden` 之后胶囊整条 `inert`）。②焦点在列表里时按 `→` 翻页，页位变了而环仍停在旧缩略图——本条刻意不追「环跟着走」：那需要列表在放映翻页时改自己的焦点，属另一项行为决定，且与「环停在用户按下的位置」这条通用约定冲突，若要做得连文案与预期一起定（另开条目）。③「键位没有可查处」是 N-17，不在本条。④N-22 那处错位注释（`useDeckIndex` 头上的「Renders the enhanced markup off-DOM」）仍未动，本条只改了自己函数头上那句。
+- 2026-10-03 · R2-4 / N-20（`886385b2`）：激光笔与聚光灯开启即有落点。`presentation-pointer.tsx` 的 `usePointerTracker` 在激活那次 effect 里把 `--laser-x/-y`、`--spotlight-x/-y` 写到视口中心，真实指针下一帧接管；文件头对 `styles/presentation.css` 的解读同步改口径。新增 jsdom 用例 3 条、真实 Chrome 断言 2 条。4 文件 +89/−10。
+  - 方案在案：①「parked 在屏外」对**存在但未开启**的层是对的，对**已开启**的工具就是缺陷本身——激光笔开着就 `cursor-none`，此时屏幕上既没有 OS 光标也没有红点；聚光灯是一层 65% 压暗的遮罩，park 在屏外等于整幅暗掉却没有那个清晰圆，读起来像放映坏了。②播种写在 effect 里而不是 CSS 默认值上：CSS 的 `-100vw` 仍是「层在而工具未开」的待命位（`Spotlight` / `LaserPointer` 未开启时压根不渲染，这个默认值只服务过渡帧），组件负责「开在哪」。③播种不申请 rAF（不占帧、不额外触发一次绘制），移动指针仍按原有「一帧一次写」的节流。④一个 hook 两个工具，所以激光点与聚光灯同治；测试两侧各钉一条，防的是「只修了看得见的那个」。
+  - 红先在案：**2 红 / 12 绿（收集 14）**——`starts the laser in the middle of the screen` 与 `starts the spotlight opening in the middle too`，两条都是 `AssertionError: expected '' to be '512px'`（jsdom 视口 1024×768，读不到自定义属性即「没落点」）。第三条 `takes no extra frame to be sitting there` 写出来就是绿的：它不测新行为，它钉的是「播种不该走一帧」这个决定，由 M4 变异证明它承重。
+  - 变异在案：`/tmp/mut-n20.mjs` 4 个变异体全在 `presentation-pointer.tsx`，control **14/14** 先绿，**killed 4/4**：M1 整段删掉播种（回到 parked）杀 2 条、M2 只播横坐标杀 2 条、M3 播成 `window.innerWidth`（错一半）杀 2 条、M4 把播种塞进 `requestAnimationFrame` 杀 5 条。每轮收集总数都等于 14，每轮按保存字节还原。
+  - 视觉门禁在案：**768 通过 / 9 红**，总读数 **777** = 上一轮 775 + 本条 2 条新断言（`laser: the marker is on screen before anything points at it`、`laser: a pointer turned on by key sits in the middle of the frame`，两条皆绿，且在它们之后的 12 条既有激光断言次序与判据不变）。9 红 = L-1 的 6 + L-3 的 1 + **L-8 的 1**（本轮红，且 detail 形态与既往不同：`{"opener":"button[全屏]","active":"body","inherited":"","returned":false}`——焦点掉到 `body`，是「压根没归还」而不是「归还到同名但不同的按钮」）+ **新开的 L-11 的 1**（`mindmap: alt+arrow reorders the node in the note` 本会话第 5 份首次红）。L-4 两条本轮为绿（第 15 份，累计红 7 绿 8），未据以关闭。
+  - 门禁在案：`npm run typecheck` rc=0；14 项静态门禁逐条 rc=0（`comments:check` 白名单 13401 → **13415** 条 / 1374 文件；`i18n:check` 3906 未变；`labels:check` 165 未变；`size:check` 1917 文件 / 52 祖父级；`hardcoded:check` 0 违规）；`npm run test:unit` 全量 **625 文件 / 6084 通过 + 1 跳过（6085 收集）**，本轮没有负载敏感超时；提交钩子另跑增量 `tsc -b` 与 `vitest related` **7 文件 / 45 例**全绿。
+  - 落地取舍与残留：①报告写的「胶囊保留开启态高亮」**没有对象**——胶囊里从来没有这两颗按钮（`laser` 在 `presentation-controls.tsx` 只出现在一条注释里），开关只在右键菜单与按键上；补一颗按钮属新增控件，与「淡出的 chrome 一律 `inert`」这条约定要一起设计，留给 R2-6（与 N-17「键位无处可查」同题）。②键盘拿到落点、没拿到操纵：方向键刚由 N-15 判定归放映翻页，再让键盘挪光点要先决定抢哪一对键，属行为改造，本条不做。③屏幕阅读器侧没有为这两个工具加播报（`aria-hidden` 的装饰层不该念，而开启/关闭这件事目前只有视觉）——若要做，需要与 N-14 的播报区同一族判据，另议。
