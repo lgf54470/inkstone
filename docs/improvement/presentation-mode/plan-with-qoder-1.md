@@ -23,11 +23,11 @@
 | **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[x]` 五条提交全部落地（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`、收尾 `cab2d30f` + `3303479e`），批次收尾四条重型门禁已跑；其余批次的页数断言以本批为新基线，本批新开的两条门禁红见 L-3 / L-4 |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[x]` 四条提交全部落地（N-07 `7120d1c2`、N-10 `07d97b7f`、N-08 `f3309972`、N-09 `c26cdd70` + 用例归位 `2e4fb18a`），每条各自带变异电池与静态门禁，回填时又在最终字节上复跑一遍电池；批次收尾四条重型门禁已跑，视觉门禁红数与 L-1 基线逐条同名、无本批新增红 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[x]` 四条提交全部落地（N-04 `d165436e`、N-05 `4174b9e6`、N-06 `d06bdb3e`（前置拆分 `227aa9ca`）、N-26 `7507b92e`），每条各自带变异电池与静态门禁；批次收尾已跑（场景 `87a6c751` + 本条回填），四条重型门禁各一遍，本批共同的「演讲者侧只有 jsdom 证据」由新增的 `assertPresenterConsole`（25 条）收掉，收尾实测另开 **L-7**（窗被关后仍在广播）与 **L-8**（看板焦点断言间歇红） |
-| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办 · 已落地 N-11 + N-13（`f9dd10b8`）、N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则；顺带解掉 L-1 的 axe 红，L-1 余 6 条）、N-12（`de17c3b3`）、N-14（`df32164b`，遮罩语义化 + 开合播报），余 6 条 |
+| **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办 · 已落地 N-11 + N-13（`f9dd10b8`）、N-16（`f0fb3f05`，含 `hardcoded:check` 的裸阶梯新规则；顺带解掉 L-1 的 axe 红，L-1 余 6 条）、N-12（`de17c3b3`）、N-14（`df32164b`，遮罩语义化 + 开合播报）、N-19（`4d843bd8`，跟随断裂与启动失败改为有声；同次把放映的「跟随」一半拆进 `use-presented-note.ts`，浏览器侧证据缺位另立 **L-10**），余 5 条 |
 | **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 待办（依赖 R2-1） |
 | **R2-6** | 信息量与功能补全 | N-36, N-32, N-37, N-38, N-17, N-18+N-35, N-31, N-33 | 低 → 高 | `[ ]` 待办（按此顺序做） |
 | **R2-7** | 观众侧同步放映 | N-34 | 高 | `[ ]` 待办（**公共契约变更，先写 ADR**） |
-| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开） |
+| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4, L-5, L-6, L-7, L-8, L-9, L-10 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开，L-5 由 N-04 变异实测新开，L-6 由 N-05 阅读新开，L-7 / L-8 由 R2-3 批次收尾的浏览器实测新开，L-9 由 N-16 规则上线时的全仓实量新开，L-10 由 N-19 的浏览器侧证据缺位新开） |
 
 **若只允许做三件事**：N-01（地基性正确性）· N-07+N-08（安全红线，`AGENTS.md` 不允许例外）· N-11+N-36+N-12（用户两张截图里直接可见的三项）。
 
@@ -150,10 +150,11 @@
   - 验证：键盘 Enter/Space 解除遮罩；`i18n:check` 通过且源码内无中文字面量。
   - 代价：低
   - 落地：`ScreenCover` 改成 `<button type='button'>`（div 上的 onClick 语义上不成立：非交互元素带监听是 ESLint a11y _no-noninteractive-element-interactions_ 那一类，也是 `铁律 10` 的直接对象），`aria-label` 接既有两键；挂载即 `focus()`（遮罩升起时全片只剩这一个可操作目标，不持焦等于键盘用户按空）。播报由新组件 `CoverAnnouncement` 承担，挂在对话框内、`data-cover-status` + `sr-only role='status' aria-live='polite'`，升起报「放映画面已被遮挡：黑屏模式」、解除报「遮挡已解除」，为此新增两语成对键 `workspace.presentation_cover_on` / `_cover_off`（`i18n:check` 键数 3902 → **3904**）。Enter/Space 的「键能解除」这半条**不在 jsdom 里钉**：jsdom 不实现按钮的激活行为（键盘事件不会合成 click），实测如此——判据落在视觉门禁（真实 Chrome 里 `cover:` 场景 8 条断言，含「遮罩是键盘正踩着的控件」「升起/解除各播报一次」）。
-- [ ] **N-19** 跟随状态与启动失败无回声（`中` · 铁律 2）
+- [x] **N-19** 跟随状态与启动失败无回声（`中` · 铁律 2）— 已提交 `4d843bd8`
   - 涉及文件：`use-presentation-session.ts`、`presentation-controls.tsx`、locales
   - 目标：快照失效即把图标切到「已冻结」并 toast；`start()` 返回 `false` 走 toast。
   - 代价：中
+  - 落地：①拒开由 `startPresentationFromNote` 自己弹 warning toast（`workspace.presentation_start_no_note`）——三个调用方（工作区按钮、命令面板一行、全局快捷键）都把返回值丢了，而知道「为什么拒」的只有这个函数。②放映的「跟随」一半整体拆进新模块 `use-presented-note.ts`：`usePresentedNote` 一次给出 presented 内容、标题、`followLost` 与 `toggleFollowing`，因为「屏幕上是哪份内容 / 笔记还在不在 / 开关还能不能扳」这三条判定分处两处就必然漂移；拆同时把 `use-presentation-session.ts` 从 517 行（超 `size:check` 的 500）带回 442 行。③`followLost = Boolean(noteId) && !exists`，**不带 `open` 判定**——`stop()` 已把 `noteId` 清空，「放映关着却还指着一条笔记」在 store 里不存在，多余的防御即 `铁律 5`。④播报只在**断裂那一刻**说话：`useRef(followLost)` 以当前值起步、每次 effect 把 ref 写成当前值，于是「挂载时就已经断了」不说话（这条覆盖的是断点切换导致外壳重挂载的真实路径），而笔记被撤销删除、再删一次会再说一次。⑤两条手都改：胶囊 `disabled` + `aria-pressed=false` + 图标回雪花 + 新钩子 `data-follow-toggle`，命名走新的 `followControlLabel`（「已冻结」排在「跟随 / 冻结」之上）；右键 follow 行同样 `disabled`、改文案、撤掉 `L` 提示与勾选态；`toggleFollowing` 在断裂后直接 return，所以 `L` 与那颗按钮是同一个判定，不留下「按了没反应」的键盘假象。⑥新增两语成对键 `workspace.presentation_follow_lost` / `workspace.presentation_start_no_note`，`i18n:check` 键数 3904 → **3906**。
 - [ ] **N-15** 开放映后焦点默认落侧栏 tab，方向键与空格全部失效（`中高`）
   - 涉及文件：`presentation-overlay.tsx`（`useDialogBehavior`）、焦点契约测试、`e2e-visual.mjs`
   - 目标：初始焦点落在控制胶囊而非侧栏（同时改善 N-11「用户不知道从哪开始」）。
@@ -163,7 +164,8 @@
   - 目标：胶囊保留开启态高亮；键盘给一个默认落点（画面中心）。
   - 代价：低
 - [ ] **N-21** 死参数与冗余 ARIA 状态（`低` · 铁律 5）
-  - 涉及文件：`presentation-controls.tsx`（`SlideProgress` 的 `chromeHidden: _chromeHidden`）、`use-presentation-session.ts:307-309`（错位注释）
+  - 涉及文件：`presentation-controls.tsx`（`SlideProgress` 的 `chromeHidden: _chromeHidden`）、`use-presentation-session.ts:310-312`（错位注释）
+  - 行号更新在案（`4d843bd8` 之后）：`SlideProgress` 现在是 `presentation-controls.tsx:192`（唯一调用方 `presentation-overlay.tsx:77`，仍不传该参数），`slide-rail.tsx` 的 `aria-current` 在 175 行；`use-presentation-session.ts` 里挂在 `useDeckIndex` 头上的那段错位注释因 N-19 的拆分从 307-309 移到 **310-312**（拆分只搬走它上面的「跟随」那几个 hook）。
   - 目标：删死参数；`SlideProgress` 改为按**页**而非按**幻灯片**计数（否则 1 页 deck 进度条恒为 100%）。
   - 代价：低
 - [ ] **N-22** 注释与它所标注的函数说的不是一回事（`低`）
@@ -272,6 +274,7 @@
 - [ ] **L-4** R2-1 收尾复证：`cover:` 黑屏/白屏两条在本地实例上随机红（`中` · `[需实测]`）
   - 现象：`cover: pressing a key lifts the blackout` 与 `cover: W covers the projector in white`（detail `{"insideDialog":false,"hitIsCover":false,"bg":""}` —— 按下键后连遮罩元素本身都没命中）在同一份代码上逐次翻转：批内 `n03-visual.clean` 全绿、`n03b-visual` 双红、收尾 `r21-tail-visual` 全绿、`r21-visual2` 双红。改前改后都红，即**与 `3303479e` 无关**。
   - 采样累加在案（本会话 7 份完整视觉跑，日志逐一可查）：R2-3 收尾两轮（`748/12`、`749/10`）**双红**、N-11 轮（`751/10`）**双红**、N-16 轮（`752/9`）**双红**、N-12 轮（`755/10`）**双红**；N-14 两轮（`759/9`、`761/7`）**双绿**（其间的 2 红是门禁读者自己选错播报区，与该条无关，见 N-14 执行日志）。加上本条原有的四份（绿红绿红），累计 11 份里**红 7 绿 4**，仍是「同一份代码逐次翻转」。N-14 把遮罩改成语义按钮并让它挂载即持焦之后连续两轮皆绿——**不足以判因果**（样本太少，且原细节 `insideDialog:false` 指向的是按键根本没到放映面板，与遮罩语义无直接关系），故本条不转绿也不关闭，留一次跨批次的连续采样再判。
+  - 采样再累加在案（N-19 轮，`761 passed, 7 failed`，第 12 份完整跑）：两条 `cover:` 均**绿**（`✓ cover: pressing a key lifts the blackout`、`✓ cover: W covers the projector in white`），累计 12 份里**红 7 绿 5**；N-19 未触碰遮罩路径（只动 follow 一侧），相关性无变化，本条仍不关闭。
   - 与既有条目的关系：白屏/黑屏元素正是 N-14 要重写的非语义控件（**已重写**，见 `df32164b`），键盘解除路径的另一半——焦点归还——在 **N-15** 的射程内。先实测「红的时候键到底有没有被放映面板收到」，再决定是单开一条还是并入 N-15 的验收断言。
   - 代价：待实测
 - [ ] **L-5** N-04 变异副产品：`preview.mermaid` 关掉后，放映与演讲者两处仍把图画出来（`中` · `[需实测]`）
@@ -297,12 +300,18 @@
   - 与既有约定的关系：AGENTS「工具栏展开」与「看板在笔记里不止一块板」已记过这个表面的取数面脆弱性；测法应先确认红的那一次里顶栏是否真的换了一批元素（打印元素的 `isConnected` 与创建序号），再判是断言取数面还是看板重挂的时序问题。
   - 归属：不在收尾内顺手修（`铁律 14`），本条只有「一次红一次绿」两次采样，未确认成因。
   - 采样累加在案（后续三轮实跑）：N-16 那轮（`visual e2e: 752 passed, 9 failed`）不在红集合里，即**绿**；N-12 那轮（`755 passed, 10 failed`）再次**红**（detail 仍是 `{"opener":"button[全屏]","active":"button[全屏]","inherited":"","returned":false}`）；N-14 那轮（`761 passed, 7 failed`）**绿**。同一条断言六份完整跑里**红 3 绿 3**，且红的三轮都含本会话新写的场景，即与本批改动无因果——间歇性质坐实，成因仍未定位。
+  - 采样再累加在案（N-19 轮，`761 passed, 7 failed`，第 7 份完整跑）：该断言**绿**（`✓ surface keyboard: the kanban board hands focus back to the control it was opened from`），七份里**红 3 绿 4**。N-19 没碰看板与焦点归还路径，仍不关闭本条。
   - 代价：低
 - [ ] **L-9** N-16 规则上线时的全仓实量：裸 Tailwind 阶梯步长余 4041 处 / 327 文件未收（`中` · infra）
   - 实测在案：`hardcoded:check` 的 Part 6 上线时，通过行报 `4041 bare scale steps outside the token-enforced modules`（AST 扫 `src` + `blog-frontend/src`，排除 `*.test.*` 与 `src/client/demo/`），族为 `p*/m*/gap/w/h/min-w/min-h/max-w/max-h/top/bottom/left/right/inset/z` 的裸数字与小数步长；演示模式已判零（`SCALE_ZERO_TOLERANCE_PREFIXES`）。
   - 为什么不一次性收：4041 处分布在 327 个文件、跨十几个模块，属 `铁律 14` 的「不在本次改动里夹带无关问题」；写进某个 baseline 文件又会让学生数消失得无声无息——所以现在它**印在每次门禁的通过行上**，谁都能看见它没在降。
   - 落地形态建议：按模块分批（与 `PALETTE_ZERO_TOLERANCE_PREFIXES` 同法，清完一个模块就加进零容忍名单），每批走 N-16 的「规则先红 → 逐处换令牌 → 变异必杀」循环；先清 `src/client/lib/markdown/slides/`（幻灯片编辑器与演示模式同一套视觉语言，实测该目录单文件最高 99 处）。
   - 代价：中（面积大但机械）· 依赖：N-16 的 Part 6
+- [ ] **L-10** N-19 的浏览器侧证据缺位：放映开着时删掉那条笔记，视觉门禁无路可走（`低-中`）
+  - 现状：本条三条判据（拒因 toast、断裂那一刻播报一次、控件与菜单随之置灰）**只有 jsdom 证据**——`presentation-overlay.test.ts` 是直接改 `useNotes` 存储来造出「笔记没了」的。真实浏览器里补不出同一步：删除入口在侧栏，而放映是 `fixed inset-0` 的不透明对话框，指针按不到背后那一行；改走 `apiCall DELETE /api/notes/<id>` 又只动服务端，客户端 store 里的 `notes[noteId]` 不掉，`followLost` 也就不翻。
+  - 可行路径（择一，先实测它稳不稳再动门禁）：①**第二标签页**——同账号再开一个 page，在那里按真实交互删除，靠 SyncHub / 轮询把删除推回报映所在的标签。这正是「跟随」设计上要覆盖的场景，代价是要把跨标签时序写成可控等待（本仓的间歇红前例见 L-4 / L-8）。②给视觉门禁一条**专用笔记**（自建自删，不碰主夹具），放映开着时用 `page.evaluate` 触发它自己那一行的删除——走的是应用自己的 store action，但指针落点不真实，这一点要写进断言名字里。
+  - 归属：不在 N-19 内顺手补（`铁律 14`），也不阻塞 R2-4 收尾；它补的是「证据」，不是「未实现的行为」。
+  - 代价：低-中
 
 | 范围 | 命令 | 频率 |
 | :--- | :--- | :--- |
@@ -434,3 +443,12 @@
   - 视觉门禁在案：`cover:` 场景由 5 条加到 **8 条**（新增「遮罩是键盘正踩着的控件」（`tagName`/`type`/`aria-label`/`document.activeElement` 四项同读）、「升起时播报点名模式」、「解除时播报已解除」）。中途一轮 `759 / 9` 里我新加的两条播报断言为红，原因是**门禁读者自己选错了对象**——`[role="dialog"] [role="status"]` 命中的是幻灯片列表的测量身报区（与 M10 同一种错法），改读 `[data-cover-status]` 后最终一轮 **`visual e2e: 761 passed, 7 failed`**，8 条 cover 断言全绿；7 红 = L-1 的 6 + L-3 的 1，总读数 768 = 上一轮 765 + 本条 3。**L-4 那两条在本轮为绿**，采样已累加进该条（连 N-14 之后的两轮绿一起记，未据以关闭 L-4）。
   - 门禁在案：`npm run typecheck` rc=0；13 项静态门禁逐条 rc=0（`labels:check` 162 → **165** 条，全部取自资源；白名单 13350 条 / 1372 文件；`hardcoded:check` 仍 0 违规——新增 class 全走令牌）；`npm run test:unit` 全量 **625 文件 / 6067 通过 + 1 跳过 / 0 失败**；提交钩子另跑 `vitest related` **417 文件 / 3987 例**全绿。
   - 落地取舍与残留：①「键盘 Enter/Space 能解除」在 jsdom 无按钮激活行为，只能由真实浏览器负责——本条的 jsdom 侧只钉结构（button/type/name/持焦）与播报文案，键盘路径由 `cover: pressing a key lifts the blackout` 与点击路径共同守；若要钉「按钮自己被激活」，得先绕开通用按键处理（现在任意按键都解除），属行为改造，不在本条。②焦点**归还**属 **N-15**（解除后焦点落在哪），本条只做「升起时给它」。③播报只在变化时说话，因此 `CoverAnnouncement` 必须常驻对话框而不是随遮罩挂载——这让它成为对话框里第二个 `role=status` 区（第一个是幻灯片列表的测量播报），两者的可分辨手段就是 `data-cover-status`；读这两个区的门禁/测试一律按钩子取数。④源码侧「aria-label 不得硬编码」现在只有一条针对遮罩文件的规则（`tests/cover-name-source.test.ts`），泛化成全仓规则属 infra 批次（与 L-9 同批做更划算）。
+- 2026-10-02 · R2-4 / N-19（`4d843bd8`）：跟随断裂与启动失败改为有声。`start-presentation.ts` 拒开时弹 warning toast（`workspace.presentation_start_no_note`）；放映的「跟随」一半从 `use-presentation-session.ts` 拆进新模块 `use-presented-note.ts`（`usePresentedNote` / `useFollowLossAnnouncement` / `usePresentedContent` / `useLiveNote` / `useCapturePresented`），新增 `followLost` 判定与断裂那一刻的一次性播报；胶囊与右键菜单的 follow 控件随之改名（`workspace.presentation_follow_lost`）、置灰、撤掉 `L` 提示，`toggleFollowing` 在断裂后直接 return。新增两语成对键两枚，`i18n:check` 3904 → **3906**。14 文件 +361/−72。
+  - 方案在案：①「谁拒的就由谁说」——三个调用方都写着 `void startPresentationFromNote(...)`，把回声放进调用方等于要求三处都记得，而只有这个函数知道拒因。②播报的门槛是**状态翻转**而不是挂载：`useRef(followLost)` 起步 + effect 里把 ref 写成当前值，这样外壳在断点处重挂载不会把同一句话念第二遍，而「撤销删除、再删一次」会重新念。③`followLost` 不带 `open` 判定：`store/presentation.ts` 的 `stop()` 把 `noteId` 清成 `null`，「放映关着却还指着一条笔记」这个状态在 store 里不存在，加防御即 `铁律 5` 的死代码。④控件与按键共用一个判定（`toggleFollowing` 里 return），不做「按钮灰着但 `L` 还能扳」的分裂态；菜单那一行同步 `disabled`，否则它是最后一个还声称在跟随的表面。⑤演讲者窗与降级面板不显示跟随态（实测：`presenter-view/` 里 `following` 零命中），故本条无需同步它们。
+  - 红先在案：四条各按自己的判据先红——`start-presentation.test.ts > names the missing note instead of failing silently`（`expected undefined to be 'workspace.presentation_start_no_note'`）、`presentation-controls.test.ts > names the freeze and drops the offer to follow`、`presentation-overlay.test.ts > announces the freeze once and puts it on the control`、`presentation-overlay.test.ts > says nothing for a show that was already frozen when it mounted`、`presentation-context-menu.test.ts > disables the row and names the freeze once the note is gone`；首轮 **5 红 / 63 绿（收集 68）**，实现后同一集合 **68 全绿**（收集总数不变，排除「用例消失当通过」）。
+  - 变异在案：`/tmp/mut-n19.mjs` 11 个变异体（`start-presentation.ts` 2、`use-presented-note.ts` 4、`presentation-controls.tsx` 3、`presentation-context-menu.tsx` 2），control **76/76** 先绿，**killed 11/11**，每轮收集总数都等于 76、每轮按保存字节还原。两处「断言本来就哑」在写用例时被避掉：`L` 那条要断**存储里的 `following` 没被翻**（只断按钮 `disabled` 满足不了它，M11 正是这么活的），播报「再说一次」那条要断**总数为 2**（只断「说过一次」满足不了 M5）。第一版电池的读数器写坏了——`text.match(/Tests\s+([^\n]*)/)` 命中的是失败块标题 `⎯ Failed Tests 1 ⎯` 而不是汇总行，于是每轮 `collected=0` 全判 INVALID；它还被中途 kill 了一次，留下 `use-presentation-session.ts` 带着 M5 的变异（`announced.current = true`）在树里，靠 `/tmp/n19-src/` 的保存字节还原并逐文件 sha256 比对确认，改判据（行锚 `^\s*Tests\s+([^\n]*)$` 取最后一条）后整条电池重跑才是这份 11/11。教训：**kill 判据必须先把控制轮跑绿并钉住收集总数**，否则「读不到数字」会被读成「没测出来」。
+  - 拆模块在案：`size:check` 先红 `use-presentation-session.ts: baseline null -> current {"lines":517}`（超 500 且不在 52 个祖父级里）。按职责把「跟随」那一半搬进 `use-presented-note.ts`（79 行），session 回到 **442 行**，门禁转绿（`1917 files scanned, 52 grandfathered`）；搬迁只删不改判据，搬完 session 的 `followLost` 由 `usePresentedNote` 一份返回。拆分后 `typecheck` 另红一处 TS6133（`usePresentation` 在该文件失去使用者）→ 死导入即删。**拆分不是夹带重构**：不搬就走不进 500 行上限，而 `size:check` 的红是本条自己的改动造成的。
+  - 夹具耦合在案：全目录首跑 1 红——`presenter-panel-fallback.test.ts > opens no panel and says nothing when the window does open`（`expect(toasts).toHaveLength(0)` 拿到 1）。根因不在实现，而在**夹具违反了 `startPresentationFromNote` 的前置**：它直接 `start({ noteId: 'note-fallback' })` 而那条笔记从没进过 `notes`，于是放映被读成「一开就断了」。处置是给夹具补 `notes` 条目（`contents` 留空，`presentedNoteContent` 因此仍取快照，_deck 判据一字未动_），而不是给播报加「见过它存在才算断」的防御——后者是给不存在的状态写代码。
+  - 视觉门禁在案：**761 通过 / 7 红**，总读数 **768** 与 N-14 那轮同名同数（本条没动门禁，也没新增红）。7 红 = L-1 的 6（2 几何 + 3 缩略图与成图 + 1 主题反转）+ L-3 的 1；**L-4 那两条本轮为绿**（同一条断言七份完整跑：红 3 绿 4），L-8 那条本轮同样不在红集合里。
+  - 门禁在案：`npm run typecheck` rc=0；13 项静态门禁逐条 rc=0（`i18n:check` **3906** 键两语齐、`labels:check` 165 条、`comments:check` 白名单 **13382 条 / 1373 文件**（新增文件 `use-presented-note.ts` 自己的块）、`hardcoded:check` 0 违规且演示模块裸阶梯仍为 0、`surfaces:check` 8 面、`size:check` 442/79 行、`style:check`/`tokens:check`/`escape:check`/`empty-catch:check`/`module-state:check`/`deep-imports:check`/`vendor:check`/`budget:check` 全绿）；`npm run test:unit` 全量 **625 文件 / 6079 通过 + 1 跳过 / 0 失败**（6067 → 6079 即本条 12 例）；提交钩子另跑增量 `tsc -b` 与 `vitest related` **416 文件 / 3997 例**全绿。
+  - 落地取舍与残留：①**浏览器侧证据缺位**，另立 **L-10**：删除入口在侧栏、被不透明放映对话框挡住，走 API 删又不动客户端 store，所以 `e2e-visual.mjs` 现在补不出「放映中真删一次」这一步，本条三条判据全部由 jsdom 承担。②`start()` 的 `false` 在三个调用方仍是 `void`——本条把话说在函数里，调用方不改（改法属把返回值升成契约，收益不抵面积）。③演讲者窗「跟随态」本来就不显示，故断裂时它只是继续收到旧快照的广播，与本条无关；L-7 是另一件事。④N-21 / N-22 引用的 `use-presentation-session.ts:307-309` 因拆分位移到 **310-312**，已在 N-21 原文里更新行号；`presentation-controls.tsx` 的 `SlideProgress` 现居 192 行。⑤笔记被删后 `following` 存储值仍是删前的值（本条只让开关与播报说实话，不改存储语义），若日后要「断裂即自动置为冻结」，那是行为决定，得连文案一起另开条目。
