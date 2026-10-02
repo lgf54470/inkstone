@@ -312,8 +312,10 @@ function useShowDeck(presentedContent: string) {
   return { deck, notes, fingerprint }
 }
 
-// Renders the enhanced markup off-DOM and caches it per slide; the cache hit is
-// what keeps diagrams alive across any remount of the slide subtree.
+// Which slide the show is on, kept inside the deck at both ends: the opening index is clamped in case
+// the note it was resumed from has since lost slides, a deck that shrinks mid-talk pulls the position
+// back onto a slide that exists, and `goTo` cannot walk past either end. The page *within* a slide is
+// a separate concern — see `useSubPage`.
 function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
   const [index, setIndex] = useState(() => Math.max(0, Math.min(initialSlideIndex, Math.max(0, deckLength - 1))))
   useEffect(() => {
