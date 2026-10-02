@@ -67,7 +67,9 @@ function GraphColorRuleRow({ group, onChange, onRemove }: {
           <X size={13}/>
         </IconButton>
       </div>
-      <div className='mt-1.5 flex flex-wrap items-center gap-1'>
+      {/* 24px is the target the app's other swatch rows use (`tag-manager-row`, the folder pickers), and
+          the gap leaves room for the selected swatch's ring so it does not touch its neighbours. */}
+      <div className='mt-1.5 flex flex-wrap items-center gap-1.5'>
         {ORGANIZER_COLORS.map((color) => {
           const isSelected = group.color === color
           return (
@@ -78,7 +80,7 @@ function GraphColorRuleRow({ group, onChange, onRemove }: {
                 aria-pressed={isSelected}
                 onClick={() => onChange({ color })}
                 className={cn(
-                  'flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110',
+                  'flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110',
                   isSelected && 'ring-2 ring-[var(--accent-ring)] ring-offset-1 ring-offset-[var(--bg-surface)]'
                 )}
                 style={{ backgroundColor: color }}

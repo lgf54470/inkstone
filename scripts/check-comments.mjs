@@ -3570,6 +3570,11 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
     '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
+    '// jsdom paints nothing, so the target is read off the class the app sizes its swatches with',
+    '// everywhere else: the tag and folder pickers are `size-6` too.',
+  ]],
+  ['src/client/features/graph/graph-panel/settings-color-rules.tsx', [
+    '/* 24px is the target the app\'s other swatch rows use (`tag-manager-row`, the folder pickers), and\n          the gap leaves room for the selected swatch\'s ring so it does not touch its neighbours. */',
   ]],
   ['src/client/features/graph/graph-panel/settings.tsx', [
     '/** Named by the header control that opens this drawer, so `aria-controls` has something to point at. */',

@@ -105,6 +105,16 @@ describe('graph color rule settings', () => {
     press(pressed)
     expect(colorGroupWrites(onChange)[0]).toEqual([{ ...rule, color: '#059669' }])
   })
+
+  it('aims at the app-wide 24px target rather than a 20px dot (G-26)', () => {
+    const container = open([rule], vi.fn())
+    const swatch = container.querySelector<HTMLButtonElement>('button[aria-label="#059669"]')!
+
+    // jsdom paints nothing, so the target is read off the class the app sizes its swatches with
+    // everywhere else: the tag and folder pickers are `size-6` too.
+    expect(swatch.className).toContain('size-6')
+    expect(swatch.className).not.toContain('size-5')
+  })
 })
 
 describe('graph color rule list controls', () => {
