@@ -1,3 +1,3 @@
 export * from './types'
-export { detectEditorContext } from './editor'
+export { detectEditorContext, findCodeFenceInLines, isMarkdownContainer, type FenceBlock } from './editor'
 export { detectPreviewContext } from './preview'

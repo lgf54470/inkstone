@@ -82,8 +82,8 @@
     "longFns": 3
   },
   "src/client/features/workspace/context-menu-detect/editor.ts": {
-    "longFns": 2,
-    "deepFns": 2
+    "longFns": 1,
+    "deepFns": 1
   },
   "src/client/features/workspace/context-menu/media.tsx": {
     "longFns": 2
@@ -94,6 +94,9 @@
   "src/client/features/workspace/context-menu/toolbar.tsx": {
     "longFns": 3,
     "deepFns": 1
+  },
+  "src/client/features/workspace/editor-context-menu-code.test.ts": {
+    "longFns": 1
   },
   "src/client/features/workspace/editor-context-menu.test.ts": {
     "longFns": 4
@@ -161,6 +164,9 @@
     "longFns": 1
   },
   "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
+    "longFns": 1
+  },
+  "src/client/lib/preload-guard.test.ts": {
     "longFns": 1
   },
   "src/shared/locales/en-US/music.ts": {

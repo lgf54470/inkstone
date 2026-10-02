@@ -121,6 +121,17 @@ const getVendorChunkName = (id: string) => {
 }
 
 const config: UserConfigFnPromise = async ({ mode, command }) => ({
+  cacheDir: '.vite',
+  optimizeDeps: {
+    entries: ['index.html'],
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+    ],
+  },
   plugins: [
     react(),
     katexWoff2Only(),

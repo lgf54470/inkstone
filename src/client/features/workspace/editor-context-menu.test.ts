@@ -8,7 +8,7 @@ import { Menu } from '../../components/overlay'
 import { filterMenuItems, matchMenuItem } from '../../components/overlay/menu-search'
 import { useEditorContextMenu } from './use-editor-context-menu'
 import { ContextMenuToolbar } from './context-menu/toolbar'
-import type { EditorContextData } from './context-menu-detect'
+import type { EditorContextData, PreviewContextData } from './context-menu-detect'
 
 function createEditorView(doc: string, selection?: { from: number; to: number }) {
   const parent = document.createElement('div')
@@ -23,12 +23,16 @@ function createEditorView(doc: string, selection?: { from: number; to: number })
 function Probe({
   editorView,
   editorContext,
+  previewContext,
   content,
+  onEditContent,
   onCapture,
 }: {
-  editorView: EditorView
-  editorContext: EditorContextData
+  editorView?: EditorView | null
+  editorContext?: EditorContextData | null
+  previewContext?: PreviewContextData | null
   content: string
+  onEditContent?: (content: string) => void
   onCapture: (data: ReturnType<typeof useEditorContextMenu>) => void
 }) {
   const data = useEditorContextMenu({
@@ -36,8 +40,9 @@ function Probe({
     onClose: vi.fn(),
     editorView,
     editorContext,
+    previewContext,
     content,
-    onEditContent: vi.fn(),
+    onEditContent: onEditContent ?? vi.fn(),
     onJumpToLine: vi.fn(),
   })
   onCapture(data)

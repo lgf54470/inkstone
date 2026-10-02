@@ -118,5 +118,7 @@ const CATEGORY_MAP: Record<string, FormatterCategory> = {
 
 export function resolveCategory(rawLang: string): FormatterCategory {
   const normalized = (rawLang || '').toLowerCase().trim()
-  return CATEGORY_MAP[normalized] ?? 'generic'
+  if (CATEGORY_MAP[normalized]) return CATEGORY_MAP[normalized]
+  const base = normalized.replace(/^\./, '').split(/[\s:{[(\]]/)[0]?.trim() ?? ''
+  return CATEGORY_MAP[base] ?? 'generic'
 }

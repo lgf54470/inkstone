@@ -191,6 +191,118 @@ describe('detectEditorContext blocks and diagrams', () => {
     expect(ctx.type).toBe('slides')
     expect(ctx.slides?.code).toBe('# Slide A')
   })
+
+  it('detects innermost code block nested inside md-example container', () => {
+    const doc = [
+      '~~~~md-example title="Code block with title, line numbers and highlight"',
+      '```ts title="hello.ts" line-numbers {2}',
+      '  const name = \'Inkstone\'',
+      'const age=45',
+      'console.log(`Hello, ${name}!`)',
+      '```',
+      '~~~~',
+    ].join('\n')
+
+    const innerPos = doc.indexOf('const age=45')
+    const innerCtx = detectAt(doc, innerPos)
+    expect(innerCtx.type).toBe('codeblock')
+    expect(innerCtx.codeBlock?.language).toBe('ts')
+    expect(innerCtx.codeBlock?.code).toBe([
+      '  const name = \'Inkstone\'',
+      'const age=45',
+      'console.log(`Hello, ${name}!`)',
+    ].join('\n'))
+
+    const outerPos = 5
+    const outerCtx = detectAt(doc, outerPos)
+    expect(outerCtx.type).toBe('codeblock')
+    expect(outerCtx.codeBlock?.language).toBe('md-example')
+  })
+
+  it('detects innermost code block with shorter fence inside longer fence', () => {
+    const doc = [
+      '````markdown',
+      'Markdown text',
+      '```python',
+      'print("hello")',
+      '```',
+      'More markdown',
+      '````',
+    ].join('\n')
+
+    const pyPos = doc.indexOf('print("hello")')
+    const pyCtx = detectAt(doc, pyPos)
+    expect(pyCtx.type).toBe('codeblock')
+    expect(pyCtx.codeBlock?.language).toBe('python')
+    expect(pyCtx.codeBlock?.code).toBe('print("hello")')
+
+    const mdPos = doc.indexOf('Markdown text')
+    const mdCtx = detectAt(doc, mdPos)
+    expect(mdCtx.type).toBe('codeblock')
+    expect(mdCtx.codeBlock?.language).toBe('markdown')
+  })
+
+  it('detects language correctly when fence has attributes or spaces', () => {
+    const doc = '```ts title="hello.ts" line-numbers {2}\nconst x = 1\n```'
+    const ctx = detectAt(doc, 45)
+    expect(ctx.type).toBe('codeblock')
+    expect(ctx.codeBlock?.language).toBe('ts')
+    expect(ctx.codeBlock?.code).toBe('const x = 1')
+
+    const docSpace = '``` ts:main.ts\nconst x = 1\n```'
+    const ctxSpace = detectAt(docSpace, 20)
+    expect(ctxSpace.type).toBe('codeblock')
+    expect(ctxSpace.codeBlock?.language).toBe('ts')
+  })
+
+  it('detects live mermaid block nested inside md-example container', () => {
+    const doc = [
+      '~~~~md-example',
+      '```mermaid',
+      'flowchart TD',
+      'A --> B',
+      '```',
+      '~~~~',
+    ].join('\n')
+
+    const mermaidPos = doc.indexOf('flowchart TD')
+    const ctx = detectAt(doc, mermaidPos)
+    expect(ctx.type).toBe('mermaid')
+    expect(ctx.mermaid?.code).toBe('flowchart TD\nA --> B')
+  })
+
+  it('does not treat tilde lines inside typescript block as a nested code block', () => {
+    const doc = [
+      '```ts',
+      'const s = `',
+      '~~~~',
+      '`',
+      'const a = 1',
+      '```',
+    ].join('\n')
+
+    const pos = doc.indexOf('~~~~')
+    const ctx = detectAt(doc, pos)
+    expect(ctx.type).toBe('codeblock')
+    expect(ctx.codeBlock?.language).toBe('ts')
+    expect(ctx.codeBlock?.code).toBe('const s = `\n~~~~\n`\nconst a = 1')
+  })
+
+  it('does not treat 3 backticks inside 4-backtick code block as a separate block when not in a container', () => {
+    const doc = [
+      '````ts',
+      '```',
+      'const a = 1',
+      '```',
+      '````',
+    ].join('\n')
+
+    const pos = doc.indexOf('const a = 1')
+    const ctx = detectAt(doc, pos)
+    expect(ctx.type).toBe('codeblock')
+    expect(ctx.codeBlock?.language).toBe('ts')
+    expect(ctx.codeBlock?.code).toBe('```\nconst a = 1\n```')
+  })
 })
 
 describe('detectPreviewContext', () => {

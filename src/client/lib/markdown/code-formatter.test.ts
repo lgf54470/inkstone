@@ -94,6 +94,21 @@ console.log(\`Hello, \${name}!\`)`
 const age = 45
 console.log(\`Hello, \${name}!\`)`)
   })
+
+  it('formats code when language parameter includes fence attributes or colons', () => {
+    const code = `const name = 'Inkstone'\nconst age=45\nconsole.log(\`Hello, \${name}!\`)`
+    const formattedWithAttrs = formatCode(code, 'ts title="hello.ts" line-numbers {2}')
+    expect(formattedWithAttrs).toContain('const age = 45')
+
+    const formattedWithColon = formatCode(code, 'ts:hello.ts')
+    expect(formattedWithColon).toContain('const age = 45')
+
+    const formattedWithBrackets = formatCode(code, 'ts[hello.ts]')
+    expect(formattedWithBrackets).toContain('const age = 45')
+
+    const formattedWithDot = formatCode(code, '.ts')
+    expect(formattedWithDot).toContain('const age = 45')
+  })
 })
 
 describe('formatCode - tsx and systems code', () => {

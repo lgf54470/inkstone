@@ -1,5 +1,6 @@
 import { type EditorView } from '@codemirror/view'
 import { parseMarkdownTable } from '../../../lib/markdown/table-editor'
+import { parseFenceInfo } from '../../../lib/markdown/renderer'
 import { type Text } from '@codemirror/state'
 
 import type { EditorContextData } from './types'
@@ -200,7 +201,7 @@ const LIVE_FENCE_KINDS: Record<string, LiveFenceKind> = {
 function codeFenceContext(
   pos: number,
   lineNumber: number,
-  codeFence: { language: string; code: string; from: number; to: number },
+  codeFence: { language: string; code: string; from: number; to: number; isClosed?: boolean },
 ): EditorContextData {
   const live = liveFenceContext(pos, lineNumber, codeFence)
   if (live) return live
@@ -213,6 +214,7 @@ function codeFenceContext(
       code: codeFence.code,
       from: codeFence.from,
       to: codeFence.to,
+      isClosed: codeFence.isClosed,
     },
   }
 }
@@ -253,71 +255,147 @@ function mathBlockContext(
 }
 
 
-function findCodeFenceAround(doc: Text, pos: number): { language: string; code: string; from: number; to: number } | null {
+export interface FenceBlock {
+  openLine: number
+  closeLine: number
+  language: string
+  code: string
+  isClosed: boolean
+}
+
+interface OpenFence {
+  index: number
+  char: string
+  count: number
+  language: string
+}
+
+const MARKDOWN_CONTAINER_LANGS = new Set(['md-example', 'markdown-example', 'markdown', 'md', 'mdx'])
+
+export function isMarkdownContainer(lang: string): boolean {
+  const base = lang.trim().toLowerCase().split(/[\s:{[(\]]/)[0] ?? ''
+  return MARKDOWN_CONTAINER_LANGS.has(base)
+}
+
+function matchClosingFence(stack: OpenFence[], closeChar: string, closeCount: number): number {
+  for (let s = stack.length - 1; s >= 0; s--) {
+    const openFence = stack[s]!
+    if (openFence.char === closeChar && closeCount >= openFence.count) {
+      return s
+    }
+    if (!isMarkdownContainer(openFence.language)) {
+      break
+    }
+  }
+  return -1
+}
+
+function closeFenceBlocks(stack: OpenFence[], blocks: FenceBlock[], matchIndex: number, closeLine: number, lines: string[]): void {
+  while (stack.length > matchIndex + 1) {
+    const unclosed = stack.pop()!
+    blocks.push({
+      openLine: unclosed.index,
+      closeLine: closeLine - 1,
+      language: unclosed.language,
+      code: lines.slice(unclosed.index + 1, closeLine).join('\n'),
+      isClosed: false,
+    })
+  }
+  const closed = stack.pop()!
+  blocks.push({
+    openLine: closed.index,
+    closeLine,
+    language: closed.language,
+    code: lines.slice(closed.index + 1, closeLine).join('\n'),
+    isClosed: true,
+  })
+}
+
+function canOpenFence(stack: OpenFence[], openChar: string, openCount: number): boolean {
+  if (stack.length === 0) return true
+  const top = stack[stack.length - 1]!
+  if (!isMarkdownContainer(top.language)) return false
+  return openChar !== top.char || openCount < top.count
+}
+
+function selectInnermostBlock(blocks: FenceBlock[], targetLine: number): FenceBlock | null {
+  const enclosing = blocks.filter((b) => targetLine >= b.openLine && targetLine <= b.closeLine)
+  if (enclosing.length === 0) return null
+
+  enclosing.sort((a, b) => {
+    const spanA = a.closeLine - a.openLine
+    const spanB = b.closeLine - b.openLine
+    return spanA !== spanB ? spanA - spanB : b.openLine - a.openLine
+  })
+
+  return enclosing[0]!
+}
+
+export function findCodeFenceInLines(lines: string[], targetLine: number): FenceBlock | null {
+  if (targetLine < 0 || targetLine >= lines.length) return null
+
+  const stack: OpenFence[] = []
+  const blocks: FenceBlock[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i]!
+    const closeMatch = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/.exec(text)
+
+    if (closeMatch && stack.length > 0) {
+      const matchIndex = matchClosingFence(stack, closeMatch[1]![0]!, closeMatch[1]!.length)
+      if (matchIndex !== -1) {
+        closeFenceBlocks(stack, blocks, matchIndex, i, lines)
+        continue
+      }
+    }
+
+    const openMatch = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/.exec(text)
+    if (openMatch) {
+      const openChar = openMatch[1]![0]!
+      const rawInfo = openMatch[2] ?? ''
+      if (openChar === '`' && rawInfo.includes('`')) continue
+
+      if (canOpenFence(stack, openChar, openMatch[1]!.length)) {
+        const info = parseFenceInfo(rawInfo)
+        const lang = (info.language || '').split(':')[0]!.trim()
+        stack.push({ index: i, char: openChar, count: openMatch[1]!.length, language: lang })
+      }
+    }
+  }
+
+  while (stack.length > 0) {
+    const unclosed = stack.pop()!
+    blocks.push({
+      openLine: unclosed.index,
+      closeLine: lines.length - 1,
+      language: unclosed.language,
+      code: lines.slice(unclosed.index + 1).join('\n'),
+      isClosed: false,
+    })
+  }
+
+  return selectInnermostBlock(blocks, targetLine)
+}
+
+function findCodeFenceAround(
+  doc: Text,
+  pos: number,
+): { language: string; code: string; from: number; to: number; isClosed?: boolean } | null {
+  const lines = doc.toJSON()
   const targetLineNumber = doc.lineAt(pos).number
-  let openLine = -1
-  let openChar = '`'
-  let openCount = 3
-  let openLanguage = ''
+  const block = findCodeFenceInLines(lines, targetLineNumber - 1)
+  if (!block) return null
 
-  for (let i = 1; i <= doc.lines; i++) {
-    const text = doc.line(i).text
-    if (openLine === -1) {
-      if (i > targetLineNumber) {
-        return null
-      }
-      const match = /^\s*(`{3,}|~{3,})([^\s`~]*)/.exec(text)
-      if (match) {
-        const fenceStr = match[1]!
-        openLine = i
-        openChar = fenceStr[0]!
-        openCount = fenceStr.length
-        openLanguage = match[2] ?? ''
-      } else if (i === targetLineNumber) {
-        return null
-      }
-    } else {
-      const closeMatch = new RegExp(`^\\s*\\${openChar}{${openCount},}\\s*$`).exec(text)
-      if (closeMatch) {
-        const closeLine = i
-        if (targetLineNumber >= openLine && targetLineNumber <= closeLine) {
-          const from = doc.line(openLine).from
-          const to = doc.line(closeLine).to
-          const codeLines: string[] = []
-          for (let j = openLine + 1; j < closeLine; j++) {
-            codeLines.push(doc.line(j).text)
-          }
-          return {
-            language: openLanguage,
-            code: codeLines.join('\n'),
-            from,
-            to,
-          }
-        }
-        openLine = -1
-        if (i >= targetLineNumber) {
-          return null
-        }
-      }
-    }
+  const from = doc.line(block.openLine + 1).from
+  const to = doc.line(block.closeLine + 1).to
+
+  return {
+    language: block.language,
+    code: block.code,
+    from,
+    to,
+    isClosed: block.isClosed,
   }
-
-  if (openLine !== -1 && targetLineNumber >= openLine) {
-    const from = doc.line(openLine).from
-    const to = doc.length
-    const codeLines: string[] = []
-    for (let j = openLine + 1; j <= doc.lines; j++) {
-      codeLines.push(doc.line(j).text)
-    }
-    return {
-      language: openLanguage,
-      code: codeLines.join('\n'),
-      from,
-      to,
-    }
-  }
-
-  return null
 }
 
 

@@ -29,7 +29,7 @@ export interface EditorContextData {
   table?: ParsedTable
   image?: { alt: string; url: string; raw: string; from: number; to: number }
   math?: { formula: string; isBlock: boolean; from: number; to: number }
-  codeBlock?: { language: string; code: string; from: number; to: number }
+  codeBlock?: { language: string; code: string; from: number; to: number; isClosed?: boolean }
   mermaid?: { code: string; from: number; to: number }
   chart?: { code: string; from: number; to: number }
   mindmap?: { code: string; from: number; to: number }
