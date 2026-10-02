@@ -9,7 +9,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
 import { clampInt } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
-import { GRAPH_EDGE_CANDIDATE_LIMIT } from './helpers'
+import { GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX } from './helpers'
 import { escapeLike } from './helpers'
 import { applyUnresolvedNodes } from './graph-nodes'
 import { consumeGraphReadBudget } from './read-budget'
@@ -98,12 +98,12 @@ async function graphHandler(c: Context<AppBindings>): Promise<Response> {
   const { rows, totalNodes } = params.mode === 'local'
     ? await runLocalGraphQuery(c.env.DB, params, filters, filterBinds)
     : await runGlobalGraphQuery(c.env.DB, params, filters, filterBinds)
-  const noteLimit = params.includeUnresolved ? Math.max(1, params.limit - 50) : params.limit
+  const noteLimit = params.includeUnresolved ? Math.max(1, params.limit - GRAPH_UNRESOLVED_ALLOWANCE) : params.limit
   let truncated = rows.length > noteLimit || totalNodes > noteLimit
   const pageRows = rows.slice(0, noteLimit)
   const graph = await loadGraphEdgesAndTags(c.env.DB, params.userId, pageRows, params.includeUnresolved)
   if (graph.truncated) truncated = true
-  if (graph.unresolved.size >= 50) truncated = true
+  if (graph.unresolved.size >= GRAPH_UNRESOLVED_MAX) truncated = true
   const body = buildGraphBody(pageRows, graph.edges, graph.unresolved, graph.tagsByNote, {
     mode: params.mode,
     centerId: params.mode === 'local' ? params.centerId : null,
@@ -151,8 +151,8 @@ function validateGraphParams(params: GraphParams): void {
   if (params.rawFolderId && !params.folderId) {
     throw new ApiError(400, 'bad_request', 'The folder id is not a valid folder id')
   }
-  if (params.query.length > 200) {
-    throw new ApiError(400, 'bad_request', 'The graph search query cannot exceed 200 characters')
+  if (params.query.length > GRAPH_QUERY_MAX_CHARS) {
+    throw new ApiError(400, 'bad_request', `The graph search query cannot exceed ${GRAPH_QUERY_MAX_CHARS} characters`)
   }
   if (params.legacyTag.length > LIMITS.tagNameMaxLength) {
     throw new ApiError(400, 'bad_request', `The graph tag cannot exceed ${LIMITS.tagNameMaxLength} characters`)
@@ -405,7 +405,7 @@ function buildGraphEdges(
   const seen = new Set<string>()
   for (const link of linkRows.slice(0, GRAPH_EDGE_CANDIDATE_LIMIT)) {
     if (link.target_note_id === null) {
-      if (!includeUnresolved || unresolved.size >= 50 && !unresolved.has(link.target_key)) continue
+      if (!includeUnresolved || (unresolved.size >= GRAPH_UNRESOLVED_MAX && !unresolved.has(link.target_key))) continue
       const current = unresolved.get(link.target_key) ?? {
         title: truncateText(wikiNoteTarget(link.target_title), LIMITS.titleMaxLength),
         sources: new Set<string>(),

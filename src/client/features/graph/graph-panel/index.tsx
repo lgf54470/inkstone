@@ -23,7 +23,7 @@ import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
 import { useGraphPreferences } from './use-graph-prefs'
-import { DEFAULT_PREFERENCES } from './constants'
+import { DEFAULT_PREFERENCES, GRAPH_SEARCH_DEBOUNCE_MS } from './constants'
 import { countWikiLinkEdges, graphNodeCounts, graphSearchHits, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps, GraphSearchState } from './types'
 
@@ -379,7 +379,7 @@ function useGraphSearch(data: GraphResponse | null, query: string, isOnlyMatchin
 /** The search line's two modes are kept together because they end together: an empty box answers nobody. */
 function useGraphSearchMode() {
   const [search, setSearch] = useState('')
-  const query = useDebouncedQuery(search, 220)
+  const query = useDebouncedQuery(search, GRAPH_SEARCH_DEBOUNCE_MS)
   const [isOnlyMatching, setIsOnlyMatching] = useState(false)
   const changeSearch = (value: string) => {
     setSearch(value)

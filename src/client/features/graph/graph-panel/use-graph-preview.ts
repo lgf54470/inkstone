@@ -3,6 +3,7 @@ import { withPinnedWindowSize } from '../../../lib/pinned-window-size'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import type { WikiLinkHoverCardState } from '../../preview'
 import type { CanvasNode, CanvasState } from './types'
+import { GRAPH_PREVIEW_HIDE_MS, GRAPH_PREVIEW_SHOW_MS } from './constants'
 
 export function computeNodeAnchor(
   canvas: HTMLCanvasElement,
@@ -32,12 +33,12 @@ function usePreviewTimers(onHover: () => void, onHide: () => void) {
   const armHover = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    hoverTimerRef.current = window.setTimeout(() => onHoverRef.current(), 300)
+    hoverTimerRef.current = window.setTimeout(() => onHoverRef.current(), GRAPH_PREVIEW_SHOW_MS)
   }, [])
   const armHide = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = window.setTimeout(() => onHideRef.current(), 200)
+    hideTimerRef.current = window.setTimeout(() => onHideRef.current(), GRAPH_PREVIEW_HIDE_MS)
   }, [])
   return { clearTimers, armHover, armHide, pauseHide: () => window.clearTimeout(hideTimerRef.current) }
 }

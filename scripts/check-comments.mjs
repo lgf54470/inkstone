@@ -3581,6 +3581,8 @@ const allowed = new Map([
     '/** A title is cut to this many characters, however it is drawn. */',
     '/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */',
     '/** How far one press of the node-limit slider moves: a screenful of notes, not one of them. */',
+    '/** How long the search box waits for the reader to stop typing before it acts on the line. */',
+    '/** How long a node has to hold the pointer before its preview card is asked for, and how long the card\n * stays open once the pointer has left — the shorter of the two is what lets a sweep across the map\n * settle without stacking a card per node (G-37). */',
     '/** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line\n * decides that letting go opens nothing and that the node has left the place its preview card hangs\n * from, so the two can never disagree about where the click ends (G-16). */',
     '/** A search that locates its matches leaves the rest of the graph on screen: lighter than the hover\n * focus, which hides the whole field, because these nodes are the context the match sits in (G-14). */',
     '/**\n * What a reader gets before they touch a setting. Every value here is decided somewhere else: the\n * booleans come from the settings manifest and the numbers from the shared bounds and the range table,\n * so this object is an assembly, not a fourth copy of any of them (G-36).\n */',
@@ -14802,6 +14804,9 @@ const allowed = new Map([
     '// asked for them and are skipped otherwise. Everything else has to end inside the page.',
   ]],
   ['src/worker/routes/search/helpers.ts', [
+    '/** How many of the reader\'s node budget is held back so unresolved ghosts can still reach the page. */',
+    '/** How many ghosts one response carries before the page is called truncated. The same number as the\n * allowance above is a coincidence of two different decisions, so they carry two names (G-37). */',
+    '/** The longest search line a graph request accepts, counted in characters, not tokens. */',
     '// The terms are scoped to the two columns a person searches. The index also carries note_id (so',
     '// deletes can reach a row without scanning the table), and an unscoped query would answer with',
     '// whatever note happens to hold the term inside its id.',

@@ -6,6 +6,16 @@ import { NOTE_COLUMNS, toNoteSummary, type NoteRow } from '../../db/rows'
 
 export const GRAPH_EDGE_CANDIDATE_LIMIT = 10_000
 
+/** How many of the reader's node budget is held back so unresolved ghosts can still reach the page. */
+export const GRAPH_UNRESOLVED_ALLOWANCE = 50
+
+/** How many ghosts one response carries before the page is called truncated. The same number as the
+ * allowance above is a coincidence of two different decisions, so they carry two names (G-37). */
+export const GRAPH_UNRESOLVED_MAX = 50
+
+/** The longest search line a graph request accepts, counted in characters, not tokens. */
+export const GRAPH_QUERY_MAX_CHARS = 200
+
 export interface ParsedQuery {
   text: string
   terms: string[]

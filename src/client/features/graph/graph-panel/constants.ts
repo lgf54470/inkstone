@@ -25,6 +25,15 @@ export const GRAPH_CAMERA_PADDING = 24
 /** How far one press of the node-limit slider moves: a screenful of notes, not one of them. */
 export const GRAPH_LIMIT_STEP = 50
 
+/** How long the search box waits for the reader to stop typing before it acts on the line. */
+export const GRAPH_SEARCH_DEBOUNCE_MS = 220
+
+/** How long a node has to hold the pointer before its preview card is asked for, and how long the card
+ * stays open once the pointer has left — the shorter of the two is what lets a sweep across the map
+ * settle without stacking a card per node (G-37). */
+export const GRAPH_PREVIEW_SHOW_MS = 300
+export const GRAPH_PREVIEW_HIDE_MS = 200
+
 /** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line
  * decides that letting go opens nothing and that the node has left the place its preview card hangs
  * from, so the two can never disagree about where the click ends (G-16). */
