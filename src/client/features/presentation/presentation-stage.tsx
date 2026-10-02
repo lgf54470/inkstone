@@ -175,3 +175,15 @@ export function CoverAnnouncement({ cover }: { cover: PresentationCover | null }
   )
 }
 
+// A page whose enhancement threw keeps its text and loses its diagrams, and the only visible trace is
+// a placeholder that never fills in — which reads as a slow show rather than a failed one. This says
+// which of the two it is, inside the dialog where a reader already is. It is not change-tracked the
+// way the cover announcement is: a live region stays quiet about what was already there when it
+// mounted, so opening on a good page says nothing and the first page that fails is the one that speaks.
+export function SlidePreparationNotice({ failed }: { failed: boolean }) {
+  return (
+    <span data-slide-preparation={failed ? 'failed' : 'ok'} className='sr-only' role='status' aria-live='polite'>
+      {failed ? t('workspace.presentation_slide_unprepared') : ''}
+    </span>
+  )
+}

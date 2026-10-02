@@ -18,6 +18,7 @@ import { splitIntoSlidesWithNotes } from './slides'
 import { openPresenterWindow, usePresenterBroadcaster, usePresenterSlideState, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
 import { usePresentedNote } from './use-presented-note'
 import { usePresentationKeys } from './use-presentation-keys'
+import { useFullscreenToggle } from './use-fullscreen-toggle'
 import { useSlideHtml } from './use-slide-html'
 
 const CHROME_IDLE_MS = 2600
@@ -70,6 +71,8 @@ export interface PresentationSession {
   toggleFullscreen: () => void
   toggleRail: () => void
   toggleFollowing: () => void
+  /** The page on screen could not be enhanced: readable text, placeholders where its diagrams should be. */
+  slideUnprepared: boolean
   /** How far the idle pass has got in listing the pages the deck has not shown yet. */
   listProgress: PreflightProgress
   /** Builds the printable deck; the sheet appears until the print dialog is done with it. */
@@ -182,7 +185,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
-  useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
+  const slideUnprepared = useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
   // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the
   // controls ask for. What stays explicit is what only the session decides.
@@ -201,6 +204,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     externalImages,
     noteTitle,
     listProgress,
+    slideUnprepared,
     toggleFullscreen,
     toggleRail,
     toggleFollowing,
@@ -409,40 +413,3 @@ function useSubPage(index: number, pageCount: number, known: boolean) {
   return { sub: Math.min(Math.max(subPage, 0), pageCount - 1), setSubPage, carryPage }
 }
 
-function useFullscreenToggle(open: boolean, panelRef: RefObject<HTMLDivElement | null>) {
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const report = (scope: string) => (error: unknown) => console.debug(`[inkstone] ${scope} rejected`, error)
-  const enter = useCallback(() => {
-    const panel = panelRef.current
-    if (!panel || document.fullscreenElement || typeof panel.requestFullscreen !== 'function') return
-    const pending = panel.requestFullscreen()
-    pending?.catch?.(report('fullscreen request'))
-  }, [panelRef])
-  const exit = useCallback(() => {
-    if (!panelRef.current || document.fullscreenElement !== panelRef.current || typeof document.exitFullscreen !== 'function') return
-    void document.exitFullscreen().catch(report('exit fullscreen'))
-  }, [panelRef])
-  // Starting the show enters fullscreen, and the request has to happen while the
-  // click that opened the overlay is still a user gesture: a layout effect runs
-  // inside that same task, a plain effect after it does not.
-  useLayoutEffect(() => {
-    if (open) enter()
-  }, [open, enter])
-  useEffect(() => {
-    if (!open) return
-    const owned = () => document.fullscreenElement === panelRef.current
-    const sync = () => setIsFullscreen(owned())
-    sync()
-    document.addEventListener('fullscreenchange', sync)
-    return () => {
-      document.removeEventListener('fullscreenchange', sync)
-      // Leaving the show must not leave the browser holding the app fullscreen.
-      if (owned()) exit()
-    }
-  }, [open, panelRef, exit])
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement === panelRef.current) exit()
-    else enter()
-  }, [enter, exit])
-  return { isFullscreen, toggleFullscreen }
-}

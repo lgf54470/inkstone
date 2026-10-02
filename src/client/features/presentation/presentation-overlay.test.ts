@@ -6,6 +6,7 @@ import { noteSummary } from '../../store/notes-test-utils'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useUi } from '../../store/ui'
+import { SlidePreparationNotice } from './presentation-stage'
 import { PresentationOverlay } from './presentation-overlay'
 
 function pressExportImages() {
@@ -267,6 +268,24 @@ describe('PresentationOverlay — the show speaks when its note dies', () => {
 
     expect(useUi.getState().toasts).toHaveLength(2)
     view.unmount()
+  })
+})
+
+// N-30: a refused full screen and a page whose diagrams never arrived both leave the show looking
+// exactly as it did before, so the only trace is what the surface says. The notice lives inside the
+// dialog — the one surface the presenter is in — and its text comes from the resources.
+describe('PresentationOverlay — the show says when it could not deliver', () => {
+  it('keeps a status region for a page that could not be prepared', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    const region = document.querySelector('[role="dialog"] [data-slide-preparation]')
+    expect(region?.getAttribute('aria-live')).toBe('polite')
+    expect(region?.textContent?.trim()).toBe('')
+    view.unmount()
+  })
+
+  it('names the degraded page in the resources rather than in a string of its own', () => {
+    const { container } = renderElement(createElement(SlidePreparationNotice, { failed: true }))
+    expect(container.textContent).toBe(t('workspace.presentation_slide_unprepared'))
   })
 })
 

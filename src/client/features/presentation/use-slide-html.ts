@@ -2,13 +2,56 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../../store/session'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
-import { readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup } from './slide-html'
+import { markSlideFailed, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup, type SlideRender } from './slide-html'
 import type { StageMetrics } from './slide-stage'
+
+// One staged page, put through the enhancement chain and written back to the cache. The channels are
+// named at the call rather than assembled elsewhere because every surface that enhances markdown owes
+// a ```kanban fence an answer — `tests/kanban-render-channel.test.ts` reads this call, not a helper.
+async function prepareStagedSlide(source: {
+  key: string
+  staging: HTMLDivElement
+  rendered: SlideRender
+  content: string
+  noteTitle: string
+  math: boolean
+  mermaid: boolean
+  dark: boolean
+  contentWidth: number
+  contentHeight: number
+  isCurrent: () => boolean
+}): Promise<void> {
+  const { key, staging, rendered, content, noteTitle, math, mermaid, dark, contentWidth, contentHeight, isCurrent } = source
+  if (rendered.hasEmbeds) {
+    await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, fences: rendered.fences, isCurrent })
+  }
+  await enhancePreview(staging, {
+    math,
+    mermaid,
+    mindmap: 'snapshot',
+    excalidraw: 'snapshot',
+    // The staged markup is cached and re-serialized into a page, so a board travels as its cards.
+    kanban: 'snapshot',
+    // The bodies these blocks were rendered from. A snapshot draws from the fence body, and the body
+    // no longer rides in the markup that carries it (P-01). The cache keeps this same set beside the
+    // string, because the printed deck runs this draw over a page once more.
+    fences: rendered.fences,
+    dark,
+    codeBlockCollapseLines: 0,
+    // A mind map is drawn for a box, not for wherever the block happens to sit:
+    // the enhancement runs off-DOM, where nothing has a size to measure.
+    mindmapBox: { width: contentWidth, height: contentHeight },
+  })
+  if (!isCurrent()) return
+  rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences, layout: rendered.layout })
+}
 
 // Renders the enhanced markup for one slide off-DOM and caches it, so the canvas and
 // the slide list — and the idle preflight pass — all read the same prepared html per
 // content fingerprint, theme and slide. A cache hit is left alone: re-enhancing an
 // already prepared slide is what makes diagrams flash back to their placeholders.
+// The return says whether this page's enhancement failed: the text is still there and only the
+// diagrams and math stayed placeholders, which the surface has to be able to say out loud.
 export function useSlideHtml(options: {
   open: boolean
   deck: string[]
@@ -18,15 +61,17 @@ export function useSlideHtml(options: {
   noteTitle: string
   dark: boolean
   metrics: StageMetrics
-}): void {
+}): boolean {
   const { open, deck, index, fingerprint, content, noteTitle, dark, metrics } = options
   const preview = useSession((s) => s.settings.preview)
   const [, setTick] = useState(0)
   const contentWidth = metrics.contentWidth
   const contentHeight = metrics.contentHeight
+  // Hoisted out of the effect because the caller asks the same question the preparer answers with its
+  // failure: did this page's enhancement land, or did it throw and leave the plain markup behind.
+  const key = slideCacheKey({ fingerprint, dark, index, contentWidth, contentHeight })
   useEffect(() => {
     if (!open) return
-    const key = slideCacheKey({ fingerprint, dark, index, contentWidth, contentHeight })
     if (readSlideHtml(key)) return
     let cancelled = false
     const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
@@ -34,34 +79,19 @@ export function useSlideHtml(options: {
     setTick((tick) => tick + 1)
     const staging = document.createElement('div')
     staging.innerHTML = rendered.html
-    const prepare = async () => {
-      if (rendered.hasEmbeds) {
-        await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, fences: rendered.fences, isCurrent: () => !cancelled })
-      }
-      await enhancePreview(staging, {
-        math: preview.math,
-        mermaid: preview.mermaid,
-        mindmap: 'snapshot',
-        excalidraw: 'snapshot',
-        // The staged markup is cached and re-serialized into a page, so a board travels as its cards.
-        kanban: 'snapshot',
-        // The bodies these blocks were rendered from. A snapshot draws from the fence body, and the
-        // body no longer rides in the markup that carries it (P-01). The cache keeps this same set
-        // beside the string, because the printed deck runs this draw over a page once more.
-        fences: rendered.fences,
-        dark,
-        codeBlockCollapseLines: 0,
-        // A mind map is drawn for a box, not for wherever the block happens to sit:
-        // the enhancement runs off-DOM, where nothing has a size to measure.
-        mindmapBox: { width: contentWidth, height: contentHeight },
+    // The rejection must not vanish: it used to, and the only trace was a formula skeleton the
+    // presenter had no way to tell apart from a slow show.
+    prepareStagedSlide({ key, staging, rendered, content, noteTitle, math: preview.math, mermaid: preview.mermaid, dark, contentWidth, contentHeight, isCurrent: () => !cancelled })
+      .then(() => { if (!cancelled) setTick((tick) => tick + 1) })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        console.warn('[inkstone] slide preparation failed', error)
+        markSlideFailed(key)
+        setTick((tick) => tick + 1)
       })
-      if (cancelled) return
-      rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences, layout: rendered.layout })
-      setTick((tick) => tick + 1)
-    }
-    void prepare()
     return () => {
       cancelled = true
     }
-  }, [open, deck, index, fingerprint, content, noteTitle, dark, contentWidth, contentHeight, preview.externalImages, preview.math, preview.mermaid])
+  }, [open, key, deck, index, fingerprint, content, noteTitle, dark, contentWidth, contentHeight, preview.externalImages, preview.math, preview.mermaid])
+  return readSlideHtml(key)?.failed === true
 }

@@ -16,6 +16,13 @@ export interface SlideMarkup {
   fences: FenceBodies
   /** The layout the slide's own source asked for, taken out of the markup before it was rendered. */
   layout?: SlideLayout
+  /**
+   * Set when the page could not be enhanced: its diagrams, math and embeds stayed placeholders while
+   * the text of the slide is still there. It travels with the entry rather than with a surface
+   * because the slide list, the projector and the export all read the same prepared page — one of
+   * them finding it broken is news for all of them.
+   */
+  failed?: boolean
 }
 
 /** A slide rendered for a surface, with the layout its source switched on. */
@@ -93,6 +100,17 @@ export function readSlideHtml(key: string): SlideMarkup | undefined {
 /** The entry a plain render makes, for a slide whose prepared markup never landed in the cache. */
 export function slideMarkup(rendered: SlideRender): SlideMarkup {
   return { html: rendered.html, fences: rendered.fences, layout: rendered.layout }
+}
+
+/**
+ * Mark the page that could not be enhanced. The plain markup written before the enhancement stays in
+ * the cache — the slide's text is readable, only its diagrams and math stayed placeholders — so the
+ * failure rides on that entry rather than on a surface: the projector, the slide list and the printed
+ * deck all read the same prepared page, and one of them finding it broken is news for all three.
+ */
+export function markSlideFailed(key: string): void {
+  const staged = slideHtmlCache.get(key)
+  if (staged) rememberSlideHtml(key, { ...staged, failed: true })
 }
 
 const slideKeyListeners = new Map<string, Set<() => void>>()

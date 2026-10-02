@@ -19,9 +19,9 @@ import { describe, expect, it } from 'vitest'
  */
 const CLIENT_ROOT = path.resolve('src/client')
 const NATIVE_API = /(requestFullscreen|webkitRequestFullscreen|mozRequestFullScreen|msRequestFullscreen)\(/
-// The presentation feature owns it, and only its own session hook: the element that is taken
-// full screen is the dialog's panel, which that hook is handed.
-const NATIVE_FULLSCREEN_OWNERS = [path.join('features', 'presentation', 'use-presentation-session.ts')]
+// The presentation feature owns it, and only its own fullscreen hook: the element that is taken full
+// screen is the dialog's panel, which that hook is handed.
+const NATIVE_FULLSCREEN_OWNERS = [path.join('features', 'presentation', 'use-fullscreen-toggle.ts')]
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

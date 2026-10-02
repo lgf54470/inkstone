@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
 import { DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { CoverAnnouncement, PresentationStage, ScreenCover, stageProps } from './presentation-stage'
+import { CoverAnnouncement, PresentationStage, ScreenCover, SlidePreparationNotice, stageProps } from './presentation-stage'
 import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
@@ -69,15 +69,13 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
       >
         {session.railOpen && <SlideRail {...slideSurfaceProps(session)} title={session.noteTitle} progress={session.listProgress} chromeHidden={session.chromeHidden} occluded={session.occluded} />}
         <PresentationStage {...stageProps(stageRef, session)} />
-        {/* Its own column rather than a panel hung off the toolbar: the toolbar it would hang from is
-            the one this panel is meant to replace, and a strip that grows the header pushes that
-            button out from under the pointer — the shape the AGENTS.md toolbar-expansion rule rules out. */}
         {session.presenterPanel && <PresenterPanel state={session.presenterPanel} chromeHidden={session.chromeHidden} occluded={session.occluded} onClose={session.closePresenterPanel} />}
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress page={session.page} pageTotal={session.pageTotal} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
         {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
         <CoverAnnouncement cover={session.screenCover} />
+        <SlidePreparationNotice failed={session.slideUnprepared} />
         <Spotlight active={session.spotlight} />
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}

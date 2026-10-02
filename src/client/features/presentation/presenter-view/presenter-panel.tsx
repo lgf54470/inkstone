@@ -19,7 +19,10 @@ export interface PresenterPanelProps {
 
 // The console the speaker gets when the browser will not hand over a second window: the next page,
 // the notes for the one on screen and this show's clock, in a column of the show itself. The current
-// page is deliberately absent — the projector already fills the screen with it.
+// page is deliberately absent — the projector already fills the screen with it. Its own column rather
+// than a panel hung off the control toolbar, because the toolbar it would hang from is the one this
+// panel replaces, and a strip that grows the header pushes that button out from under the pointer —
+// the shape the AGENTS.md toolbar-expansion rule rules out.
 export function PresenterPanel({ state, chromeHidden, occluded, onClose }: PresenterPanelProps) {
   const timer = usePresenterTimer(state.startedAt)
 

@@ -78,6 +78,8 @@ export const messages = {
 'workspace.presentation_next': 'Next slide',
 'workspace.presentation_fullscreen': 'Enter fullscreen',
 'workspace.presentation_exit_fullscreen': 'Exit fullscreen',
+'workspace.presentation_fullscreen_denied': 'The browser would not give the show its own full screen, so it keeps running in this window',
+'workspace.presentation_slide_unprepared': 'This page could not prepare its diagrams, so it is shown without them',
 'workspace.presentation_exit': 'Exit presentation',
 'workspace.presentation_slides': 'Slides',
 'workspace.presentation_show_slides': 'Show slide list',
