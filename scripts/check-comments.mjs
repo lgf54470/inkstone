@@ -7238,6 +7238,19 @@ const allowed = new Map([
     '// The serialized markup keeps each block\'s index, so the bodies travel beside it: a pinned card',
     '// draws the maps in this markup later, from this element\'s own render (P-01).',
   ]],
+  ['src/client/features/preview/example-layout.test.ts', [
+    '// The runnable block keeps its own controls; the layout tools sit beside them.',
+  ]],
+  ['src/client/features/preview/example-layout.ts', [
+    '/**\n * The settings toolbar for the two-panel example blocks. It is injected here rather than rendered\n * into the markup so it only exists where a note is editable — a share page or an export draws the\n * same block without controls nobody can press — and every action writes the fence\'s info string,\n * which is the block\'s only state.\n */',
+    '/** Reads the block\'s fence from the note itself and writes the updated options back into its info string. */',
+    '// The markup is rebuilt from the edited source shortly; drop the overlay on the live node now so',
+    '// it never lingers over the block while the edit commits.',
+    '/** Closes an overlay whose trigger lost to a click elsewhere in the same prose surface. */',
+    '/** Escape handler for an open example overlay; returns the trigger that should regain focus. */',
+    '/** What the click route needs from the preview: the note, its committed text and its writers. */',
+    '/**\n * Click entry point for the injected toolbar, dismissal included so the caller only has to route\n * every click here: a click outside an open overlay closes it even when it asks for nothing else.\n */',
+  ]],
   ['src/client/features/preview/excalidraw-fullscreen.test.ts', [
     '/** jsdom has no ResizeObserver, which the registry uses to re-measure a moved canvas. */',
     '/** The block markup the preview renders for a note holding one fence. */',
@@ -7546,6 +7559,7 @@ const allowed = new Map([
   ['src/client/features/preview/use-preview.ts', [
     '// Markup and the bodies it was rendered from are one document: a body-only edit leaves the rendered',
     '// string identical, so the string alone would never tell the mounted blocks their fence changed (P-01).',
+    '/** Escape closes the innermost open block overlay and hands focus back to the control that opened it. */',
     '// One scope per preview instance: two panes showing the same note must not',
     '// claim each other\'s map or board instances.',
     '// Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.',
@@ -8878,6 +8892,9 @@ const allowed = new Map([
     '// leaves the marker, which lands on the same path, so both draw again.',
     '/**\n * Draws every chart block under a root. `instant` is for the surfaces whose canvas is read rather than\n * looked at — a printed sheet, an exported document — where an entrance animation is a picture of\n * nothing at all (see `buildChartConfig`).\n */',
   ]],
+  ['src/client/lib/markdown/enhance/example-split.ts', [
+    '/**\n * The split ratio is a runtime number and the prose whitelist strips inline styles, so the grid\'s\n * tracks are handed to CSS as a custom property instead: one variable for the axis the layout uses\n * and none for the other, so a block that switched between a row split and a column split cannot\n * keep reading the stale one. Runs in every surface — a share page or an export draws the split\n * the note asked for, not the stylesheet\'s fallback.\n */',
+  ]],
   ['src/client/lib/markdown/enhance/image.test.ts', [
     '// The image itself keeps the markdown\'s own attributes: only its parent changed.',
   ]],
@@ -9139,6 +9156,7 @@ const allowed = new Map([
     '/** The run length a body line would need before it could close the surrounding fence. */',
     '/**\n * Where the fence is *now*. The recorded line is tried first; when the fence moved\n * (someone edited above it) the single fence whose body still matches `target.body`\n * is the one. Returns null when neither holds — guessing would overwrite whatever the\n * user typed since the block was rendered, so every caller must then decline to write.\n */',
     '/** The info string on the opening fence, as written, or null when the fence no longer holds the body. */',
+    '/**\n * The fence the renderer drew at `line`, read straight from the note: the opening line is a fence of\n * one of `languages` and the body runs to its closing line. Callers whose markup is known to match\n * this text (the preview only writes while the rendered document and the note agree) use it instead\n * of comparing a body, which would have to be scraped back out of the DOM — where a code block\'s\n * blank lines are already lost to the line spans that draw them.\n */',
     '/**\n * Rewrites one fence, keeping the note\'s EOL style and every line outside the block\n * byte-identical. A fence is widened when the new body contains a line that would\n * otherwise close it early. Returns null when the fence is no longer where the block\n * last saw it, for the reason given in {@link locateFence}.\n */',
     '/** The body-only case of {@link applyFencePatchAtSource}, for a block\'s own writes. */',
     '/** The lines a text block contributes; an empty text contributes none. */',
@@ -11754,6 +11772,7 @@ const allowed = new Map([
     '// node that establishes its own containment measure the *ancestor* container, not itself.',
   ]],
   ['src/client/lib/markdown/renderer/fence.ts', [
+    '/**\n * The grid\'s split, resolved: layout and ratio are always emitted, because the toolbar and the CSS\n * both need a value to read and the renderer is the only place that knows the family\'s default.\n */',
     '// The example\'s own blocks number on from the document around them and leave their bodies in the',
     '// same set: this markup is embedded in the parent\'s string, so a second numbering would hand two',
     '// blocks the same index and one body would answer for both.',
@@ -11783,6 +11802,15 @@ const allowed = new Map([
   ['src/client/lib/markdown/renderer/obsidian.ts', [
     '// The title goes through the inline rules so a `[[wiki link]]` in it is a link',
     '// like any other; the whole render is sanitized afterwards either way.',
+  ]],
+  ['src/client/lib/markdown/renderer/split.ts', [
+    '/**\n * Split-layout options for the two-panel example fences (```md-example and\n * ```javascript-example): which edge each panel takes and how the free space is divided\n * between them.\n *\n * The options live in the opening fence\'s info string (`~~~md-example layout=rl ratio="3:7"`),\n * so a block carries its own layout and the settings toolbar edits the note like any other\n * write — there is no per-block state to keep in sync.\n */',
+    '/** Panel share in parts, e.g. `[3, 7]`; the grid turns them into `3fr 7fr`. */',
+    '/**\n * The layout a block draws with when its info string says nothing. A markdown example has always\n * been preview-beside-source; the runnable one has always been source-above-output, and an\n * explicit `layout=` is the only thing that moves either.\n */',
+    '/** `a:b` in parts, each 1–99: a share of 0 would collapse a panel, which is not a ratio. */',
+    '/** The grid tracks a ratio resolves to, e.g. `3fr 7fr`. */',
+    '/** Reads the managed options out of an info string; anything unset keeps its default. */',
+    '/**\n * The info string with the managed options put back. A value equal to the family\'s default is\n * dropped rather than written, so resetting a block leaves its fence exactly as a plain block\'s\n * would be, and every unmanaged token the user wrote (title, language, highlights) survives in\n * place.\n */',
   ]],
   ['src/client/lib/markdown/renderer/types.ts', [
     '/**\n   * The fence bodies this markup was built from, in document order. They do not ride in the markup\n   * (see `../fence-bodies`); whoever inserts the markup registers these so the blocks can read back.\n   */',

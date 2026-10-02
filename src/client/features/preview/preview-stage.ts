@@ -15,6 +15,7 @@ import type { renderMarkdown } from '../../lib/markdown/renderer'
 import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
 import { enhanceTablesInRoot } from './table-interactive'
 import { enhanceTabsInRoot } from './tabs-interactive'
+import { enhanceExampleLayoutsInRoot } from './example-layout'
 
 /** One render of a note: the markup to draw, and the bodies its rich blocks read themselves from. */
 export interface PreparedDocument {
@@ -64,6 +65,7 @@ export async function prepareStagedHtml(opts: {
   })
   enhanceTablesInRoot(staging)
   enhanceTabsInRoot(staging, { noteId })
+  enhanceExampleLayoutsInRoot(staging)
   if (!isCurrent()) return null
   restorePreviewInteractionState(staging, capturePreviewInteractionState(host))
   return { html: staging.innerHTML, fences }

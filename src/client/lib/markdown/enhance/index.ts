@@ -1,5 +1,6 @@
 import { configureCodeBlockCollapsing } from './code'
 import { highlightCodeBlocks } from './code'
+import { applyExampleSplits } from './example-split'
 import { wrapZoomableImages } from './image'
 import { showMathSource } from './math'
 import { renderMath } from './math'
@@ -76,6 +77,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     registerFenceBodies(root, options.fences)
   if (options.zoomableImages)
     wrapZoomableImages(root)
+  applyExampleSplits(root)
   if (options.mermaid) {
     hydrateCachedMermaid(root, options.dark)
     const hasPendingDiagram = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].some((node) => node.dataset.rendered !== currentSignature(node, options.dark))
@@ -106,6 +108,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
   configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24)
 }
 export { wrapZoomableImages } from './image'
+export { applyExampleSplits } from './example-split'
 export { decorateCodeBlock } from './code'
 export { configureCodeBlockCollapsing } from './code'
 export { toggleCodeBlockCollapse } from './code'

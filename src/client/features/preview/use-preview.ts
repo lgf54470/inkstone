@@ -13,6 +13,7 @@ import { useSession } from '../../store/session'
 import { createPreviewClickHandler } from './preview-interactions'
 import { moveMarkdownTabFocus } from './markdown-tabs'
 import { closeLayoutPopoverFromEvent } from './tabs-interactive'
+import { closeExampleOverlayFromEvent } from './example-layout'
 import { nextCommittedDocument, prepareStagedHtml } from './preview-stage'
 import type { WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { useLinkHover } from './link-hover'
@@ -369,6 +370,14 @@ function usePreviewInteractions(opts: {
   })
 }
 
+/** Escape closes the innermost open block overlay and hands focus back to the control that opened it. */
+function closeBlockOverlays(target: HTMLElement): boolean {
+  const trigger = closeLayoutPopoverFromEvent(target) ?? closeExampleOverlayFromEvent(target)
+  if (!trigger) return false
+  trigger.focus()
+  return true
+}
+
 function usePreviewKeyboard(opts: {
   content: string
   sourceNoteId: string | null
@@ -380,10 +389,8 @@ function usePreviewKeyboard(opts: {
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') {
-      const layoutTrigger = closeLayoutPopoverFromEvent(event.target as HTMLElement)
-      if (layoutTrigger) {
+      if (closeBlockOverlays(event.target as HTMLElement)) {
         event.preventDefault()
-        layoutTrigger.focus()
         return
       }
       hideHover()

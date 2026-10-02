@@ -122,24 +122,6 @@
   flex-direction: column;
   min-height: 120px;
   background: color-mix(in oklab, var(--bg-inset) 70%, var(--bg-base));
-  border-top: 1px solid var(--border-subtle);
-}
-
-@container (min-width: 360px) {
-  .ink-prose .js-example-output {
-    border-top: 0;
-    border-left: 1px solid var(--border-subtle);
-  }
-}
-
-.ink-prose .markdown-example-grid.js-example-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.ink-prose .markdown-example-source.js-example-source {
-  border-top: 0;
-  border-left: 0;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .ink-prose .markdown-example-source.js-example-source .markdown-example-code pre {
@@ -151,11 +133,6 @@
 .ink-prose .markdown-example-source.js-example-source :is(code, .line) {
   overflow-wrap: normal;
   white-space: pre;
-}
-
-.ink-prose .markdown-example-preview.js-example-output {
-  border-top: 0;
-  border-left: 0;
 }
 
 .ink-prose .js-example-output-head {

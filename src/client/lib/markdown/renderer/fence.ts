@@ -10,8 +10,19 @@ import { detectSlidesMode, BENTO_SLIDES_LANGUAGES } from '../slides'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
+import { EXAMPLE_SPLIT_DEFAULTS, exampleRatioLabel, parseExampleSplit } from './split'
+import type { ExampleFamily } from './split'
 import type { FenceInfo } from './types'
 import { escapeAttr } from './util'
+
+/**
+ * The grid's split, resolved: layout and ratio are always emitted, because the toolbar and the CSS
+ * both need a value to read and the renderer is the only place that knows the family's default.
+ */
+function exampleSplitAttrs(family: ExampleFamily, info: string): string {
+  const split = parseExampleSplit(info, EXAMPLE_SPLIT_DEFAULTS[family])
+  return ` data-example-layout="${escapeAttr(split.layout)}" data-example-ratio="${escapeAttr(exampleRatioLabel(split.ratio))}"`
+}
 
 function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rendererEnv: unknown, info: FenceInfo): string {
   const parentEnv = renderEnv(rendererEnv)
@@ -36,9 +47,9 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
   const title = info.title || t('markdown.markdown_example')
   const titleId = `${parentEnv.docId}-markdown-example-${exampleId}`
   return [
-    `<section class="markdown-example"${line} aria-labelledby="${titleId}">`,
+    `<section class="markdown-example"${line} data-example-family="md" aria-labelledby="${titleId}">`,
     `<div class="markdown-example-head"><span class="markdown-example-title" id="${titleId}">${escapeHtml(title)}</span></div>`,
-    `<div class="markdown-example-grid">`,
+    `<div class="markdown-example-grid"${exampleSplitAttrs('md', token.info)}>`,
     `<section class="markdown-example-preview" aria-label="${escapeAttr(t('common.preview'))}" data-markdown-example-id="${exampleId}" data-markdown-example="${escapeAttr(encodeDataValue(token.content))}">`,
     `<div class="markdown-example-preview-body">${preview}</div>`,
     `</section>`,
@@ -56,7 +67,7 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
 function renderJavaScriptExample(token: Token, line: string, info: FenceInfo): string {
   const title = info.title || t('workspace.runnable_javascript_code')
   return [
-    `<section class="markdown-example js-example-block"${line}>`,
+    `<section class="markdown-example js-example-block"${line} data-example-family="js">`,
     `<div class="markdown-example-head js-example-head">`,
     `<span class="markdown-example-title js-example-title">`,
     `<span class="js-example-badge">JS</span>`,
@@ -75,7 +86,7 @@ function renderJavaScriptExample(token: Token, line: string, info: FenceInfo): s
     `</button>`,
     `</div>`,
     `</div>`,
-    `<div class="markdown-example-grid js-example-grid">`,
+    `<div class="markdown-example-grid js-example-grid"${exampleSplitAttrs('js', token.info)}>`,
     `<section class="markdown-example-source js-example-source" aria-label="JavaScript">`,
     `<div class="code-block markdown-example-code has-line-numbers" data-lang="javascript" data-code-start="1" data-line-numbers="true">`,
     `<button class="code-copy markdown-example-copy" data-copy type="button" aria-label="${escapeAttr(t('markdown.copy_code'))}">${escapeHtml(t('common.copy'))}</button>`,

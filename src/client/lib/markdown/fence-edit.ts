@@ -152,6 +152,20 @@ export function fenceRange(content: string, target: FenceTarget, languages: read
 }
 
 /**
+ * The fence the renderer drew at `line`, read straight from the note: the opening line is a fence of
+ * one of `languages` and the body runs to its closing line. Callers whose markup is known to match
+ * this text (the preview only writes while the rendered document and the note agree) use it instead
+ * of comparing a body, which would have to be scraped back out of the DOM — where a code block's
+ * blank lines are already lost to the line spans that draw them.
+ */
+export function fenceAt(content: string, line: number, languages: readonly string[]): { info: string; body: string } | null {
+  const { lines } = splitLines(content)
+  const opening = parseFenceOpening(lines[line] ?? '', languages)
+  if (!opening) return null
+  return { info: opening.info, body: fenceBody(lines, line, findClosingLine(lines, line, opening)) }
+}
+
+/**
  * Rewrites one fence, keeping the note's EOL style and every line outside the block
  * byte-identical. A fence is widened when the new body contains a line that would
  * otherwise close it early. Returns null when the fence is no longer where the block

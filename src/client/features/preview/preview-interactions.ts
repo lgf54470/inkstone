@@ -13,6 +13,7 @@ import { useNotes } from '../../store/notes'
 import { findNoteByTitle } from '../../store/notes'
 import { executeTableFloatingAction, handleTableCellSelection } from './table-interactive'
 import { dismissTabsOverlays, executeTabsAction } from './tabs-interactive'
+import { handleExampleClick } from './example-layout'
 import { handleJsExampleRun, handleJsExampleSwitch } from './js-runner'
 import { selectMarkdownTab } from './markdown-tabs'
 import { capturePreviewViewport, restorePreviewViewport } from './viewport'
@@ -111,6 +112,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     if (await handleCopyButton(target, ctx)) return
     if (await handleCodeCollapse(target)) return
     if (await handleTaskCheckbox(target, ctx)) return
+    if (handleExampleClick(event, target, ctx)) return
     if (await handleTabsAction(event, target, ctx)) return
     if (await handleTabButton(event, target)) return
     if (await handleWikiLink(event, target, ctx)) return

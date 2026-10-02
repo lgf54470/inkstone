@@ -108,4 +108,17 @@ export type { Heading, RenderResult, WikiTarget, FenceInfo } from './types'
 export { parseWikiTarget, parseFenceInfo } from './parse'
 export { parseTabsOptions, isValidTabsSync, effectiveTabsPosition, isVerticalTabsPosition } from './containers'
 export type { TabsOptions, TabsPosition } from './containers'
+export {
+  EXAMPLE_RATIO_PRESETS,
+  EXAMPLE_SPLIT_DEFAULTS,
+  exampleRatioLabel,
+  exampleSplitTracks,
+  isExampleLayout,
+  isPresetExampleRatio,
+  isVerticalExampleLayout,
+  parseExampleRatio,
+  parseExampleSplit,
+  formatExampleSplitInfo,
+} from './split'
+export type { ExampleFamily, ExampleLayout, ExampleSplitOptions } from './split'
 export { escapeAttr } from './util'
