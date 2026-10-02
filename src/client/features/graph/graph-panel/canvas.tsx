@@ -24,6 +24,7 @@ import {
   useGraphNodeFocus,
   useGraphPrefsRef,
   useGraphPaintError,
+  useGraphWheelZoom,
   useGraphSearchDim,
   useGraphWorldMath,
   useIsDarkTheme,
@@ -192,9 +193,9 @@ function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: 
   h.onClose()
 }
 
-function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
+function handleCanvasWheel(event: WheelEvent, canvas: HTMLCanvasElement, h: CanvasHandlers): void {
   const state = h.stateRef.current
-  const rect = event.currentTarget.getBoundingClientRect()
+  const rect = canvas.getBoundingClientRect()
   const x = event.clientX - rect.left, y = event.clientY - rect.top
   const next = graphScaleAfterWheel(state.scale, event.deltaY)
   if (next === state.scale) return
@@ -288,6 +289,7 @@ function GraphCanvasElement({ canvasRef, handlers, hintId }: {
   handlers: CanvasHandlers
   hintId: string
 }) {
+  useGraphWheelZoom(canvasRef, (event, canvas) => handleCanvasWheel(event, canvas, handlers))
   const cursorClass = handlers.isDragging
     ? 'cursor-grabbing'
     : handlers.isSpaceDownRef.current
@@ -323,7 +325,6 @@ function GraphCanvasElement({ canvasRef, handlers, hintId }: {
         const node = handlers.nodeAt(point.x, point.y)
         if (node) { handlers.setSelectedId(node.id); handlers.setContext({ x: event.clientX, y: event.clientY, node }) }
       }}
-      onWheel={(event) => handleCanvasWheel(event, handlers)}
       onKeyDown={(event) => handleCanvasKeyDown(event, handlers)}
       onKeyUp={(event) => { if (event.key === ' ') handlers.isSpaceDownRef.current = false }}
     />

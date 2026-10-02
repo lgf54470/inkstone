@@ -3518,6 +3518,7 @@ const allowed = new Map([
     '// The card hangs from a place worked out while the node was still under the pointer, and a drag never',
     '// works it out again: past the click the node is gone from under it, so the drag puts the card away',
     '// rather than leave it floating over empty canvas (G-16).',
+    '/**\n * The canvas owns the wheel it zooms with (G-17): React answers wheel from the root as a passive listener,\n * where `preventDefault()` is a no-op and Chrome says so out loud. The handler arrives through a ref\n * because the listener is registered once while the object it reads is rebuilt on every render.\n */',
     '/**\n * The live preferences, kept in a ref so the frame loop and the drawing read whatever is current without\n * ever being rebuilt by a change to them (G-06).\n */',
     '/**\n * Which frame broke, held where the surface can say so (G-13). The canvas stops drawing on its own and\n * the reader needs both a word about it and a way back, so this sits beside the loop that reports it.\n */',
     '// `raf` is back at 0 when a frame is refused, so the same ask that drives every other repaint is',
@@ -3577,6 +3578,13 @@ const allowed = new Map([
     '/**\n * A canvas paints colours it reads itself, so nothing in the browser notices a theme flip for it: the\n * panel has to re-read the tokens and redraw. These cases read the two halves of that promise — the\n * colours come from the document, and a flip reaches the pixels that are already on screen.\n */',
     '/** A value per tag slot, so a misread token cannot pass for the right one. */',
     '/**\n * Frames are queued rather than run inline: a synchronous `requestAnimationFrame` would make the physics\n * loop re-enter itself, and the id it hands back would be written after the loop had already cleared it,\n * leaving the panel looking like a frame was still in flight.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-wheel-zoom.test.ts', [
+    '/**\n * Zooming the graph is a gesture the panel owns: the wheel over the canvas changes the camera and takes\n * the event away from the browser. React registers wheel at the root as a passive listener, where\n * `preventDefault()` is a no-op and Chrome says so out loud, so the canvas has to listen for it itself\n * (G-17). These cases read who is listening, with what options, and what the gesture still does.\n */',
+    '// React\'s own root delegation is a wheel listener too; what these cases ask is whether the canvas',
+    '// itself was given one, and with what options.',
+    '// A listener left behind would zoom a graph that is no longer on screen.',
+    '// The far end of the slider: a wheel that cannot change the scale is a wheel the page keeps.',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '/** The nodes the search box hit, or null while nothing is being located. */',

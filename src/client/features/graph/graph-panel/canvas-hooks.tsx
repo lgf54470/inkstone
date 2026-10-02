@@ -275,6 +275,26 @@ export function useGraphDrag(options: GraphDragOptions) {
 }
 
 /**
+ * The canvas owns the wheel it zooms with (G-17): React answers wheel from the root as a passive listener,
+ * where `preventDefault()` is a no-op and Chrome says so out loud. The handler arrives through a ref
+ * because the listener is registered once while the object it reads is rebuilt on every render.
+ */
+export function useGraphWheelZoom(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  onWheel: (event: WheelEvent, canvas: HTMLCanvasElement) => void,
+): void {
+  const readWheel = useRef(onWheel)
+  useEffect(() => { readWheel.current = onWheel }, [onWheel])
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const handle = (event: WheelEvent) => readWheel.current(event, canvas)
+    canvas.addEventListener('wheel', handle, { passive: false })
+    return () => canvas.removeEventListener('wheel', handle)
+  }, [canvasRef])
+}
+
+/**
  * The live preferences, kept in a ref so the frame loop and the drawing read whatever is current without
  * ever being rebuilt by a change to them (G-06).
  */
