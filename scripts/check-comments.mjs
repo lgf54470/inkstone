@@ -3827,6 +3827,10 @@ const allowed = new Map([
     '/**\n * Selection is the one interaction that can make the panel repaint itself, and a preview whose identity\n * changes on every render turns that into a loop that never returns. The stub counts those paints and\n * throws once a single selection has passed the cap, so the suite goes red instead of hanging.\n */',
     '/** `anchor` is the element the panel tells the card to hang from, so a case can read where the card is. */',
   ]],
+  ['src/client/features/graph/graph-panel/preview-timing.test.ts', [
+    '/**\n * 6.4 turned six magic numbers into named constants, which leaves the *values* without a guard: a reader\n * who waits twice as long for a card, or a graph that fades the preview away a heartbeat too early, is a\n * change no existing case notices (F-08). These cases say the numbers out loud and read what the panel\n * did at each side of them — the hover card appears at 300ms and not one tick earlier, and it goes away at\n * 200ms, whatever the constants happen to hold today.\n */',
+    '/** The card the panel is holding, by the title it names, or null when nothing is on screen. */',
+  ]],
   ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
     '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
     '// jsdom paints nothing, so the target is read off the class the app sizes its swatches with',
@@ -15351,6 +15355,10 @@ const allowed = new Map([
     '// 55 notes plus the three above, 3 of them moved into the excluded folder: the page keeps 50 of the',
     '// 55 that are left, and the count the overflow falls back to has to read the folder join too.',
     '// The state a runaway loop leaves behind: the account\'s read key is locked for a minute.',
+    '/** One note with `count` links to notes that were never created: `count` ghosts. */',
+    '// Three notes exist, and the page was asked for 60, so nothing about the notes is cut here.',
+    '// limit 53 leaves 3 note rows: the hub plus the two plain notes fit, so the page is whole.',
+    '// limit 52 leaves 2, and the third note is what the held-back 50 cost the reader.',
     '// centre ← incoming, centre → outgoing: the two sides of the centre\'s neighbourhood.',
     '// Ids the route accepts are Crockford base-32, so these seeds avoid the letters it excludes.',
     '// A preference can outlive a note, and a stale entry has to be dropped, not answered 400.',

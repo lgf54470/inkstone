@@ -585,6 +585,70 @@ describe('the node limit the interface can ask for (G-21)', () => {
   })
 })
 
+describe('the two numbers the graph route holds at 50 (F-08)', () => {
+  /** One note with `count` links to notes that were never created: `count` ghosts. */
+  async function ghosted(userId: string, count: number): Promise<void> {
+    await seedNote(vid('hub'), userId, NOW)
+    for (let index = 0; index < count; index += 1) {
+      await runSql(
+        db,
+        `INSERT INTO links (source_note_id, target_note_id, target_key, target_title, user_id)
+         VALUES (?1, NULL, ?2, ?2, ?3)`,
+        vid('hub'), `ghost-${index}`, userId,
+      )
+    }
+  }
+
+  async function ghosts(query: string): Promise<{ count: number, truncated: boolean }> {
+    const userId = await seedUser()
+    await seedNotes(2, userId, 'plain')
+    await ghosted(userId, Number(query.match(/ghosts=(\d+)/)?.[1] ?? 0))
+    const body = await graphBody(`/api/search/graph?includeUnresolved=1&${query.replace(/ghosts=\d+&?/, '')}`, userId)
+    return {
+      count: (body.nodes as Array<{ kind: string }>).filter((node) => node.kind === 'unresolved').length,
+      truncated: Boolean(body.meta.truncated),
+    }
+  }
+
+  it('carries 49 ghosts quietly and the fiftieth with the page called truncated', async () => {
+    await makeDb()
+    // Three notes exist, and the page was asked for 60, so nothing about the notes is cut here.
+    const underTheCap = await ghosts('ghosts=49&limit=60')
+    expect(underTheCap.count).toBe(49)
+    expect(underTheCap.truncated).toBe(false)
+
+    await makeDb()
+    const atTheCap = await ghosts('ghosts=50&limit=60')
+    expect(atTheCap.count).toBe(50)
+    expect(atTheCap.truncated).toBe(true)
+  })
+
+  it('holds exactly 50 of the requested page back for ghosts, and no more', async () => {
+    await makeDb()
+    // limit 53 leaves 3 note rows: the hub plus the two plain notes fit, so the page is whole.
+    const fits = await ghosts('ghosts=1&limit=53')
+    expect(fits.truncated).toBe(false)
+
+    await makeDb()
+    // limit 52 leaves 2, and the third note is what the held-back 50 cost the reader.
+    const oneShort = await ghosts('ghosts=1&limit=52')
+    expect(oneShort.truncated).toBe(true)
+  })
+
+  it('refuses a filter line one character past the 200 the route allows', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('q'), userId, NOW)
+    const token = await signIn(userId)
+
+    const atTheCap = await request(makeApp(), `/api/search/graph?q=${'a'.repeat(200)}`, token)
+    expect(atTheCap.status).toBe(200)
+
+    const onePast = await request(makeApp(), `/api/search/graph?q=${'a'.repeat(201)}`, token)
+    expect(onePast.status).toBe(400)
+  })
+})
+
 describe('the direction a local graph follows (G-44)', () => {
   // centre ← incoming, centre → outgoing: the two sides of the centre's neighbourhood.
   async function star(): Promise<string> {
