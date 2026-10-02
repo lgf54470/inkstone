@@ -116,6 +116,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 文件：`scripts/measure-graph.mjs`（新增）；合成样本写入方式沿用既有脚本（写笔记/栅栏或直接对本地 D1 造库），不改 `src/`
   - 要点：① 按仓库既有手动验收脚本惯例——`node scripts/measure-graph.mjs [baseUrl] [nodes]`，`NODES`/推帧上限可调，账号用 `INKSTONE_VISUAL_USERNAME/PASSWORD`、浏览器用 `INKSTONE_CHROME_PATH`，**只报告不判定**（帧时序在共享 runner 上是噪声）；② 采样项：布局期物理 vs 绘制占比、单次布局最长提交、每次请求耗时与返回的节点/边数（配合 `wrangler d1 execute --local` 的 `EXPLAIN QUERY PLAN` 与 10k 笔记 / 50k 链接量级合成库）；③ 结论以数据 + 判读两段打印，与 `measure-preflight.mjs` / `measure-kanban.mjs` / `measure-music.mjs` 同风格
   - 验证：在全新 `dev:kv` 实例上跑通脚本（`node scripts/measure-graph.mjs`），把三组数字与本机配置一并贴进台账 §5
+  - 开工前须知（批次 5 收尾时在本机确认过的事实，避免重复踩）：① 门禁用的实例是 `INKSTONE_EPHEMERAL_DEV=1` 启的，`.wrangler/state/v3/d1` 在本 worktree **不存在**，所以「跑完门禁的实例」不能拿来 `wrangler d1 execute --local` 量 SQL——要量 SQL 必须另起一个**不带**该环境变量的 `dev:kv`，让本地 D1 落盘；② 本仓库没有 `vite-node`/`tsx` 可执行文件（`node_modules/.bin` 里只有 `wrangler`/`cf-wrangler`），因此 `.mjs` 脚本**无法**直接 import `tests/d1-harness.ts` 或 `src/worker/db/schema/migrations.ts` 这些 TS 源；V-02/V-03 的 SQL 要么由脚本自己按 `src/worker/routes/search/graph.ts` 的语句复刻并在注释里写明来源（漂移可见），要么走 HTTP 层计时（能答「一次请求多久、返回多少节点/边」，答不了「实际扫了多少行」）；③ 浏览器侧（V-01）沿用 `measure-kanban.mjs` 的 `startSampling`（rAF 间隔 + longtask）即可，但物理与绘制的拆分受上面 V-01 行的私有函数限制
   - 依赖：无。G-08 / G-10 / G-01 阈值 / G-03 必要性引用它的输出
   - 代价：S（0.5–1 人日）｜提交建议：`perf(graph)`
   - 提交哈希：待登记｜状态：⬜ 待开始
@@ -706,10 +707,10 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 
 | 编号 | 待量测 | 手段 | 解锁 |
 | :--- | :--- | :--- | :--- |
-| V-01 | 布局期真实帧成本（物理 vs 绘制各占多少） | `measure-graph.mjs` 帧采样 | G-08 的 ①②③ 取舍 |
+| V-01 | 布局期真实帧成本（物理 vs 绘制各占多少） | `measure-graph.mjs` 帧采样。**测量接缝（5.7 读代码时确认，批次 0 不必再翻）**：一帧里物理与绘制都在 `canvas-draw.ts:216 renderGraphScene` 内，且 `advancePhysics`（`:76`）是**模块私有**、只有 `drawEdges`/`drawNodes`/`drawLabels` 与 `createGraphTicker` 导出——故拆分只能「导出的绘制函数微基准 + 整体 settle 帧成本相减」，或在脚本里驱动 `createGraphTicker` 量整帧；批次 0 声明不碰 `src/`，为了测量把私有函数导出不在本批做 | G-08 的 ①② 取舍 |
 | V-02 | 一次请求实际读多少行 links（大库样本） | 脚本采样 + `EXPLAIN QUERY PLAN` | G-01 的提前退出阈值与 G-03 服务端预算必要性 |
 | V-03 | 全局图谱 degree 聚合真实耗时 | `EXPLAIN QUERY PLAN` + 10k 笔记 / 50k 链接样本 | G-10 的 A/B/撤销 |
-| V-04 | `Math.min(...xs)` 的安全上界 | 文档层已确认（服务端 clamp 600 + 标签 60 → ≤410）；G-21 若放开上限须同步改循环求极值 | G-21 的前置 |
+| V-04 | `Math.min(...xs)` 的安全上界 | 文档层已确认（服务端 clamp 600 + 标签 60 → ≤410）；**5.7（G-21）已落地**：上限未放开（`LIMITS.graphNodeLimitMax` 仍 600），前提已写进 `canvas-hooks.tsx` 的 `useGraphFit` 注释，并把 worker clamp、`loadPreferences`、抽屉滑杆、演示后端四处收到同一份 `LIMITS` | G-21 的前置（已满足） |
 | V-05 | 主题翻转时预览卡的像素/内联色是否真的陈旧 | 浏览器断言（先设账号「跟随系统」再翻系统偏好） | G-31 的验收条件 |
 
 ### 6.2 决策闸门（拿到证据后必须登记结论，含「不做」）
