@@ -130,5 +130,11 @@ export {
   writeCodeOptions,
 } from './code-options'
 export type { CodeBlockOptions, CodeTheme } from './code-options'
+export {
+  TABLE_OPTION_DEFAULTS,
+  formatTableOptions,
+  parseTableOptions,
+} from './table-options'
+export type { TableDensity, TableFrames, TableOptions } from './table-options'
 export { infoFlag, infoOption, infoTokens } from './info-string'
 export { escapeAttr } from './util'

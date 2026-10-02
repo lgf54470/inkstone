@@ -202,13 +202,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 602
+    "lines": 615
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 602
+    "lines": 615
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908

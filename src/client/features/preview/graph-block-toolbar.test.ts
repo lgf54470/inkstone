@@ -24,7 +24,7 @@ describe('enhanceGraphBlockToolbarsInRoot', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const wrapper = root.querySelector<HTMLElement>('.graph-block')!
     expect(wrapper.dataset.graphBlock).toBe('mermaid')
-    expect(wrapper.querySelector('.graph-block-head')).not.toBeNull()
+    expect(wrapper.querySelector('.block-head')).not.toBeNull()
     expect(wrapper.querySelectorAll('.block-tool-btn')).toHaveLength(5)
     const source = wrapper.querySelector<HTMLElement>('[data-graph-source]')!
     expect(source.hidden).toBe(true)
@@ -45,7 +45,7 @@ describe('enhanceGraphBlockToolbarsInRoot', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     enhanceGraphBlockToolbarsInRoot(root)
     expect(root.querySelectorAll('.graph-block')).toHaveLength(1)
-    expect(root.querySelectorAll('.graph-block-head')).toHaveLength(1)
+    expect(root.querySelectorAll('.block-head')).toHaveLength(1)
   })
 
   it('leaves a diagram inside a note embed alone', () => {

@@ -7533,6 +7533,11 @@ const allowed = new Map([
     '// The row\'s own label is drawn in the property name cell beside it, so the switch is named by',
     '// the property it belongs to rather than by a fixed string.',
   ]],
+  ['src/client/features/preview/table-toolbar.ts', [
+    '/**\n * The settings toolbar for a `::: table` block: cell density, stripes and borders. A markdown table\n * has no info string of its own, so the container\'s header line is the block\'s state and every\n * action here rewrites exactly that line.\n */',
+    '/** Rewrites the container\'s header line, leaving the table below it untouched. */',
+    '/** This block family\'s toolbar, in the shape the shared click route and enhancer dispatch over. */',
+  ]],
   ['src/client/features/preview/tabs-interactive.ts', [
     '// Rect with a divider sitting on the named edge: the exact placement the tab strip will take.',
     '// Applies the choice remembered for this sync group (same note, earlier session) before the panel',
@@ -11819,6 +11824,7 @@ const allowed = new Map([
     '// Position is the single layout knob: an explicit edge implies the matching orientation, so an',
     '// older `style=vertical` note (no position yet) keeps rendering on the left edge.',
     '// Sync ids are case-sensitive identifiers; every other option is a lowercase enum keyword.',
+    '/**\n * A style container for the table inside it: a markdown table carries no info string, so the\n * container\'s header is where its density, stripes and borders are stated. The body is tokenized\n * as usual, which is what lets a table sit in it unchanged.\n */',
     '// The outer element is the containment context: querying it lets the block itself (not only',
     '// its children) collapse vertical layout inside a narrow split pane — container queries on a',
     '// node that establishes its own containment measure the *ancestor* container, not itself.',
@@ -11870,6 +11876,10 @@ const allowed = new Map([
     '/** The grid tracks a ratio resolves to, e.g. `3fr 7fr`. */',
     '/** Reads the managed options out of an info string; anything unset keeps its default. */',
     '/**\n * The info string with the managed options put back. A value equal to the family\'s default is\n * dropped rather than written, so resetting a block leaves its fence exactly as a plain block\'s\n * would be, and every unmanaged token the user wrote (title, language, highlights) survives in\n * place.\n */',
+  ]],
+  ['src/client/lib/markdown/renderer/table-options.ts', [
+    '/**\n * What a `::: table` container lets the note say about the table it wraps. A markdown table has no\n * info string of its own, so the container is where the settings live — and every toolbar edit is a\n * source edit of that one header line.\n */',
+    '/** The canonical trailing tokens, in the order the settings panel offers them; defaults are dropped. */',
   ]],
   ['src/client/lib/markdown/renderer/types.ts', [
     '/**\n   * The fence bodies this markup was built from, in document order. They do not ride in the markup\n   * (see `../fence-bodies`); whoever inserts the markup registers these so the blocks can read back.\n   */',

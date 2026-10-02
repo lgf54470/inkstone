@@ -73,6 +73,31 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-md);
 }
+.ink-prose .markdown-table {
+  margin: 0.9em 0;
+}
+.ink-prose .markdown-table > .table-wrap {
+  margin: 0;
+}
+.ink-prose .markdown-table[data-table-density='compact'] th,
+.ink-prose .markdown-table[data-table-density='compact'] td {
+  padding: 0.2em 0.5em;
+}
+.ink-prose .markdown-table[data-table-zebra='true'] tbody tr:nth-child(even):not(:hover) {
+  background: color-mix(in oklab, var(--bg-inset) 65%, transparent);
+}
+.ink-prose .markdown-table[data-table-frames='rows'] > .table-wrap,
+.ink-prose .markdown-table[data-table-frames='none'] > .table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+.ink-prose .markdown-table[data-table-frames='none'] th,
+.ink-prose .markdown-table[data-table-frames='none'] td {
+  border-bottom: 0;
+}
+.ink-prose .markdown-table[data-table-frames='none'] thead {
+  background: transparent;
+}
 .ink-prose table {
   width: 100%;
   border-collapse: collapse;

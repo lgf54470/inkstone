@@ -1,3 +1,22 @@
+.ink-prose .block-head {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.ink-prose .block-head-title {
+  font-family: var(--font-ui);
+  font-size: var(--text-10\.5);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ink-prose .block-head > .block-tools {
+  margin-inline-start: 0;
+}
 .ink-prose .block-tools {
   position: relative;
   z-index: var(--z-sticky);

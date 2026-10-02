@@ -51,8 +51,8 @@ function renderHeadHtml(kind: GraphKind): string {
   const zoomable = kind === 'mermaid'
   const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
   return [
-    `<div class="graph-block-head">`,
-    `<span class="graph-block-title">${escapeHtml(kind === 'mermaid' ? t('preview.graph_mermaid') : t('preview.graph_chart'))}</span>`,
+    `<div class="block-head">`,
+    `<span class="block-head-title">${escapeHtml(kind === 'mermaid' ? t('preview.graph_mermaid') : t('preview.graph_chart'))}</span>`,
     `<span class="block-tools">`,
     zoomable ? toolButton('zoom-in', t('preview.graph_zoom_in'), ICONS.zoomIn) : '',
     zoomable ? toolButton('zoom-out', t('preview.graph_zoom_out'), ICONS.zoomOut) : '',

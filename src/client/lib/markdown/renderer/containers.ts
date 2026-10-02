@@ -3,6 +3,8 @@ import type StateBlock from 'markdown-it/lib/rules_block/state_block.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { renderEnv } from './env'
+import { parseTableOptions, TABLE_OPTION_DEFAULTS } from './table-options'
+import type { TableOptions } from './table-options'
 import { escapeAttr } from './util'
 export 
 function renderFrontMatterValue(value: unknown): string {
@@ -316,7 +318,7 @@ function renderModernContainer(
   silent: boolean,
 ): boolean {
   const source = blockLine(state, startLine)
-  const legacyMatch = /^(:{3,})[ \t]+(details|tabs)\b(?:[ \t]+(.*))?$/.exec(source)
+  const legacyMatch = /^(:{3,})[ \t]+(details|tabs|table)\b(?:[ \t]+(.*))?$/.exec(source)
   const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source)
   if (!legacyMatch && !directiveMatch)
     return false
@@ -331,11 +333,28 @@ function renderModernContainer(
   if (kind === 'details') {
     renderDetailsContainer(state, startLine, end, legacyMatch)
   }
+  else if (kind === 'table') {
+    renderTableContainer(state, startLine, end, rawInfo)
+  }
   else {
     renderTabsContainer(state, startLine, end, rawInfo)
   }
   state.line = end + 1
   return true
+}
+
+/**
+ * A style container for the table inside it: a markdown table carries no info string, so the
+ * container's header is where its density, stripes and borders are stated. The body is tokenized
+ * as usual, which is what lets a table sit in it unchanged.
+ */
+function renderTableContainer(state: StateBlock, startLine: number, end: number, rawInfo: string): void {
+  const openToken = state.push('table_wrap_open', 'div', 1)
+  openToken.block = true
+  openToken.map = [startLine, end + 1]
+  openToken.meta = { options: parseTableOptions(rawInfo) }
+  state.md.block.tokenize(state, startLine + 1, end)
+  state.push('table_wrap_close', 'div', -1).block = true
 }
 
 function renderDetailsContainer(state: StateBlock, startLine: number, end: number, legacyMatch: RegExpExecArray | null): void {
@@ -434,4 +453,15 @@ export function registerContainers(md: MarkdownIt): void {
     return `<section class="tab-panel" role="tabpanel" id="${id}-panel-${tabIndex}" aria-labelledby="${id}-tab-${tabIndex}" data-tab-panel="${tabIndex}"${selected ? '' : ' hidden'}>`
   }
   md.renderer.rules.tab_panel_close = () => '</section>'
+  md.renderer.rules.table_wrap_open = (tokens, index) => {
+    const sourceLine = tokens[index]!.map?.[0]
+    const options = (tokens[index]!.meta as { options?: TableOptions } | undefined)?.options ?? TABLE_OPTION_DEFAULTS
+    const state = [
+      ` data-table-density="${escapeAttr(options.density)}"`,
+      options.zebra ? ' data-table-zebra="true"' : '',
+      ` data-table-frames="${escapeAttr(options.frames)}"`,
+    ].join('')
+    return `<div class="markdown-table"${sourceLine === undefined ? '' : ` data-line="${sourceLine}"`}${state}>`
+  }
+  md.renderer.rules.table_wrap_close = () => '</div>'
 }
