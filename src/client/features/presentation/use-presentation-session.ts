@@ -16,7 +16,7 @@ import { samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
 import { splitIntoSlidesWithNotes } from './slides'
-import { openPresenterWindow, buildPresenterSlideState, usePresenterBroadcaster, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
+import { openPresenterWindow, usePresenterBroadcaster, usePresenterSlideState, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
 import { usePresentationKeys } from './use-presentation-keys'
 import { useSlideHtml } from './use-slide-html'
 
@@ -154,8 +154,9 @@ function useSessionPresenter(options: {
     startedAt,
     proseFont,
   }
+  const presenterState = usePresenterSlideState(source)
   usePresenterBroadcaster({ ...source, open, token: presenterToken, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo })
-  const presenterPanel: PresenterSlideState | null = fallback.panelOpen ? buildPresenterSlideState(source) : null
+  const presenterPanel: PresenterSlideState | null = fallback.panelOpen ? presenterState : null
   return { openPresenter, presenterPanel, closePresenterPanel: fallback.closePanel }
 }
 

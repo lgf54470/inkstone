@@ -14,40 +14,7 @@ import {
   type PresenterInboundCommand,
   type PresenterSlideState,
 } from './use-presenter-channel'
-
-let mockChannels = new Set<MockBroadcastChannel>()
-
-/** Lets every `queueMicrotask` delivery above the mock does land before the assertion after it. */
-function flushed(): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, 0) })
-}
-
-class MockBroadcastChannel {
-  name: string
-  onmessage: ((event: MessageEvent) => void) | null = null
-  closed = false
-
-  constructor(name: string) {
-    this.name = name
-    mockChannels.add(this)
-  }
-
-  postMessage(data: unknown) {
-    if (this.closed) return
-    for (const ch of mockChannels) {
-      if (ch !== this && ch.name === this.name && !ch.closed && ch.onmessage) {
-        queueMicrotask(() => {
-          if (!ch.closed && ch.onmessage) ch.onmessage({ data } as MessageEvent)
-        })
-      }
-    }
-  }
-
-  close() {
-    this.closed = true
-    mockChannels.delete(this)
-  }
-}
+import { MockBroadcastChannel, flushed, openChannelCount, openChannelNames, resetChannelRegistry } from './presenter-channel.test-helpers'
 
 describe('use-presenter-channel — formatElapsed and formatClock', () => {
   it('formats elapsed time correctly for seconds, minutes and hours', () => {
@@ -149,7 +116,7 @@ function TestBroadcaster({ slide, token = 'tok-1' }: { slide: number, token?: st
 }
 
 beforeEach(() => {
-  mockChannels = new Set()
+  resetChannelRegistry()
   vi.stubGlobal('BroadcastChannel', MockBroadcastChannel)
 })
 
@@ -252,7 +219,7 @@ describe('usePresenterReceiver — channel stability', () => {
 
     await vi.waitFor(() => expect(isConnected).toBe(true))
     expect(receivedSlide).toBe(0)
-    const initialChannelsCount = mockChannels.size
+    const initialChannelsCount = openChannelCount()
 
     act(() => {
       broadcaster.rerender(createElement(TestBroadcaster, { slide: 1 }))
@@ -260,7 +227,7 @@ describe('usePresenterReceiver — channel stability', () => {
 
     await vi.waitFor(() => expect(receivedSlide).toBe(1))
     expect(isConnected).toBe(true)
-    expect(mockChannels.size).toBe(initialChannelsCount)
+    expect(openChannelCount()).toBe(initialChannelsCount)
 
     act(() => {
       broadcaster.unmount()
@@ -320,7 +287,7 @@ describe('presenter session token', () => {
   it('opens no channel before a presenter window has been asked for', async () => {
     const broadcaster = renderElement(createElement(TestBroadcaster, { slide: 0, token: null }))
     await flushed()
-    expect(mockChannels.size).toBe(0)
+    expect(openChannelCount()).toBe(0)
     act(() => broadcaster.unmount())
   })
 
@@ -354,7 +321,7 @@ describe('presenter session token', () => {
     await flushed()
 
     expect(tokenlessConnected).toBe(false)
-    expect([...mockChannels].map((channel) => channel.name)).toEqual([presenterChannelName('tok-1')])
+    expect(openChannelNames()).toEqual([presenterChannelName('tok-1')])
 
     act(() => sendFromTokenlessWindow!('next'))
     await flushed()

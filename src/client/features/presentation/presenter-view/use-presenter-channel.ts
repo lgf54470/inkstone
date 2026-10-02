@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProseFont } from '@shared/types'
 import type { SlideLayout } from '../slides'
 import type { SlidePlan } from '../slide-pagination'
@@ -136,11 +136,26 @@ export function buildPresenterSlideState(options: PresenterStateSource): Present
   }
 }
 
+/** The console payload, rebuilt only when something a presenter surface reads has actually moved. Both
+ * consumers go through here — the window's broadcaster and the in-show fallback panel — so the dependency
+ * list exists once. The session hands fresh navigation callbacks on every render, and a payload recomputed
+ * per render would turn every chrome redraw, and every auto-hide tick, into another broadcast of the same
+ * page. A field added to `PresenterStateSource` has to join this list, or the payload starts freezing
+ * while the show moves on. */
+export function usePresenterSlideState(source: PresenterStateSource): PresenterSlideState {
+  const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = source
+  return useMemo(
+    () => buildPresenterSlideState({ noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont }),
+    [noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont],
+  )
+}
+
 function useBroadcasterChannel(
   open: boolean,
   token: string | null,
   stateRef: React.RefObject<PresenterSlideState>,
   navRef: React.RefObject<{ goNext: () => void; goPrev: () => void; jumpTo: (i: number) => void; slideCount: number }>,
+  readyRef: React.RefObject<boolean>,
 ) {
   const channelRef = useRef<BroadcastChannel | null>(null)
 
@@ -148,11 +163,16 @@ function useBroadcasterChannel(
     if (!open || !token || typeof BroadcastChannel === 'undefined') return
     const channel = new BroadcastChannel(presenterChannelName(token))
     channelRef.current = channel
+    readyRef.current = false
 
     channel.onmessage = (event: MessageEvent<PresenterSyncMessage>) => {
       const msg = event.data
       if (!msg) return
       if (msg.type === 'ready') {
+        // The window that announces itself is the audience: the state is handed over here rather than on
+        // mount, so a token whose window never arrived — a blocked popup, now served by the fallback
+        // panel — keeps the show from reciting the author's notes at an empty channel.
+        readyRef.current = true
         try {
           channel.postMessage({ type: 'sync', state: stateRef.current })
         } catch {
@@ -160,13 +180,9 @@ function useBroadcasterChannel(
         }
       } else if (msg.type === 'command') {
         handleInboundCommand(msg.command, navRef.current)
+      } else if (msg.type === 'close') {
+        readyRef.current = false
       }
-    }
-
-    try {
-      channel.postMessage({ type: 'sync', state: stateRef.current })
-    } catch {
-      // Best-effort channel post
     }
 
     return () => {
@@ -178,7 +194,7 @@ function useBroadcasterChannel(
       channel.close()
       channelRef.current = null
     }
-  }, [open, token, stateRef, navRef])
+  }, [open, token, stateRef, navRef, readyRef])
 
   return channelRef
 }
@@ -188,14 +204,17 @@ export function usePresenterBroadcaster(options: PresenterBroadcasterOptions): v
   const navRef = useRef({ goNext, goPrev, jumpTo, slideCount })
   navRef.current = { goNext, goPrev, jumpTo, slideCount }
 
-  const statePayload = buildPresenterSlideState(options)
+  const statePayload = usePresenterSlideState(options)
   const stateRef = useRef(statePayload)
   stateRef.current = statePayload
+  const readyRef = useRef(false)
 
-  const channelRef = useBroadcasterChannel(open, token, stateRef, navRef)
+  const channelRef = useBroadcasterChannel(open, token, stateRef, navRef, readyRef)
 
   useEffect(() => {
-    if (!open || !channelRef.current) return
+    // `readyRef` is deliberately not a dependency: a newly arrived window is served by the handshake in
+    // the channel, and what this effect owes is only the changes that happen while one is listening.
+    if (!open || !readyRef.current || !channelRef.current) return
     try {
       channelRef.current.postMessage({ type: 'sync', state: statePayload })
     } catch {
@@ -257,6 +276,13 @@ export function usePresenterReceiver(token: string | null): {
     }
 
     return () => {
+      // Say the same word the show says on its own way out: without it the projector keeps a listener it
+      // no longer has and goes on reciting the deck to a closed window.
+      try {
+        channel.postMessage({ type: 'close' })
+      } catch {
+        // Channel already closed
+      }
       channel.close()
       channelRef.current = null
     }
