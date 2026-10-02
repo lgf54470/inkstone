@@ -378,3 +378,28 @@ describe('arrow head geometry', () => {
     expect(armLength(arrowHeadPoints(from!, to!, 4))).toBeCloseTo(armLength(arrowHeadPoints(from!, to!, 1)) / 2)
   })
 })
+
+describe('the ticker\'s own contract (G-33)', () => {
+  it('is one options object, and a call with nothing else still paints a frame', () => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+    const clearRectCalls: Array<[number, number, number, number]> = []
+    const restoreContext = mockCanvasContext(clearRectCalls, [])
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    const state = createInitialState()
+    buildInitialLayout(sampleData, DEFAULT_PREFERENCES, state)
+
+    createGraphTicker({
+      state, canvas, ctx, colorsRef: { current: readThemeColors() }, prefsRef: { current: DEFAULT_PREFERENCES },
+      hoverRef: { current: null }, selectedIdRef: { current: null }, activeNoteIdRef: { current: null },
+      style: document.createElement('div').style,
+    })
+
+    // The positional overload nobody called was a second contract to keep in sync with the first.
+    expect(createGraphTicker.length).toBe(1)
+    state.schedule?.()
+    expect(state.schedule).toBeTypeOf('function')
+    expect(clearRectCalls.length).toBeGreaterThan(0)
+    restoreContext()
+  })
+})

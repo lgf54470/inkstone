@@ -634,7 +634,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/{canvas-draw,canvas-physics}.test.ts`
   - 依赖：无；**不得合并两步**（合并约束 9）
   - 代价：XS（0.3 + 0.2 人日）｜提交建议：`refactor(graph)` ×2
-  - 提交哈希：待登记（两个）｜状态：⬜ 待开始
+  - 提交哈希：待登记（两个）｜状态：🟡 步骤 ① 已落地（2026-10-02，位置重载与 8 条 `!` 断言删除；先红实测 `createGraphTicker.length` 为 9，绿后为 1；步骤 ② 的 `'current' in` 双形态判断仍在）
 
 ### 批次 7：收尾与对标（7 项 / 8 个编号）
 

@@ -1,4 +1,3 @@
-import type { MutableRefObject } from 'react'
 import { ORGANIZER_COLORS } from '@shared/organizer-colors'
 import type { GraphResponse } from '@shared/types'
 import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SEARCH_DIM_ALPHA, GRAPH_SEARCH_DIM_EDGE_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, GRAPH_TAG_RING_GAP, GRAPH_TAG_RING_WIDTH, PHYSICS_FRAME_LIMIT } from './constants'
@@ -235,31 +234,7 @@ function renderGraphScene(options: GraphTickerOptions): void {
   ctx.restore()
 }
 
-export function createGraphTicker(
-  optionsOrState: GraphTickerOptions | CanvasState,
-  canvas?: HTMLCanvasElement,
-  ctx?: CanvasRenderingContext2D,
-  colorsRef?: ThemeColors | { current: ThemeColors },
-  prefsRef?: GraphPreferences | { current: GraphPreferences },
-  hoverRef?: MutableRefObject<CanvasNode | null>,
-  selectedIdRef?: MutableRefObject<string | null>,
-  activeNoteIdRef?: MutableRefObject<string | null>,
-  style?: CSSStyleDeclaration,
-): void {
-  const options: GraphTickerOptions = 'canvas' in optionsOrState
-    ? optionsOrState
-    : {
-        state: optionsOrState,
-        canvas: canvas!,
-        ctx: ctx!,
-        colorsRef: colorsRef!,
-        prefsRef: prefsRef!,
-        hoverRef: hoverRef!,
-        selectedIdRef: selectedIdRef!,
-        activeNoteIdRef: activeNoteIdRef!,
-        style: style!,
-      }
-
+export function createGraphTicker(options: GraphTickerOptions): void {
   let previousFrame = 0
   const schedule = () => { if (!options.state.raf) options.state.raf = requestAnimationFrame(tick) }
   const tick = () => {

@@ -3467,6 +3467,7 @@ const allowed = new Map([
     '// pointer paths read the viewport offset it caches — so the explicit call below is the second',
     '// measurement, and a tick beyond it still measures nothing at all.',
     '/**\n * The head a link is drawn with is the one piece of geometry that has to agree between the panel and an\n * exported picture, so its two rules are read off here: the tip stops short of the node it arrives at,\n * and the arms shrink as the reader zooms in so the head keeps the same size on screen.\n */',
+    '// The positional overload nobody called was a second contract to keep in sync with the first.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-draw.ts', [
     '/** The three corners of an arrow head: the tip sits just outside the node it points at. */',
