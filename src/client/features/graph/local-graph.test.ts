@@ -7,7 +7,7 @@ import { api } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { LocalGraphPanel } from './local-graph'
 import { GRAPH_PREFS_KEY } from './graph-panel/constants'
-import { click, mountGraphPanel, panelButton, panelSelect, releaseGraphPanels, selectOption, settleGraphPanel } from './graph-panel/graph-panel-mount.test-helpers'
+import { click, mountGraphPanel, panelButton, panelSelect, releaseGraphPanels, selectOption, settleGraphPanel, settlePersist } from './graph-panel/graph-panel-mount.test-helpers'
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -197,7 +197,9 @@ describe('the companion graph following a change made elsewhere (G-20)', () => {
     await mountGraphPanel(taggedGraph)
     click(panelButton(t('graph.settings')))
     selectOption(panelSelect(t('graph.group_by')), 'tag')
-    await settleGraphPanel()
+    // The panel now persists on a short debounce (G-11), and the companion hears about a change when
+    // that write lands, so a case that waits for the follow has to wait for the debounce too.
+    await settlePersist()
 
     expect(companionLegend(container)).toContain('work')
     unmount()
@@ -267,7 +269,7 @@ describe('the companion panel holding its own width (G-21)', () => {
     await mountGraphPanel(taggedGraph)
     click(panelButton(t('graph.settings')))
     selectOption(panelSelect(t('graph.depth')), '2')
-    await settleGraphPanel()
+    await settlePersist()
 
     expect(companionAsked().depth).toBe(3)
     unmount()

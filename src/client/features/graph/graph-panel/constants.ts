@@ -1,4 +1,5 @@
 import type { GraphPreferences } from '../../../lib/graph-settings'
+import { GRAPH_FORCE_RANGE } from '../../../lib/graph-settings'
 import { LIMITS } from '@shared/constants'
 
 export const FALLBACK_EDGE_COLOR = 'rgba(127,127,127,.35)'
@@ -59,7 +60,7 @@ export const DEFAULT_PREFERENCES: GraphPreferences = {
   tagsMatch: 'any',
   clearResetsTag: true,
   clearClosesPanel: true,
-  repulsion: 900,
-  linkDistance: 76,
-  nodeScale: 1,
+  repulsion: GRAPH_FORCE_RANGE.repulsion.default,
+  linkDistance: GRAPH_FORCE_RANGE.linkDistance.default,
+  nodeScale: GRAPH_FORCE_RANGE.nodeScale.default,
 }

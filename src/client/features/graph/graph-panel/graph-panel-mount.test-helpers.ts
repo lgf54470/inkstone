@@ -4,6 +4,7 @@ import type { GraphResponse } from '@shared/types'
 import { api } from '../../../lib/api'
 import { renderElement } from '../../../lib/test-render'
 import { GraphPanel } from './index'
+import { GRAPH_PREFS_PERSIST_DEBOUNCE_MS } from './use-graph-prefs'
 
 /**
  * The panel is the surface a reader actually uses: the drawer, the header buttons and the canvas all
@@ -139,11 +140,15 @@ export function panelSwitch(label: string): HTMLButtonElement {
   return control
 }
 
-/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */
+/**
+ * The sliders and dropdowns are labelled either by the text wrapped around them or by an `aria-label`
+ * the component itself carries — the force sliders went to the component library's `Slider`, which
+ * names the control rather than wrapping it (G-32). Both are the accessible name, so both find it.
+ */
 function labelledControl<T extends HTMLElement>(selector: string, label: string): T {
   const control = Array.from(surface().querySelectorAll<T>(selector))
-    .find((candidate) => candidate.closest('label')?.textContent?.includes(label))
-  if (!control) throw new Error(`the graph settings have no control labelled ${label}`)
+    .find((candidate) => candidate.getAttribute('aria-label') === label || candidate.closest('label')?.textContent?.includes(label))
+  if (!control) throw new Error(`the graph settings have no control named ${label}`)
   return control
 }
 
@@ -173,6 +178,39 @@ export function selectOption(select: HTMLSelectElement, value: string): void {
 
 export function click(element: HTMLElement): void {
   act(() => { element.click() })
+}
+
+/** One step along a slider's track, without letting go of the handle. */
+export function stepRange(input: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+  act(() => {
+    setter.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+/** Letting go: the boundary where a slider's own number becomes the panel's preference (G-11). */
+export function releaseRange(input: HTMLInputElement): void {
+  act(() => { input.dispatchEvent(new Event('pointerup', { bubbles: true })) })
+}
+
+/** A gesture the browser takes back — a touch that turns into a scroll — which still decides the value. */
+export function cancelRange(input: HTMLInputElement): void {
+  act(() => { input.dispatchEvent(new Event('pointercancel', { bubbles: true })) })
+}
+
+/**
+ * A slider drag as a reader makes it: the steps along the track, then the release that decides the
+ * value. jsdom has no `PointerEvent`, and React only needs the event to arrive with the same name.
+ */
+export function dragRange(input: HTMLInputElement, ...values: string[]): void {
+  for (const value of values) stepRange(input, value)
+  releaseRange(input)
+}
+
+/** How long a committed preference takes to reach storage; a case that reads it back has to wait that out. */
+export async function settlePersist(): Promise<void> {
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, GRAPH_PREFS_PERSIST_DEBOUNCE_MS + 60)) })
 }
 
 /** Escape as a reader presses it: from whatever the dialog holds focus on. */

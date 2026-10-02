@@ -15,8 +15,9 @@ import {
   panelSwitch,
   releaseGraphPanels,
   selectOption,
-  setRangeValue,
+  dragRange,
   settleGraphPanel,
+  settlePersist,
 } from './graph-panel-mount.test-helpers'
 
 /**
@@ -75,9 +76,9 @@ describe('graph preferences kept off the network (PERF-01)', () => {
     expect(api.graph).toHaveBeenCalledTimes(1)
 
     click(panelButton(t('graph.settings')))
-    setRangeValue(panelRange(t('graph.repulsion')), '1500')
-    setRangeValue(panelRange(t('graph.link_distance')), '120')
-    setRangeValue(panelRange(t('graph.node_size')), '1.4')
+    dragRange(panelRange(t('graph.repulsion')), '1500')
+    dragRange(panelRange(t('graph.link_distance')), '120')
+    dragRange(panelRange(t('graph.node_size')), '1.4')
 
     expect(api.graph).toHaveBeenCalledTimes(1)
     expect(panelCanvas()).toBe(canvas)
@@ -117,7 +118,8 @@ describe('where the graph preferences get stored', () => {
     await mountGraphPanel(tagged)
 
     click(panelButton(t('graph.settings')))
-    setRangeValue(panelRange(t('graph.repulsion')), '1500')
+    dragRange(panelRange(t('graph.repulsion')), '1500')
+    await settlePersist()
 
     expect(storedPrefs(`${GRAPH_PREFS_KEY}.prefs-user`)?.repulsion).toBe(1500)
     expect(storedPrefs(GRAPH_PREFS_KEY)).toBeNull()
@@ -144,8 +146,9 @@ describe('the node limit a reader can ask for (G-21)', () => {
   it('moves the slider into the next request and leaves it stored', async () => {
     await mountGraphPanel(tagged)
     click(panelButton(t('graph.settings')))
-    setRangeValue(panelRange(t('graph.node_limit')), String(LIMITS.graphNodeLimitMax))
+    dragRange(panelRange(t('graph.node_limit')), String(LIMITS.graphNodeLimitMax))
     await settleGraphPanel()
+    await settlePersist()
 
     expect(lastRequest().limit).toBe(LIMITS.graphNodeLimitMax)
     expect(storedPrefs(GRAPH_PREFS_KEY)?.limit).toBe(LIMITS.graphNodeLimitMax)

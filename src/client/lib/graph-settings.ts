@@ -69,3 +69,28 @@ export const GRAPH_SETTINGS_TOGGLES: ReadonlyArray<GraphToggleControl> = [
 export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel')
 export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved' || control.prefKey === 'showTagNodes')
 export const GRAPH_APPEARANCE_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'arrows' || control.prefKey === 'labels')
+
+/**
+ * The three force sliders: their bounds, their step and their default, in one table. The drawer draws
+ * its sliders from this and `loadPreferences` clamps stored values with it, so a slider cannot offer a
+ * number the reader's own stored preference would later refuse (G-32).
+ */
+export interface GraphRangeControl {
+  prefKey: 'repulsion' | 'linkDistance' | 'nodeScale'
+  labelKey: MessageKey
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export const GRAPH_FORCE_RANGES: ReadonlyArray<GraphRangeControl> = [
+  { prefKey: 'repulsion', labelKey: 'graph.repulsion', min: 300, max: 1800, step: 50, default: 900 },
+  { prefKey: 'linkDistance', labelKey: 'graph.link_distance', min: 40, max: 150, step: 5, default: 76 },
+  { prefKey: 'nodeScale', labelKey: 'graph.node_size', min: 0.7, max: 1.8, step: 0.1, default: 1 },
+]
+
+/** Looked up by preference key, which is how the panel and the storage reader share one row. */
+export const GRAPH_FORCE_RANGE = Object.fromEntries(
+  GRAPH_FORCE_RANGES.map((control) => [control.prefKey, control]),
+) as Record<GraphRangeControl['prefKey'], GraphRangeControl>

@@ -3,7 +3,7 @@ import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
-import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
+import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_CAMERA_PADDING, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
 import type { CanvasNode, CanvasState } from './types'
 
@@ -96,9 +96,9 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
       clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
       clearClosesPanel: booleanPreference(stored.clearClosesPanel, DEFAULT_PREFERENCES.clearClosesPanel),
-      repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, 300, 1800),
-      linkDistance: boundedPreference(stored.linkDistance, DEFAULT_PREFERENCES.linkDistance, 40, 150),
-      nodeScale: boundedPreference(stored.nodeScale, DEFAULT_PREFERENCES.nodeScale, 0.7, 1.8),
+      repulsion: boundedPreference(stored.repulsion, DEFAULT_PREFERENCES.repulsion, GRAPH_FORCE_RANGE.repulsion.min, GRAPH_FORCE_RANGE.repulsion.max),
+      linkDistance: boundedPreference(stored.linkDistance, DEFAULT_PREFERENCES.linkDistance, GRAPH_FORCE_RANGE.linkDistance.min, GRAPH_FORCE_RANGE.linkDistance.max),
+      nodeScale: boundedPreference(stored.nodeScale, DEFAULT_PREFERENCES.nodeScale, GRAPH_FORCE_RANGE.nodeScale.min, GRAPH_FORCE_RANGE.nodeScale.max),
     }
   } catch {
     return DEFAULT_PREFERENCES

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LIMITS } from '@shared/constants'
-import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup } from '../../../lib/graph-settings'
-import { COLOR_GROUP_QUERY_MAX, GRAPH_PREFS_KEY } from './constants'
+import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGES, type GraphColorGroup } from '../../../lib/graph-settings'
+import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_PREFS_KEY } from './constants'
 import {
   buildColorLegends,
   colorGroupsByNodeId,
@@ -78,6 +78,16 @@ describe('graph panel preferences', () => {
     expect(loadPreferences(null).limit).toBe(LIMITS.graphNodeLimitMin)
     localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({}))
     expect(loadPreferences(null).limit).toBe(LIMITS.graphNodeLimitDefault)
+  })
+
+  it('clamps each force to the same bounds the drawer drags on (G-32)', () => {
+    for (const control of GRAPH_FORCE_RANGES) {
+      expect(DEFAULT_PREFERENCES[control.prefKey]).toBe(control.default)
+      localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ [control.prefKey]: control.max * 100 }))
+      expect(loadPreferences(null)[control.prefKey]).toBe(control.max)
+      localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ [control.prefKey]: control.min / 100 }))
+      expect(loadPreferences(null)[control.prefKey]).toBe(control.min)
+    }
   })
 })
 

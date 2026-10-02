@@ -1,4 +1,4 @@
-import { useEffect, useId, type ElementType, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ElementType, type ReactNode } from 'react'
 import { ArrowDownToLine, ArrowRight, ChevronRight, Filter, Info, Network, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
 import type { Folder, Tag } from '@shared/types'
@@ -6,12 +6,13 @@ import {
   GRAPH_APPEARANCE_TOGGLES,
   GRAPH_CLEAR_TOGGLES,
   GRAPH_DEPTHS,
+  GRAPH_FORCE_RANGES,
   GRAPH_SHOW_TOGGLES,
   type GraphPreferences,
   type GroupBy,
 } from '../../../lib/graph-settings'
 import { Button, IconButton } from '../../../components/primitives'
-import { Select, Switch } from '../../../components/form'
+import { Select, Slider, Switch } from '../../../components/form'
 import { Tooltip, useEscape } from '../../../components/overlay'
 import { useBreakpoint } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
@@ -59,9 +60,9 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           ))}
         </GraphSection>
         <GraphSection icon={<ArrowRight size={13}/>} title={t('graph.forces')}>
-          <GraphRange label={t('graph.repulsion')} min={300} max={1800} step={50} value={prefs.repulsion} onChange={(value) => onChange('repulsion', value)}/>
-          <GraphRange label={t('graph.link_distance')} min={40} max={150} step={5} value={prefs.linkDistance} onChange={(value) => onChange('linkDistance', value)}/>
-          <GraphRange label={t('graph.node_size')} min={0.7} max={1.8} step={0.1} value={prefs.nodeScale} onChange={(value) => onChange('nodeScale', value)}/>
+          {GRAPH_FORCE_RANGES.map((control) => (
+            <GraphRange key={control.prefKey} label={t(control.labelKey)} min={control.min} max={control.max} step={control.step} value={prefs[control.prefKey]} onCommit={(value) => onChange(control.prefKey, value)}/>
+          ))}
           <Button type='button' variant='secondary' size='sm' onClick={onRestoreDefaults} className="mt-1 flex h-8 w-full items-center justify-center gap-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</Button>
         </GraphSection>
       </DrawerShell>
@@ -105,7 +106,7 @@ function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLi
       {GRAPH_SHOW_TOGGLES.map((control) => (
         <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
       ))}
-      <GraphRange label={t('graph.node_limit')} min={LIMITS.graphNodeLimitMin} max={LIMITS.graphNodeLimitMax} step={GRAPH_LIMIT_STEP} value={prefs.limit} onChange={(value) => onChange('limit', value)}/>
+      <GraphRange label={t('graph.node_limit')} min={LIMITS.graphNodeLimitMin} max={LIMITS.graphNodeLimitMax} step={GRAPH_LIMIT_STEP} value={prefs.limit} onCommit={(value) => onChange('limit', value)}/>
       {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={GRAPH_DEPTHS.map((depth) => [String(depth), String(depth)] as [string, string])}/>}
     </GraphSection>
   )
@@ -145,7 +146,32 @@ function GraphToggle({ label, hint, checked, onChange }: { label: string; hint?:
   )
 }
 
-function GraphRange({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
-  return <label className='block text-[length:var(--text-12)] text-[var(--text-secondary)]'><span className='mb-1 flex justify-between'><span>{label}</span><span className='tabular-nums text-[var(--text-quaternary)]'>{value}</span></span><input type='range' min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className='w-full accent-[var(--accent)]'/></label>
+/**
+ * One force slider. What it shows is its own until the reader lets go: committing every step would
+ * write the preference, wake the physics and persist again for each pixel of the drag (G-11). The
+ * release, a keyboard step and the focus leaving the control are the three boundaries where a value is
+ * actually decided, so those are where it is handed up. The handlers sit on the wrapper because the
+ * component library's `Slider` forwards no events of its own.
+ */
+function GraphRange({ label, min, max, step, value, onCommit }: {
+  label: string
+  min: number
+  max: number
+  step: number
+  value: number
+  onCommit: (value: number) => void
+}) {
+  const [draft, setDraft] = useState<number | null>(null)
+  const commit = () => {
+    if (draft === null) return
+    onCommit(draft)
+    setDraft(null)
+  }
+  return (
+    <div className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-secondary)]' onPointerUp={commit} onPointerCancel={commit} onKeyUp={commit} onBlur={commit}>
+      <span className='w-24 shrink-0 truncate'>{label}</span>
+      <Slider label={label} value={draft ?? value} min={min} max={max} step={step} onChange={setDraft}/>
+    </div>
+  )
 }
 

@@ -3632,8 +3632,13 @@ const allowed = new Map([
     '/** One of the overlays the canvas paints its own text into, found by the marker it carries. */',
     '/** The `q` each graph request carried, in the order the panel sent them. */',
     '// The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).',
-    '/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */',
+    '/**\n * The sliders and dropdowns are labelled either by the text wrapped around them or by an `aria-label`\n * the component itself carries — the force sliders went to the component library\'s `Slider`, which\n * names the control rather than wrapping it (G-32). Both are the accessible name, so both find it.\n */',
     '/** React only sees a value the browser itself wrote, so a test types through the native setter. */',
+    '/** One step along a slider\'s track, without letting go of the handle. */',
+    '/** Letting go: the boundary where a slider\'s own number becomes the panel\'s preference (G-11). */',
+    '/** A gesture the browser takes back — a touch that turns into a scroll — which still decides the value. */',
+    '/**\n * A slider drag as a reader makes it: the steps along the track, then the release that decides the\n * value. jsdom has no `PointerEvent`, and React only needs the event to arrive with the same name.\n */',
+    '/** How long a committed preference takes to reach storage; a case that reads it back has to wait that out. */',
     '/** Escape as a reader presses it: from whatever the dialog holds focus on. */',
   ]],
   ['src/client/features/graph/graph-panel/header-export.test.ts', [
@@ -3712,6 +3717,13 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
     '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/panel-force-slider.test.ts', [
+    '/**\n * A force slider is the one control a reader drags through dozens of values in a second, so these cases\n * ask what a single drag costs: how many times the panel is told, and how many times storage is written\n * (G-11). The other half pins that the track a reader drags on and the clamp a stored value passes\n * through are the same numbers, read from one table (G-32).\n */',
+    '/** The other half of G-11: the write is on a window, not on every change that reaches the preference. */',
+    '// Half the window: the second commit arrives while the first is still waiting. Without a debounce',
+    '// the first write has already gone out by now, which is what this case is there to notice.',
+    '/** The other half of G-32: the track a reader drags and the clamp a stored value passes through agree. */',
+  ]],
   ['src/client/features/graph/graph-panel/panel-legend-cycle.test.ts', [
     '/**\n * The legend has always said which colour means what; a reader who wants *only* that colour had to type the\n * filter line out (G-14 ④). Every row is already a line the search box understands — a rule carries its own\n * query, a tag row its `tag:`, a folder row its `path:` — so pressing one writes into the search line rather\n * than inventing a third way to narrow a graph: first press fades to it, second asks the server for only it,\n * third puts the graph back.\n */',
     '// The rules are preferences, so the legend they draw is on screen only because a reader wrote them.',
@@ -3751,6 +3763,7 @@ const allowed = new Map([
     '// `dialog` is not an allowed role on `aside` (the overlay Drawer reads the same rule off axe), so the',
     '// shell that covers the canvas is a div; beside the canvas this is a named region, not a dialog.',
     '/** Everything that narrows which notes are in the graph, plus the cap notice the sidebar selection hits. */',
+    '/**\n * One force slider. What it shows is its own until the reader lets go: committing every step would\n * write the preference, wake the physics and persist again for each pixel of the drag (G-11). The\n * release, a keyboard step and the focus leaving the control are the three boundaries where a value is\n * actually decided, so those are where it is handed up. The handlers sit on the wrapper because the\n * component library\'s `Slider` forwards no events of its own.\n */',
   ]],
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
@@ -3775,10 +3788,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/use-graph-prefs.ts', [
     '/**\n * Graph preferences are one key shared by two surfaces, so the writer says when it has written. The\n * browser\'s own `storage` event belongs to the *other* tabs, which leaves a panel sitting behind the\n * full-screen graph drawing with the settings it was mounted with (G-20).\n */',
-    '/**\n * The preferences the reader set, held by the panel that owns them. Only the full-screen graph writes\n * them back: two surfaces persisting the same key would leave whichever let go of the drawer last\n * holding the graph, so the companion is given no setter to reach for (G-20).\n */',
-    '// Private browsing or a locked-down browser can reject local preferences.',
-    '// Only a real write is worth announcing: the effect runs on every mount, and a reader that re-reads',
-    '// an unchanged key still gets a new object to render.',
+    '/** How long a change waits before it reaches storage: a drag changes the value dozens of times a second. */',
+    '/**\n * The one place the preference key is written. A reader in private browsing gets a warning rather than\n * a silent loss (AGENTS rule 2\'s best-effort form: the setting still works for this session), and a\n * write that changed nothing is not announced — the companion panel would otherwise re-read on mount.\n */',
+    '/**\n * The preferences the reader set, held by the panel that owns them. Only the full-screen graph writes\n * them back: two surfaces persisting the same key would leave whichever let go of the drawer last\n * holding the graph, so the companion is given no setter to reach for (G-20).\n *\n * The write is debounced rather than per-change (G-11), and whatever is still pending when the panel\n * closes is flushed on the way out — a reader who drags a slider and immediately presses Escape has\n * still set it.\n */',
     '/** The same preferences read-only, following every write the owning panel makes. */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-preview.ts', [
@@ -3791,6 +3803,8 @@ const allowed = new Map([
     '/** The words of the colour legend the companion draws, which only exists once a preference says to. */',
     '// A filter the companion cannot show or clear would empty the panel with no way back (G-15).',
     '// Two surfaces persisting the same key would leave whichever let go last holding the graph (G-20).',
+    '// The panel now persists on a short debounce (G-11), and the companion hears about a change when',
+    '// that write lands, so a case that waits for the follow has to wait for the debounce too.',
     '/** The requests the companion itself sent, which is the only surface here centred on this note. */',
     '/** The companion is the one graph a reader looks at while writing, so its own reach is asked for there. */',
   ]],
@@ -8920,6 +8934,8 @@ const allowed = new Map([
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
     '/** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */',
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
+    '/**\n * The three force sliders: their bounds, their step and their default, in one table. The drawer draws\n * its sliders from this and `loadPreferences` clamps stored values with it, so a slider cannot offer a\n * number the reader\'s own stored preference would later refuse (G-32).\n */',
+    '/** Looked up by preference key, which is how the panel and the storage reader share one row. */',
   ]],
   ['src/client/lib/hooks.test.ts', [
     '// FB3-C9: the hooks the music surfaces fold on hand out the ref they measure, so the box is observed',
