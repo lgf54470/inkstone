@@ -22,10 +22,11 @@ export function PresentationOverlay() {
   const following = usePresentation((s) => s.following)
   const storedTitle = usePresentation((s) => s.title)
   const initialSlideIndex = usePresentation((s) => s.initialSlideIndex)
+  const startedAt = usePresentation((s) => s.startedAt)
   const onClose = usePresentation((s) => s.stop)
   const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const session = usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex })
+  const session = usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex, startedAt })
 
   if (!open) return null
 

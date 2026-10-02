@@ -18,6 +18,13 @@ interface PresentationState {
   snapshot: string
   following: boolean
   initialSlideIndex: number
+  /**
+   * When this show began, in epoch ms, or 0 while no show is open. The presenter window's elapsed
+   * clock counts from here rather than from its own mount: the overlay lives in the shell for the
+   * whole session, so a stamp taken where the clock is read would be the time the app opened and
+   * would keep running up across two talks of the same evening.
+   */
+  startedAt: number
   start: (note: { noteId: string; content: string; title: string; initialSlideIndex?: number }) => void
   stop: () => void
   capture: (content: string) => void
@@ -31,13 +38,14 @@ export const usePresentation = create<PresentationState>((set) => ({
   snapshot: '',
   following: true,
   initialSlideIndex: 0,
+  startedAt: 0,
 
   start({ noteId, content, title, initialSlideIndex = 0 }) {
-    set({ open: true, noteId, title, snapshot: content, following: true, initialSlideIndex })
+    set({ open: true, noteId, title, snapshot: content, following: true, initialSlideIndex, startedAt: Date.now() })
   },
 
   stop() {
-    set({ open: false, noteId: null, title: '', snapshot: '', following: true, initialSlideIndex: 0 })
+    set({ open: false, noteId: null, title: '', snapshot: '', following: true, initialSlideIndex: 0, startedAt: 0 })
   },
 
   capture(content) {

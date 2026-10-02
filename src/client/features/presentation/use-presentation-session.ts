@@ -39,6 +39,7 @@ export interface PresentationSessionOptions {
   stageRef: RefObject<HTMLDivElement | null>
   onClose: () => void
   initialSlideIndex?: number
+  startedAt: number
 }
 
 export interface PresentationSession {
@@ -100,8 +101,16 @@ export interface PresentationSession {
   closeContextMenu: () => void
 }
 
-function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[], proseFont?: ProseFont) {
-  const startedAt = useRef(Date.now()).current
+function useSessionPresenter(options: {
+  open: boolean
+  noteTitle: string
+  nav: ReturnType<typeof usePresentationNav>
+  deck: string[]
+  notes: string[]
+  proseFont?: ProseFont
+  startedAt: number
+}) {
+  const { open, noteTitle, nav, deck, notes, proseFont, startedAt } = options
   // Minted per click rather than per show: the token reaches the presenter window through its route, so
   // a document that never went through this button — a hand-typed `?presenter=1`, another tab — has no
   // channel name to speak on, and cannot ask for the speaker notes or move the projector.
@@ -132,7 +141,7 @@ function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<t
 }
 
 export function usePresentationSession(options: PresentationSessionOptions): PresentationSession {
-  const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0 } = options
+  const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0, startedAt } = options
   const { content: presentedContent, title: liveTitle } = usePresentedContent({ open, noteId, snapshot, following })
   const { deck, notes, fingerprint } = useShowDeck(presentedContent)
   useCapturePresented(open, following, presentedContent)
@@ -147,7 +156,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes, proseFont)
+  const { openPresenter } = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })

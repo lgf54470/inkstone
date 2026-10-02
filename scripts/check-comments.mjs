@@ -6949,7 +6949,13 @@ const allowed = new Map([
     '// Theme flips must reach the slide canvas and its diagrams without going through',
     '// the store, because the canvas renders sanitized markup outside the editor tree.',
   ]],
-  ['src/client/features/presentation/presenter-view/presenter-window.test.ts', [
+  ['src/client/features/presentation/presenter-show-clock.test.ts', [
+    '// The show clock the presenter window reads has to be stamped by the show. The channel is the only',
+    '// place that number leaves the app, so the broadcaster is watched here rather than reconstructed.',
+    '// The shell hosts the overlay for the whole session, so this mount is the app opening, not a talk.',
+    '// The second talk of the evening: an hour after the app was opened, and after a finished show.',
+  ]],
+  ['src/client/features/presentation/presenter-view/presenter-slide-media.test.ts', [
     '// A presenter reads the slide the room reads, so a diagram, a formula, a chart or a board has to',
     '// arrive as a picture in this document too. The channel carries markdown and both panes paint',
     '// through `PresenterSlidePreview`, so the enhancement the projector runs belongs there.',
@@ -6970,6 +6976,10 @@ const allowed = new Map([
     '// gets is the one this slide is laid out in; the theme it is drawn under is the one on screen.',
     '// A second slide the channel reports has to be drawn as well: an enhancement that only ever',
     '// looked at the markup it first met is what this case pins.',
+  ]],
+  ['src/client/features/presentation/presenter-view/presenter-window.test.ts', [
+    '// Paused on purpose, so the carry-over this case looks for has something to carry.',
+    '// The room moves on to another talk, and the channel brings a clock stamped by that show.',
   ]],
   ['src/client/features/presentation/presenter-view/use-presenter-channel.test.ts', [
     '/** Lets every `queueMicrotask` delivery above the mock does land before the assertion after it. */',
@@ -12990,6 +13000,10 @@ const allowed = new Map([
   ['src/client/store/pinned-windows.ts', [
     '// Quota or private-mode writes can throw; pinned windows stay authoritative in memory.',
   ]],
+  ['src/client/store/presentation.test.ts', [
+    '// The command palette can put a different note on the projector without the first show being',
+    '// stopped; that is a new talk, so its elapsed time starts over rather than adding up.',
+  ]],
   ['src/client/store/presentation.ts', [
     '// Presenting belongs to the shell, not to a workspace pane: crossing the mobile',
     '// breakpoint swaps the whole shell subtree, and a show owned by the workspace',
@@ -12998,6 +13012,7 @@ const allowed = new Map([
     '// MCP write) lands on the projector; freezing pins the deck for a talk that must',
     '// not move.',
     '/**\n   * Last content the show put on screen. While following, the overlay keeps this\n   * current so freezing pins exactly what the presenter is looking at; once frozen\n   * it is the presented content and stops changing.\n   */',
+    '/**\n   * When this show began, in epoch ms, or 0 while no show is open. The presenter window\'s elapsed\n   * clock counts from here rather than from its own mount: the overlay lives in the shell for the\n   * whole session, so a stamp taken where the clock is read would be the time the app opened and\n   * would keep running up across two talks of the same evening.\n   */',
   ]],
   ['src/client/store/pwa.ts', [
     '// Best-effort worker update check; the next visibility change retries.',

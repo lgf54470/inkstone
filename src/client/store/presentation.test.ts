@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePresentation } from './presentation'
 
-const IDLE = { open: false, noteId: null, title: '', snapshot: '', following: true }
+const IDLE = { open: false, noteId: null, title: '', snapshot: '', following: true, startedAt: 0 }
 
 beforeEach(() => {
   usePresentation.setState(IDLE)
@@ -51,5 +51,44 @@ describe('presentation show lifecycle', () => {
     stop()
     usePresentation.getState().start({ noteId: 'note-2', content: '# Second talk', title: 'Next talk' })
     expect(usePresentation.getState()).toMatchObject({ noteId: 'note-2', snapshot: '# Second talk', following: true })
+  })
+})
+
+describe('presentation show clock', () => {
+  it('stamps the moment the show started and restamps it for the next one', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(5000)
+    usePresentation.getState().start({ noteId: 'note-1', content: '# Opening', title: 'Script' })
+    expect(usePresentation.getState().startedAt).toBe(5000)
+    usePresentation.getState().stop()
+    vi.setSystemTime(90_000)
+    usePresentation.getState().start({ noteId: 'note-2', content: '# Second talk', title: 'Next talk' })
+    expect(usePresentation.getState().startedAt).toBe(90_000)
+    vi.useRealTimers()
+  })
+
+  it('keeps one clock while the show freezes, captures and follows again', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(5000)
+    const { start, capture, setFollowing } = usePresentation.getState()
+    start({ noteId: 'note-1', content: '# Opening', title: 'Script' })
+    vi.setSystemTime(45_000)
+    setFollowing(false)
+    capture('# Opening revised')
+    setFollowing(true)
+    expect(usePresentation.getState().startedAt).toBe(5000)
+    vi.useRealTimers()
+  })
+
+  it('restamps when a new note takes over a show that is still open', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(5000)
+    usePresentation.getState().start({ noteId: 'note-1', content: '# Opening', title: 'Script' })
+    vi.setSystemTime(240_000)
+    // The command palette can put a different note on the projector without the first show being
+    // stopped; that is a new talk, so its elapsed time starts over rather than adding up.
+    usePresentation.getState().start({ noteId: 'note-2', content: '# Second talk', title: 'Next talk' })
+    expect(usePresentation.getState().startedAt).toBe(240_000)
+    vi.useRealTimers()
   })
 })
