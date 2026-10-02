@@ -22,10 +22,16 @@ function usePreviewTimers(onHover: () => void, onHide: () => void) {
   const hideTimerRef = useRef<number>(0)
   // The two callbacks are written inline by every caller, so the timers read them through a ref: arming a
   // timer must not depend on the render that armed it, or each render would re-create the arm itself.
+  // The two callbacks are written inline by every caller, so the timers read them through a ref: arming a
+  // timer must not depend on the render that armed it, or each render would re-create the arm itself. The
+  // handover happens after the commit rather than during it (G-39), which is soon enough: a timer can only
+  // be armed by an event, and an event is never delivered before the commit that attached its handler.
   const onHoverRef = useRef(onHover)
   const onHideRef = useRef(onHide)
-  onHoverRef.current = onHover
-  onHideRef.current = onHide
+  useEffect(() => {
+    onHoverRef.current = onHover
+    onHideRef.current = onHide
+  })
   const clearTimers = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     window.clearTimeout(hideTimerRef.current)

@@ -3884,6 +3884,10 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/use-graph-preview.ts', [
     '// The two callbacks are written inline by every caller, so the timers read them through a ref: arming a',
     '// timer must not depend on the render that armed it, or each render would re-create the arm itself.',
+    '// The two callbacks are written inline by every caller, so the timers read them through a ref: arming a',
+    '// timer must not depend on the render that armed it, or each render would re-create the arm itself. The',
+    '// handover happens after the commit rather than during it (G-39), which is soon enough: a timer can only',
+    '// be armed by an event, and an event is never delivered before the commit that attached its handler.',
   ]],
   ['src/client/features/graph/local-graph.test.ts', [
     '/** The same pair with a tag on the first one, so a colour rule has something to paint. */',
@@ -15335,6 +15339,12 @@ const allowed = new Map([
     '/**\n * A `Tooltip` and the control it wraps are the same message, said twice: once in print for a reader who\n * hovers, once as the accessible name for a reader who never sees it. The graph\'s fit control spent a\n * long time saying `graph.fit` out loud and `graph.reset` in print (G-35) — the two arguments are one\n * prop each, so nothing but a check keeps them from drifting apart again.\n *\n * The tooltip\'s text only exists in the DOM once the browser has laid the bubble out, which jsdom never\n * does, so this reads the source the mismatch was written in rather than the rendered tree. The\n * companion case in `graph-panel/panel-control-naming.test.ts` asserts the rendered name.\n */',
     '// A guard that matches nothing is a guard that was silently deleted; the graph header alone has more',
     '// than a handful of these pairs.',
+  ]],
+  ['tests/graph-render-phase-refs.test.ts', [
+    '/**\n * A ref written while the component is rendering is a value that belongs to a render that may never be\n * committed: React 19 renders twice in development and drops a render when a higher update supersedes it.\n * The graph\'s header controls used to be handed over that way (G-39), and the two shapes behave exactly\n * the same to every behavioural test — jsdom flushes effects inside `act`, so a commit-phase write is\n * indistinguishable from a render-phase one. The only check that can hold the line is the source itself\n * (F-09), which is what 6.5 registered as its own gap.\n *\n * A write inside a callback is not a render-phase write: `useEffect` runs after the commit it belongs to,\n * and the handlers the canvas hands out fire long after any render. So only an assignment whose nearest\n * enclosing function *is* the hook counts here.\n */',
+    '// A write nested in any function below the hook body happens after the render, so only the nearest',
+    '// enclosing function being the hook itself is a render-phase write.',
+    '// A scan that finds no file passes by accident; the graph module is far larger than this floor.',
   ]],
   ['tests/graph-routes.test.ts', [
     '// 26-char valid ids ([0-9a-hjkmnp-tv-z]{26}); the graph route validates center/folder formats',
