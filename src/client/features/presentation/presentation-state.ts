@@ -97,7 +97,7 @@ function isInPageSlideLink(trimmed: string): boolean {
  * Compared case-folded because `HTTPS://` and `Http://` are the same scheme to a browser, so matching
  * the raw text refused links the author means the projector to open. Only the comparison is folded —
  * the href handed to `window.open` keeps its case, where a path's is meaningful. */
-export function isSafeSlideLinkHref(href: string | null | undefined): boolean {
+export function isSafeSlideLinkHref(href: string | null | undefined): href is string {
   const lower = (href ?? '').trim().toLowerCase()
   return SLIDE_LINK_PROTOCOLS.some((protocol) => lower.startsWith(protocol))
 }
@@ -113,7 +113,7 @@ export function interceptSlideLink(
   openWindow: (url: string, target: string, features: string) => void,
 ): boolean {
   if (!isSafeSlideLinkHref(href)) return false
-  openWindow((href ?? '').trim(), '_blank', 'noopener,noreferrer')
+  openWindow(href.trim(), '_blank', 'noopener,noreferrer')
   return true
 }
 

@@ -108,6 +108,36 @@ describe('buildPresentationMenuItems — link actions', () => {
   })
 })
 
+describe('buildPresentationMenuItems — link protocol whitelist', () => {
+  // The left click on the projector and these two menu items are the same action on the same href, so
+  // they consult one whitelist: an href the slide refuses may not get an offer the slide would not act on.
+  const refused: Array<[label: string, href: string]> = [
+    ['javascript:', 'javascript:alert(1)'],
+    ['mixed-case javascript:', 'JaVaScRiPt:alert(1)'],
+    ['data:', 'data:text/html,<p>hi</p>'],
+    ['relative note link', '/notes/another'],
+    ['in-page anchor', '#slide-heading'],
+  ]
+
+  it.each(refused)('offers no link item for a %s href', (_label, href) => {
+    const items = buildPresentationMenuItems({ ...baseOptions(), linkUrl: href })
+    const ids = items.map((item) => item.id)
+    expect(ids).not.toContain('link-open')
+    expect(ids).not.toContain('link-copy')
+    expect(ids[0]).toBe('prev')
+    expect(items.find((item) => item.id === 'prev')?.separatorBefore).toBe(false)
+  })
+
+  it.each([
+    ['HTTPS://Example.COM/Talk#Section', 'a scheme written in capitals'],
+    ['mailto:speaker@example.com', 'a mailto:'],
+  ])('offers the link items for %s — %s', (href) => {
+    const items = buildPresentationMenuItems({ ...baseOptions(), linkUrl: href })
+    expect(items.map((item) => item.id).slice(0, 2)).toEqual(['link-open', 'link-copy'])
+    expect(items.find((item) => item.id === 'prev')?.separatorBefore).toBe(true)
+  })
+})
+
 describe('buildPresentationMenuItems — pagination bounds', () => {
   it('disables prev item when on the first slide and subpage', () => {
     const opts = { ...baseOptions(), slideIndex: 0, subPage: 0 }

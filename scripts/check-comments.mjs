@@ -6799,7 +6799,13 @@ const allowed = new Map([
     '// The stage reports fractional design sizes (it divides by the scale), which would print as',
     '// fractional page boxes; a PDF page is a whole number of pixels.',
   ]],
+  ['src/client/features/presentation/presentation-context-menu.test.ts', [
+    '// The left click on the projector and these two menu items are the same action on the same href, so',
+    '// they consult one whitelist: an href the slide refuses may not get an offer the slide would not act on.',
+  ]],
   ['src/client/features/presentation/presentation-context-menu.tsx', [
+    '// The href comes out of the rendered note, so these two items exist only for a protocol the projector is',
+    '// willing to open. Left click and right click are one action on one href; they must not be two judgements.',
     '// Best-effort clipboard copy: environment or permission restrictions may reject writing.',
   ]],
   ['src/client/features/presentation/presentation-controls.test.ts', [

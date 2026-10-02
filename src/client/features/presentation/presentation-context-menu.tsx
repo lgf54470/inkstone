@@ -19,6 +19,7 @@ import {
 import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
 import { Menu, type MenuItem } from '../../components/overlay'
+import { isSafeSlideLinkHref } from './presentation-state'
 
 export interface PresentationMenuItemsOptions {
   linkUrl: string | null
@@ -47,8 +48,10 @@ export interface PresentationMenuItemsOptions {
   onExit: () => void
 }
 
+// The href comes out of the rendered note, so these two items exist only for a protocol the projector is
+// willing to open. Left click and right click are one action on one href; they must not be two judgements.
 function buildLinkItems(linkUrl: string | null): MenuItem[] {
-  if (!linkUrl) return []
+  if (!isSafeSlideLinkHref(linkUrl)) return []
   return [
     {
       id: 'link-open',
@@ -79,7 +82,7 @@ function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[]
       icon: <ChevronLeft size={14} />,
       disabled: isFirst,
       onSelect: options.onPrev,
-      separatorBefore: Boolean(options.linkUrl),
+      separatorBefore: isSafeSlideLinkHref(options.linkUrl),
     },
     {
       id: 'next',
