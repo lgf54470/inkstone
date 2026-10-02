@@ -551,13 +551,13 @@
 
 | 编号 | 待量测 | 手段 | 影响 |
 | :--- | :--- | :--- | :--- |
-| V-01 | 布局期真实帧成本（物理 vs 绘制各占多少） | **新增 `scripts/measure-graph.mjs`**：按仓库既有的手动验收脚本惯例（`measure-preflight.mjs` / `measure-kanban.mjs` / `measure-music.mjs`：需要账号时用 `INKSTONE_VISUAL_USERNAME/PASSWORD`、需要浏览器时用 `INKSTONE_CHROME_PATH`，参数如 `NODES`/推帧上限可调，打印数据与结论、只报告不判定） | 决定 G-08 的 ①②③ 是否值得做 |
-| V-02 | 一次请求实际读多少行 links（大库样本） | 同上脚本采样 + `EXPLAIN QUERY PLAN` | 定 G-01 的提前退出阈值与 G-03 的必要性 |
-| V-03 | 全局图谱 degree 聚合的真实耗时 | `EXPLAIN QUERY PLAN` + 大库样本（10k 笔记 / 50k 链接量级） | 决定 G-10 是否值得做持久化契约变更 |
-| V-04 | `Math.min(...xs)` 的安全上界 | 已在文档层确认（服务端 clamp 600 + 标签 60 → ≤410）；**若 G-21 放开上限则须改为循环求极值** | G-21 的前置 |
+| V-01 | 布局期真实帧成本（物理 vs 绘制各占多少） | **已实测**（`scripts/measure-graph.mjs`，`adef5e84`；本机 headless Chrome + miniflare，非生产 D1）：画到客户端上限 600 节点时 settle 窗口 663 帧、**均值 16.9ms、p95 16.8ms、最长 50ms**，1 条 longtask（53ms）；真实导出函数在离屏 1200×760 上量得**绘制一帧中位 5.6ms（最大 11.6ms）**，建布局（含首帧物理）1.3ms；物理按差值估 ≈11.3ms/帧（含浏览器合成与回收，是上界）。判读：均值已贴住 vsync，**没有掉帧**，成本集中在首帧 | 决定 G-08 的 ①② 是否值得做 |
+| V-02 | 一次请求实际读多少行 links（大库样本） | **已实测**（同一脚本，副本库 10k 笔记 / 50k 链接）：350 个节点的页面 → **9 条分块语句（每块 ≤40 id）读回 1750 行 links，合计 5.0ms**（最慢单条 1.7ms），候选上限 10000 远未触及；计划走 `idx_links_user_source`（`SEARCH … USING INDEX (user_id=? AND source_note_id=?)`）而非全表扫。局部递归 depth1/2/3 = 0.3 / 0.7 / 5.5ms | 定 G-01 的提前退出阈值与 G-03 的必要性 |
+| V-03 | 全局图谱 degree 聚合的真实耗时 | **已实测**（同一脚本）：一次全局页读中位 **143.4ms（最大 179.1ms）**，其中 degree 聚合本身中位 **113.0ms（最大 124.3ms）＝占 79%**；聚合与页面大小无关（10000 note 行 / 100000 端点全量物化），计划里是 `MATERIALIZE d` + `SCAN (subquery-2)` + `USE TEMP B-TREE FOR GROUP BY` + `SEARCH d USING AUTOMATIC COVERING INDEX`——即 SQLite 每次请求自己建一个覆盖索引 | 决定 G-10 是否值得做持久化契约变更 |
+| V-04 | `Math.min(...xs)` 的安全上界 | 已在文档层确认（服务端 clamp 600 + 标签 60 → ≤410）；**G-21（`e78c6a44`）落地**：上限未放开（`LIMITS.graphNodeLimitMax` 仍 600），前提写进 `canvas-hooks.tsx` 的 `useGraphFit` 注释，界值由 worker clamp / `loadPreferences` / 抽屉滑杆 / 演示后端四处共用同一份 `LIMITS` | G-21 的前置（已满足） |
 | V-05 | 主题翻转时预览卡的像素/内联色是否真的陈旧 | 浏览器断言（G-31 的验收），先设账号「跟随系统」再翻系统偏好 | G-31 的验收条件 |
 
-**注**：仓库目前**没有**图谱的手动量测脚本，而甲板（deck）、看板、音乐都有——补一个 `measure-graph.mjs` 是把 G-08/G-10 从「推断」变成「实测」的最短路径，也符合 AGENTS.md「能自动化的约束不靠人记」的取向。
+**注**：`scripts/measure-graph.mjs` 已存在（`adef5e84`），V-01/V-02/V-03 的数字都出自它，用法与可调参数见该文件头部；它与甲板、看板、音乐三个兄弟脚本同属「手动验收、不进 CI」的一类——帧时序在共享 runner 上是噪声，所以脚本只报告，只有 `WORST_MS_MAX`/`READ_MS_MAX` 被越过才让运行失败。两处口径要记住：① SQL 数字来自**本机 miniflare 的落盘 D1 副本**（10k 笔记 / 50k 链接是脚本灌的合成库），不是生产 D1 的延迟，量的是「读的形状与相对占比」；② 物理占比是「整帧 − 绘制」的差值，含浏览器自己的合成与回收，因此是上界而非精确拆分（`advancePhysics` 是模块私有函数，为测量而导出它不在验收范围内）。
 
 ---
 
