@@ -35,6 +35,7 @@ function panel(colorGroups: GraphColorGroup[], onChange: (key: string, value: un
     onClose: vi.fn(),
     onResetTagFilters: vi.fn(),
     onRestoreDefaults: vi.fn(),
+      onRestoreAllExcluded: vi.fn(),
   })
 }
 

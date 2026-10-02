@@ -46,5 +46,7 @@ export interface GraphQuery {
   includeUnresolved?: boolean
   /** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */
   showTagNodes?: boolean
+  /** Notes the reader took out of the graph. Sent comma-separated, like `tags` (G-42). */
+  excluded?: string[]
   limit?: number
 }

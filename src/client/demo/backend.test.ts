@@ -159,6 +159,17 @@ describe('demo graph route filter grammar', () => {
     return backend
   }
 
+  it('leaves out the note the reader took out of the graph, like the server does (G-42)', async () => {
+    const backend = await seededBackend()
+    const listed = await (await call(backend, '/api/notes')).json()
+    const beta = listed.notes.find((note: { title: string }) => note.title === 'Note Beta')
+
+    const titles = await (await call(backend, `/api/graph?excluded=${beta.id}`)).json()
+
+    expect(titles.nodes.map((node: { title: string }) => node.title)).not.toContain('Note Beta')
+    expect(titles.nodes.length).toBeGreaterThan(0)
+  })
+
   it('keeps only notes whose folder path matches a path: term', async () => {
     const backend = await seededBackend()
     expect(await titles(backend, 'path:"Reading Room" note')).toEqual(['Note Alpha', 'Note Gamma'])

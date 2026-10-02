@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
-import { CircleDot, FolderOpen, PanelRightClose, Pin, Tag } from 'lucide-react'
+import { CircleDot, EyeOff, FolderOpen, PanelRightClose, Pin, Tag } from 'lucide-react'
 import { type MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import type { GraphPreferences } from '../../../lib/graph-settings'
@@ -347,10 +347,13 @@ export interface GraphMenuItemsOptions {
   onClose: () => void
   onMakeLocal: () => void
   onTogglePin: (node: CanvasNode) => void
+  /** Absent where a note cannot be taken out of the picture: the graph inside a note is that note (G-42). */
+  onExcludeChange?: (id: string, excluded: boolean) => void
+  excludedNoteIds?: readonly string[]
   onFilterByTag?: (tag: string) => void
 }
 
-export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag }: GraphMenuItemsOptions): MenuItem[] {
+export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onExcludeChange, excludedNoteIds, onFilterByTag }: GraphMenuItemsOptions): MenuItem[] {
   if (!context) return []
   const node = context.node
   const pinItem: MenuItem = { id: 'pin', label: node.pinned ? t('graph.unpin_node') : t('graph.pin_node'), icon: <Pin size={14}/>, onSelect: () => onTogglePin(node) }
@@ -364,6 +367,15 @@ export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onM
       { ...pinItem, separatorBefore: true },
     ]
   }
+  const isExcluded = excludedNoteIds?.includes(node.id) ?? false
+  const excludeItem: MenuItem | null = onExcludeChange && node.kind === 'note'
+    ? {
+      id: 'exclude',
+      label: isExcluded ? t('graph.restore_to_graph') : t('graph.exclude_from_graph'),
+      icon: <EyeOff size={14}/>,
+      onSelect: () => onExcludeChange(node.id, !isExcluded),
+    }
+    : null
   return [
     { id: 'open', label: node.kind === 'unresolved' ? t('graph.create_note') : t('graph.open_note'), icon: <FolderOpen size={14}/>, onSelect: () => {
       if (node.kind === 'unresolved') void onCreateNote(node.title)
@@ -372,6 +384,7 @@ export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onM
     } },
     { id: 'right', label: t('graph.open_to_right'), icon: <PanelRightClose size={14}/>, disabled: node.kind === 'unresolved', onSelect: () => { void onOpenNote(node.id, { pane: 'secondary' }) } },
     pinItem,
+    ...(excludeItem ? [excludeItem] : []),
     { id: 'local', label: t('graph.make_local_center'), icon: <CircleDot size={14}/>, disabled: node.kind === 'unresolved', separatorBefore: true, onSelect: () => {
       void onOpenNote(node.id)
       onMakeLocal()

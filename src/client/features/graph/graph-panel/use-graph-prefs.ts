@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import { useSession } from '../../../store/session'
-import { graphPrefsStorageKey, loadPreferences } from './helpers'
+import { graphPrefsStorageKey, loadPreferences, nextIdList } from './helpers'
 
 /**
  * Graph preferences are one key shared by two surfaces, so the writer says when it has written. The
@@ -40,6 +40,18 @@ function writeGraphPreferences(userId: string | null | undefined, prefs: GraphPr
  * closes is flushed on the way out — a reader who drags a slider and immediately presses Escape has
  * still set it.
  */
+/**
+ * The two node-id lists a reader decides from the node menu: which notes are pinned, and which are out of
+ * the picture. Both are preferences, so the panel writes them like any other and the debounced store
+ * picks them up (G-07, G-42).
+ */
+export function graphIdListToggles(setPrefs: Dispatch<SetStateAction<GraphPreferences>>) {
+  return {
+    togglePin: (id: string, pinned: boolean) => setPrefs((current) => ({ ...current, pinnedNodeIds: nextIdList(current.pinnedNodeIds, id, pinned) })),
+    toggleExclude: (id: string, excluded: boolean) => setPrefs((current) => ({ ...current, excludedNoteIds: nextIdList(current.excludedNoteIds, id, excluded) })),
+  }
+}
+
 export function useGraphPreferences() {
   const userId = useSession((state) => state.user?.id)
   const [prefs, setPrefs] = useState(() => loadPreferences(userId))

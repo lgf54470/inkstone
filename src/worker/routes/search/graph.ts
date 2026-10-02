@@ -9,7 +9,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
 import { clampInt } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
-import { GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX } from './helpers'
+import { excludedNoteClause, GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX, parseExcludedNoteIds } from './helpers'
 import { escapeLike } from './helpers'
 import { applyUnresolvedNodes } from './graph-nodes'
 import { consumeGraphReadBudget } from './read-budget'
@@ -34,6 +34,7 @@ interface GraphParams {
   includeOrphans: boolean
   includeUnresolved: boolean
   showTagNodes: boolean
+  excluded: string[]
   rawCenter: string
   rawFolderId: string
   legacyTag: string
@@ -136,6 +137,7 @@ function parseGraphParams(c: Context<AppBindings>): GraphParams {
     includeOrphans: c.req.query('includeOrphans') !== '0',
     includeUnresolved: c.req.query('includeUnresolved') === '1',
     showTagNodes: c.req.query('tagNodes') === '1',
+    excluded: parseExcludedNoteIds(c.req.query('excluded'), isValidId, LIMITS.graphExcludedMax),
     rawCenter,
     rawFolderId,
     legacyTag,
@@ -174,6 +176,12 @@ function buildGraphFilters(params: GraphParams): { filters: string[]; filterBind
     filterBinds.push(`%${escapeLike(expression.text)}%`)
   }
   for (const term of expression.terms) appendFilterTerm(filters, filterBinds, term)
+  // A local graph keeps the note it is built around, whatever the reader took out of the overview (G-42).
+  const exclusion = excludedNoteClause(params.excluded, params.mode === 'local' ? params.centerId : null)
+  if (exclusion) {
+    filters.push(exclusion.filter)
+    filterBinds.push(exclusion.bind)
+  }
   if (params.folderId) {
     filters.push('n.folder_id = ?')
     filterBinds.push(params.folderId)

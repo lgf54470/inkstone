@@ -68,6 +68,7 @@ export const DEFAULT_PREFERENCES: GraphPreferences = {
   tag: '',
   tagsMatch: 'any',
   pinnedNodeIds: [],
+  excludedNoteIds: [],
   ...GRAPH_TOGGLE_DEFAULTS,
   repulsion: GRAPH_FORCE_RANGE.repulsion.default,
   linkDistance: GRAPH_FORCE_RANGE.linkDistance.default,

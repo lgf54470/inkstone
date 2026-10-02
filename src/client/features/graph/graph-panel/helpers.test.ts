@@ -12,7 +12,7 @@ import {
   graphScaleAfterWheel,
   graphSearchHits,
   loadPreferences,
-  nextPinnedIds,
+  nextIdList,
   nodeColor,
   pickNeighborInDirection,
   tagColorsByName,
@@ -125,9 +125,9 @@ describe('graph panel stored pins', () => {
     const second = 'b'.repeat(26)
 
     // A pin that arrives twice is stored once: the panel dedupes on the way in, so ordering is the only rule left.
-    expect(nextPinnedIds([first], second, true)).toEqual([first, second])
-    expect(nextPinnedIds([first], first, true)).toEqual([first])
-    expect(nextPinnedIds([first, second, first], first, false)).toEqual([second])
+    expect(nextIdList([first], second, true)).toEqual([first, second])
+    expect(nextIdList([first], first, true)).toEqual([first])
+    expect(nextIdList([first, second, first], first, false)).toEqual([second])
   })
 })
 
@@ -144,6 +144,25 @@ describe('graph panel export switches', () => {
     // A stored string is not a switch: the default is what a reader who never chose gets.
     localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ exportWithoutTitles: 'yes' }))
     expect(loadPreferences(null).exportWithoutTitles).toBe(false)
+  })
+})
+
+describe('graph panel excluded notes', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps only note ids in the excluded list, and never more than the route accepts (G-42)', () => {
+    const noteId = 'a'.repeat(26)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ excludedNoteIds: [noteId, 'tag:work', 'nonsense', noteId] }))
+
+    // A tag key is not a note, and a duplicate would be a second NOT IN entry for the same row.
+    expect(loadPreferences(null).excludedNoteIds).toEqual([noteId])
+
+    // Distinct, and every character one the id alphabet admits.
+    const many = Array.from({ length: LIMITS.graphExcludedMax + 40 }, (_unused, index) => `a${String(index).padStart(25, '0')}`)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ excludedNoteIds: many }))
+    expect(loadPreferences(null).excludedNoteIds).toHaveLength(LIMITS.graphExcludedMax)
   })
 })
 

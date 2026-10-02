@@ -95,6 +95,9 @@ export const LIMITS = {
   graphDepthMin: 1,
   graphDepthMax: 3,
   graphDepthDefault: 1,
+  // How many notes one graph request may take out. The route binds the list as a single
+  // json_each argument, so this cap keeps a reader's own preference from growing without bound.
+  graphExcludedMax: 200,
 
   ftsContentChars: 200_000,
 

@@ -30,6 +30,11 @@ export interface GraphPreferences {
    * that drew it (G-07 step 2). Ids only — a name would collide with a note renamed since.
    */
   pinnedNodeIds: string[]
+  /**
+   * Notes the reader took out of the graph. Ids, for the same reason as a pin: a title would follow a
+   * rename and un-take a note the reader never put back (G-42).
+   */
+  excludedNoteIds: string[]
   arrows: boolean
   labels: boolean
   groupBy: GroupBy

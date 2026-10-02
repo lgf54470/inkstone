@@ -97,7 +97,8 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
         : '',
       tag: typeof stored.tag === 'string' ? truncateText(stored.tag.trim(), 60) : '',
       tagsMatch: stored.tagsMatch === 'all' ? 'all' : 'any',
-      pinnedNodeIds: pinnedIdsPreference(stored.pinnedNodeIds),
+      pinnedNodeIds: idListPreference(stored.pinnedNodeIds, GRAPH_PINNED_MAX, true),
+      excludedNoteIds: idListPreference(stored.excludedNoteIds, LIMITS.graphExcludedMax, false),
       exportWithoutTitles: booleanPreference(stored.exportWithoutTitles, DEFAULT_PREFERENCES.exportWithoutTitles),
       exportTransparentBackground: booleanPreference(stored.exportTransparentBackground, DEFAULT_PREFERENCES.exportTransparentBackground),
       clearResetsTag: booleanPreference(stored.clearResetsTag, DEFAULT_PREFERENCES.clearResetsTag),
@@ -122,28 +123,30 @@ function booleanPreference(value: unknown, fallback: boolean): boolean {
 }
 
 /**
- * A pin names a node, and only two things can be a node: a note's ULID or a tag's `tag:` key. Anything
- * else under this key did not come from this app, so it is dropped rather than trusted (G-07).
+ * An id list a reader can hold as a preference. Only two things can name a node on the canvas: a note's
+ * ULID or a tag's `tag:` key, and a list entry that is neither did not come from this app — it is dropped
+ * rather than trusted, and the list is capped so a stored value cannot outgrow what the route accepts
+ * (G-07, G-42).
  */
-function pinnedIdsPreference(value: unknown): string[] {
+function idListPreference(value: unknown, max: number, allowTagKeys: boolean): string[] {
   const candidates = Array.isArray(value) ? value as unknown[] : []
   const ids: string[] = []
   for (const candidate of candidates) {
     if (typeof candidate !== 'string') continue
-    if (!GRAPH_NODE_ID.test(candidate) && !candidate.startsWith('tag:')) continue
+    if (!GRAPH_NODE_ID.test(candidate) && !(allowTagKeys && candidate.startsWith('tag:'))) continue
     if (!ids.includes(candidate)) ids.push(candidate)
-    if (ids.length >= GRAPH_PINNED_MAX) break
+    if (ids.length >= max) break
   }
   return ids
 }
 
 /**
- * The pin list after the reader pins or unpins one node. A fresh pin goes last so the stored order follows
- * the order the reader pinned in, and unpinning drops every copy rather than just the last one.
+ * The list after the reader adds or removes one id. A fresh entry goes last so the stored order follows
+ * the order the reader made them in, and removing one drops every copy rather than just the last.
  */
-export function nextPinnedIds(current: readonly string[], id: string, pinned: boolean): string[] {
+export function nextIdList(current: readonly string[], id: string, added: boolean): string[] {
   const others = current.filter((existing) => existing !== id)
-  return pinned ? [...others, id] : others
+  return added ? [...others, id] : others
 }
 
 /** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */

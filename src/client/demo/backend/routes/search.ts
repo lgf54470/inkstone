@@ -97,14 +97,15 @@ interface GraphNoteFilter {
   tags: string[]
   tagsMatch: 'all' | 'any'
   includeOrphans: boolean
+  excluded: Set<string>
   allowed: Set<string>
   degree: Map<string, number>
   folderNames: Map<string, string>
 }
 
 function filterGraphNotes(active: Note[], options: GraphNoteFilter): Note[] {
-  const { allowed, degree, folderId, folderNames, includeOrphans, tags, tagsMatch, expression } = options
-  return active.filter((note) => allowed.has(note.id)
+  const { allowed, degree, excluded, folderId, folderNames, includeOrphans, tags, tagsMatch, expression } = options
+  return active.filter((note) => allowed.has(note.id) && !excluded.has(note.id)
     && graphFilterMatches({
       title: note.title,
       folderName: note.folderId ? folderNames.get(note.folderId) ?? null : null,
@@ -133,6 +134,7 @@ function graphNoteFilter(
     tags,
     tagsMatch: c.req.query('tagsMatch') === 'all' ? 'all' : 'any',
     includeOrphans: c.req.query('includeOrphans') !== '0',
+    excluded: new Set((c.req.query('excluded') ?? '').split(',').map((item) => item.trim()).filter(Boolean)),
     allowed,
     degree,
     folderNames: new Map([...state.folders.values()].map((folder) => [folder.id, folder.name])),

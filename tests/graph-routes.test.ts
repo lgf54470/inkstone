@@ -584,3 +584,84 @@ describe('the node limit the interface can ask for (G-21)', () => {
     expect(unset.meta).toMatchObject({ limit: LIMITS.graphNodeLimitDefault })
   })
 })
+
+describe('the note a reader took out of the graph (G-42)', () => {
+  it('leaves the excluded note out of the page, and out of the links beside it', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('a'), userId, NOW + 3)
+    await seedNote(vid('b'), userId, NOW + 2)
+    await seedNote(vid('c'), userId, NOW + 1)
+    await seedLink(userId, vid('a'), vid('b'))
+    await seedLink(userId, vid('b'), vid('c'))
+
+    const body = await graphBody(`/api/search/graph?excluded=${vid('b')}`, userId)
+
+    expect(nodeIds(body).sort()).toEqual([vid('a'), vid('c')].sort())
+    const edges = body.edges as Array<{ source: string, target: string }>
+    expect(edges.some((edge) => edge.source === vid('b') || edge.target === vid('b'))).toBe(false)
+  })
+
+  it('keeps the folder and tag filters beside an exclusion instead of replacing them', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    // Ids the route accepts are Crockford base-32, so these seeds avoid the letters it excludes.
+    const work = vid('t')
+    await seedFolder(userId, work, 'Work')
+    await seedNote(vid('u'), userId, NOW + 4, work)
+    await seedNote(vid('v'), userId, NOW + 3)
+    await seedNote(vid('w'), userId, NOW + 2, work)
+    await seedTag(userId, 'tag-todo', 'todo')
+    await tagNote(vid('u'), 'tag-todo')
+    await tagNote(vid('w'), 'tag-todo')
+
+    const body = await graphBody(
+      `/api/search/graph?folderId=${work}&tags=todo&excluded=${vid('w')}`,
+      userId,
+    )
+
+    expect(nodeIds(body)).toEqual([vid('u')])
+  })
+
+  it('ignores an excluded id that is not a note id rather than refusing the graph', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('a'), userId, NOW + 2)
+    await seedNote(vid('b'), userId, NOW + 1)
+
+    // A preference can outlive a note, and a stale entry has to be dropped, not answered 400.
+    const body = await graphBody(`/api/search/graph?excluded=not-an-id%2C${vid('b')}`, userId)
+
+    expect(nodeIds(body).sort()).toEqual([vid('a')].sort())
+  })
+
+  it('keeps the centre of a local graph even when that note is taken out', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('centre'), userId, NOW + 2)
+    await seedNote(vid('neigh'), userId, NOW + 1)
+    await seedLink(userId, vid('centre'), vid('neigh'))
+
+    // The local graph is built around the note the reader is standing on. Taking that note out of the
+    // global picture must not answer their own note's neighbourhood with an empty canvas.
+    const body = await graphBody(`/api/search/graph?mode=local&center=${vid('centre')}&excluded=${vid('centre')}`, userId)
+
+    expect(nodeIds(body)).toContain(vid('centre'))
+  })
+
+  it('carries a full page of exclusions in one statement, and takes no more than that', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    const ids = await seedNotes(LIMITS.graphExcludedMax, userId, 'ex')
+    await seedNote(vid('kept'), userId, NOW + 2)
+    // One note past the cap: the list is what the route refuses to carry further, not the graph.
+    const past = vid('z')
+    await seedNote(past, userId, NOW + 1)
+
+    const atTheCap = await graphBody(`/api/search/graph?excluded=${ids.join(',')}`, userId)
+    expect(nodeIds(atTheCap).sort()).toEqual([vid('kept'), past].sort())
+
+    const overTheCap = await graphBody(`/api/search/graph?excluded=${[...ids, past].join(',')}`, userId)
+    expect(nodeIds(overTheCap).sort()).toEqual([vid('kept'), past].sort())
+  })
+})

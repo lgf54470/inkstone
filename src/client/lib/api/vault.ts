@@ -64,6 +64,7 @@ export const vault = {
       includeOrphans: params.includeOrphans === undefined ? undefined : params.includeOrphans ? 1 : 0,
       includeUnresolved: params.includeUnresolved === undefined ? undefined : params.includeUnresolved ? 1 : 0,
       tagNodes: params.showTagNodes === undefined ? undefined : params.showTagNodes ? 1 : 0,
+      excluded: params.excluded?.length ? params.excluded.join(',') : undefined,
       limit: params.limit,
     })}`, { signal, timeoutMs: 15_000 }),
   sync: (since: number, options: { after?: string; snapshot?: number } = {}) =>

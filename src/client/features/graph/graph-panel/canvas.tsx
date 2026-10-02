@@ -57,6 +57,8 @@ interface GraphCanvasProps {
    * (G-07 step 2). Left unset where a pin is a view of the moment: the note's companion graph.
    */
   onPinChange?: (id: string, pinned: boolean) => void
+  /** The note menu can take a note out of the graph; the panel that owns the preferences answers (G-42). */
+  onExcludeChange?: (id: string, excluded: boolean) => void
   /** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */
   onFilterByTag?: (tag: string) => void
   controlsRef: MutableRefObject<GraphControls | null>
@@ -436,7 +438,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   }, [origEndDrag])
 
   const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext, props.onPinChange)
-  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
+  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onExcludeChange: props.onExcludeChange, excludedNoteIds: prefs.excludedNoteIds, onFilterByTag })
   const selectNode = useGraphNodeFocus(stateRef, setSelectedId)
   useGraphControls(controlsRef, stateRef, fitGraph, selectNode)
   const colorLegends = useGraphLegends(data, prefs)

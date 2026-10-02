@@ -31,11 +31,13 @@ interface GraphSettingsPanelProps {
   onClose: () => void
   onResetTagFilters: () => void
   onRestoreDefaults: () => void
+  /** Puts every note the reader took out back into the graph (G-42). */
+  onRestoreAllExcluded: () => void
   /** Named by the header control that opens this drawer, so `aria-controls` has something to point at. */
   drawerId: string
 }
 
-export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onClose, onResetTagFilters, onRestoreDefaults, drawerId }: GraphSettingsPanelProps) {
+export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onClose, onResetTagFilters, onRestoreDefaults, onRestoreAllExcluded, drawerId }: GraphSettingsPanelProps) {
   useEscape(true, onClose)
   const isOverCanvas = useBreakpoint() === 'mobile'
   useEffect(() => {
@@ -52,7 +54,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
       <div className='anim-fade absolute inset-0 z-[var(--z-sticky)] bg-[var(--scrim)] md:hidden' onClick={onClose} aria-hidden='true'/>
       <DrawerShell id={drawerId} role={isOverCanvas ? 'dialog' : 'region'} aria-modal={isOverCanvas || undefined} tabIndex={-1} aria-label={t('graph.settings')} className='absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[var(--shadow-edge)] md:static md:shadow-none'>
         <div className='mb-4 flex items-center justify-between'><h3 className='text-[length:var(--text-13)] font-semibold'>{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size='sm' label={t('common.close')} onClick={onClose}><X size={14}/></IconButton></Tooltip></div>
-        <GraphFilterSection prefs={prefs} onChange={onChange} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={onToggleLimit} onResetTagFilters={onResetTagFilters}/>
+        <GraphFilterSection prefs={prefs} onChange={onChange} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={onToggleLimit} onResetTagFilters={onResetTagFilters} onRestoreAllExcluded={onRestoreAllExcluded}/>
         <GraphSection icon={<Network size={13}/>} title={t('graph.appearance')}>
           <GraphSelect label={t('graph.group_by')} value={prefs.groupBy} onChange={(value) => onChange('groupBy', value as GroupBy)} options={[['none', t('graph.group_none')], ['folder', t('graph.folder')], ['tag', t('graph.tag')]]}/>
           <GraphColorRules groups={prefs.colorGroups} onChange={(value) => onChange('colorGroups', value)}/>
@@ -85,10 +87,11 @@ interface GraphFilterSectionProps {
   isLimitOpen: boolean
   onToggleLimit: () => void
   onResetTagFilters: () => void
+  onRestoreAllExcluded: () => void
 }
 
 /** Everything that narrows which notes are in the graph, plus the cap notice the sidebar selection hits. */
-function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onResetTagFilters }: GraphFilterSectionProps) {
+function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onResetTagFilters, onRestoreAllExcluded }: GraphFilterSectionProps) {
   return (
     <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
       <GraphSelect label={t('graph.folder')} value={prefs.folderId} onChange={(value) => onChange('folderId', value)} options={[['', t('graph.all_folders')], ...folders.map((folder) => [folder.id, folder.name] as [string, string])]}/>
@@ -112,6 +115,10 @@ function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLi
       {GRAPH_SHOW_TOGGLES.map((control) => (
         <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
       ))}
+      {prefs.excludedNoteIds.length > 0 && <div className='flex items-center justify-between gap-2'>
+        <p className='text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)]'>{t('graph.excluded_notes', { value: prefs.excludedNoteIds.length })}</p>
+        <Button type='button' variant='ghost' size='sm' onClick={onRestoreAllExcluded} className='h-6 shrink-0 px-1.5 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-transparent hover:underline'>{t('graph.restore_all_notes')}</Button>
+      </div>}
       <GraphRange label={t('graph.node_limit')} min={LIMITS.graphNodeLimitMin} max={LIMITS.graphNodeLimitMax} step={GRAPH_LIMIT_STEP} value={prefs.limit} onCommit={(value) => onChange('limit', value)}/>
       {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={GRAPH_DEPTHS.map((depth) => [String(depth), String(depth)] as [string, string])}/>}
     </GraphSection>

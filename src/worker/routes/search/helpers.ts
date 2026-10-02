@@ -345,3 +345,30 @@ function contentWindowSql(termBindIndex: number): string {
   const found = `instr(lower(n.content), lower(?${termBindIndex}))`
   return `substr(n.content, CASE WHEN ${found} > 180 THEN ${found} - 180 ELSE 1 END, 520)`
 }
+
+
+/**
+ * The notes a reader took out of the graph. An entry that is not a note id is dropped rather than
+ * answered 400: a preference can outlive the note it named, and a stale entry must not cost the reader
+ * the whole picture. The list travels as one bound json_each argument, so it never reaches D1's
+ * hundred-variable ceiling however long it is (G-42).
+ */
+export function parseExcludedNoteIds(
+  raw: string | undefined,
+  isValidId: (value: unknown) => value is string,
+  max: number,
+): string[] {
+  const ids = [...new Set((raw ?? '').split(',').map((item) => item.trim()).filter(isValidId))]
+  return ids.slice(0, max)
+}
+
+
+/**
+ * The clause that leaves a reader's excluded notes out of a graph page. The whole list travels as one
+ * bound json_each argument, so its length never runs into D1's hundred-variable ceiling, and one id can
+ * be kept in — the centre of a local graph is the note the reader is standing on (G-42).
+ */
+export function excludedNoteClause(excluded: readonly string[], keepId: string | null): { filter: string, bind: string } | null {
+  const kept = excluded.filter((id) => id !== keepId)
+  return kept.length === 0 ? null : { filter: 'n.id NOT IN (SELECT value FROM json_each(?))', bind: JSON.stringify(kept) }
+}

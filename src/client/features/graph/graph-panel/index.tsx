@@ -22,9 +22,9 @@ import { GraphCanvas } from './canvas'
 import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
-import { useGraphPreferences } from './use-graph-prefs'
+import { graphIdListToggles, useGraphPreferences } from './use-graph-prefs'
 import { DEFAULT_PREFERENCES, GRAPH_SEARCH_DEBOUNCE_MS } from './constants'
-import { countWikiLinkEdges, graphNodeCounts, graphSearchHits, nextPinnedIds, normalizedResponse } from './helpers'
+import { countWikiLinkEdges, graphNodeCounts, graphSearchHits, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps, GraphSearchState } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
@@ -79,6 +79,7 @@ function graphRequest(prefs: GraphPreferences, activeNoteId: string | null, quer
     includeOrphans: prefs.includeOrphans,
     includeUnresolved: prefs.includeUnresolved,
     showTagNodes: prefs.showTagNodes,
+    excluded: prefs.excludedNoteIds.length ? prefs.excludedNoteIds : undefined,
     limit: prefs.limit,
   }
 }
@@ -349,6 +350,7 @@ function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | nu
     prefs.includeOrphans,
     prefs.includeUnresolved,
     prefs.showTagNodes,
+    prefs.excludedNoteIds,
     query,
     selectedTags,
   ])
@@ -459,8 +461,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
-  // A pin is a preference like any other, which is the only way it survives the panel being closed (G-07).
-  const togglePin = (id: string, pinned: boolean) => setPrefs((current) => ({ ...current, pinnedNodeIds: nextPinnedIds(current.pinnedNodeIds, id, pinned) }))
+  const { togglePin, toggleExclude } = graphIdListToggles(setPrefs)
   useFolderFilterRepair(prefs, folders, changePref)
   const resetTagFilters = useTagReset(prefs, changePref)
   const isNarrowed = Boolean(query || prefs.tag || prefs.folderId || selectedTags.length)
@@ -472,11 +473,11 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} isNarrowed={isNarrowed} onRetry={() => setReload((value) => value + 1)} onClearFilters={() => { clearAllGraphFilters(changeSearch, changePref) }}>
-          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} legendQuery={search || undefined} onLegendSelect={cycleLegend} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onPinChange={togglePin} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
+          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} legendQuery={search || undefined} onLegendSelect={cycleLegend} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onPinChange={togglePin} onExcludeChange={toggleExclude} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
         <GraphRefreshBadge visible={isLoading && Boolean(data)}/>
       </main>
-      {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} drawerId={settingsId} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))}/>}
+      {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} drawerId={settingsId} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))} onRestoreAllExcluded={() => changePref('excludedNoteIds', [])}/>}
     </div>
   </div>, document.body)
 }
