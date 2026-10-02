@@ -100,3 +100,13 @@ export function pressKey(target: Element, key: string, init: KeyboardEventInit =
   act(() => { target.dispatchEvent(event) })
   return event
 }
+
+/**
+ * A pointer press as the canvas reads it: jsdom has no PointerEvent and no pointer capture, so the
+ * gesture carries the fields the handlers read and the capture call is stubbed by the cases.
+ */
+export function pressPointer(target: Element, type: 'pointerdown' | 'pointerup', clientX: number, clientY: number): void {
+  act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0 }))
+  })
+}

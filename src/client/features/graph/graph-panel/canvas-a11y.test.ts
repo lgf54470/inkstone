@@ -3,7 +3,7 @@ import type { GraphResponse, GraphNode } from '@shared/types'
 import { initI18n, t } from '../../../lib/i18n'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { previewProbe } from './preview-stub.test-helpers'
-import { mountGraphCanvas, pressKey, releaseGraphCanvases, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
+import { mountGraphCanvas, pressKey, pressPointer, releaseGraphCanvases, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
 
 /**
  * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it
@@ -62,8 +62,16 @@ function walkRightTo(graph: GraphCanvasMount, byTitle: Record<string, [number, n
   pressKey(graph.canvas, 'ArrowRight')
 }
 
+/** The press pair on a point no node is drawn on: what a reader does to put a node down. */
+function clickEmptyCanvas(graph: GraphCanvasMount): void {
+  pressPointer(graph.canvas, 'pointerdown', 750, 550)
+  pressPointer(graph.canvas, 'pointerup', 750, 550)
+}
+
 beforeAll(async () => {
   await initI18n()
+  // jsdom has no pointer capture, and the canvas takes it on every press.
+  HTMLElement.prototype.setPointerCapture = function capture() {}
   vi.stubGlobal('requestAnimationFrame', () => 1)
   vi.stubGlobal('cancelAnimationFrame', () => {})
   vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
@@ -254,6 +262,39 @@ describe('keys the canvas keeps for itself', () => {
   it('tells the reader how to drive the graph, in the language the app is showing', () => {
     const graph = mountGraphCanvas(trio)
     expect(graph.container.textContent).toContain(t('graph.interaction_hint'))
+  })
+})
+
+describe('the canvas describing itself (G-27)', () => {
+  it('points at the hint drawn on it, at every width', () => {
+    const graph = mountGraphCanvas(trio)
+    const describedBy = graph.canvas.getAttribute('aria-describedby')
+
+    expect(describedBy).toBeTruthy()
+    const hint = document.getElementById(describedBy!)!
+    expect(hint.textContent).toBe(t('graph.interaction_hint'))
+    // The hint stops being drawn on a phone, so the description has to survive there as sr-only text:
+    // a description inside a `hidden` element is not described at all.
+    expect(hint.querySelector('.sr-only')).toBeTruthy()
+    expect(hint.className).not.toContain('hidden')
+  })
+})
+
+describe('letting go of the selected node (G-27)', () => {
+  it('says the selection is gone when the reader clicks empty canvas', () => {
+    const graph = mountGraphCanvas(trio)
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
+    expect(liveRegion(graph.container).textContent).toContain('Beta')
+
+    clickEmptyCanvas(graph)
+    expect(liveRegion(graph.container).textContent).toBe(t('graph.selection_cleared'))
+  })
+
+  it('stays quiet when there was never a selection to give up', () => {
+    const graph = mountGraphCanvas(trio)
+    clickEmptyCanvas(graph)
+
+    expect(liveRegion(graph.container).textContent).toBe('')
   })
 })
 

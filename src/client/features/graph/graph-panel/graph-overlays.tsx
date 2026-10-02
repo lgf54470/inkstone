@@ -14,6 +14,8 @@ export interface GraphOverlaysProps {
   hover: CanvasNode | null
   selected: GraphResponse['nodes'][number] | null
   hint: string
+  /** The canvas names this hint as its description, so the id is the one both sides agree on. */
+  hintId: string
   previewCard?: WikiLinkHoverCardState | null
   anchorPos?: { x: number; y: number; size: number } | null
   anchorRef?: RefObject<HTMLDivElement | null>
@@ -79,6 +81,7 @@ export function GraphOverlays({
   onPinPreview,
   colorLegends = [],
   liveAnnouncement,
+  hintId,
 }: GraphOverlaysProps) {
   const shown = hover ?? selected
   return (
@@ -87,8 +90,10 @@ export function GraphOverlays({
         <TruncatedBadge shown={data.nodes.length} total={data.meta.totalNodes} />
       )}
       {shown && <NodeDetailBadge node={shown} />}
-      <div className='pointer-events-none absolute top-3 left-4 hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block'>
-        {hint}
+      {/* The hint stops being drawn on a phone, so the text the canvas describes itself with has to
+          stay in the accessibility tree there: `hidden` would make the description resolve to nothing. */}
+      <div id={hintId} className='pointer-events-none absolute top-3 left-4 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <span className='sr-only md:not-sr-only'>{hint}</span>
       </div>
       {anchorRef && (
         <div

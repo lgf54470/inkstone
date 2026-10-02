@@ -75,6 +75,7 @@ export const messages = {
 'graph.show_tags': '将标签显示为节点',
 'graph.tag_node': '标签节点',
 'graph.tag_filter_unavailable': '此图谱无法按标签筛选',
+'graph.selection_cleared': '未选中任何节点',
 'graph.color_groups': '颜色分组规则',
 'graph.add_color_rule': '添加颜色规则',
 'graph.color_rule_query': '过滤规则（如 tag:todo 或 -path:archive）',

@@ -75,6 +75,7 @@ export const messages = {
 'graph.show_tags': 'Show tags as nodes',
 'graph.tag_node': 'Tag node',
 'graph.tag_filter_unavailable': 'This graph cannot be filtered by tag',
+'graph.selection_cleared': 'No node selected',
 'graph.color_groups': 'Color groups',
 'graph.add_color_rule': 'Add color rule',
 'graph.color_rule_query': 'Query (e.g. tag:todo or -path:archive)',

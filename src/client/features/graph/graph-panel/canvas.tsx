@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
 import { Menu } from '../../../components/overlay'
 import { usePinnedWindows } from '../../../store/pinned-windows'
@@ -264,9 +264,10 @@ function handleCanvasArrowKey(
   event.preventDefault(); state.schedule?.()
 }
 
-function GraphCanvasElement({ canvasRef, handlers }: {
+function GraphCanvasElement({ canvasRef, handlers, hintId }: {
   canvasRef: RefObject<HTMLCanvasElement | null>
   handlers: CanvasHandlers
+  hintId: string
 }) {
   const cursorClass = handlers.isDragging
     ? 'cursor-grabbing'
@@ -277,7 +278,7 @@ function GraphCanvasElement({ canvasRef, handlers }: {
         : 'cursor-grab active:cursor-grabbing'
 
   return (
-    <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')}
+    <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')} aria-describedby={hintId}
       className={`size-full touch-none ${cursorClass} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]`}
       onPointerDown={(event) => handleCanvasPointerDown(event, handlers)}
       onPointerMove={(event) => handleCanvasPointerMove(event, handlers)}
@@ -331,6 +332,7 @@ function useGraphPreviewAndA11y(
   activeNoteIdRef: MutableRefObject<string | null>,
 ) {
   const [liveAnnouncement, setLiveAnnouncement] = useState('')
+  const wasSelectedRef = useRef(false)
   const preview = useGraphNodePreview(canvasRef, stateRef)
 
   useEffect(() => {
@@ -345,8 +347,15 @@ function useGraphPreviewAndA11y(
       if (node) {
         setLiveAnnouncement(nodeAnnouncement(node))
         preview.showPreview(node)
+        wasSelectedRef.current = true
       }
+      return
     }
+    // Putting a node down is the other half of picking it up, and a live region that only ever announces
+    // the last node leaves a reader still holding one they no longer have (G-27).
+    if (!wasSelectedRef.current) return
+    wasSelectedRef.current = false
+    setLiveAnnouncement(t('graph.selection_cleared'))
     // `preview` is a fresh object on every render: listing it as a dependency would make this effect write
     // the state that schedules the next render, and the panel would never stop painting.
   }, [selectedId, stateRef, preview.showPreview])
@@ -440,15 +449,17 @@ export function GraphCanvas(props: GraphCanvasProps) {
   const b = useGraphCanvasController(props)
   const selected = data.nodes.find((node) => node.id === b.selectedId) ?? null
   const isDark = useIsDarkTheme()
+  const hintId = useId()
 
   return (
     <>
-      <GraphCanvasElement canvasRef={canvasRef} handlers={b.handlers}/>
+      <GraphCanvasElement canvasRef={canvasRef} handlers={b.handlers} hintId={hintId}/>
       <GraphOverlays
         data={data}
         hover={b.hover}
         selected={selected}
         hint={t('graph.interaction_hint')}
+        hintId={hintId}
         previewCard={b.preview.previewCard}
         anchorPos={b.preview.anchorPos}
         anchorRef={b.preview.anchorRef}
