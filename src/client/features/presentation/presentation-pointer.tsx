@@ -8,16 +8,26 @@ import { useEffect, useRef } from 'react'
 // The styling lives in `.laser-*` in `styles/presentation.css`, which carries no comments of its
 // own, so the reading of it belongs here: the three trails hold the same coordinates and differ
 // only in `transition-duration`, which is what makes the lag read as a smear rather than as three
-// dots; the layer parks them off-screen through `var(--laser-x, -100vw)` so "has not been moved
-// yet" is not a state this component has to hold; `pointer-events: none` is what keeps a click on
-// the slide a click on the slide; and the pulse is taken out under `prefers-reduced-motion`
-// rather than shortened, because its duration is built from `--dur-slow` and that token drops to
-// 1ms, which would strobe instead of breathe.
+// dots; the stylesheet parks a marker off-screen through `var(--laser-x, -100vw)` for a layer that
+// is present but not on, and turning a tool on writes a starting position into it (see the tracker)
+// so "on" is never invisible; `pointer-events: none` is what keeps a click on the slide a click on
+// the slide; and the pulse is taken out under `prefers-reduced-motion` rather than shortened,
+// because its duration is built from `--dur-slow` and that token drops to 1ms, which would strobe
+// instead of breathe.
 function usePointerTracker(active: boolean, varX: string, varY: string) {
   const layerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!active) return
+    // The stylesheet parks the marker off-screen until a coordinate is written, which is the right
+    // default for a layer that is merely present and the wrong one for a tool that is on: the laser
+    // hides the operating-system cursor while it runs, so a talk turned on from the keyboard, or a
+    // presenter whose hand is still, got a projector with no cursor and no dot — and the spotlight,
+    // being a mask, dimmed the whole slide with no clear circle to aim at. Centre it and the tool
+    // announces itself; the first real move takes over on the next frame.
+    const layer = layerRef.current
+    layer?.style.setProperty(varX, `${Math.round(window.innerWidth / 2)}px`)
+    layer?.style.setProperty(varY, `${Math.round(window.innerHeight / 2)}px`)
     let frame = 0
     let x = 0
     let y = 0

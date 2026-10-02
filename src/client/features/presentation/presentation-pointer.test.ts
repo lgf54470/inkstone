@@ -64,6 +64,35 @@ describe('LaserPointer — the layer it adds', () => {
   })
 })
 
+// N-20: the laser hides the operating system's cursor, and the marker used to sit parked off-screen
+// until a pointer happened to move — so a talk that turned the tool on from the keyboard, or a hand
+// resting on nothing at all, left a projector with no cursor and no dot anywhere on it.
+describe('the marker has a place to be before anything points', () => {
+  it('starts the laser in the middle of the screen', () => {
+    const view = renderElement(createElement(LaserPointer, { active: true }))
+    const root = layer(view.container)
+    expect(root?.style.getPropertyValue('--laser-x')).toBe(`${Math.round(window.innerWidth / 2)}px`)
+    expect(root?.style.getPropertyValue('--laser-y')).toBe(`${Math.round(window.innerHeight / 2)}px`)
+    view.unmount()
+  })
+
+  it('starts the spotlight opening in the middle too', () => {
+    // The spotlight is a mask rather than a mark: parked off-screen it is not invisible, it is the
+    // whole slide dimmed with no clear circle anywhere, which reads as a broken projector.
+    const view = renderElement(createElement(Spotlight, { active: true }))
+    const root = spotlightLayer(view.container)
+    expect(root?.style.getPropertyValue('--spotlight-x')).toBe(`${Math.round(window.innerWidth / 2)}px`)
+    expect(root?.style.getPropertyValue('--spotlight-y')).toBe(`${Math.round(window.innerHeight / 2)}px`)
+    view.unmount()
+  })
+
+  it('takes no extra frame to be sitting there', () => {
+    const view = renderElement(createElement(LaserPointer, { active: true }))
+    expect(frames).toBe(0)
+    view.unmount()
+  })
+})
+
 describe('LaserPointer — following the pointer', () => {
   it('carries the pointer position in the coordinates the dot reads', () => {
     const view = renderElement(createElement(LaserPointer, { active: true }))

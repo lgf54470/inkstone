@@ -742,7 +742,33 @@ async function assertPresentationLaser(page) {
 
   const viewport = page.viewport() ?? DESKTOP_VIEWPORT
   const point = { x: Math.round(viewport.width * 0.62), y: Math.round(viewport.height * 0.45) }
+
+  // N-20: the laser hides the operating system's cursor, so turning it on from the keyboard has to
+  // leave a mark on the projector all the same — the dot needs somewhere to be before a hand moves.
   await page.keyboard.press('c')
+  await sleep(150)
+  const resting = await page.evaluate(() => {
+    const dot = document.querySelector('[data-laser-pointer] .laser-dot')
+    const box = dot?.getBoundingClientRect()
+    return {
+      layer: Boolean(dot),
+      center: box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null,
+      vp: { width: window.innerWidth, height: window.innerHeight },
+    }
+  })
+  check(
+    'laser: the marker is on screen before anything points at it',
+    Boolean(resting.layer && resting.center) &&
+      resting.center.x > 0 && resting.center.x < resting.vp.width &&
+      resting.center.y > 0 && resting.center.y < resting.vp.height,
+    JSON.stringify(resting),
+  )
+  check(
+    'laser: a pointer turned on by key sits in the middle of the frame',
+    Boolean(resting.center) && Math.abs(resting.center.x - Math.round(resting.vp.width / 2)) <= 1 && Math.abs(resting.center.y - Math.round(resting.vp.height / 2)) <= 1,
+    JSON.stringify(resting),
+  )
+
   await page.mouse.move(point.x, point.y)
   await sleep(200)
 
