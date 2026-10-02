@@ -41,7 +41,7 @@ function TruncatedBadge({ shown, total }: { shown: number; total: number }) {
 
 function NodeDetailBadge({ node }: { node: CanvasNode | GraphResponse['nodes'][number] }) {
   return (
-    <div className='pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
+    <div data-graph-detail='' className='pointer-events-none max-w-[80vw] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
       <span className='max-w-[50vw] truncate'>{node.title || t('common.untitled_note')}</span>
       <span className='ml-2 text-[var(--text-quaternary)]'>
         {t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}
@@ -58,7 +58,7 @@ function ColorLegend({ items, query, onSelect }: {
 }) {
   if (items.length === 0) return null
   return (
-    <div className='pointer-events-none absolute bottom-4 left-4 z-[var(--z-raised)] flex max-h-36 max-w-56 flex-col gap-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-overlay)]/90 p-2 text-[length:var(--text-11)] shadow-[var(--shadow-sm)] backdrop-blur-xs'>
+    <div data-graph-legend='' className='pointer-events-none self-start flex max-h-36 max-w-56 flex-col gap-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-overlay)]/90 p-2 text-[length:var(--text-11)] shadow-[var(--shadow-sm)] backdrop-blur-xs'>
       {items.map((item) => {
         const swatch = <span className='size-2.5 shrink-0 rounded-full' style={{ backgroundColor: item.color }} />
         if (!onSelect) {
@@ -92,6 +92,26 @@ function ColorLegend({ items, query, onSelect }: {
 
 const OFFSCREEN_COORD = '-9999px'
 
+/**
+ * One band for the two bottom overlays. At a phone's width the legend and the badge cannot share a line, and
+ * a fixed offset would only clear one particular legend height, so the two are laid out in flow — what keeps
+ * them apart is the band's own gap rather than a number this file has to keep true (G-18).
+ */
+function BottomBand({ node, legends, legendQuery, onLegendSelect }: {
+  node: CanvasNode | GraphResponse['nodes'][number] | null
+  legends: ColorLegendItem[]
+  legendQuery?: string
+  onLegendSelect?: (query: string) => void
+}) {
+  if (!node && legends.length === 0) return null
+  return (
+    <div className='pointer-events-none absolute inset-x-4 bottom-4 z-[var(--z-raised)] flex flex-col items-center gap-2'>
+      <ColorLegend items={legends} query={legendQuery} onSelect={onLegendSelect} />
+      {node && <NodeDetailBadge node={node} />}
+    </div>
+  )
+}
+
 export function GraphOverlays({
   data,
   hover,
@@ -117,7 +137,7 @@ export function GraphOverlays({
       {data.meta.truncated && (
         <TruncatedBadge shown={data.nodes.length} total={data.meta.totalNodes} />
       )}
-      {shown && <NodeDetailBadge node={shown} />}
+      <BottomBand node={shown} legends={colorLegends} legendQuery={legendQuery} onLegendSelect={onLegendSelect} />
       {/* The hint stops being drawn on a phone, so the text the canvas describes itself with has to
           stay in the accessibility tree there: `hidden` would make the description resolve to nothing. */}
       <div id={hintId} className='pointer-events-none absolute top-3 left-4 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
@@ -149,7 +169,6 @@ export function GraphOverlays({
           onPin={onPinPreview}
         />
       )}
-      <ColorLegend items={colorLegends} query={legendQuery} onSelect={onLegendSelect} />
       <div aria-live='polite' aria-atomic='true' className='sr-only'>
         {liveAnnouncement}
       </div>

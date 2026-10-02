@@ -116,6 +116,13 @@ export function legendRow(query: string): HTMLButtonElement {
   return row
 }
 
+/** One of the overlays the canvas paints its own text into, found by the marker it carries. */
+export function panelOverlay(selector: string): HTMLElement {
+  const element = surface().querySelector<HTMLElement>(selector)
+  if (!element) throw new Error(`the graph panel draws no ${selector} overlay`)
+  return element
+}
+
 /** The `q` each graph request carried, in the order the panel sent them. */
 export function searchRequestQueries(): Array<string | undefined> {
   return vi.mocked(api.graph).mock.calls.map((call) => call[0]?.q)
