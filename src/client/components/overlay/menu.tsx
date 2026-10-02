@@ -1,12 +1,14 @@
-import { useRef, useState, type RefObject } from 'react'
+import { useRef, useState, useMemo, useEffect, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Check } from 'lucide-react'
+import { Check, Search, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
+import { IconButton } from '../primitives'
 import { useEscape, useClickOutside } from './hooks'
 import { MenuRow } from './menu-row'
 import { useCursorFocus, useFocusRestore, useMenuActionKeys, useMenuCursorKeys, useMenuPosition, useMenuReset, useSubmenuPosition, type MenuItem } from './use-menu'
+import { filterMenuItems, usePinyin, preloadPinyin, type ToolbarSearchAction } from './menu-search'
 
 const SUBMENU_STACK_DELTA = 10
 
@@ -20,7 +22,7 @@ interface MenuItemRowProps {
 
 function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps) {
   return (<div key={item.id}>
-    {item.separatorBefore && <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]'/>}
+    {index > 0 && item.separatorBefore && <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]'/>}
     <MenuRow
       item={item}
       tabIndex={index === cursor ? 0 : -1}
@@ -44,7 +46,7 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
   </div>)
 }
 
-export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, panelId, }: {
+export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, panelId, header, toolbarActions, searchable = false, searchPlaceholder }: {
   anchor: RefObject<HTMLElement | null> | {
     x: number
     y: number
@@ -59,34 +61,174 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
   // Optional: only callers that pair the menu with a trigger need the id, and the
   // rest must not be made to invent one.
   panelId?: string
+  header?: React.ReactNode
+  toolbarActions?: ToolbarSearchAction[]
+  searchable?: boolean
+  searchPlaceholder?: string
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number; origin: string }>({ top: 0, left: 0, origin: 'top left' })
   const [cursor, setCursor] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeSubmenuId, setActiveSubmenuId] = useState<string | null>(null)
   const [submenuAnchorRect, setSubmenuAnchorRect] = useState<DOMRect | null>(null)
   const [submenuPos, setSubmenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const anchorRef = 'current' in anchor ? anchor : null
   const menuWidth = Math.min(width, Math.max(0, innerWidth - 16))
+  const pinyinFn = usePinyin()
+
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery('')
+    } else if (searchable) {
+      void preloadPinyin()
+    }
+  }, [open, searchable])
+
+  const filteredItems = useMemo(
+    () => (searchable ? filterMenuItems(items, searchQuery, pinyinFn, toolbarActions) : items),
+    [items, searchQuery, searchable, pinyinFn, toolbarActions],
+  )
+
+  useEffect(() => {
+    if (searchable) {
+      setCursor(filteredItems.findIndex((i) => !i.disabled))
+    }
+  }, [searchQuery, searchable, filteredItems])
 
   useMenuReset(open, setActiveSubmenuId, setSubmenuAnchorRect)
-  useMenuPosition(open, anchor, align, menuWidth, items, setPosition, setCursor)
+  useMenuPosition(open, anchor, align, menuWidth, filteredItems, setPosition, setCursor, Boolean(header), searchable)
   useSubmenuPosition(activeSubmenuId, submenuAnchorRect, menuRef, submenuRef, setSubmenuPos)
   useEscape(open, onClose)
   useClickOutside(anchorRef ? [menuRef, anchorRef, submenuRef] : [menuRef, submenuRef], open, onClose)
   useFocusRestore(open)
   useCursorFocus(open, cursor, menuRef)
-  useMenuCursorKeys(open, items, setCursor, submenuRef)
-  useMenuActionKeys(open, items, cursor, onClose, menuRef, submenuRef, setActiveSubmenuId, setSubmenuAnchorRect)
+  useMenuCursorKeys(open, filteredItems, setCursor, submenuRef, menuRef, (char) => setSearchQuery((q) => q + char))
+  useMenuActionKeys(open, filteredItems, cursor, onClose, menuRef, submenuRef, setActiveSubmenuId, setSubmenuAnchorRect)
 
   const { handleHover, handleClick } = useMenuInteractions(setCursor, setActiveSubmenuId, setSubmenuAnchorRect, onClose)
   if (!open)
     return null
-  const activeItem = items.find((i) => i.id === activeSubmenuId)
+  const activeItem = filteredItems.find((i) => i.id === activeSubmenuId)
   return (<>
-    {createPortal(<div ref={menuRef} id={panelId} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
-      {items.map((item, index) => (<MenuItemRow key={item.id} item={item} index={index} cursor={cursor} onHover={handleHover} onClick={handleClick}/>))}
+    {createPortal(<div
+      ref={menuRef}
+      id={panelId}
+      role='menu'
+      aria-label={label}
+      tabIndex={-1}
+      onWheel={(e) => {
+        if (scrollContainerRef.current && !scrollContainerRef.current.contains(e.target as Node)) {
+          scrollContainerRef.current.scrollTop += e.deltaY
+        }
+      }}
+      className='anim-pop fixed z-[var(--z-pop)] flex flex-col max-h-105 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none'
+      style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}
+    >
+      {header && <div className='shrink-0'>{header}</div>}
+      {searchable && (
+        <div className='shrink-0 px-1 pt-0.5 pb-1 mb-1 border-b border-[var(--border-subtle)]'>
+          <div className='relative flex items-center'>
+            <Search size={13} className='absolute left-2 text-[var(--text-tertiary)] pointer-events-none' />
+            <input
+              ref={searchInputRef}
+              type='text'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.key === 'Process') return
+
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  const firstEnabledIdx = filteredItems.findIndex((i) => !i.disabled)
+                  if (firstEnabledIdx >= 0) {
+                    setCursor(firstEnabledIdx)
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  const toolbar = menuRef.current?.querySelector<HTMLElement>('[role="toolbar"] button:not(:disabled)')
+                  if (toolbar) {
+                    toolbar.focus()
+                    setCursor(-1)
+                  } else {
+                    const lastEnabledIdx = filteredItems.map((item, idx) => item.disabled ? -1 : idx).filter((i) => i >= 0).pop()
+                    if (lastEnabledIdx !== undefined) {
+                      setCursor(lastEnabledIdx)
+                    }
+                  }
+                } else if (e.key === 'Tab') {
+                  e.preventDefault()
+                  if (e.shiftKey) {
+                    const toolbar = menuRef.current?.querySelector<HTMLElement>('[role="toolbar"] button:not(:disabled)')
+                    if (toolbar) {
+                      toolbar.focus()
+                      setCursor(-1)
+                    }
+                  } else {
+                    const firstEnabledIdx = filteredItems.findIndex((i) => !i.disabled)
+                    if (firstEnabledIdx >= 0) {
+                      setCursor(firstEnabledIdx)
+                    }
+                  }
+                } else if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const firstActionable = filteredItems.find((i) => !i.disabled && (i.onSelect || i.submenu))
+                  if (firstActionable) {
+                    if (firstActionable.onSelect) {
+                      firstActionable.onSelect()
+                      onClose()
+                    } else if (firstActionable.submenu) {
+                      setActiveSubmenuId(firstActionable.id)
+                      const row = menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${filteredItems.indexOf(firstActionable)}"]`)
+                      if (row) setSubmenuAnchorRect(row.getBoundingClientRect())
+                    }
+                  }
+                } else if (e.key === 'Escape') {
+                  if (searchQuery) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setSearchQuery('')
+                  }
+                }
+              }}
+              placeholder={searchPlaceholder ?? t('contextmenu.search_placeholder')}
+              className='w-full h-7 pl-6.5 pr-6 text-xs bg-[var(--bg-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] rounded-[var(--r-sm)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none transition-colors'
+              autoFocus
+            />
+            {searchQuery && (
+              <IconButton
+                label={t('contextmenu.clear_search')}
+                size='sm'
+                variant='ghost'
+                onClick={() => {
+                  setSearchQuery('')
+                  searchInputRef.current?.focus()
+                }}
+                className='absolute right-1 size-5 md:size-5 p-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+              >
+                <X size={12} />
+              </IconButton>
+            )}
+          </div>
+        </div>
+      )}
+      <div
+        ref={scrollContainerRef}
+        role='none'
+        onScroll={() => setActiveSubmenuId(null)}
+        className='flex-1 overflow-y-auto min-h-0'
+      >
+        {filteredItems.length === 0 ? (
+          <div className='py-4 text-center text-xs text-[var(--text-tertiary)]'>
+            {t('contextmenu.no_results')}
+          </div>
+        ) : (
+          filteredItems.map((item, index) => (<MenuItemRow key={item.id} item={item} index={index} cursor={cursor} onHover={handleHover} onClick={handleClick}/>))
+        )}
+      </div>
     </div>, document.body)}
     {activeItem && activeItem.submenu && (<MenuSubmenu
       submenu={activeItem.submenu}

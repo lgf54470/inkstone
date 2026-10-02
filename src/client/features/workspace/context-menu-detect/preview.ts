@@ -127,6 +127,21 @@ function detectTask(target: HTMLElement): PreviewContextData | null {
   return { type: 'task', target, task: { checked: checkbox ? checkbox.checked : false, taskLine: getSourceLine(taskItem) } }
 }
 
+function detectHeading(target: HTMLElement): PreviewContextData | null {
+  const headingEl = target.closest<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
+  if (!headingEl) return null
+  const level = parseInt(headingEl.tagName[1]!, 10)
+  return {
+    type: 'heading',
+    target,
+    heading: {
+      level,
+      text: headingEl.textContent ?? '',
+      sourceLine: getSourceLine(headingEl),
+    },
+  }
+}
+
 const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectSelection,
   detectTable,
@@ -141,8 +156,9 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectCodeBlock,
   detectWikiLink,
   detectLink,
-  detectFrontmatter,
   detectTask,
+  detectHeading,
+  detectFrontmatter,
 ]
 
 export function detectPreviewContext(target: HTMLElement): PreviewContextData {

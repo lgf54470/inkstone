@@ -17,6 +17,7 @@ export function detectEditorContext(view: EditorView, pos: number): EditorContex
     ?? detectFencedBlock(doc, clampedPos, lineNumber)
     ?? detectTable(doc, lineText, lineNumber, offsetInLine, clampedPos)
     ?? detectLinePatterns(line, lineText, offsetInLine, clampedPos, lineNumber)
+    ?? detectHeading(lineText, line, clampedPos, lineNumber)
     ?? { type: 'empty', pos: clampedPos, lineNumber }
 }
 
@@ -60,6 +61,29 @@ function detectTable(doc: Text, lineText: string, lineNumber: number, offsetInLi
     pos,
     lineNumber,
     table,
+  }
+}
+
+function detectHeading(
+  lineText: string,
+  line: { from: number; to: number },
+  pos: number,
+  lineNumber: number,
+): EditorContextData | null {
+  const match = /^(\s{0,3})(#{1,6})\s+(.*)$/.exec(lineText)
+  if (!match) return null
+  const rawText = match[3] ?? ''
+  const text = rawText.replace(/\s+#+\s*$/, '').trim()
+  return {
+    type: 'heading',
+    pos,
+    lineNumber,
+    heading: {
+      level: match[2]!.length,
+      text,
+      from: line.from,
+      to: line.to,
+    },
   }
 }
 
@@ -230,91 +254,125 @@ function mathBlockContext(
 
 
 function findCodeFenceAround(doc: Text, pos: number): { language: string; code: string; from: number; to: number } | null {
-  const currentLine = doc.lineAt(pos)
-  let openFenceLine = -1
+  const targetLineNumber = doc.lineAt(pos).number
+  let openLine = -1
+  let openChar = '`'
+  let openCount = 3
   let openLanguage = ''
 
-  for (let i = currentLine.number; i >= 1; i--) {
-    const l = doc.line(i)
-    const match = /^\s*```([a-zA-Z0-9_-]*)/.exec(l.text)
-    if (match) {
-      if (i === currentLine.number && /^\s*```\s*$/.test(l.text)) {
-        continue
+  for (let i = 1; i <= doc.lines; i++) {
+    const text = doc.line(i).text
+    if (openLine === -1) {
+      if (i > targetLineNumber) {
+        return null
       }
-      openFenceLine = i
-      openLanguage = match[1] ?? ''
-      break
+      const match = /^\s*(`{3,}|~{3,})([^\s`~]*)/.exec(text)
+      if (match) {
+        const fenceStr = match[1]!
+        openLine = i
+        openChar = fenceStr[0]!
+        openCount = fenceStr.length
+        openLanguage = match[2] ?? ''
+      } else if (i === targetLineNumber) {
+        return null
+      }
+    } else {
+      const closeMatch = new RegExp(`^\\s*\\${openChar}{${openCount},}\\s*$`).exec(text)
+      if (closeMatch) {
+        const closeLine = i
+        if (targetLineNumber >= openLine && targetLineNumber <= closeLine) {
+          const from = doc.line(openLine).from
+          const to = doc.line(closeLine).to
+          const codeLines: string[] = []
+          for (let j = openLine + 1; j < closeLine; j++) {
+            codeLines.push(doc.line(j).text)
+          }
+          return {
+            language: openLanguage,
+            code: codeLines.join('\n'),
+            from,
+            to,
+          }
+        }
+        openLine = -1
+        if (i >= targetLineNumber) {
+          return null
+        }
+      }
     }
   }
 
-  if (openFenceLine === -1) return null
-
-  let closeFenceLine = -1
-  for (let i = openFenceLine + 1; i <= doc.lines; i++) {
-    const l = doc.line(i)
-    if (/^\s*```\s*$/.test(l.text)) {
-      closeFenceLine = i
-      break
+  if (openLine !== -1 && targetLineNumber >= openLine) {
+    const from = doc.line(openLine).from
+    const to = doc.length
+    const codeLines: string[] = []
+    for (let j = openLine + 1; j <= doc.lines; j++) {
+      codeLines.push(doc.line(j).text)
+    }
+    return {
+      language: openLanguage,
+      code: codeLines.join('\n'),
+      from,
+      to,
     }
   }
 
-  if (closeFenceLine === -1 || currentLine.number > closeFenceLine) {
-    return null
-  }
-
-  const from = doc.line(openFenceLine).from
-  const to = doc.line(closeFenceLine).to
-  const codeLines: string[] = []
-  for (let i = openFenceLine + 1; i < closeFenceLine; i++) {
-    codeLines.push(doc.line(i).text)
-  }
-
-  return {
-    language: openLanguage,
-    code: codeLines.join('\n'),
-    from,
-    to,
-  }
+  return null
 }
 
 
 function findMathBlockAround(doc: Text, pos: number): { formula: string; from: number; to: number } | null {
-  const currentLine = doc.lineAt(pos)
-  let openFenceLine = -1
+  const targetLineNumber = doc.lineAt(pos).number
+  let openLine = -1
 
-  for (let i = currentLine.number; i >= 1; i--) {
-    const l = doc.line(i)
-    if (/^\s*\$\$\s*$/.test(l.text)) {
-      openFenceLine = i
-      break
+  for (let i = 1; i <= doc.lines; i++) {
+    const text = doc.line(i).text
+    if (openLine === -1) {
+      if (i > targetLineNumber) {
+        return null
+      }
+      if (/^\s*\$\$\s*$/.test(text)) {
+        openLine = i
+      } else if (i === targetLineNumber) {
+        return null
+      }
+    } else {
+      if (/^\s*\$\$\s*$/.test(text)) {
+        const closeLine = i
+        if (targetLineNumber >= openLine && targetLineNumber <= closeLine) {
+          const from = doc.line(openLine).from
+          const to = doc.line(closeLine).to
+          const mathLines: string[] = []
+          for (let j = openLine + 1; j < closeLine; j++) {
+            mathLines.push(doc.line(j).text)
+          }
+          return {
+            formula: mathLines.join('\n'),
+            from,
+            to,
+          }
+        }
+        openLine = -1
+        if (i >= targetLineNumber) {
+          return null
+        }
+      }
     }
   }
 
-  if (openFenceLine === -1) return null
-
-  let closeFenceLine = -1
-  for (let i = openFenceLine + 1; i <= doc.lines; i++) {
-    const l = doc.line(i)
-    if (/^\s*\$\$\s*$/.test(l.text)) {
-      closeFenceLine = i
-      break
+  if (openLine !== -1 && targetLineNumber >= openLine) {
+    const from = doc.line(openLine).from
+    const to = doc.length
+    const mathLines: string[] = []
+    for (let j = openLine + 1; j <= doc.lines; j++) {
+      mathLines.push(doc.line(j).text)
+    }
+    return {
+      formula: mathLines.join('\n'),
+      from,
+      to,
     }
   }
 
-  if (closeFenceLine === -1 || currentLine.number > closeFenceLine) {
-    return null
-  }
-
-  const from = doc.line(openFenceLine).from
-  const to = doc.line(closeFenceLine).to
-  const mathLines: string[] = []
-  for (let i = openFenceLine + 1; i < closeFenceLine; i++) {
-    mathLines.push(doc.line(i).text)
-  }
-
-  return {
-    formula: mathLines.join('\n'),
-    from,
-    to,
-  }
+  return null
 }

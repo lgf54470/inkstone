@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { detectEditorContext, detectPreviewContext } from './context-menu-detect'
 import { encodeDataValue } from '../../lib/markdown/data-attr'
 import { createFenceBodies, registerFenceBodies, takeFenceIndex } from '../../lib/markdown/fence-bodies'
+import { clearHeading } from '../../editor/commands'
 
 function withView(doc: string, selection: { from: number; to: number } | undefined, run: (view: EditorView) => void) {
   const parent = document.createElement('div')
@@ -105,6 +106,31 @@ describe('detectEditorContext basic syntax', () => {
     expect(linkCtx.link?.text).toBe('Inkstone')
     expect(linkCtx.link?.url).toBe('https://inkstone.app')
   })
+
+  it('detects heading context in editor', () => {
+    const h1Ctx = detectAt('# Main Title\nParagraph', 4)
+    expect(h1Ctx.type).toBe('heading')
+    expect(h1Ctx.heading?.level).toBe(1)
+    expect(h1Ctx.heading?.text).toBe('Main Title')
+
+    const h3Ctx = detectAt('# Main Title\n### Subsection\nBody', 18)
+    expect(h3Ctx.type).toBe('heading')
+    expect(h3Ctx.heading?.level).toBe(3)
+    expect(h3Ctx.heading?.text).toBe('Subsection')
+
+    const trailingHashCtx = detectAt('## Heading with hashes ##\nBody', 5)
+    expect(trailingHashCtx.type).toBe('heading')
+    expect(trailingHashCtx.heading?.level).toBe(2)
+    expect(trailingHashCtx.heading?.text).toBe('Heading with hashes')
+
+    const linkInHeading = detectAt('# Title with [Inkstone](https://inkstone.app)', 20)
+    expect(linkInHeading.type).toBe('link')
+    expect(linkInHeading.link?.text).toBe('Inkstone')
+
+    const headingOutsideLink = detectAt('# Title with [Inkstone](https://inkstone.app)', 4)
+    expect(headingOutsideLink.type).toBe('heading')
+    expect(headingOutsideLink.heading?.level).toBe(1)
+  })
 })
 
 describe('detectEditorContext blocks and diagrams', () => {
@@ -113,6 +139,27 @@ describe('detectEditorContext blocks and diagrams', () => {
     expect(ctx.type).toBe('codeblock')
     expect(ctx.codeBlock?.language).toBe('typescript')
     expect(ctx.codeBlock?.code).toBe('const x = 1;')
+  })
+
+  it('does not detect empty lines between code blocks as codeblock', () => {
+    const doc = '```typescript\nconst a = 1;\n```\n\n```typescript\nconst b = 2;\n```'
+    const emptyLinePos = 31
+    const ctx = detectAt(doc, emptyLinePos)
+    expect(ctx.type).toBe('empty')
+  })
+
+  it('detects empty line with whitespace as empty', () => {
+    const doc = '```typescript\nconst a = 1;\n```\n   \n```typescript\nconst b = 2;\n```'
+    const emptyLinePos = 32
+    const ctx = detectAt(doc, emptyLinePos)
+    expect(ctx.type).toBe('empty')
+  })
+
+  it('does not detect empty lines between math blocks as math', () => {
+    const doc = '$$\nx = 1\n$$\n\n$$\ny = 2\n$$'
+    const emptyLinePos = 12
+    const ctx = detectAt(doc, emptyLinePos)
+    expect(ctx.type).toBe('empty')
   })
 
   it('detects mermaid block', () => {
@@ -183,5 +230,42 @@ describe('detectPreviewContext', () => {
     expect(ctx.slides?.code).toBe('{"title":"Demo Deck"}')
     expect(ctx.slides?.sourceLine).toBe(25)
     slides.remove()
+  })
+
+  it('detects heading element in preview DOM', () => {
+    const h2 = document.createElement('h2')
+    h2.textContent = 'Preview Section'
+    h2.dataset.sourceLine = '8'
+    document.body.appendChild(h2)
+    const ctx = detectPreviewContext(h2)
+    expect(ctx.type).toBe('heading')
+    expect(ctx.heading?.level).toBe(2)
+    expect(ctx.heading?.text).toBe('Preview Section')
+    expect(ctx.heading?.sourceLine).toBe(8)
+    h2.remove()
+  })
+
+  it('detects link inside heading element in preview DOM', () => {
+    const h1 = document.createElement('h1')
+    const link = document.createElement('a')
+    link.href = 'https://inkstone.app'
+    link.textContent = 'Inkstone Site'
+    h1.appendChild(link)
+    document.body.appendChild(h1)
+
+    const ctx = detectPreviewContext(link)
+    expect(ctx.type).toBe('link')
+    expect(ctx.link?.url).toBe('https://inkstone.app/')
+    expect(ctx.link?.text).toBe('Inkstone Site')
+    h1.remove()
+  })
+})
+
+describe('clearHeading command', () => {
+  it('clears heading prefix from line', () => {
+    withView('### Heading Level 3\nParagraph', { from: 5, to: 5 }, (view) => {
+      clearHeading(view)
+      expect(view.state.doc.toString()).toBe('Heading Level 3\nParagraph')
+    })
   })
 })

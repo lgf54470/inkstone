@@ -1,4 +1,16 @@
 {
+  "src/client/components/overlay/menu-search.ts": {
+    "longFns": 1,
+    "deepFns": 1
+  },
+  "src/client/components/overlay/menu.tsx": {
+    "longFns": 2,
+    "deepFns": 1
+  },
+  "src/client/components/overlay/use-menu.ts": {
+    "longFns": 3,
+    "deepFns": 1
+  },
   "src/client/features/music/audio-engine-preload.test.ts": {
     "longFns": 1
   },
@@ -64,6 +76,29 @@
     "lines": 532
   },
   "src/client/features/preview/kanban-fullscreen.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu-detect.test.ts": {
+    "longFns": 3
+  },
+  "src/client/features/workspace/context-menu-detect/editor.ts": {
+    "longFns": 2,
+    "deepFns": 2
+  },
+  "src/client/features/workspace/context-menu/media.tsx": {
+    "longFns": 2
+  },
+  "src/client/features/workspace/context-menu/structure.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/workspace/context-menu/toolbar.tsx": {
+    "longFns": 3,
+    "deepFns": 1
+  },
+  "src/client/features/workspace/editor-context-menu.test.ts": {
+    "longFns": 4
+  },
+  "src/client/features/workspace/use-editor-context-menu.ts": {
     "longFns": 1
   },
   "src/client/lib/api/music.ts": {

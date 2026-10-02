@@ -130,4 +130,13 @@ export const messages = {
 'contextmenu.preview_search_selection': 'Search Notes for Selection',
 'contextmenu.preview_create_note_from_selection': 'Create Note with Selection',
 'contextmenu.preview_jump_to_editor': 'Locate in Editor',
+'contextmenu.heading_level': 'Convert Heading',
+'contextmenu.copy_heading_text': 'Copy Heading Text',
+'contextmenu.mindmap_convert_mode': 'Switch Mode',
+'contextmenu.mindmap_to_outline': 'Convert to Outline Mode',
+'contextmenu.mindmap_to_json': 'Convert to JSON Mode',
+'contextmenu.quick_actions': 'Quick actions',
+'contextmenu.search_placeholder': 'Search menu...',
+'contextmenu.no_results': 'No matching actions',
+'contextmenu.clear_search': 'Clear search',
 }

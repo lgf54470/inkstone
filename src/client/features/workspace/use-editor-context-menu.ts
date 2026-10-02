@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import type { EditorLayout } from '@shared/types'
 import type { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
+import { undo, redo, undoDepth, redoDepth } from '@codemirror/commands'
 import type { MenuItem } from '../../components/overlay'
 import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
@@ -10,8 +11,9 @@ import type { MenuCtx } from './context-menu/types'
 import { buildEditorSelectionItems, buildPreviewSelectionItems } from './context-menu/selection'
 import { buildEditorTableItems, buildPreviewTableItems } from './context-menu/table'
 import { buildImageItems, buildMathItems, buildCodeBlockItems, buildMermaidItems, buildChartItems, buildMindmapItems, buildKanbanItems, buildSlidesItems, buildExcalidrawItems } from './context-menu/media'
-import { buildWikiLinkItems, buildLinkItems, buildFrontmatterItems, buildTaskItems } from './context-menu/structure'
-import { buildEditorBlankItems, buildPreviewCanvasItems } from './context-menu/canvas'
+import { buildWikiLinkItems, buildLinkItems, buildFrontmatterItems, buildTaskItems, buildHeadingItems } from './context-menu/structure'
+import { buildCommonEditorItems, buildPreviewCanvasItems } from './context-menu/canvas'
+import { type ContextToolbarProps } from './context-menu/toolbar'
 import type { EditorContextData, PreviewContextData } from './context-menu-detect'
 
 export interface EditorContextMenuProps {
@@ -115,8 +117,131 @@ function useClipboardActions(editorView: EditorView | null | undefined) {
   return { handleCopy, handlePasteIntoEditor, handleCutFromEditor }
 }
 
-export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
-  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent } = props
+function buildPrivateEditorItems(ctx: MenuCtx): MenuItem[] | null {
+  return (
+    buildEditorSelectionItems(ctx) ??
+    buildHeadingItems(ctx) ??
+    buildEditorTableItems(ctx) ??
+    buildImageItems(ctx) ??
+    buildMathItems(ctx) ??
+    buildCodeBlockItems(ctx) ??
+    buildMermaidItems(ctx) ??
+    buildChartItems(ctx) ??
+    buildMindmapItems(ctx) ??
+    buildKanbanItems(ctx) ??
+    buildSlidesItems(ctx) ??
+    buildExcalidrawItems(ctx) ??
+    buildWikiLinkItems(ctx) ??
+    buildLinkItems(ctx) ??
+    buildFrontmatterItems(ctx) ??
+    buildTaskItems(ctx)
+  )
+}
+
+function buildPrivatePreviewItems(ctx: MenuCtx): MenuItem[] | null {
+  return (
+    buildPreviewSelectionItems(ctx) ??
+    buildHeadingItems(ctx) ??
+    buildPreviewTableItems(ctx) ??
+    buildImageItems(ctx) ??
+    buildMathItems(ctx) ??
+    buildCodeBlockItems(ctx) ??
+    buildMermaidItems(ctx) ??
+    buildChartItems(ctx) ??
+    buildMindmapItems(ctx) ??
+    buildKanbanItems(ctx) ??
+    buildSlidesItems(ctx) ??
+    buildExcalidrawItems(ctx) ??
+    buildWikiLinkItems(ctx) ??
+    buildLinkItems(ctx) ??
+    buildFrontmatterItems(ctx) ??
+    buildTaskItems(ctx)
+  )
+}
+
+function useToolbarProps(
+  ctx: MenuCtx,
+  isEditor: boolean,
+  hasSelection: boolean,
+  onClose: () => void,
+): ContextToolbarProps {
+  const { editorView, editorContext, previewContext, content, handleCopy, handlePasteIntoEditor, handleCutFromEditor, runStateCommand } = ctx
+
+  const getCopyText = useCallback(() => {
+    if (editorContext) {
+      if (editorContext.type === 'selection' && editorContext.selectedText) return editorContext.selectedText
+      if (editorContext.type === 'codeblock' && editorContext.codeBlock) return editorContext.codeBlock.code
+      if (editorContext.type === 'mermaid' && editorContext.mermaid) return editorContext.mermaid.code
+      if (editorContext.type === 'chart' && editorContext.chart) return editorContext.chart.code
+      if (editorContext.type === 'mindmap' && editorContext.mindmap) return editorContext.mindmap.code
+      if (editorContext.type === 'kanban' && editorContext.kanban) return editorContext.kanban.code
+      if (editorContext.type === 'slides' && editorContext.slides) return editorContext.slides.code
+      if (editorContext.type === 'excalidraw' && editorContext.excalidraw) return editorContext.excalidraw.code
+      if (editorContext.type === 'table' && editorContext.table) return formatMarkdownTable(editorContext.table).join('\n')
+      if (editorContext.type === 'math' && editorContext.math) return editorContext.math.formula
+      if (editorContext.type === 'heading' && editorContext.heading) return editorContext.heading.text
+      if (editorContext.type === 'image' && editorContext.image) return editorContext.image.raw || editorContext.image.url
+      if (editorContext.type === 'wikilink' && editorContext.wikiLink) return `[[${editorContext.wikiLink.target}]]`
+      if (editorContext.type === 'link' && editorContext.link) return editorContext.link.url
+      if (editorContext.type === 'frontmatter') {
+        const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(content)
+        if (match) return match[1]!
+      }
+      return ''
+    }
+    if (previewContext) {
+      if (previewContext.type === 'selection' && previewContext.selectedText) return previewContext.selectedText
+      if (previewContext.type === 'heading' && previewContext.heading) return previewContext.heading.text
+      if (previewContext.type === 'codeblock' && previewContext.codeBlock) return previewContext.codeBlock.code
+      if (previewContext.type === 'math' && previewContext.math) return previewContext.math.formula
+      if (previewContext.type === 'image' && previewContext.image) return previewContext.image.src
+      return ''
+    }
+    return ''
+  }, [editorContext, previewContext, content])
+
+  const canCopy = Boolean(
+    hasSelection ||
+    (editorContext && editorContext.type !== 'empty') ||
+    (previewContext && previewContext.type !== 'empty' && getCopyText().length > 0),
+  )
+
+  const onCopy = useCallback(() => {
+    const text = getCopyText()
+    if (text) {
+      handleCopy(text)
+    }
+  }, [handleCopy, getCopyText])
+
+  const canUndo = Boolean(isEditor && editorView && undoDepth(editorView.state) > 0)
+  const canRedo = Boolean(isEditor && editorView && redoDepth(editorView.state) > 0)
+
+  return {
+    canCut: isEditor && hasSelection,
+    onCut: handleCutFromEditor,
+    canCopy,
+    onCopy,
+    canPaste: isEditor,
+    onPaste: handlePasteIntoEditor,
+    canUndo,
+    onUndo: () => {
+      if (editorView) runStateCommand(undo)
+    },
+    canRedo,
+    onRedo: () => {
+      if (editorView) runStateCommand(redo)
+    },
+    onClose,
+  }
+}
+
+export interface EditorContextMenuData {
+  toolbarProps: ContextToolbarProps
+  menuItems: MenuItem[]
+}
+
+export function useEditorContextMenu(props: EditorContextMenuProps): EditorContextMenuData {
+  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent, onClose } = props
   const openNote = useNotes((s) => s.openNote)
   const createNote = useNotes((s) => s.createNote)
   const setWorkspaceNote = useUi((s) => s.setWorkspaceNote)
@@ -135,27 +260,36 @@ export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
     [editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, onPickImage, onPickFile, onSwitchLayout, currentLayout, previewScrollerRef, onExport, onPresent, createNote, openNote, setWorkspaceNote, runStateCommand, replaceTableInEditor, modifyTableInContent, clipboard.handleCopy, clipboard.handlePasteIntoEditor, clipboard.handleCutFromEditor],
   )
 
-  return useMemo(
-    () =>
-      buildEditorSelectionItems(ctx) ??
-      buildPreviewSelectionItems(ctx) ??
-      buildEditorTableItems(ctx) ??
-      buildPreviewTableItems(ctx) ??
-      buildImageItems(ctx) ??
-      buildMathItems(ctx) ??
-      buildCodeBlockItems(ctx) ??
-      buildMermaidItems(ctx) ??
-      buildChartItems(ctx) ??
-      buildMindmapItems(ctx) ??
-      buildKanbanItems(ctx) ??
-      buildSlidesItems(ctx) ??
-      buildExcalidrawItems(ctx) ??
-      buildWikiLinkItems(ctx) ??
-      buildLinkItems(ctx) ??
-      buildFrontmatterItems(ctx) ??
-      buildTaskItems(ctx) ??
-      buildEditorBlankItems(ctx) ??
-      buildPreviewCanvasItems(ctx),
-    [ctx],
-  )
+  const isEditor = Boolean(editorView && !previewContext)
+  const hasSelection = Boolean(editorContext?.type === 'selection' && editorContext.selectedText)
+  const toolbarProps = useToolbarProps(ctx, isEditor, hasSelection, onClose)
+
+  const menuItems = useMemo<MenuItem[]>(() => {
+    if (previewContext) {
+      const privateItems = buildPrivatePreviewItems(ctx)
+      const commonItems = buildPreviewCanvasItems(ctx)
+      if (privateItems && privateItems.length > 0) {
+        return [
+          ...privateItems,
+          ...commonItems.map((item, idx) => (idx === 0 ? { ...item, separatorBefore: true } : item)),
+        ]
+      }
+      return commonItems
+    }
+
+    const privateItems = buildPrivateEditorItems(ctx)
+    const hasPrivate = Boolean(privateItems && privateItems.length > 0)
+    const commonItems = buildCommonEditorItems(ctx, hasPrivate)
+
+    if (hasPrivate) {
+      return [...privateItems!, ...commonItems]
+    }
+    return commonItems
+  }, [ctx, previewContext])
+
+  return { toolbarProps, menuItems }
+}
+
+export function useEditorMenuItems(props: EditorContextMenuProps): MenuItem[] {
+  return useEditorContextMenu(props).menuItems
 }

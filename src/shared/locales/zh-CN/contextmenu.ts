@@ -130,4 +130,13 @@ export const messages = {
 'contextmenu.preview_search_selection': '在笔记中搜索选中文本',
 'contextmenu.preview_create_note_from_selection': '以此文本创建新笔记',
 'contextmenu.preview_jump_to_editor': '在编辑器中定位',
+'contextmenu.heading_level': '转换为标题',
+'contextmenu.copy_heading_text': '复制标题文本',
+'contextmenu.mindmap_convert_mode': '转换模式',
+'contextmenu.mindmap_to_outline': '转换为大纲模式',
+'contextmenu.mindmap_to_json': '转换为 JSON 模式',
+'contextmenu.quick_actions': '快捷操作',
+'contextmenu.search_placeholder': '搜索菜单...',
+'contextmenu.no_results': '未找到相关操作',
+'contextmenu.clear_search': '清空搜索',
 }

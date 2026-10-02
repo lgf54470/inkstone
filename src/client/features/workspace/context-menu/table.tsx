@@ -18,7 +18,7 @@ import {
 import type { EditorView } from '@codemirror/view'
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
-import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, formatMarkdownTable, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv, type ParsedTable } from '../../../lib/markdown/table-editor'
+import { clearTableCell, clearTableRow, deleteEntireTableInText, deleteTableColumn, deleteTableRow, duplicateTableRow, insertTableColumn, insertTableRow, parseMarkdownTable, setColumnAlignment, sortTableRowByColumn, tableToCsv, type ParsedTable } from '../../../lib/markdown/table-editor'
 import type { MenuCtx } from './types'
 import { SubmenuList } from '../../../components/overlay'
 
@@ -74,13 +74,13 @@ function buildEditorTableMenu(ctx: MenuCtx, table: ParsedTable): MenuItem[] {
       label: t('contextmenu.table_align'),
       icon: <AlignCenter size={14} />,
       separatorBefore: true,
+      subItems: alignSubmenuItems(table, edit),
       submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={alignSubmenuItems(table, edit)} />,
     },
-    { id: 'sort-sub', label: t('contextmenu.table_sort'), icon: <ArrowDownUp size={14} />, submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={sortSubmenuItems(table, edit)} /> },
+    { id: 'sort-sub', label: t('contextmenu.table_sort'), icon: <ArrowDownUp size={14} />, subItems: sortSubmenuItems(table, edit), submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={sortSubmenuItems(table, edit)} /> },
     { id: 'clear-cell', label: t('contextmenu.table_clear_cell'), icon: <Eraser size={14} />, separatorBefore: true, onSelect: () => edit(clearTableCell(table, cursor, col)) },
     { id: 'clear-row', label: t('contextmenu.table_clear_row'), icon: <Eraser size={14} />, onSelect: () => edit(clearTableRow(table, cursor)) },
     { id: 'format-table', label: t('contextmenu.table_format'), icon: <FileSpreadsheet size={14} />, separatorBefore: true, onSelect: () => edit({ ...table }) },
-    { id: 'copy-markdown', label: t('contextmenu.table_copy_markdown'), icon: <Copy size={14} />, onSelect: () => handleCopy(formatMarkdownTable(table).join('\n')) },
     { id: 'copy-csv', label: t('contextmenu.table_copy_csv'), icon: <Copy size={14} />, onSelect: () => handleCopy(tableToCsv(table)) },
     { id: 'delete-table', label: t('contextmenu.table_delete'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: () => deleteTableInEditor(editorView, table) },
   ]
@@ -115,6 +115,8 @@ function buildPreviewTableMenu(ctx: MenuCtx, pTable: { rowIndex: number; colInde
   const sLine = pTable.sourceLine ?? 0
   const rowIndex = pTable.rowIndex > 0 ? pTable.rowIndex - 1 : 0
   const modify = (fn: (table: ParsedTable) => ParsedTable) => modifyTableInContent(sLine, fn)
+  const alignSubItems = alignPreviewSubmenuItems(pTable.colIndex, modify)
+  const sortSubItems = sortPreviewSubmenuItems(pTable.colIndex, modify)
   return [
     { id: 'jump-to-editor', label: t('contextmenu.table_jump_to_editor'), icon: <Pencil size={14} />, onSelect: () => onJumpToLine(sLine) },
     { id: 'insert-row-above', label: t('contextmenu.table_insert_row_above'), icon: <Rows size={14} />, separatorBefore: true, onSelect: () => modify((tbl) => insertTableRow(tbl, rowIndex, 'above')) },
@@ -129,13 +131,13 @@ function buildPreviewTableMenu(ctx: MenuCtx, pTable: { rowIndex: number; colInde
       label: t('contextmenu.table_align'),
       icon: <AlignCenter size={14} />,
       separatorBefore: true,
-      submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={alignPreviewSubmenuItems(pTable.colIndex, modify)} />,
+      subItems: alignSubItems,
+      submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={alignSubItems} />,
     },
-    { id: 'sort-sub-preview', label: t('contextmenu.table_sort'), icon: <ArrowDownUp size={14} />, submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={sortPreviewSubmenuItems(pTable.colIndex, modify)} /> },
+    { id: 'sort-sub-preview', label: t('contextmenu.table_sort'), icon: <ArrowDownUp size={14} />, subItems: sortSubItems, submenu: ({ closeMenu }: { closeMenu: () => void }) => <SubmenuList closeMenu={closeMenu} items={sortSubItems} /> },
     { id: 'clear-cell-prev', label: t('contextmenu.table_clear_cell'), icon: <Eraser size={14} />, separatorBefore: true, onSelect: () => modify((tbl) => clearTableCell(tbl, pTable.rowIndex === 0 ? -1 : rowIndex, pTable.colIndex)) },
     { id: 'clear-row-prev', label: t('contextmenu.table_clear_row'), icon: <Eraser size={14} />, onSelect: () => modify((tbl) => clearTableRow(tbl, pTable.rowIndex === 0 ? -1 : rowIndex)) },
     { id: 'format-table-prev', label: t('contextmenu.table_format'), icon: <FileSpreadsheet size={14} />, separatorBefore: true, onSelect: () => modify((tbl) => ({ ...tbl })) },
-    { id: 'copy-markdown-prev', label: t('contextmenu.table_copy_markdown'), icon: <Copy size={14} />, onSelect: () => copyTableAs(content, sLine, handleCopy, (tbl) => formatMarkdownTable(tbl).join('\n')) },
     { id: 'copy-csv-prev', label: t('contextmenu.table_copy_csv'), icon: <Copy size={14} />, onSelect: () => copyTableAs(content, sLine, handleCopy, tableToCsv) },
     { id: 'delete-table-prev', label: t('contextmenu.table_delete'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: () => onEditContent(deleteEntireTableInText(content, sLine)) },
   ]

@@ -3,9 +3,9 @@ import type { EditorView } from '@codemirror/view'
 import {
   CheckSquare,
   Columns2,
-  Copy,
   ExternalLink,
   FileText,
+  Heading,
   List,
   Network,
   Pencil,
@@ -15,9 +15,9 @@ import {
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { findNoteByTitle } from '../../../store/notes'
-import { toggleBulletList, toggleTaskDone } from '../../../editor/commands'
+import { setHeading, clearHeading, toggleBulletList, toggleTaskDone } from '../../../editor/commands'
 import type { MenuCtx } from './types'
-import { SubmenuList } from '../../../components/overlay'
+import { SubmenuList, submenuFor } from '../../../components/overlay'
 
 function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
   const { previewContext, onJumpToLine, createNote, openNote, setWorkspaceNote, handleCopy } = ctx
@@ -44,16 +44,10 @@ function buildWikiLinkMenu(ctx: MenuCtx, targetTitle: string): MenuItem[] {
       },
     },
     {
-      id: 'copy-link',
-      label: t('contextmenu.wikilink_copy_link'),
-      icon: <Copy size={14} />,
-      separatorBefore: true,
-      onSelect: () => handleCopy(`[[${targetTitle}]]`),
-    },
-    {
       id: 'copy-title',
       label: t('contextmenu.wikilink_copy_title'),
       icon: <FileText size={14} />,
+      separatorBefore: true,
       onSelect: () => handleCopy(targetTitle),
     },
     ...(previewContext
@@ -80,7 +74,7 @@ export function buildWikiLinkItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildLinkItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, handleCopy } = ctx
+  const { editorView, editorContext, previewContext } = ctx
 
   if (editorContext?.type === 'link' || previewContext?.type === 'link') {
     const url = editorContext?.link?.url ?? previewContext?.link?.url ?? ''
@@ -92,12 +86,6 @@ export function buildLinkItems(ctx: MenuCtx): MenuItem[] | null {
         onSelect: () => {
           if (url) window.open(url, '_blank', 'noopener,noreferrer')
         },
-      },
-      {
-        id: 'copy-url',
-        label: t('contextmenu.link_copy'),
-        icon: <Copy size={14} />,
-        onSelect: () => handleCopy(url),
       },
       ...(editorContext?.link
         ? [
@@ -160,25 +148,16 @@ function buildFrontmatterAddPropItem(editorView: EditorView | null | undefined, 
 }
 
 function buildFrontmatterMenu(ctx: MenuCtx): MenuItem[] {
-  const { editorContext, editorView, previewContext, content, onJumpToLine, handleCopy } = ctx
+  const { editorContext, editorView, previewContext, onJumpToLine } = ctx
   return [
     ...(editorContext ? [buildFrontmatterAddPropItem(editorView, frontmatterPropertyTemplates())] : []),
-    {
-      id: 'copy-yaml',
-      label: t('contextmenu.frontmatter_copy_yaml'),
-      icon: <Copy size={14} />,
-      onSelect: () => {
-        const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(content)
-        if (match) handleCopy(match[1]!)
-      },
-    },
     ...(previewContext
       ? [
           {
             id: 'jump-frontmatter',
             label: t('contextmenu.frontmatter_jump_to_editor'),
             icon: <Pencil size={14} />,
-            separatorBefore: true,
+            separatorBefore: Boolean(editorContext),
             onSelect: () => onJumpToLine(0),
           },
         ]
@@ -253,6 +232,64 @@ export function buildTaskItems(ctx: MenuCtx): MenuItem[] | null {
   const { editorContext, previewContext } = ctx
   if (editorContext?.type === 'task' || previewContext?.type === 'task') {
     return buildTaskMenu(ctx)
+  }
+  return null
+}
+
+export function buildHeadingItems(ctx: MenuCtx): MenuItem[] | null {
+  const { editorView, editorContext, previewContext, runStateCommand, onJumpToLine } = ctx
+  const headingData = editorContext?.heading ?? previewContext?.heading
+  if (editorContext?.type === 'heading' || previewContext?.type === 'heading') {
+    const level = headingData?.level ?? 1
+    const convertHeadingItems = [
+      ...([1, 2, 3, 4, 5, 6] as const).map((lvl) => ({
+        id: `convert-h${lvl}`,
+        label: t('workspace.heading_value0', { value0: lvl }),
+        combo: `mod+${lvl}`,
+        checked: level === lvl,
+        onSelect: () => {
+          if (editorView) {
+            runStateCommand(setHeading(lvl))
+          } else if (previewContext?.heading?.sourceLine !== undefined) {
+            onJumpToLine(previewContext.heading.sourceLine)
+          }
+        },
+      })),
+      {
+        id: 'convert-p',
+        label: t('contextmenu.heading_paragraph'),
+        checked: false,
+        separatorBefore: true,
+        onSelect: () => {
+          if (editorView) {
+            runStateCommand(clearHeading)
+          } else if (previewContext?.heading?.sourceLine !== undefined) {
+            onJumpToLine(previewContext.heading.sourceLine)
+          }
+        },
+      },
+    ]
+
+    return [
+      {
+        id: 'heading-convert-sub',
+        label: t('contextmenu.heading_level'),
+        icon: <Heading size={14} />,
+        subItems: convertHeadingItems,
+        submenu: submenuFor(convertHeadingItems),
+      },
+      ...(previewContext?.heading?.sourceLine !== undefined
+        ? [
+            {
+              id: 'jump-heading',
+              label: t('contextmenu.preview_jump_to_editor'),
+              icon: <Pencil size={14} />,
+              separatorBefore: true,
+              onSelect: () => onJumpToLine(previewContext.heading!.sourceLine!),
+            },
+          ]
+        : []),
+    ]
   }
   return null
 }

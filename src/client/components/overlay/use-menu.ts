@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { getVisibleViewport } from '../../lib/viewport'
 
 // MenuItem lives here (not in menu.tsx) because menu.tsx already imports the
@@ -15,6 +15,7 @@ export interface MenuItem {
   onSelect?: () => void
   separatorBefore?: boolean
   submenu?: ReactNode | ((props: { closeMenu: () => void }) => ReactNode)
+  subItems?: MenuItem[]
 }
 
 function nextCursor(items: MenuItem[], current: number, step: 1 | -1): number {
@@ -36,13 +37,20 @@ export function useMenuReset(open: boolean, setActiveSubmenuId: React.Dispatch<R
   }, [open, setActiveSubmenuId, setSubmenuAnchorRect])
 }
 
-export function useMenuPosition(open: boolean, anchor: RefObject<HTMLElement | null> | { x: number; y: number }, align: 'start' | 'end', menuWidth: number, items: MenuItem[], setPosition: React.Dispatch<React.SetStateAction<{ top: number; left: number; origin: string }>>, setCursor: React.Dispatch<React.SetStateAction<number>>): void {
+export function useMenuPosition(open: boolean, anchor: RefObject<HTMLElement | null> | { x: number; y: number }, align: 'start' | 'end', menuWidth: number, items: MenuItem[], setPosition: React.Dispatch<React.SetStateAction<{ top: number; left: number; origin: string }>>, setCursor: React.Dispatch<React.SetStateAction<number>>, hasHeader = false, searchable = false): void {
+  const flipUpRef = useRef(false)
+  const wasOpenRef = useRef(false)
+
   useLayoutEffect(() => {
-    if (!open)
+    if (!open) {
+      wasOpenRef.current = false
       return
+    }
     const margin = 8
     const itemHeight = innerWidth < 768 ? 40 : 30
-    const height = Math.min(items.length * itemHeight + 12, 420)
+    const headerHeight = hasHeader ? 40 : 0
+    const searchHeight = searchable ? 36 : 0
+    const height = Math.min(items.length * itemHeight + 12 + headerHeight + searchHeight, 420)
     const point = 'current' in anchor ? null : anchor
     const anchorRef = 'current' in anchor ? anchor : null
     let top: number
@@ -59,13 +67,19 @@ export function useMenuPosition(open: boolean, anchor: RefObject<HTMLElement | n
       left = align === 'end' ? rect.right - menuWidth : rect.left
     }
     const viewport = getVisibleViewport()
-    const flipUp = top + height > viewport.bottom - margin
+
+    if (!wasOpenRef.current) {
+      wasOpenRef.current = true
+      flipUpRef.current = top + height > viewport.bottom - margin
+    }
+
+    const flipUp = flipUpRef.current
     if (flipUp)
       top = Math.max(viewport.top + margin, (point ? point.y : (anchorRef?.current?.getBoundingClientRect().top ?? top)) - height - 5)
     left = Math.min(Math.max(viewport.left + margin, left), viewport.right - menuWidth - margin)
     setPosition({ top, left, origin: `${flipUp ? 'bottom' : 'top'} ${align === 'end' ? 'right' : 'left'}` })
     setCursor(items.findIndex((i) => !i.disabled))
-  }, [open, items, align, menuWidth, anchor, setPosition, setCursor])
+  }, [open, items, align, menuWidth, anchor, setPosition, setCursor, hasHeader, searchable])
 }
 
 export function useSubmenuPosition(activeSubmenuId: string | null, submenuAnchorRect: DOMRect | null, menuRef: RefObject<HTMLDivElement | null>, submenuRef: RefObject<HTMLDivElement | null>, setSubmenuPos: React.Dispatch<React.SetStateAction<{ top: number; left: number }>>): void {
@@ -123,12 +137,21 @@ export function useCursorFocus(open: boolean, cursor: number, menuRef: RefObject
     if (!open)
       return
     if (cursor < 0) {
-      menuRef.current?.focus({ preventScroll: true })
       return
     }
-    menuRef.current
-      ?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)
-      ?.focus({ preventScroll: true })
+    const toolbar = menuRef.current?.querySelector('[role="toolbar"]')
+    if (toolbar && document.activeElement && toolbar.contains(document.activeElement)) {
+      return
+    }
+    const searchInput = menuRef.current?.querySelector('input')
+    if (searchInput && document.activeElement === searchInput) {
+      return
+    }
+    const target = menuRef.current?.querySelector<HTMLElement>(`[data-menu-index="${cursor}"]`)
+    if (target) {
+      target.focus({ preventScroll: true })
+      target.scrollIntoView?.({ block: 'nearest' })
+    }
   }, [open, cursor, menuRef])
 }
 
@@ -143,13 +166,83 @@ function fromSubmenu(event: KeyboardEvent, submenuRef: RefObject<HTMLElement | n
   return event.target instanceof Node && submenuRef.current.contains(event.target)
 }
 
-export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: React.Dispatch<React.SetStateAction<number>>, submenuRef: RefObject<HTMLElement | null> | null = null): void {
+function fromToolbar(event: KeyboardEvent, menuRef: RefObject<HTMLElement | null> | null): boolean {
+  if (!menuRef?.current) return false
+  const toolbar = menuRef.current.querySelector('[role="toolbar"]')
+  return Boolean(toolbar && event.target instanceof Node && toolbar.contains(event.target))
+}
+
+function fromSearch(event: KeyboardEvent, menuRef: RefObject<HTMLElement | null> | null): boolean {
+  if (!menuRef?.current) return false
+  const searchInput = menuRef.current.querySelector('input')
+  return Boolean(searchInput && event.target instanceof Node && searchInput.contains(event.target))
+}
+
+export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: React.Dispatch<React.SetStateAction<number>>, submenuRef: RefObject<HTMLElement | null> | null = null, menuRef: RefObject<HTMLDivElement | null> | null = null, onSearchInput?: (char: string) => void): void {
   useEffect(() => {
     if (!open)
       return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (fromSubmenu(event, submenuRef))
+      if (fromSubmenu(event, submenuRef) || fromToolbar(event, menuRef) || fromSearch(event, menuRef))
         return
+      const firstEnabledIndex = items.findIndex((i) => !i.disabled)
+      if (event.key === 'ArrowUp') {
+        const active = document.activeElement
+        const activeIndex = active ? Number(active.getAttribute('data-menu-index')) : -1
+        if (activeIndex === firstEnabledIndex || activeIndex <= 0) {
+          const searchInput = menuRef?.current?.querySelector<HTMLInputElement>('input')
+          if (searchInput) {
+            event.preventDefault()
+            searchInput.focus()
+            setCursor(-1)
+            return
+          }
+          const toolbar = menuRef?.current?.querySelector<HTMLElement>('[role="toolbar"] button:not(:disabled)')
+          if (toolbar) {
+            event.preventDefault()
+            toolbar.focus()
+            setCursor(-1)
+            return
+          }
+        }
+      }
+      if (event.key === 'Tab') {
+        event.preventDefault()
+        if (event.shiftKey) {
+          const searchInput = menuRef?.current?.querySelector<HTMLInputElement>('input')
+          if (searchInput) {
+            searchInput.focus()
+            setCursor(-1)
+          } else {
+            const toolbar = menuRef?.current?.querySelector<HTMLElement>('[role="toolbar"] button:not(:disabled)')
+            if (toolbar) {
+              toolbar.focus()
+              setCursor(-1)
+            }
+          }
+        } else {
+          const toolbar = menuRef?.current?.querySelector<HTMLElement>('[role="toolbar"] button:not(:disabled)')
+          if (toolbar) {
+            toolbar.focus()
+            setCursor(-1)
+          } else {
+            const searchInput = menuRef?.current?.querySelector<HTMLInputElement>('input')
+            if (searchInput) {
+              searchInput.focus()
+              setCursor(-1)
+            }
+          }
+        }
+        return
+      }
+      const searchInput = menuRef?.current?.querySelector<HTMLInputElement>('input')
+      if (searchInput && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && document.activeElement !== searchInput) {
+        event.preventDefault()
+        searchInput.focus()
+        setCursor(-1)
+        onSearchInput?.(event.key)
+        return
+      }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
         const step = event.key === 'ArrowDown' ? 1 : -1
@@ -166,7 +259,7 @@ export function useMenuCursorKeys(open: boolean, items: MenuItem[], setCursor: R
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [open, items, setCursor, submenuRef])
+  }, [open, items, setCursor, submenuRef, menuRef, onSearchInput])
 }
 
 export function useMenuActionKeys(open: boolean, items: MenuItem[], cursor: number, onClose: () => void, menuRef: RefObject<HTMLDivElement | null>, submenuRef: RefObject<HTMLDivElement | null>, setActiveSubmenuId: React.Dispatch<React.SetStateAction<string | null>>, setSubmenuAnchorRect: React.Dispatch<React.SetStateAction<DOMRect | null>>): void {
@@ -174,7 +267,7 @@ export function useMenuActionKeys(open: boolean, items: MenuItem[], cursor: numb
     if (!open)
       return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (fromSubmenu(event, submenuRef))
+      if (fromSubmenu(event, submenuRef) || fromToolbar(event, menuRef) || fromSearch(event, menuRef))
         return
       if (event.key === 'ArrowRight') {
         const item = items[cursor]

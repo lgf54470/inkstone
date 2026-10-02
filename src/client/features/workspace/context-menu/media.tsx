@@ -3,10 +3,10 @@ import type { EditorView } from '@codemirror/view'
 import {
   BarChart2,
   CheckSquare,
-  Copy,
   FileCode,
   FileText,
   Maximize2,
+  Network,
   Pencil,
   Sigma,
   Sparkles,
@@ -17,6 +17,7 @@ import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
 import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES } from '../../../editor/commands'
+import { detectMindmapMode, loadMindmapVendor, type MindmapMode } from '../../../lib/markdown/mindmap'
 import type { EditorContextData, PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
@@ -88,6 +89,33 @@ function applyTemplateFlow(editorView: EditorView, from: number, to: number, blo
   editorView.dispatch({ changes: { from, to, insert: '```' + blockLang + '\n' + text + '\n```' } })
 }
 
+async function convertMindmapInEditor(
+  editorView: EditorView | null | undefined,
+  from: number,
+  to: number,
+  code: string,
+  targetMode: MindmapMode,
+) {
+  if (!editorView) return
+  const currentMode = detectMindmapMode(code)
+  if (currentMode === targetMode) return
+  try {
+    const vendor = await loadMindmapVendor()
+    const parsed = vendor.parse(code, currentMode, 'Topic')
+    if (!parsed.ok) {
+      useUi.getState().toast({ title: parsed.error, tone: 'warning' })
+      return
+    }
+    const converted = vendor.serialize(parsed.data, targetMode, parsed.extra)
+    editorView.dispatch({
+      changes: { from, to, insert: '```mindmap\n' + converted + '\n```' },
+      scrollIntoView: true,
+    })
+  } catch {
+    useUi.getState().toast({ title: t('preview.mindmap_render_failed'), tone: 'warning' })
+  }
+}
+
 function buildTemplateItems(editorView: EditorView | null | undefined, from: number, to: number, blockLang: string, templates: { id: string; label: string; text: string }[]) {
   return templates.map((tpl) => ({
     id: tpl.id,
@@ -107,7 +135,6 @@ export function buildImageItems(ctx: MenuCtx): MenuItem[] | null {
     const alt = previewContext?.image?.alt ?? editorContext?.image?.alt ?? ''
     return [
       { id: 'preview-lightbox', label: t('contextmenu.image_preview'), icon: <Maximize2 size={14} />, onSelect: () => useUi.getState().setLightbox({ src, alt }) },
-      { id: 'copy-image-url', label: t('contextmenu.image_copy_url'), icon: <Copy size={14} />, onSelect: () => handleCopy(src) },
       { id: 'copy-image-md', label: t('contextmenu.image_copy_markdown'), icon: <FileText size={14} />, onSelect: () => handleCopy(`![${alt}](${src})`) },
       ...(previewContext
         ? [
@@ -125,13 +152,10 @@ export function buildImageItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildMathItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const mathData = editorContext?.math ?? previewContext?.math
   if (editorContext?.type === 'math' || previewContext?.type === 'math') {
-    const formula = mathData?.formula ?? ''
     return [
-      { id: 'copy-latex', label: t('contextmenu.math_copy_latex'), icon: <Copy size={14} />, onSelect: () => handleCopy(formula) },
       ...(editorContext?.math
         ? [
             { id: 'toggle-block-math', label: t('contextmenu.math_toggle_block'), icon: <Sigma size={14} />, onSelect: () => { if (!editorView || !editorContext.math) return; toggleMathBlockFlow(editorView, editorContext.math) } },
@@ -155,23 +179,48 @@ function toggleMathBlockFlow(editorView: EditorView, math: MathData) {
 }
 
 export function buildCodeBlockItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, content, onEditContent, onJumpToLine } = ctx
 
   const codeData = editorContext?.codeBlock ?? previewContext?.codeBlock
   if (editorContext?.type === 'codeblock' || previewContext?.type === 'codeblock') {
     const code = codeData?.code ?? ''
+    const lang = (codeData?.language ?? '').toLowerCase()
+    const isMindmap = lang === 'mindmap' || lang === 'mind-elixir'
+    const currentMode = isMindmap ? detectMindmapMode(code) : null
     return [
-      { id: 'copy-code', label: t('contextmenu.code_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.codeBlock
         ? [
             { id: 'format-code', label: t('contextmenu.code_format'), icon: <Sparkles size={14} />, onSelect: () => { if (!editorView || !editorContext.codeBlock) return; formatCodeBlockFlow(editorView, editorContext.codeBlock) } },
+            ...(isMindmap
+              ? [
+                  {
+                    id: 'code-mindmap-mode-sub',
+                    label: t('contextmenu.mindmap_convert_mode'),
+                    icon: <Network size={14} />,
+                    submenu: submenuFor([
+                      {
+                        id: 'code-mode-outline',
+                        label: t('contextmenu.mindmap_to_outline'),
+                        checked: currentMode === 'outline',
+                        onSelect: () => void convertMindmapInEditor(editorView, editorContext.codeBlock!.from, editorContext.codeBlock!.to, code, 'outline'),
+                      },
+                      {
+                        id: 'code-mode-json',
+                        label: t('contextmenu.mindmap_to_json'),
+                        checked: currentMode === 'json',
+                        onSelect: () => void convertMindmapInEditor(editorView, editorContext.codeBlock!.from, editorContext.codeBlock!.to, code, 'json'),
+                      },
+                    ]),
+                  },
+                ]
+              : []),
             { id: 'select-code', label: t('contextmenu.code_select'), icon: <CheckSquare size={14} />, onSelect: () => { if (!editorView || !editorContext.codeBlock) return; editorView.dispatch({ selection: EditorSelection.range(editorContext.codeBlock.from, editorContext.codeBlock.to) }) } },
             {
               id: 'change-lang-sub',
               label: t('contextmenu.code_change_lang'),
               icon: <FileCode size={14} />,
               separatorBefore: true,
-              submenu: submenuFor(CODE_LANGUAGES.map((lang) => ({ id: `lang-${lang}`, label: lang, checked: editorContext.codeBlock?.language.toLowerCase() === lang, onSelect: () => { if (!editorView || !editorContext.codeBlock) return; changeCodeLanguageFlow(editorView, editorContext.codeBlock, lang) } }))),
+              submenu: submenuFor(CODE_LANGUAGES.map((l) => ({ id: `lang-${l}`, label: l, checked: editorContext.codeBlock?.language.toLowerCase() === l, onSelect: () => { if (!editorView || !editorContext.codeBlock) return; changeCodeLanguageFlow(editorView, editorContext.codeBlock, l) } }))),
             },
             { id: 'delete-codeblock', label: t('contextmenu.code_delete'), icon: <Trash2 size={14} />, tone: 'danger' as const, separatorBefore: true, onSelect: () => { if (!editorView || !editorContext.codeBlock) return; deleteRangeFlow(editorView, editorContext.codeBlock.from, editorContext.codeBlock.to) } },
           ]
@@ -188,17 +237,15 @@ export function buildCodeBlockItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildMermaidItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const mermaidData = editorContext?.mermaid ?? previewContext?.mermaid
   if (editorContext?.type === 'mermaid' || previewContext?.type === 'mermaid') {
-    const code = mermaidData?.code ?? ''
     const templates = MERMAID_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.mermaid ? buildTemplateItems(editorView, editorContext.mermaid.from, editorContext.mermaid.to, 'mermaid', templates) : []
     return [
-      { id: 'copy-mermaid', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.mermaid
         ? [
-            { id: 'mermaid-templates-sub', label: t('contextmenu.mermaid_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.mermaid.from, editorContext.mermaid.to, 'mermaid', templates), 190) },
+            { id: 'mermaid-templates-sub', label: t('contextmenu.mermaid_templates'), icon: <Sparkles size={14} />, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
           ]
         : []),
       ...(previewContext
@@ -217,22 +264,70 @@ export function buildMermaidItems(ctx: MenuCtx): MenuItem[] | null {
  * from the rendered block.
  */
 export function buildMindmapItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
   const mindmapData = editorContext?.mindmap ?? previewContext?.mindmap
   if (editorContext?.type === 'mindmap' || previewContext?.type === 'mindmap') {
     const code = mindmapData?.code ?? ''
+    const currentMode = detectMindmapMode(code)
     const templates = MINDMAP_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.mindmap ? buildTemplateItems(editorView, editorContext.mindmap.from, editorContext.mindmap.to, 'mindmap', templates) : []
     return [
-      { id: 'copy-mindmap', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.mindmap
         ? [
-            { id: 'mindmap-templates-sub', label: t('contextmenu.mindmap_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.mindmap.from, editorContext.mindmap.to, 'mindmap', templates), 190) },
+            {
+              id: 'format-mindmap',
+              label: t('contextmenu.code_format'),
+              icon: <Sparkles size={14} />,
+              onSelect: () => {
+                if (!editorView || !editorContext.mindmap) return
+                const formatted = currentMode === 'json' ? formatCode(code, 'json') : code
+                editorView.dispatch({
+                  changes: { from: editorContext.mindmap.from, to: editorContext.mindmap.to, insert: '```mindmap\n' + formatted + '\n```' },
+                  scrollIntoView: true,
+                })
+              },
+            },
+            {
+              id: 'mindmap-mode-sub',
+              label: t('contextmenu.mindmap_convert_mode'),
+              icon: <Network size={14} />,
+              subItems: [
+                {
+                  id: 'mode-outline',
+                  label: t('contextmenu.mindmap_to_outline'),
+                  checked: currentMode === 'outline',
+                  onSelect: () => void convertMindmapInEditor(editorView, editorContext.mindmap!.from, editorContext.mindmap!.to, code, 'outline'),
+                },
+                {
+                  id: 'mode-json',
+                  label: t('contextmenu.mindmap_to_json'),
+                  checked: currentMode === 'json',
+                  onSelect: () => void convertMindmapInEditor(editorView, editorContext.mindmap!.from, editorContext.mindmap!.to, code, 'json'),
+                },
+              ],
+              submenu: submenuFor([
+                {
+                  id: 'mode-outline',
+                  label: t('contextmenu.mindmap_to_outline'),
+                  checked: currentMode === 'outline',
+                  onSelect: () => void convertMindmapInEditor(editorView, editorContext.mindmap!.from, editorContext.mindmap!.to, code, 'outline'),
+                },
+                {
+                  id: 'mode-json',
+                  label: t('contextmenu.mindmap_to_json'),
+                  checked: currentMode === 'json',
+                  onSelect: () => void convertMindmapInEditor(editorView, editorContext.mindmap!.from, editorContext.mindmap!.to, code, 'json'),
+                },
+              ]),
+            },
+            { id: 'mindmap-templates-sub', label: t('contextmenu.mindmap_templates'), icon: <Sparkles size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
+            { id: 'delete-mindmap', label: t('contextmenu.code_delete'), icon: <Trash2 size={14} />, tone: 'danger' as const, separatorBefore: true, onSelect: () => { if (!editorView || !editorContext.mindmap) return; deleteRangeFlow(editorView, editorContext.mindmap.from, editorContext.mindmap.to) } },
           ]
         : []),
       ...(previewContext
         ? [
-            { id: 'jump-mindmap', label: t('contextmenu.mermaid_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
+            { id: 'jump-mindmap', label: t('contextmenu.preview_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]
@@ -241,17 +336,15 @@ export function buildMindmapItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildKanbanItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const kanbanData = editorContext?.kanban ?? previewContext?.kanban
   if (editorContext?.type === 'kanban' || previewContext?.type === 'kanban') {
-    const code = kanbanData?.code ?? ''
     const templates = KANBAN_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.kanban ? buildTemplateItems(editorView, editorContext.kanban.from, editorContext.kanban.to, 'kanban', templates) : []
     return [
-      { id: 'copy-kanban', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.kanban
         ? [
-            { id: 'kanban-templates-sub', label: t('contextmenu.kanban_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.kanban.from, editorContext.kanban.to, 'kanban', templates), 190) },
+            { id: 'kanban-templates-sub', label: t('contextmenu.kanban_templates'), icon: <Sparkles size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
           ]
         : []),
       ...(previewContext
@@ -265,17 +358,15 @@ export function buildKanbanItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildSlidesItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const slidesData = editorContext?.slides ?? previewContext?.slides
   if (editorContext?.type === 'slides' || previewContext?.type === 'slides') {
-    const code = slidesData?.code ?? ''
     const templates = BENTO_SLIDES_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.slides ? buildTemplateItems(editorView, editorContext.slides.from, editorContext.slides.to, 'bento-slides', templates) : []
     return [
-      { id: 'copy-slides', label: t('contextmenu.mermaid_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.slides
         ? [
-            { id: 'slides-templates-sub', label: t('contextmenu.slides_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.slides.from, editorContext.slides.to, 'bento-slides', templates), 190) },
+            { id: 'slides-templates-sub', label: t('contextmenu.slides_templates'), icon: <Sparkles size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
           ]
         : []),
       ...(previewContext
@@ -295,17 +386,15 @@ export function buildSlidesItems(ctx: MenuCtx): MenuItem[] | null {
  * the full screen view, where the board is the surface being worked on.
  */
 export function buildExcalidrawItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const boardData = editorContext?.excalidraw ?? previewContext?.excalidraw
   if (editorContext?.type === 'excalidraw' || previewContext?.type === 'excalidraw') {
-    const code = boardData?.code ?? ''
     const templates = EXCALIDRAW_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.excalidraw ? buildTemplateItems(editorView, editorContext.excalidraw.from, editorContext.excalidraw.to, 'excalidraw', templates) : []
     return [
-      { id: 'copy-excalidraw', label: t('contextmenu.excalidraw_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.excalidraw
         ? [
-            { id: 'excalidraw-templates-sub', label: t('contextmenu.excalidraw_templates'), icon: <Sparkles size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.excalidraw.from, editorContext.excalidraw.to, 'excalidraw', templates), 190) },
+            { id: 'excalidraw-templates-sub', label: t('contextmenu.excalidraw_templates'), icon: <Sparkles size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
           ]
         : []),
       ...(previewContext
@@ -319,17 +408,15 @@ export function buildExcalidrawItems(ctx: MenuCtx): MenuItem[] | null {
 }
 
 export function buildChartItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine, handleCopy } = ctx
+  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
 
-  const chartData = editorContext?.chart ?? previewContext?.chart
   if (editorContext?.type === 'chart' || previewContext?.type === 'chart') {
-    const code = chartData?.code ?? ''
     const templates = CHARTJS_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
+    const tplItems = editorContext?.chart ? buildTemplateItems(editorView, editorContext.chart.from, editorContext.chart.to, 'chart', templates) : []
     return [
-      { id: 'copy-chart', label: t('contextmenu.chart_copy'), icon: <Copy size={14} />, onSelect: () => handleCopy(code) },
       ...(editorContext?.chart
         ? [
-            { id: 'chart-templates-sub', label: t('contextmenu.chart_templates'), icon: <BarChart2 size={14} />, separatorBefore: true, submenu: submenuFor(buildTemplateItems(editorView, editorContext.chart.from, editorContext.chart.to, 'chart', templates), 190) },
+            { id: 'chart-templates-sub', label: t('contextmenu.chart_templates'), icon: <BarChart2 size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
           ]
         : []),
       ...(previewContext

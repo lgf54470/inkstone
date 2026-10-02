@@ -25,12 +25,10 @@ import {
   Plus,
   Presentation,
   Quote,
-  Redo2,
   Sigma,
   Smile,
   Sparkles,
   Table as TableIcon,
-  Undo2,
 } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
@@ -167,12 +165,40 @@ function emojiInsertItems(ctx: MenuCtx, closeParent: () => void): MenuItem[] {
   ]
 }
 
+function collectInsertSubItems(ctx: MenuCtx): MenuItem[] {
+  const diagramItems: MenuItem[] = (['mermaid', 'chart', 'mindmap', 'kanban', 'excalidraw', 'slides'] as const).map((kind) => {
+    const { labelKey, templates, icon } = DIAGRAM_MENUS[kind]
+    const fenceLang = kind === 'slides' ? 'bento-slides' : kind
+    return {
+      id: `diagram-${kind}`,
+      label: t(labelKey),
+      icon,
+      onSelect: () => ctx.runStateCommand(insertDiagramCode(fenceLang, templates[0]?.code ?? '')),
+    }
+  })
+
+  const taskItems: MenuItem[] = [
+    { id: 'task-in-progress', label: t('workspace.task_in_progress'), onSelect: () => ctx.runStateCommand(insertTaskWithStatus('/')) },
+    { id: 'task-cancelled', label: t('workspace.task_cancelled'), onSelect: () => ctx.runStateCommand(insertTaskWithStatus('-')) },
+    { id: 'task-question', label: t('workspace.task_question'), onSelect: () => ctx.runStateCommand(insertTaskWithStatus('?')) },
+    { id: 'task-important', label: t('workspace.task_important'), onSelect: () => ctx.runStateCommand(insertTaskWithStatus('!')) },
+  ]
+
+  return [
+    ...basicInsertItems(ctx),
+    ...diagramItems,
+    ...tailInsertItems(ctx),
+    ...taskItems,
+  ]
+}
+
 function buildInsertItem(ctx: MenuCtx): MenuItem {
   return {
     id: 'insert-sub',
     label: t('contextmenu.insert'),
     icon: <Plus size={14} />,
     separatorBefore: true,
+    subItems: collectInsertSubItems(ctx),
     submenu: ({ closeMenu }: { closeMenu: () => void }) => (
       <SubmenuList
         closeMenu={closeMenu}
@@ -199,53 +225,41 @@ function buildPresentationItem(ctx: MenuCtx): MenuItem | null {
   return { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={14} />, onSelect: ctx.onPresent }
 }
 
-function buildClipboardItems(ctx: MenuCtx): MenuItem[] {
-  const { editorView, handlePasteIntoEditor } = ctx
-  return [
-    {
-      id: 'undo',
-      label: t('contextmenu.undo'),
-      icon: <Undo2 size={14} />,
-      combo: 'mod+z',
-      onSelect: () => document.execCommand('undo'),
-    },
-    {
-      id: 'redo',
-      label: t('contextmenu.redo'),
-      icon: <Redo2 size={14} />,
-      combo: 'mod+shift+z',
-      onSelect: () => document.execCommand('redo'),
-    },
-    {
-      id: 'paste',
-      label: t('contextmenu.paste'),
-      icon: <Copy size={14} className='rotate-90' />,
-      combo: 'mod+v',
-      onSelect: handlePasteIntoEditor,
-    },
+export function buildCommonEditorItems(
+  ctx: MenuCtx,
+  hasPrivateItems: boolean,
+): MenuItem[] {
+  const { editorView } = ctx
+  const presentationItem = buildPresentationItem(ctx)
+
+  const items: MenuItem[] = [
     {
       id: 'select-all',
       label: t('contextmenu.select_all'),
       icon: <CheckSquare size={14} />,
       combo: 'mod+a',
+      separatorBefore: hasPrivateItems,
       onSelect: () => {
         if (!editorView) return
         editorView.dispatch({ selection: EditorSelection.range(0, editorView.state.doc.length) })
       },
     },
   ]
+
+  if (presentationItem) {
+    items.push(presentationItem)
+  }
+
+  items.push(buildInsertItem(ctx))
+
+  return items
 }
 
 export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
   const { editorView, previewContext } = ctx
-  const presentationItem = buildPresentationItem(ctx)
 
-  if (editorView && (!previewContext || previewContext.type === 'empty')) {
-    return [
-      ...buildClipboardItems(ctx),
-      ...(presentationItem ? [presentationItem] : []),
-      buildInsertItem(ctx),
-    ]
+  if (editorView && !previewContext) {
+    return buildCommonEditorItems(ctx, false)
   }
   return null
 }
@@ -253,18 +267,20 @@ export function buildEditorBlankItems(ctx: MenuCtx): MenuItem[] | null {
 function buildExportItem(ctx: MenuCtx): MenuItem | null {
   const { onExport } = ctx
   if (!onExport) return null
+  const exportItems: MenuItem[] = [
+    { id: 'export-md', label: t('workspace.export_markdown'), icon: <FileText size={13} />, onSelect: () => onExport('md') },
+    { id: 'export-html', label: t('workspace.export_html'), icon: <FileCode size={13} />, onSelect: () => onExport('html') },
+    { id: 'export-pdf', label: t('workspace.export_pdf'), icon: <FileDown size={13} />, onSelect: () => onExport('pdf') },
+  ]
   return {
     id: 'export-sub',
     label: t('workspace.export'),
     icon: <Download size={14} />,
+    subItems: exportItems,
     submenu: ({ closeMenu }: { closeMenu: () => void }) => (
       <SubmenuList
         closeMenu={closeMenu}
-        items={[
-          { id: 'export-md', label: t('workspace.export_markdown'), icon: <FileText size={13} />, onSelect: () => onExport('md') },
-          { id: 'export-html', label: t('workspace.export_html'), icon: <FileCode size={13} />, onSelect: () => onExport('html') },
-          { id: 'export-pdf', label: t('workspace.export_pdf'), icon: <FileDown size={13} />, onSelect: () => onExport('pdf') },
-        ]}
+        items={exportItems}
       />
     ),
   }

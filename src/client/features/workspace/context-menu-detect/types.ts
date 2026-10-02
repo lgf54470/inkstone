@@ -3,6 +3,7 @@ import { type ParsedTable } from '../../../lib/markdown/table-editor'
 
 type ContextType =
   | 'selection'
+  | 'heading'
   | 'table'
   | 'image'
   | 'math'
@@ -24,6 +25,7 @@ export interface EditorContextData {
   pos: number
   lineNumber: number
   selectedText?: string
+  heading?: { level: number; text: string; from: number; to: number }
   table?: ParsedTable
   image?: { alt: string; url: string; raw: string; from: number; to: number }
   math?: { formula: string; isBlock: boolean; from: number; to: number }
@@ -44,6 +46,11 @@ export interface PreviewContextData {
   target: HTMLElement
   selectedText?: string
   sourceLine?: number
+  heading?: {
+    level: number
+    text: string
+    sourceLine?: number
+  }
   table?: {
     rowIndex: number
     colIndex: number

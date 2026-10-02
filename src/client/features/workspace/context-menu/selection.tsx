@@ -1,7 +1,6 @@
 import {
   Bold,
   Braces,
-  Copy,
   FileCode,
   Heading,
   Highlighter,
@@ -17,7 +16,6 @@ import {
   Plus,
   Presentation,
   Quote,
-  Scissors,
   Sigma,
   Sparkles,
   Strikethrough,
@@ -32,18 +30,21 @@ import type { MenuCtx } from './types'
 import { submenuFor } from '../../../components/overlay'
 
 export function buildEditorSelectionItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorContext, handleCopy, handlePasteIntoEditor, handleCutFromEditor } = ctx
+  const { editorContext } = ctx
 
   if (editorContext && editorContext.type === 'selection' && editorContext.selectedText) {
     const selected = editorContext.selectedText
+    const formatItems = buildFormatItems(ctx)
+    const headingItems = buildHeadingItems(ctx)
+    const listItems = buildListItems(ctx)
+    const convertItems = buildConvertItems(ctx)
+
     return [
-      { id: 'cut', label: t('contextmenu.cut'), icon: <Scissors size={14} />, combo: 'mod+x', onSelect: handleCutFromEditor },
-      { id: 'copy', label: t('contextmenu.copy'), icon: <Copy size={14} />, combo: 'mod+c', onSelect: () => handleCopy(selected) },
-      { id: 'paste', label: t('contextmenu.paste'), icon: <Copy size={14} className='rotate-90' />, combo: 'mod+v', onSelect: handlePasteIntoEditor },
-      { id: 'format-sub', label: t('contextmenu.format'), icon: <Highlighter size={14} />, separatorBefore: true, submenu: submenuFor(buildFormatItems(ctx)) },
-      { id: 'headings-sub', label: t('contextmenu.headings'), icon: <Heading size={14} />, submenu: submenuFor(buildHeadingItems(ctx)) },
-      { id: 'lists-sub', label: t('contextmenu.lists_quotes'), icon: <List size={14} />, submenu: submenuFor(buildListItems(ctx)) },
-      { id: 'convert-sub', label: t('contextmenu.convert_to'), icon: <Link2 size={14} />, separatorBefore: true, submenu: submenuFor(buildConvertItems(ctx)) },
+      { id: 'format-sub', label: t('contextmenu.format'), icon: <Highlighter size={14} />, subItems: formatItems, submenu: submenuFor(formatItems) },
+      { id: 'headings-sub', label: t('contextmenu.headings'), icon: <Heading size={14} />, subItems: headingItems, submenu: submenuFor(headingItems) },
+      { id: 'lists-sub', label: t('contextmenu.lists_quotes'), icon: <List size={14} />, subItems: listItems, submenu: submenuFor(listItems) },
+      { id: 'convert-sub', label: t('contextmenu.convert_to'), icon: <Link2 size={14} />, separatorBefore: true, subItems: convertItems, submenu: submenuFor(convertItems) },
+      { id: 'create-from-selection', label: t('contextmenu.preview_create_note_from_selection'), icon: <Plus size={14} />, onSelect: () => { void ctx.createNote({ title: selected, open: true }) } },
     ]
   }
   return null
@@ -99,23 +100,15 @@ function buildConvertItems(ctx: MenuCtx): MenuItem[] {
 }
 
 export function buildPreviewSelectionItems(ctx: MenuCtx): MenuItem[] | null {
-  const { previewContext, content, onJumpToLine, createNote, handleCopy } = ctx
+  const { previewContext, content, onJumpToLine, createNote } = ctx
 
   if (previewContext && previewContext.type === 'selection' && previewContext.selectedText) {
     const selected = previewContext.selectedText
     return [
       {
-        id: 'copy',
-        label: t('contextmenu.copy'),
-        icon: <Copy size={14} />,
-        combo: 'mod+c',
-        onSelect: () => handleCopy(selected),
-      },
-      {
         id: 'preview-locate',
         label: t('contextmenu.preview_jump_to_editor'),
         icon: <Pencil size={14} />,
-        separatorBefore: true,
         onSelect: () => {
           if (previewContext.sourceLine !== undefined) {
             onJumpToLine(previewContext.sourceLine)

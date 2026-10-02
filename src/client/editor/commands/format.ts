@@ -31,6 +31,12 @@ function appendHeadingChanges(state: EditorState, range: SelectionRange, level: 
     seen.add(n)
     const line = state.doc.line(n)
     const match = /^(#{1,6})\s+/.exec(line.text)
+    if (level <= 0) {
+      if (match) {
+        changes.push({ from: line.from, to: line.from + match[0].length })
+      }
+      continue
+    }
     const marker = '#'.repeat(level)
     if (match && match[1]!.length === level) {
       changes.push({ from: line.from, to: line.from + match[0].length })
@@ -43,6 +49,8 @@ function appendHeadingChanges(state: EditorState, range: SelectionRange, level: 
     }
   }
 }
+
+export const clearHeading: StateCommand = setHeading(0)
 
 
 export function insertLink(url = ''): StateCommand {
