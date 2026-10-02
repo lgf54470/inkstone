@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest'
  * Every surface that enhances markdown has to say what it does with a ```kanban fence.
  *
  * A board is a React root, and a root needs a host that mounts it and a fence to write
- * back to. The preview pane has both; a share page, an exported document, a slide, a link
- * hover card and the editor's live preview have neither, and for as long as `enhancePreview`
+ * back to. The preview pane has both; a share page, an exported document, a slide, a
+ * presenter's own pane, a link hover card and the editor's live preview have neither, and for
+ * as long as `enhancePreview` knew nothing about boards those surfaces sat at "Loading kanban…"
+ * with `aria-busy` up forever (review #21). The option still defaults to "show the source", so a new surface is
  * knew nothing about boards those surfaces sat at "Loading kanban…" with `aria-busy` up
  * forever (review #21). The option still defaults to "show the source", so a new surface is
  * never broken — but a new surface that forgot to answer is a board the reader cannot read,
@@ -70,6 +72,7 @@ describe('kanban render channels', () => {
     expect(Object.fromEntries([...channels].sort())).toEqual({
       [path.join('editor', 'live-preview.ts')]: 'snapshot',
       [path.join('features', 'presentation', 'deck-print.tsx')]: 'snapshot',
+      [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'snapshot',
       [path.join('features', 'presentation', 'use-slide-html.ts')]: 'snapshot',
       [path.join('features', 'preview', 'card-content.ts')]: 'snapshot',
       [path.join('features', 'preview', 'preview-stage.ts')]: 'live',
@@ -88,6 +91,7 @@ describe('kanban render channels', () => {
     expect(Object.fromEntries([...sources].sort())).toEqual({
       [path.join('editor', 'live-preview.ts')]: 'registered',
       [path.join('features', 'presentation', 'deck-print.tsx')]: 'registered',
+      [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'option',
       [path.join('features', 'presentation', 'use-slide-html.ts')]: 'option',
       [path.join('features', 'preview', 'card-content.ts')]: 'option',
       [path.join('features', 'preview', 'preview-stage.ts')]: 'option',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { ChevronLeft, ChevronRight, FileText, Pause, Play, Presentation, RotateCcw } from 'lucide-react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../../lib/cn'
@@ -6,8 +7,12 @@ import { t } from '../../../lib/i18n'
 import { IconButton, Spinner } from '../../../components/primitives'
 import { Tooltip } from '../../../components/overlay'
 import { useSession } from '../../../store/session'
+import { createFenceBodies } from '../../../lib/markdown/fence-bodies'
 import { SlideProse } from '../slide-prose'
+import { useIsDarkTheme } from '../presentation-theme'
 import { renderSlideSource, slicePageHtml, slideMarkup } from '../slide-html'
+import { usePresenterSlideMedia } from './use-presenter-slide-media'
+import type { SlideMarkup } from '../slide-html'
 import type { SlidePlan } from '../slide-pagination'
 import { measureStage, SLIDE_PAD_X, SLIDE_PAD_Y, type StageMetrics } from '../slide-stage'
 import type { SlideLayout } from '../slides'
@@ -293,11 +298,13 @@ function useStageAutoMetrics(containerRef: React.RefObject<HTMLDivElement | null
 function PresenterScaledSlide({
   metrics,
   html,
+  hostRef,
   font,
   layout,
 }: {
   metrics: StageMetrics
   html: string
+  hostRef?: RefObject<HTMLDivElement | null>
   font: ProseFont
   layout?: SlideLayout
 }) {
@@ -322,7 +329,7 @@ function PresenterScaledSlide({
           className='absolute inset-x-0'
           style={{ top: SLIDE_PAD_Y, left: SLIDE_PAD_X, right: SLIDE_PAD_X }}
         >
-          <SlideProse html={html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={layout} />
+          <SlideProse html={html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={layout} hostRef={hostRef} />
         </div>
       </div>
     </div>
@@ -343,24 +350,28 @@ export function PresenterSlidePreview({
   font?: ProseFont
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const hostRef = useRef<HTMLDivElement>(null)
   const metrics = useStageAutoMetrics(containerRef)
+  const dark = useIsDarkTheme()
   const defaultFont = useSession((s) => s.settings.appearance.proseFont) ?? 'sans'
   const proseFont = font ?? defaultFont
 
-  const html = useMemo(() => {
-    if (!source) return ''
+  const slide = useMemo<SlideMarkup>(() => {
+    if (!source) return { html: '', fences: createFenceBodies() }
     const markup = slideMarkup(renderSlideSource(source, true))
     if (plan && plan.pages.length > 0) {
-      return slicePageHtml(markup.html, plan, sub, metrics.contentWidth, metrics.contentHeight)
+      return { html: slicePageHtml(markup.html, plan, sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences }
     }
-    return markup.html
+    return markup
   }, [source, plan, sub, metrics.contentWidth, metrics.contentHeight])
+
+  usePresenterSlideMedia({ hostRef, html: slide.html, fences: slide.fences, dark, metrics })
 
   const effectiveLayout = plan?.layout ?? layout
 
   return (
     <div ref={containerRef} className='relative flex h-full w-full items-center justify-center overflow-hidden'>
-      <PresenterScaledSlide metrics={metrics} html={html} font={proseFont} layout={effectiveLayout} />
+      <PresenterScaledSlide metrics={metrics} html={slide.html} hostRef={hostRef} font={proseFont} layout={effectiveLayout} />
     </div>
   )
 }
