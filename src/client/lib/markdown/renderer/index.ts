@@ -106,3 +106,6 @@ export function renderMarkdown(source: string, options?: {
 }
 export type { Heading, RenderResult, WikiTarget, FenceInfo } from './types'
 export { parseWikiTarget, parseFenceInfo } from './parse'
+export { parseTabsOptions, isValidTabsSync, effectiveTabsPosition, isVerticalTabsPosition } from './containers'
+export type { TabsOptions, TabsPosition } from './containers'
+export { escapeAttr } from './util'

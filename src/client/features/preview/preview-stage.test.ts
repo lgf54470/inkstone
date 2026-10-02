@@ -68,6 +68,7 @@ async function stage(rendered: ReturnType<typeof renderMarkdown>, isCurrent: () 
     preview: DEFAULT_SETTINGS.preview,
     theme: 'light',
     host: null,
+    noteId: null,
     isCurrent,
   })
   return { staging, prepared }

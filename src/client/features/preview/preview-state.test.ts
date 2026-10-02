@@ -52,6 +52,29 @@ describe('preview interaction state', () => {
     expect(rebuilt.querySelectorAll<HTMLButtonElement>('[data-tab-button]')[1]!.getAttribute('aria-selected')).toBe('true')
     expect(rebuilt.querySelectorAll<HTMLElement>('[data-tab-panel]')[0]!.hidden).toBe(true)
   })
+
+  it('leaves synced tab selections to persisted storage instead of the live document', () => {
+    const original = document.createElement('div')
+    original.innerHTML = `
+      <div data-tabs data-line="1" data-tabs-sync="os"><div role="tablist"><button data-tab-button="0" aria-selected="true">A</button><button data-tab-button="1" aria-selected="false">B</button></div><section data-tab-panel="0"></section><section data-tab-panel="1" hidden></section></div>
+      <div data-tabs data-line="9"><div role="tablist"><button data-tab-button="0" aria-selected="false">C</button><button data-tab-button="1" aria-selected="true">D</button></div><section data-tab-panel="0" hidden></section><section data-tab-panel="1"></section></div>
+    `
+    const state = capturePreviewInteractionState(original)
+
+    const rebuilt = document.createElement('div')
+    rebuilt.innerHTML = `
+      <div data-tabs data-line="1" data-tabs-sync="os"><div role="tablist"><button data-tab-button="0" aria-selected="false">A</button><button data-tab-button="1" aria-selected="true">B</button></div><section data-tab-panel="0" hidden></section><section data-tab-panel="1"></section></div>
+      <div data-tabs data-line="9"><div role="tablist"><button data-tab-button="0" aria-selected="true">C</button><button data-tab-button="1" aria-selected="false">D</button></div><section data-tab-panel="0"></section><section data-tab-panel="1" hidden></section></div>
+    `
+    restorePreviewInteractionState(rebuilt, state)
+
+    const syncedBlock = rebuilt.querySelector('[data-tabs-sync="os"]')!
+    const syncedButtons = syncedBlock.querySelectorAll<HTMLButtonElement>('[data-tab-button]')
+    expect(syncedButtons[1]!.getAttribute('aria-selected')).toBe('true')
+    const plainBlock = rebuilt.querySelectorAll('[data-tabs]')[1]!
+    const plainButtons = plainBlock.querySelectorAll<HTMLButtonElement>('[data-tab-button]')
+    expect(plainButtons[1]!.getAttribute('aria-selected')).toBe('true')
+  })
 })
 
 function previewFixture(): HTMLDivElement {

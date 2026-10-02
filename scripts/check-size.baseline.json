@@ -78,6 +78,20 @@
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },
+  "src/client/features/preview/preview-interactions.ts": {
+    "lines": 501
+  },
+  "src/client/features/preview/preview-state.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/preview/tabs-interactive.test.ts": {
+    "lines": 578,
+    "longFns": 3
+  },
+  "src/client/features/preview/tabs-source.ts": {
+    "longFns": 2,
+    "deepFns": 2
+  },
   "src/client/features/workspace/context-menu-detect.test.ts": {
     "longFns": 3
   },
@@ -120,6 +134,9 @@
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-view-tabs-selection.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer/containers.ts": {
     "longFns": 1
   },
   "src/client/lib/markdown/slides/body.test.ts": {
@@ -169,17 +186,20 @@
   "src/client/lib/preload-guard.test.ts": {
     "longFns": 1
   },
+  "src/client/styles/prose/blocks.css": {
+    "lines": 637
+  },
   "src/shared/locales/en-US/music.ts": {
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 520
+    "lines": 556
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 520
+    "lines": 556
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908

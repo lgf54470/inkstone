@@ -12,16 +12,34 @@ function registerContainerRendererRules(md: InstanceType<typeof MarkdownIt>): vo
   md.renderer.rules.details_close = () => '</details>'
 
   md.renderer.rules.tabs_open = (tokens, index) => {
-    const { titles, selectedIndex } = tokens[index]!.meta as { titles: string[]; selectedIndex: number }
+    const { titles, selectedIndex, options } = tokens[index]!.meta as {
+      titles: string[]
+      selectedIndex: number
+      options?: {
+        style: 'horizontal' | 'vertical'
+        variant: 'default' | 'pills' | 'cards' | 'minimal'
+        align: 'start' | 'center' | 'end' | 'stretch'
+        position?: 'top' | 'bottom' | 'left' | 'right'
+        sync?: string
+      }
+    }
+    const opt = options ?? { style: 'horizontal', variant: 'default', align: 'start' }
+    const effectivePosition = opt.position ?? (opt.style === 'vertical' ? 'left' : 'top')
+    const vertical = effectivePosition === 'left' || effectivePosition === 'right'
     const buttons = titles
       .map(
         (title, i) =>
           `<button type="button" role="tab" aria-selected="${i === selectedIndex ? 'true' : 'false'}" data-tab-button="${i}">${escapeHtml(title)}</button>`
       )
       .join('')
-    return `<div class="markdown-tabs" data-tabs><div class="tab-list" role="tablist">${buttons}</div>`
+    const styleAttr = vertical ? ' data-tabs-style="vertical"' : ''
+    const variantAttr = opt.variant !== 'default' ? ` data-tabs-variant="${opt.variant}"` : ''
+    const alignAttr = opt.align !== 'start' ? ` data-tabs-align="${opt.align}"` : ''
+    const positionAttr = opt.position ? ` data-tabs-position="${opt.position}"` : ''
+    const syncAttr = opt.sync ? ` data-tabs-sync="${escapeAttr(opt.sync)}"` : ''
+    return `<div class="markdown-tabs-outer"><div class="markdown-tabs" data-tabs${styleAttr}${variantAttr}${alignAttr}${positionAttr}${syncAttr}><div class="tab-list" role="tablist">${buttons}</div>`
   }
-  md.renderer.rules.tabs_close = () => '</div>'
+  md.renderer.rules.tabs_close = () => '</div></div>'
 
   md.renderer.rules.tab_panel_open = (tokens, index) => {
     const { tabIndex, selected } = tokens[index]!.meta as { tabIndex: number; selected: boolean }

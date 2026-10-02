@@ -44,6 +44,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
           onFocus={b.onFocus}
           onBlur={b.onBlur}
           data-font={b.proseFont}
+          data-note-id={b.sourceNoteId ?? undefined}
           data-preview-content
           className='ink-prose'
           dangerouslySetInnerHTML={b.htmlObj}

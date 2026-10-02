@@ -58,35 +58,72 @@ function initTaskCheckboxes() {
   })
 }
 
+function applyTabSelection(tabs: HTMLElement, index: string, reveal: boolean): void {
+  const buttons = Array.from(tabs.querySelectorAll<HTMLButtonElement>('[data-tab-button]')).filter(
+    (candidate) => candidate.closest('.markdown-tabs, [data-tabs]') === tabs
+  )
+  buttons.forEach((candidate, candidateIndex) => {
+    const selected = String(candidateIndex) === index
+    candidate.setAttribute('aria-selected', String(selected))
+    candidate.tabIndex = selected ? 0 : -1
+  })
+  const panels = Array.from(tabs.querySelectorAll<HTMLElement>('[data-tab-panel]')).filter(
+    (panel) => panel.closest('.markdown-tabs, [data-tabs]') === tabs
+  )
+  panels.forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== index
+  })
+  if (reveal) {
+    // 首次激活的标签页可能携带尚未渲染的图表，立即触发渲染（见 initDiagramLazyRender）
+    const active = panels.find((p) => p.dataset.tabPanel === index)
+    if (active) revealPanelBlocks(active)
+  }
+}
+
 export function selectMarkdownTab(button: HTMLButtonElement): void {
   const tabs = button.closest<HTMLElement>('.markdown-tabs, [data-tabs]')
   if (!tabs) return
   const index = button.dataset.tabButton
-  tabs.querySelectorAll<HTMLButtonElement>('[data-tab-button]').forEach((candidate) => {
-    const selected = candidate === button
-    candidate.setAttribute('aria-selected', String(selected))
-    candidate.tabIndex = selected ? 0 : -1
-  })
-  tabs.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((panel) => {
-    panel.hidden = panel.dataset.tabPanel !== index
-  })
-  // 首次激活的标签页可能携带尚未渲染的图表，立即触发渲染（见 initDiagramLazyRender）
-  const active = tabs.querySelector<HTMLElement>(`[data-tab-panel="${index}"]`)
-  if (active) revealPanelBlocks(active)
+  if (index === undefined) return
+  applyTabSelection(tabs, index, true)
+  coordinateSyncedTabs(tabs, index)
+}
+
+// 同名同步分组的标签组在同一页面内联动切换（博客为只读页，不做跨会话记忆）
+function coordinateSyncedTabs(source: HTMLElement, index: string): void {
+  const group = source.dataset.tabsSync
+  if (!group) return
+  const scope = source.closest<HTMLElement>('.ink-prose') ?? document.documentElement
+  let peers: HTMLElement[]
+  try {
+    peers = Array.from(scope.querySelectorAll<HTMLElement>(`[data-tabs-sync="${CSS.escape(group)}"]`))
+  }
+  catch {
+    return
+  }
+  for (const peer of peers) {
+    if (peer === source || source.contains(peer)) continue
+    const already = peer.querySelector(`[data-tab-button="${index}"][aria-selected="true"]`)
+    if (!already) applyTabSelection(peer, index, true)
+  }
 }
 
 export function moveMarkdownTabFocus(button: HTMLButtonElement, key: string): void {
   const tablist = button.closest<HTMLElement>('[role="tablist"], .tab-list')
-  const buttons = Array.from(tablist?.querySelectorAll<HTMLButtonElement>('[data-tab-button]') ?? [])
+  const buttons = Array.from(tablist?.querySelectorAll<HTMLButtonElement>('[data-tab-button]') ?? []).filter(
+    (candidate) => candidate.closest('[role="tablist"], .tab-list') === tablist
+  )
   if (!buttons.length) return
   const current = Math.max(0, buttons.indexOf(button))
-  const offset = key === 'ArrowRight' ? 1 : -1
+  const forward = key === 'ArrowRight' || key === 'ArrowDown'
+  const backward = key === 'ArrowLeft' || key === 'ArrowUp'
+  if (!forward && !backward && key !== 'Home' && key !== 'End') return
   const index =
     key === 'Home'
       ? 0
       : key === 'End'
         ? buttons.length - 1
-        : (current + offset + buttons.length) % buttons.length
+        : (current + (forward ? 1 : -1) + buttons.length) % buttons.length
   const next = buttons[index]!
   selectMarkdownTab(next)
   next.focus()
@@ -103,7 +140,7 @@ function initTabs() {
   document.addEventListener('keydown', (e) => {
     const target = e.target as HTMLElement
     const btn = target.closest<HTMLButtonElement>('.markdown-tabs [data-tab-button]')
-    if (btn && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+    if (btn && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
       e.preventDefault()
       moveMarkdownTabFocus(btn, e.key)
     }

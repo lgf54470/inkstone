@@ -12,6 +12,7 @@ import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
 import { findNoteByTitle } from '../../store/notes'
 import { executeTableFloatingAction, handleTableCellSelection } from './table-interactive'
+import { dismissTabsOverlays, executeTabsAction } from './tabs-interactive'
 import { handleJsExampleRun, handleJsExampleSwitch } from './js-runner'
 import { selectMarkdownTab } from './markdown-tabs'
 import { capturePreviewViewport, restorePreviewViewport } from './viewport'
@@ -96,6 +97,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
   return async (event: ReactMouseEvent) => {
     const target = event.target as HTMLElement
     ctx.hideHover()
+    dismissTabsOverlays(target)
     if (await handleMindmap(target, ctx)) return
     if (await handleExcalidraw(target, ctx)) return
     if (await handleKanban(target, ctx)) return
@@ -109,6 +111,7 @@ export function createPreviewClickHandler(params: PreviewClickParams): (event: R
     if (await handleCopyButton(target, ctx)) return
     if (await handleCodeCollapse(target)) return
     if (await handleTaskCheckbox(target, ctx)) return
+    if (await handleTabsAction(event, target, ctx)) return
     if (await handleTabButton(event, target)) return
     if (await handleWikiLink(event, target, ctx)) return
     if (await handleBlockReference(event, target, ctx)) return
@@ -375,6 +378,18 @@ async function handleTaskCheckbox(target: HTMLElement, ctx: PreviewClickContext)
   return true
 }
 
+async function handleTabsAction(event: ReactMouseEvent, target: HTMLElement, ctx: PreviewClickContext): Promise<boolean> {
+  const tabsBtn = target.closest<HTMLButtonElement>('[data-tabs-action]')
+  if (!tabsBtn || !ctx.sourceNoteId) return false
+  event.preventDefault()
+  const committedSource = ctx.committedSourceRef.current
+  if (ctx.content !== committedSource) {
+    ctx.api.toast({ title: t('preview.the_preview_is_updating_try_again_in_a_moment'), tone: 'warning' })
+    return true
+  }
+  return executeTabsAction(tabsBtn.dataset.tabsAction!, tabsBtn, committedSource, (next) => ctx.api.editContent(ctx.sourceNoteId!, next), ctx.api.toast)
+}
+
 async function handleTabButton(event: ReactMouseEvent, target: HTMLElement): Promise<boolean> {
   const tabButton = target.closest<HTMLButtonElement>('[data-tab-button]')
   if (!tabButton) return false
@@ -478,16 +493,9 @@ function handleAnchor(event: ReactMouseEvent, target: HTMLElement, ctx: PreviewC
 }
 
 function removeFileAttachmentFromContent(source: string, url: string): string {
-  const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`(^|\\n)[ \\t]*\\[[^\\]]*\\]\\(<(?:${escapedUrl})>(?:\\s+["'][^"']*["'])?\\)[ \\t]*(?:\\r?\\n|$)`, 'g')
-  let next = source.replace(pattern, (_match, prefix) => prefix ? '\n' : '')
-  if (next === source) {
-    const plainPattern = new RegExp(`(^|\\n)[ \\t]*\\[[^\\]]*\\]\\((?:${escapedUrl})(?:\\s+["'][^"']*["'])?\\)[ \\t]*(?:\\r?\\n|$)`, 'g')
-    next = source.replace(plainPattern, (_match, prefix) => prefix ? '\n' : '')
-  }
-  if (next === source) {
-    const inlinePattern = new RegExp(`\\[[^\\]]*\\]\\(<?(?:${escapedUrl})>?(?:\\s+["'][^"']*["'])?\\)`, 'g')
-    next = source.replace(inlinePattern, '')
-  }
-  return next
+  const esc = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const linePattern = new RegExp(`(^|\\n)[ \\t]*\\[[^\\]]*\\]\\(<(?:${esc})>|\\((?:${esc})\\)(?:\\s+["'][^"']*["'])?\\)[ \\t]*(?:\\r?\\n|$)`, 'g')
+  const stripped = source.replace(linePattern, (_m, prefix) => prefix ? '\n' : '')
+  if (stripped !== source) return stripped
+  return source.replace(new RegExp(`\\[[^\\]]*\\]\\(<?(?:${esc})>?(?:\\s+["'][^"']*["'])?\\)`, 'g'), '')
 }

@@ -147,6 +147,7 @@ function chartSize(container: HTMLElement): { width: number; height: number } | 
 // the chart has to follow it: with `responsive` off nothing else would notice, and the canvas would
 // keep a size its box no longer has.
 function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { resize: (width: number, height: number) => void }): void {
+  if (typeof ResizeObserver === 'undefined') return
   const observer = new ResizeObserver(() => {
     const size = chartSize(container)
     if (size) instance.resize(size.width, size.height)
@@ -191,7 +192,7 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
     }
     const instance = new Chart(canvas, buildChartConfig(config, dark, size !== null, instant) as never);
     (node as unknown as { __chartInstance?: unknown }).__chartInstance = instance
-    if (size) watchChartSize(node, container, instance)
+    watchChartSize(node, container, instance)
     node.dataset.rendered = signature
   }
   catch (err: unknown) {

@@ -6,6 +6,7 @@ interface PreviewInteractionState {
   codeBlocks: Map<string, boolean>
   details: Map<string, boolean>
   tabs: Map<string, string>
+  tabsSettings: Set<string>
 }
 
 export function capturePreviewInteractionState(root: HTMLElement | null): PreviewInteractionState {
@@ -13,6 +14,7 @@ export function capturePreviewInteractionState(root: HTMLElement | null): Previe
     codeBlocks: new Map(),
     details: new Map(),
     tabs: new Map(),
+    tabsSettings: new Set(),
   }
   if (!root) return state
 
@@ -23,8 +25,17 @@ export function capturePreviewInteractionState(root: HTMLElement | null): Previe
     state.details.set(key, (element as HTMLDetailsElement).open)
   })
   keyedElements(root, '[data-tabs][data-line]').forEach(([key, element]) => {
-    const selected = element.querySelector<HTMLElement>('[data-tab-button][aria-selected="true"]')
-    if (selected?.dataset.tabButton !== undefined) state.tabs.set(key, selected.dataset.tabButton)
+    // Synced groups remember their choice per note in localStorage; enhanceTabsInRoot restores
+    // them on staging, so capturing the live document's default index must not overwrite that.
+    if (!element.dataset.tabsSync) {
+      const selected = [...element.querySelectorAll<HTMLElement>('[data-tab-button][aria-selected="true"]')].find(
+        (candidate) => candidate.closest('[data-tabs]') === element,
+      )
+      if (selected?.dataset.tabButton !== undefined) state.tabs.set(key, selected.dataset.tabButton)
+    }
+    if (element.classList.contains('is-settings-open')) {
+      state.tabsSettings.add(key)
+    }
   })
   return state
 }
@@ -44,10 +55,19 @@ export function restorePreviewInteractionState(
   })
   keyedElements(root, '[data-tabs][data-line]').forEach(([key, element]) => {
     const selected = state.tabs.get(key)
-    if (selected === undefined) return
-    const button = [...element.querySelectorAll<HTMLButtonElement>('[data-tab-button]')]
-      .find((candidate) => candidate.dataset.tabButton === selected)
-    if (button) selectMarkdownTab(button)
+    if (selected !== undefined) {
+      const button = [...element.querySelectorAll<HTMLButtonElement>('[data-tab-button]')].find(
+        (candidate) => candidate.closest('[data-tabs]') === element && candidate.dataset.tabButton === selected,
+      )
+      if (button) selectMarkdownTab(button)
+    }
+    if (state.tabsSettings.has(key)) {
+      element.classList.add('is-settings-open')
+      const panel =
+        element.querySelector<HTMLElement>(':scope > .markdown-tabs-header-wrap > .markdown-tabs-settings-panel') ??
+        element.querySelector<HTMLElement>('.markdown-tabs-settings-panel')
+      if (panel) panel.hidden = false
+    }
   })
 }
 

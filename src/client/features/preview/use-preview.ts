@@ -12,6 +12,7 @@ import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
 import { createPreviewClickHandler } from './preview-interactions'
 import { moveMarkdownTabFocus } from './markdown-tabs'
+import { closeLayoutPopoverFromEvent } from './tabs-interactive'
 import { nextCommittedDocument, prepareStagedHtml } from './preview-stage'
 import type { WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { useLinkHover } from './link-hover'
@@ -156,8 +157,9 @@ function usePreviewRendering(opts: {
   theme: string
   hostRef: RefObject<HTMLDivElement | null>
   scrollerRef: RefObject<HTMLDivElement | null>
+  noteId: string | null
 }) {
-  const { rendered, debounced, embedContextTitle, preview, theme, hostRef, scrollerRef } = opts
+  const { rendered, debounced, embedContextTitle, preview, theme, hostRef, scrollerRef, noteId } = opts
   // Markup and the bodies it was rendered from are one document: a body-only edit leaves the rendered
   // string identical, so the string alone would never tell the mounted blocks their fence changed (P-01).
   const [committed, setCommitted] = useState({ html: rendered.html, fences: rendered.fences })
@@ -182,6 +184,7 @@ function usePreviewRendering(opts: {
       preview,
       theme,
       host: hostRef.current,
+      noteId,
       isCurrent: () => !isCancelled && revision === preparationRef.current,
     }).then((prepared) => {
       if (prepared === null || isCancelled || revision !== preparationRef.current) return
@@ -200,7 +203,7 @@ function usePreviewRendering(opts: {
     return () => {
       isCancelled = true
     }
-  }, [debounced, embedContextTitle, rendered.hasEmbeds, rendered.html, rendered.fences, scrollerRef, preview.math, preview.mermaid, preview.codeBlockCollapse, preview.codeBlockCollapseLines, theme])
+  }, [debounced, embedContextTitle, noteId, rendered.hasEmbeds, rendered.html, rendered.fences, scrollerRef, preview.math, preview.mermaid, preview.codeBlockCollapse, preview.codeBlockCollapseLines, theme])
 
   return { committedHtml: committed.html, committedFences: committed.fences, htmlObj, committedSourceRef, pendingViewportRef, mermaidEpoch }
 }
@@ -377,12 +380,18 @@ function usePreviewKeyboard(opts: {
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') {
+      const layoutTrigger = closeLayoutPopoverFromEvent(event.target as HTMLElement)
+      if (layoutTrigger) {
+        event.preventDefault()
+        layoutTrigger.focus()
+        return
+      }
       hideHover()
       usePinnedWindows.getState().closeFront()
       return
     }
     const tab = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-tab-button]')
-    if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    if (tab && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
       event.preventDefault()
       moveMarkdownTabFocus(tab, event.key)
       return
@@ -416,7 +425,7 @@ function usePreviewKeyboard(opts: {
 export function usePreview(props: PreviewProps) {
   const src = usePreviewSource(props)
   const theme = useThemeTracking()
-  const html = usePreviewRendering({ rendered: src.rendered, debounced: src.debounced, embedContextTitle: src.embedContextTitle, preview: src.preview, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef })
+  const html = usePreviewRendering({ rendered: src.rendered, debounced: src.debounced, embedContextTitle: src.embedContextTitle, preview: src.preview, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, noteId: src.sourceNoteId })
   useTagColors(src.hostRef, html.committedHtml, src.allTags)
   const startMermaidRender = usePreviewPostRender({ committedHtml: html.committedHtml, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, onRendered: src.onRendered, pendingViewportRef: html.pendingViewportRef, mermaidEpoch: html.mermaidEpoch, preview: src.preview })
   const hover = usePreviewLinkHover({ sourceNoteId: src.sourceNoteId, preview: src.preview, committedHtml: html.committedHtml })

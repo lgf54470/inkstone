@@ -42,7 +42,7 @@ function findContainerEnd(state: StateBlock, startLine: number, endLine: number,
   let depth = 1
   let result = -1
   walkNonFenceLines(state, startLine + 1, endLine, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}(?:\\s+(?:details|tabs)\\b|\\{tab-set\\})`).test(text)) {
+    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
       depth++
       return false
     }
@@ -56,9 +56,14 @@ function findContainerEnd(state: StateBlock, startLine: number, endLine: number,
 }
 
 function findColonFenceEnd(state: StateBlock, start: number, end: number, markerLength: number): number {
+  let depth = 1
   let result = -1
   walkNonFenceLines(state, start, end, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text)) {
+    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
+      depth++
+      return false
+    }
+    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
       result = line
       return true
     }
@@ -116,10 +121,20 @@ function findTabSegments(state: StateBlock, start: number, end: number) {
   if (directiveTabs.length) return directiveTabs
 
   const markers: Array<{ line: number; title: string; selected: boolean }> = []
+  let colonDepth = 0
   walkNonFenceLines(state, start, end, (line, text) => {
-    const tab = /^@tab(?::active|\+)?\b[ \t]+(.+?)[ \t]*$/.exec(text)
+    if (/^:{3,}(?:\s+\S|\{\S+\})/.test(text)) {
+      colonDepth++
+      return false
+    }
+    if (/^:{3,}\s*$/.test(text)) {
+      if (colonDepth > 0) colonDepth--
+      return false
+    }
+    if (colonDepth > 0) return false
+    const tab = /^@tab(?:(?::active|\+))?[ \t]+(.+?)[ \t]*$/.exec(text)
     if (tab) {
-      const selected = /^@tab(?::active|\+)\b/.test(text)
+      const selected = /^@tab(?::active|\+)(?=[ \t])/.test(text)
       markers.push({ line, title: stripBracketTitle(tab[1]!) || '标签页', selected })
     }
     return false
@@ -130,6 +145,109 @@ function findTabSegments(state: StateBlock, start: number, end: number) {
     end: markers[index + 1]?.line ?? end,
     selected: marker.selected,
   }))
+}
+
+export type TabsPosition = 'top' | 'bottom' | 'left' | 'right'
+
+export interface TabsOptions {
+  style: 'horizontal' | 'vertical'
+  variant: 'default' | 'pills' | 'cards' | 'minimal'
+  align: 'start' | 'center' | 'end' | 'stretch'
+  position?: TabsPosition
+  sync?: string
+}
+
+const TABS_SYNC_PATTERN = /^[a-z0-9][a-z0-9_-]{0,39}$/i
+
+function normalizeTabsPosition(val: string): TabsPosition | undefined {
+  const positionMap: Record<string, TabsPosition> = {
+    top: 'top',
+    bottom: 'bottom',
+    left: 'left',
+    right: 'right',
+  }
+  return positionMap[val]
+}
+
+function applyTabsOption(options: TabsOptions, key: string, rawVal: string): void {
+  if (key === 'style' || key === 'orientation') {
+    const val = rawVal.toLowerCase()
+    if (val === 'vertical' || val === 'horizontal') options.style = val
+    return
+  }
+  if (key === 'variant') {
+    const val = rawVal.toLowerCase()
+    if (['default', 'pills', 'cards', 'minimal'].includes(val)) {
+      options.variant = val as TabsOptions['variant']
+    }
+    return
+  }
+  if (key === 'align') {
+    const alignMap: Record<string, TabsOptions['align']> = {
+      start: 'start',
+      left: 'start',
+      center: 'center',
+      end: 'end',
+      right: 'end',
+      stretch: 'stretch',
+      full: 'stretch',
+    }
+    const resolved = alignMap[rawVal.toLowerCase()]
+    if (resolved) options.align = resolved
+    return
+  }
+  if (key === 'position' || key === 'placement') {
+    const resolved = normalizeTabsPosition(rawVal.toLowerCase())
+    if (resolved) options.position = resolved
+    return
+  }
+  if (key === 'sync' || key === 'group') {
+    const val = rawVal.replace(/^["']|["']$/g, '').trim()
+    if (TABS_SYNC_PATTERN.test(val)) options.sync = val
+  }
+}
+
+function applyTabsFlag(options: TabsOptions, flag: string): void {
+  if (flag === 'vertical' || flag === 'horizontal') {
+    options.style = flag
+    return
+  }
+  if (['pills', 'cards', 'minimal'].includes(flag)) {
+    options.variant = flag as TabsOptions['variant']
+    return
+  }
+  if (flag === 'center' || flag === 'stretch') {
+    options.align = flag as TabsOptions['align']
+    return
+  }
+  const position = normalizeTabsPosition(flag)
+  if (position) options.position = position
+}
+
+export function parseTabsOptions(info: string): TabsOptions {
+  const options: TabsOptions = {
+    style: 'horizontal',
+    variant: 'default',
+    align: 'start',
+  }
+  const trimmed = info.trim()
+  if (!trimmed) return options
+  const tokens = trimmed.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
+  for (const token of tokens) {
+    const clean = token.replace(/^["']|["']$/g, '').trim()
+    const eqIdx = clean.indexOf('=')
+    if (eqIdx !== -1) {
+      const key = clean.slice(0, eqIdx).toLowerCase().trim()
+      const rawVal = clean.slice(eqIdx + 1).trim()
+      const val = key === 'sync' || key === 'group'
+        ? rawVal
+        : rawVal.toLowerCase().replace(/^["']|["']$/g, '').trim()
+      applyTabsOption(options, key, val)
+    } else {
+      applyTabsFlag(options, clean.toLowerCase())
+    }
+  }
+  return options
 }
 
 function registerMathBlockRule(md: InstanceType<typeof MarkdownIt>): void {
@@ -195,8 +313,8 @@ function renderModernContainer(
   if (silent) return true
 
   const kind = legacyMatch?.[2] ?? directiveMatch![2]!
+  const rawInfo = (legacyMatch?.[3] ?? directiveMatch?.[3] ?? '').trim()
   if (kind === 'details') {
-    const rawInfo = (legacyMatch?.[3] ?? '').trim()
     const open = /^(?:open|\+)\b/.test(rawInfo)
     const title = stripBracketTitle(rawInfo.replace(/^(?:open|\+)\b[ \t]*/, '')) || '详细内容'
     const openToken = state.push('details_open', 'details', 1)
@@ -211,9 +329,10 @@ function renderModernContainer(
       return true
     }
     const selectedIndex = Math.max(0, tabs.findIndex((t) => t.selected))
+    const options = parseTabsOptions(rawInfo)
     const openToken = state.push('tabs_open', 'div', 1)
     openToken.block = true
-    openToken.meta = { titles: tabs.map((t) => t.title), selectedIndex }
+    openToken.meta = { titles: tabs.map((t) => t.title), selectedIndex, options }
     tabs.forEach((tab, tabIndex) => {
       const panelOpen = state.push('tab_panel_open', 'section', 1)
       panelOpen.block = true
@@ -229,8 +348,11 @@ function renderModernContainer(
 
 function registerModernContainerRule(md: InstanceType<typeof MarkdownIt>): void {
   // Containers: ::: details and ::: tabs
-  md.block.ruler.before('fence', 'modern_container', (state, startLine, endLine, silent) =>
-    renderModernContainer(state, startLine, endLine, silent)
+  md.block.ruler.before(
+    'fence',
+    'modern_container',
+    (state, startLine, endLine, silent) => renderModernContainer(state, startLine, endLine, silent),
+    { alt: ['paragraph', 'reference', 'blockquote', 'list'] }
   )
 }
 

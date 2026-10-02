@@ -14,6 +14,7 @@ import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import type { renderMarkdown } from '../../lib/markdown/renderer'
 import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
 import { enhanceTablesInRoot } from './table-interactive'
+import { enhanceTabsInRoot } from './tabs-interactive'
 
 /** One render of a note: the markup to draw, and the bodies its rich blocks read themselves from. */
 export interface PreparedDocument {
@@ -29,9 +30,10 @@ export async function prepareStagedHtml(opts: {
   preview: PreviewSettings
   theme: string
   host: HTMLDivElement | null
+  noteId: string | null
   isCurrent: () => boolean
 }): Promise<PreparedDocument | null> {
-  const { staging, rendered, debounced, embedContextTitle, preview, theme, host, isCurrent } = opts
+  const { staging, rendered, debounced, embedContextTitle, preview, theme, host, noteId, isCurrent } = opts
   // Resolving an embed renders another document into this one, appending its fence bodies to the set — on
   // a clone, because the render's own set must stay what `renderMarkdown` returned. Otherwise every pass
   // over the same note would start from the last pass's embeds, numbering bodies nobody ever reads.
@@ -61,6 +63,7 @@ export async function prepareStagedHtml(opts: {
     codeBlockCollapseLines: preview.codeBlockCollapse ? preview.codeBlockCollapseLines : 0,
   })
   enhanceTablesInRoot(staging)
+  enhanceTabsInRoot(staging, { noteId })
   if (!isCurrent()) return null
   restorePreviewInteractionState(staging, capturePreviewInteractionState(host))
   return { html: staging.innerHTML, fences }
