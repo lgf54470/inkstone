@@ -17,7 +17,9 @@ import {
   slidesPlaceholder,
   type BentoDoc,
 } from '../../lib/markdown/slides'
-import { interceptSlideLink } from './presentation-state'
+import { interceptSlideLink, isBlockedSlideLinkHref } from './presentation-state'
+import { t } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 
 const HEADING_TAG = /^H[1-6]$/
 
@@ -118,13 +120,19 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   )
 }
 
-function useSlideLinkInterceptor() {
+export function useSlideLinkInterceptor() {
   return useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const anchor = (event.target as HTMLElement | null)?.closest('a')
     if (!anchor) return
     event.preventDefault()
     event.stopPropagation()
-    interceptSlideLink(anchor.getAttribute('href'), (url, target, features) => window.open(url, target, features))
+    const href = anchor.getAttribute('href')
+    if (interceptSlideLink(href, (url, target, features) => window.open(url, target, features))) return
+    // The click is swallowed either way, so a refused href would otherwise look like a slide that
+    // ignores the presenter. An in-page jump is not a refusal and must stay quiet.
+    if (isBlockedSlideLinkHref(href)) {
+      useUi.getState().toast({ title: t('workspace.presentation_link_blocked'), tone: 'warning' })
+    }
   }, [])
 }
 

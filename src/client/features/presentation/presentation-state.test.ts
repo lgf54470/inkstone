@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { entryIndexOf, escapeAction, formatMicroPage, interceptSlideLink, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { entryIndexOf, escapeAction, formatMicroPage, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -280,6 +280,51 @@ describe('interceptSlideLink', () => {
     expect(interceptSlideLink(null, openMock)).toBe(false)
     expect(interceptSlideLink(undefined, openMock)).toBe(false)
     expect(openMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('isSafeSlideLinkHref', () => {
+  const cases: Array<[href: string, expected: boolean]> = [
+    ['https://example.com/talk', true],
+    ['http://example.com/talk', true],
+    ['mailto:speaker@example.com', true],
+    ['tel:+1000000000', true],
+    ['HTTPS://example.com/talk', true],
+    ['Http://example.com/talk', true],
+    ['MAILTO:speaker@example.com', true],
+    ['  https://example.com/talk  ', true],
+    ['javascript:alert(1)', false],
+    ['JaVaScRiPt:alert(1)', false],
+    ['data:text/html,hi', false],
+    ['/notes/another', false],
+    ['#slide-heading', false],
+    ['', false],
+  ]
+
+  it.each(cases)('judges %j as %j', (href, expected) => {
+    expect(isSafeSlideLinkHref(href)).toBe(expected)
+  })
+
+  it('folds only the scheme, so the path the author wrote keeps its case', () => {
+    const openMock = vi.fn()
+    expect(interceptSlideLink('HTTPS://Example.COM/Talk#Section', openMock)).toBe(true)
+    expect(openMock).toHaveBeenCalledWith('HTTPS://Example.COM/Talk#Section', '_blank', 'noopener,noreferrer')
+  })
+})
+
+describe('isBlockedSlideLinkHref', () => {
+  it('leaves an in-page anchor or a missing href unannounced', () => {
+    expect(isBlockedSlideLinkHref('#slide-heading')).toBe(false)
+    expect(isBlockedSlideLinkHref('')).toBe(false)
+    expect(isBlockedSlideLinkHref(null)).toBe(false)
+    expect(isBlockedSlideLinkHref(undefined)).toBe(false)
+  })
+
+  it('reports every href a real link got refused for', () => {
+    expect(isBlockedSlideLinkHref('javascript:alert(1)')).toBe(true)
+    expect(isBlockedSlideLinkHref('ftp://example.com')).toBe(true)
+    expect(isBlockedSlideLinkHref('/notes/another')).toBe(true)
+    expect(isBlockedSlideLinkHref('HTTPS://example.com')).toBe(false)
   })
 })
 

@@ -1,8 +1,10 @@
-import { createElement, useRef } from 'react'
+import { act, createElement, useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
+import { t } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 import { createFenceBodies, takeFenceIndex } from '../../lib/markdown/fence-bodies'
-import { applySlidePage, prefersReducedMotion, useBentoSlidesFallback } from './slide-canvas'
+import { applySlidePage, prefersReducedMotion, useBentoSlidesFallback, useSlideLinkInterceptor } from './slide-canvas'
 import type { SlidePlan } from './slide-pagination'
 
 describe('prefersReducedMotion', () => {
@@ -107,6 +109,50 @@ describe('applySlidePage — a block that continues over pages', () => {
     applySlidePage([table], plan, 2, 1168, 632)
     applySlidePage([table], { pages: [{ from: 0, to: 1, top: 0 }], scales: [1] }, 0, 1168, 632)
     expect(table.style.clipPath).toBe('')
+  })
+})
+
+// The projector swallows the click on every link in the slide, so a refused href used to leave the
+// author with nothing at all: no navigation and no browser feedback, only a slide that ignores them.
+describe('useSlideLinkInterceptor', () => {
+  function LinkHarness({ href }: { href: string }) {
+    const handleClick = useSlideLinkInterceptor()
+    return createElement('div', { onClick: handleClick }, createElement('a', { href }, 'the link'))
+  }
+
+  let open: ReturnType<typeof vi.spyOn>
+
+  afterEach(() => {
+    open.mockRestore()
+    useUi.setState({ toasts: [] })
+  })
+
+  function clickAnchor(href: string) {
+    open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    useUi.setState({ toasts: [] })
+    const rendered = renderElement(createElement(LinkHarness, { href }))
+    act(() => { rendered.container.querySelector('a')?.click(); })
+    rendered.unmount()
+    return open
+  }
+
+  it('tells the presenter a link was refused instead of ignoring the click', () => {
+    clickAnchor('javascript:alert(1)')
+    const toasts = useUi.getState().toasts
+    expect(toasts.map((toast) => toast.title)).toContain(t('workspace.presentation_link_blocked'))
+    expect(toasts.at(-1)?.tone).toBe('warning')
+  })
+
+  it('opens a link whose scheme is only written in capitals, and does not announce it', () => {
+    const openMock = clickAnchor('HTTPS://Example.COM/Talk#Section')
+    expect(openMock).toHaveBeenCalledWith('HTTPS://Example.COM/Talk#Section', '_blank', 'noopener,noreferrer')
+    expect(useUi.getState().toasts).toHaveLength(0)
+  })
+
+  it('stays quiet about a jump that belongs to the slide', () => {
+    const openMock = clickAnchor('#slide-heading')
+    expect(openMock).not.toHaveBeenCalled()
+    expect(useUi.getState().toasts).toHaveLength(0)
   })
 })
 

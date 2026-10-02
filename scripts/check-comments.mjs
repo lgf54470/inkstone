@@ -6899,6 +6899,9 @@ const allowed = new Map([
     '// how many cards a row holds is only known once it is painted — which is why the row length comes',
     '// in as a measurement instead of being derived from the index. A key the grid does not roam returns',
     '// null so the show still gets it, and an empty grid has nowhere to go.',
+    '/** A `#` jump stays inside the note, and a link with no href is not a link. */',
+    '/** The protocol check both link paths share: left-click on the projector and the right-click menu.\n * Compared case-folded because `HTTPS://` and `Http://` are the same scheme to a browser, so matching\n * the raw text refused links the author means the projector to open. Only the comparison is folded —\n * the href handed to `window.open` keeps its case, where a path\'s is meaningful. */',
+    '/** A link the deck refuses: the author put a real href there, and it is off the whitelist. */',
     '/** One navigable page: a `---` slide plus the overflow page inside it. */',
     '// The sidebar lists pages, not `---` slides: a note that never uses `---` is one',
     '// slide but many pages, and a one-entry list would hide everything the arrow keys',
@@ -6951,6 +6954,8 @@ const allowed = new Map([
   ['src/client/features/presentation/slide-canvas.test.ts', [
     '// The projector shows a continued block by translating the whole slide to the band\'s offset; the',
     '// band itself has to be cut, or the rows belonging to the next page would be drawn on this one too.',
+    '// The projector swallows the click on every link in the slide, so a refused href used to leave the',
+    '// author with nothing at all: no navigation and no browser feedback, only a slide that ignores them.',
   ]],
   ['src/client/features/presentation/slide-canvas.tsx', [
     '/**\n   * The measured plan, shared with the show so the slide list can list this\n   * slide\'s pages and the counter can name them. The canvas is the only place a\n   * plan is measured because it renders the same markup the projector shows.\n   */',
@@ -6969,6 +6974,8 @@ const allowed = new Map([
     '// A rendered diagram bumps the version, and that report matters too: the deck-measuring',
     '// pass captures the canvas\'s markup for the slide list, and the capture has to be the one',
     '// taken after the diagrams are in place, or the list shows their loading placeholders.',
+    '// The click is swallowed either way, so a refused href would otherwise look like a slide that',
+    '// ignores the presenter. An in-page jump is not a refusal and must stay quiet.',
     '// Measuring and applying happen in the same pass, because an out-of-plan block',
     '// must never survive a re-measure that produced the same plan: the ResizeObserver',
     '// re-runs after every style write, and a plan-diffed effect would skip restoring',

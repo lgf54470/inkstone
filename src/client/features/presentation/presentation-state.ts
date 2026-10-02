@@ -86,22 +86,35 @@ export function formatMicroPage(index: number, count: number, subPage = 0, pageC
   return `${current} / ${total}`
 }
 
+const SLIDE_LINK_PROTOCOLS = ['https://', 'http://', 'mailto:', 'tel:']
+
+/** A `#` jump stays inside the note, and a link with no href is not a link. */
+function isInPageSlideLink(trimmed: string): boolean {
+  return trimmed === '' || trimmed.startsWith('#')
+}
+
+/** The protocol check both link paths share: left-click on the projector and the right-click menu.
+ * Compared case-folded because `HTTPS://` and `Http://` are the same scheme to a browser, so matching
+ * the raw text refused links the author means the projector to open. Only the comparison is folded —
+ * the href handed to `window.open` keeps its case, where a path's is meaningful. */
+export function isSafeSlideLinkHref(href: string | null | undefined): boolean {
+  const lower = (href ?? '').trim().toLowerCase()
+  return SLIDE_LINK_PROTOCOLS.some((protocol) => lower.startsWith(protocol))
+}
+
+/** A link the deck refuses: the author put a real href there, and it is off the whitelist. */
+export function isBlockedSlideLinkHref(href: string | null | undefined): boolean {
+  const trimmed = (href ?? '').trim()
+  return !isInPageSlideLink(trimmed) && !isSafeSlideLinkHref(trimmed)
+}
+
 export function interceptSlideLink(
   href: string | null | undefined,
   openWindow: (url: string, target: string, features: string) => void,
 ): boolean {
-  if (!href || href === '#' || href.startsWith('#')) return false
-  const trimmed = href.trim()
-  if (
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('mailto:') ||
-    trimmed.startsWith('tel:')
-  ) {
-    openWindow(trimmed, '_blank', 'noopener,noreferrer')
-    return true
-  }
-  return false
+  if (!isSafeSlideLinkHref(href)) return false
+  openWindow((href ?? '').trim(), '_blank', 'noopener,noreferrer')
+  return true
 }
 
 /** One navigable page: a `---` slide plus the overflow page inside it. */
