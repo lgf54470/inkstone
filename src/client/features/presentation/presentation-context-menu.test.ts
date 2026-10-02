@@ -171,34 +171,6 @@ describe('extractAnchorHrefFromPoint — what the projector shows', () => {
     panel.remove()
   })
 
-  it('ignores a link that sits under an opaque surface of its own', () => {
-    const panel = element('div')
-    const cover = element('div')
-    const hidden = element('a', 'https://example.com/under-the-cover')
-    panel.append(cover, hidden)
-    document.body.append(panel)
-    withStack([cover, hidden], () => {
-      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
-    })
-    panel.remove()
-  })
-})
-
-describe('extractAnchorHrefFromPoint — what the projector hides', () => {
-  it('ignores a link outside the projector panel', () => {
-    const panel = element('div')
-    const stage = element('p')
-    panel.append(stage)
-    document.body.append(panel)
-    const outside = element('a', 'https://example.com/behind-the-show')
-    document.body.append(outside)
-    withStack([stage, panel, outside], () => {
-      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
-    })
-    panel.remove()
-    outside.remove()
-  })
-
   it('looks past the open menu itself when the second right click lands on one of its rows', () => {
     const panel = element('div')
     const anchor = element('a', 'https://example.com/re-aimed')
@@ -214,6 +186,34 @@ describe('extractAnchorHrefFromPoint — what the projector hides', () => {
       expect(extractAnchorHrefFromPoint(10, 10, row, panel)).toBe('https://example.com/re-aimed')
     })
     panel.remove()
+  })
+})
+
+describe('extractAnchorHrefFromPoint — what the projector hides', () => {
+  it('ignores a link that sits under an opaque surface of its own', () => {
+    const panel = element('div')
+    const cover = element('div')
+    const hidden = element('a', 'https://example.com/under-the-cover')
+    panel.append(cover, hidden)
+    document.body.append(panel)
+    withStack([cover, hidden], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
+    })
+    panel.remove()
+  })
+
+  it('ignores a link outside the projector panel', () => {
+    const panel = element('div')
+    const stage = element('p')
+    panel.append(stage)
+    document.body.append(panel)
+    const outside = element('a', 'https://example.com/behind-the-show')
+    document.body.append(outside)
+    withStack([stage, panel, outside], () => {
+      expect(extractAnchorHrefFromPoint(10, 10, null, panel)).toBeNull()
+    })
+    panel.remove()
+    outside.remove()
   })
 
   it('resolves nothing when the menu has no panel to constrain it to', () => {
