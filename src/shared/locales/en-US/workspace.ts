@@ -96,6 +96,8 @@ export const messages = {
 'workspace.presentation_measuring': 'Measuring slide {value0} of {value1}',
 'workspace.presentation_follow': 'Follow the note',
 'workspace.presentation_freeze': 'Freeze this snapshot',
+'workspace.presentation_follow_lost': 'The note was deleted, so this show stays frozen',
+'workspace.presentation_start_no_note': 'That note is gone, so there is nothing to present',
 'workspace.presentation_presenter': 'Presenter console',
 'workspace.presentation_presenter_panel': 'Presenter panel',
 'workspace.presentation_popup_blocked': 'The browser blocked the presenter window, so the console is shown in this window instead',

@@ -2,7 +2,10 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
+import { noteSummary } from '../../store/notes-test-utils'
+import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
+import { useUi } from '../../store/ui'
 import { PresentationOverlay } from './presentation-overlay'
 
 function pressExportImages() {
@@ -193,6 +196,101 @@ describe('PresentationOverlay — the cover announcement is in the dialog', () =
     const view = renderElement(createElement(PresentationOverlay))
     const region = document.querySelector('[role="dialog"] [data-cover-status]')
     expect(region?.getAttribute('aria-live')).toBe('polite')
+    view.unmount()
+  })
+})
+
+// N-19: a note deleted mid-show keeps its last snapshot on the projector (that freeze is the intended
+// behaviour, pinned in presentation-state), so the only thing left to do is tell the presenter — once,
+// at the moment the link breaks — and stop the control claiming the show is still following.
+const LOST_DECK = '# Opening\n\nContent\n\n---\n\n# Closing'
+
+function followControl() {
+  return document.querySelector<HTMLButtonElement>('[role="dialog"] [data-follow-toggle]')
+}
+
+function presentLiveNote() {
+  useUi.setState({ toasts: [] })
+  useNotes.setState({ notes: { 'note-live': noteSummary('note-live', { title: 'Live talk' }) }, contents: { 'note-live': LOST_DECK } })
+  usePresentation.setState({ open: true, noteId: 'note-live', title: 'Live talk', snapshot: LOST_DECK, following: true, initialSlideIndex: 0 })
+}
+
+function notesGone() {
+  act(() => {
+    useNotes.setState({ notes: {}, contents: {} })
+  })
+}
+
+function notesBack() {
+  act(() => {
+    useNotes.setState({ notes: { 'note-live': noteSummary('note-live', { title: 'Live talk' }) }, contents: { 'note-live': LOST_DECK } })
+  })
+}
+
+describe('PresentationOverlay — the show speaks when its note dies', () => {
+  it('announces the freeze once and puts it on the control', () => {
+    presentLiveNote()
+    const view = renderElement(createElement(PresentationOverlay))
+    expect(followControl()?.getAttribute('aria-label')).toBe(t('workspace.presentation_freeze'))
+
+    notesGone()
+
+    expect(followControl()?.getAttribute('aria-label')).toBe(t('workspace.presentation_follow_lost'))
+    expect(followControl()?.disabled).toBe(true)
+    const toasts = useUi.getState().toasts
+    expect(toasts).toHaveLength(1)
+    expect(toasts[0]?.title).toBe(t('workspace.presentation_follow_lost'))
+    expect(toasts[0]?.tone).toBe('warning')
+    view.unmount()
+  })
+
+  it('says nothing for a show that was already frozen when it mounted', () => {
+    // The overlay survives the shell remounting under it at a breakpoint, so an announcement made on
+    // every mount would repeat itself for a break that was reported the moment it happened.
+    useUi.setState({ toasts: [] })
+    useNotes.setState({ notes: {}, contents: {} })
+    usePresentation.setState({ open: true, noteId: 'note-already-gone', title: 'Gone', snapshot: LOST_DECK, following: true, initialSlideIndex: 0 })
+
+    const view = renderElement(createElement(PresentationOverlay))
+    expect(useUi.getState().toasts).toHaveLength(0)
+    expect(followControl()?.getAttribute('aria-label')).toBe(t('workspace.presentation_follow_lost'))
+    view.unmount()
+  })
+
+  it('announces again when a note that came back is deleted a second time', () => {
+    presentLiveNote()
+    const view = renderElement(createElement(PresentationOverlay))
+
+    notesGone()
+    notesBack()
+    notesGone()
+
+    expect(useUi.getState().toasts).toHaveLength(2)
+    view.unmount()
+  })
+})
+
+describe('PresentationOverlay — a show that cannot follow stops offering to', () => {
+  it('keeps the projector on the last snapshot', () => {
+    presentLiveNote()
+    const view = renderElement(createElement(PresentationOverlay))
+    notesGone()
+
+    const printed = document.querySelector('[data-slide-canvas]')?.textContent ?? ''
+    expect(printed).toContain('Opening')
+    view.unmount()
+  })
+
+  it('leaves L without a toggle to flip', () => {
+    presentLiveNote()
+    const view = renderElement(createElement(PresentationOverlay))
+    notesGone()
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true }))
+    })
+
+    expect(usePresentation.getState().following).toBe(true)
     view.unmount()
   })
 })

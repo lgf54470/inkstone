@@ -1,5 +1,6 @@
 import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import {
   buildPresentationMenuItems,
@@ -19,6 +20,7 @@ const baseOptions = (): PresentationMenuItemsOptions => ({
   railOpen: false,
   overview: false,
   following: false,
+  followLost: false,
   isFullscreen: false,
   laser: false,
   spotlight: false,
@@ -462,5 +464,25 @@ describe('PresentationContextMenu — a link behind the projector is not a link 
     view.unmount()
     panel.remove()
     outside.remove()
+  })
+})
+
+// N-19's other hand: the menu drives the same toggle as the capsule, so a row that offers to follow a
+// note that no longer exists would be the one place the show still claims to be live.
+describe('buildPresentationMenuItems — a follow that cannot follow', () => {
+  const followRow = (options: PresentationMenuItemsOptions) => buildPresentationMenuItems(options).find((item) => item.id === 'follow')
+
+  it('disables the row and names the freeze once the note is gone', () => {
+    const row = followRow({ ...baseOptions(), following: true, followLost: true })
+    expect(row?.label).toBe(t('workspace.presentation_follow_lost'))
+    expect(row?.disabled).toBe(true)
+    expect(row?.checked).toBe(false)
+  })
+
+  it('keeps the row live while the note is still there', () => {
+    const alive = followRow({ ...baseOptions(), following: true })
+    expect(alive?.label).toBe(t('workspace.presentation_follow'))
+    expect(alive?.disabled).toBeFalsy()
+    expect(alive?.checked).toBe(true)
   })
 })

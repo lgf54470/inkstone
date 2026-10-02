@@ -15,6 +15,8 @@ export interface PresentationControlsProps {
   railOpen: boolean
   overview: boolean
   following: boolean
+  /** The note behind the show was deleted; the deck holds its last snapshot and cannot follow. */
+  followLost: boolean
   chromeHidden: boolean
   /** The pill is under the overview grid, so it cannot be reached from behind it. */
   occluded: boolean
@@ -32,7 +34,7 @@ export interface PresentationControlsProps {
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -45,7 +47,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ViewControls railOpen={railOpen} overview={overview} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
+      <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
@@ -58,10 +60,19 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
   )
 }
 
-function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter }: {
+// The name this control owes the presenter: what the show is doing about the note, in the order the
+// states matter. A deleted note keeps its last snapshot on the projector, so the freeze is the fact
+// to report, and it outranks whether the show was set to follow.
+function followControlLabel({ following, followLost }: { following: boolean; followLost: boolean }): string {
+  if (followLost) return t('workspace.presentation_follow_lost')
+  return following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
+}
+
+function ViewControls({ railOpen, overview, following, followLost, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter }: {
   railOpen: boolean
   overview: boolean
   following: boolean
+  followLost: boolean
   isFullscreen: boolean
   onToggleRail: () => void
   onToggleOverview: () => void
@@ -72,7 +83,7 @@ function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRai
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
   const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
   const overviewLabel = overview ? t('workspace.presentation_hide_overview') : t('workspace.presentation_show_overview')
-  const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
+  const followLabel = followControlLabel({ following, followLost })
   const presenterLabel = t('workspace.presentation_presenter')
   return (
     <>
@@ -92,8 +103,8 @@ function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRai
         </IconButton>
       </Tooltip>
       <Tooltip label={followLabel} side='top'>
-        <IconButton label={followLabel} size='sm' active={following} onClick={onToggleFollowing}>
-          {following ? <Radio size={14} /> : <Snowflake size={14} />}
+        <IconButton label={followLabel} size='sm' data-follow-toggle='true' active={!followLost && following} disabled={followLost} onClick={onToggleFollowing}>
+          {!followLost && following ? <Radio size={14} /> : <Snowflake size={14} />}
         </IconButton>
       </Tooltip>
       <Tooltip label={fullscreenLabel} side='top'>

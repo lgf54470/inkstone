@@ -7,9 +7,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { EditorView } from '@codemirror/view'
 import { setActiveEditorView } from '../../editor/commands'
+import { t } from '../../lib/i18n'
 import { noteSummary } from '../../store/notes-test-utils'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
+import { useUi } from '../../store/ui'
 import { startPresentationFromNote } from './start-presentation'
 
 const IDLE = { open: false, noteId: null, title: '', snapshot: '', following: true, initialSlideIndex: 0 }
@@ -25,6 +27,7 @@ function cursorAt(head: number) {
 
 beforeEach(() => {
   usePresentation.setState(IDLE)
+  useUi.setState({ toasts: [] })
 })
 
 afterEach(() => {
@@ -77,5 +80,26 @@ describe('startPresentationFromNote', () => {
 
     expect(startPresentationFromNote('note-gone')).toBe(false)
     expect(usePresentation.getState()).toMatchObject(IDLE)
+  })
+})
+
+// N-19: three callers run this path — the workspace button, the palette row, the global shortcut —
+// and every one of them threw the `false` away, so pressing the control for a note that is gone was
+// indistinguishable from a control that does nothing at all.
+describe('startPresentationFromNote — what a refusal says', () => {
+  it('names the missing note instead of failing silently', () => {
+    useNotes.setState({ notes: {}, contents: {} })
+
+    expect(startPresentationFromNote('note-gone')).toBe(false)
+    const last = useUi.getState().toasts.at(-1)
+    expect(last?.title).toBe(t('workspace.presentation_start_no_note'))
+    expect(last?.tone).toBe('warning')
+  })
+
+  it('stays quiet when it did put a note on the projector', () => {
+    putNote('note-1', THREE_SLIDES)
+
+    expect(startPresentationFromNote('note-1')).toBe(true)
+    expect(useUi.getState().toasts).toHaveLength(0)
   })
 })

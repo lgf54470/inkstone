@@ -23,6 +23,7 @@ describe('PresentationControls', () => {
     railOpen: false,
     overview: false,
     following: false,
+    followLost: false,
     chromeHidden: false,
     occluded: false,
     onPrev: vi.fn(),
@@ -118,6 +119,7 @@ function chromeProps(overrides: Partial<PresentationControlsProps> = {}): Presen
     railOpen: false,
     overview: false,
     following: false,
+    followLost: false,
     chromeHidden: false,
     occluded: false,
     onPrev: vi.fn(),
@@ -205,5 +207,36 @@ describe('DeckExportProgress — the running count', () => {
     expect(pill?.getAttribute('role')).toBe('status')
     expect(pill?.getAttribute('aria-live')).toBe('polite')
     expect(pill?.className).toContain('z-[var(--z-toast)]')
+  })
+})
+
+// N-19: a deleted note does not blank the projector — keeping the last snapshot is the intended
+// freeze — but the lamp must not go on claiming that edits still reach the screen. The control says
+// what the show is actually doing, and offers no toggle that could change nothing.
+describe('PresentationControls — the show outlived its note', () => {
+  it('names the freeze and drops the offer to follow', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ following: true, followLost: true })))
+    const button = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_follow_lost')}"]`)
+    expect(button).toBeTruthy()
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_freeze')}"]`)).toBeNull()
+    expect(button?.disabled).toBe(true)
+    expect(button?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('refuses a press it cannot carry out', () => {
+    const onToggleFollowing = vi.fn()
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ followLost: true, onToggleFollowing })))
+    container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_follow_lost')}"]`)?.click()
+    expect(onToggleFollowing).not.toHaveBeenCalled()
+  })
+
+  it('offers follow and freeze again while the note is alive', () => {
+    const frozen = renderElement(createElement(PresentationControls, chromeProps()))
+    expect(frozen.container.querySelector(`[aria-label="${t('workspace.presentation_follow')}"]`)).toBeTruthy()
+    expect(frozen.container.querySelectorAll(`[aria-label="${t('workspace.presentation_follow_lost')}"]`).length).toBe(0)
+
+    const following = renderElement(createElement(PresentationControls, chromeProps({ following: true })))
+    expect(following.container.querySelector(`[aria-label="${t('workspace.presentation_freeze')}"]`)).toBeTruthy()
+    expect(following.container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_freeze')}"]`)?.disabled).toBe(false)
   })
 })

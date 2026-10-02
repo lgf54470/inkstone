@@ -12,6 +12,7 @@ import {
   PanelLeft,
   Presentation,
   Radio,
+  Snowflake,
   Sun,
   SunMedium,
   X,
@@ -30,6 +31,7 @@ export interface PresentationMenuItemsOptions {
   railOpen: boolean
   overview: boolean
   following: boolean
+  followLost: boolean
   isFullscreen: boolean
   laser: boolean
   spotlight: boolean
@@ -166,10 +168,14 @@ function buildSessionAndExitItems(options: PresentationMenuItemsOptions): MenuIt
   return [
     {
       id: 'follow',
-      label: t('workspace.presentation_follow'),
-      combo: 'l',
-      icon: <Radio size={14} />,
-      checked: options.following,
+      // The menu drives the same toggle as the capsule, so it carries the same news: with the note
+      // gone there is nothing to follow, and the row that shows `L` would be the one place the show
+      // still claims to be live.
+      label: options.followLost ? t('workspace.presentation_follow_lost') : t('workspace.presentation_follow'),
+      combo: options.followLost ? undefined : 'l',
+      icon: options.followLost ? <Snowflake size={14} /> : <Radio size={14} />,
+      checked: !options.followLost && options.following,
+      disabled: options.followLost,
       onSelect: options.onToggleFollowing,
       separatorBefore: true,
     },

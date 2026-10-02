@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
-import { useBreakpoint, useDebounced } from '../../lib/hooks'
+import { useBreakpoint } from '../../lib/hooks'
 import { secureRandomId } from '../../lib/id'
 import { t } from '../../lib/i18n'
-import { useNotes } from '../../store/notes'
-import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import { type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
-import { presentedNoteContent, railOpenFor } from './presentation-state'
+import { railOpenFor } from './presentation-state'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheKey } from './slide-html'
@@ -18,14 +16,11 @@ import { type PreflightProgress, type SlidePreflightProps } from './slide-prefli
 import { type StageMetrics, useStageMetrics } from './slide-stage'
 import { splitIntoSlidesWithNotes } from './slides'
 import { openPresenterWindow, usePresenterBroadcaster, usePresenterSlideState, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
+import { usePresentedNote } from './use-presented-note'
 import { usePresentationKeys } from './use-presentation-keys'
 import { useSlideHtml } from './use-slide-html'
 
 const CHROME_IDLE_MS = 2600
-// Followed edits land on the projector, but a re-split per keystroke would remount
-// the deck under the presenter: one debounce also coalesces a sync burst.
-const FOLLOW_DEBOUNCE_MS = 400
-
 // Everything the show holds that is not markup: which note is on screen, how it splits, where the
 // presenter is in it, and which mode (fullscreen, slide list, overview, laser, cover) is on. It is
 // one hook because those pieces are one state machine — a page plan changes the list, the list
@@ -53,6 +48,8 @@ export interface PresentationSession {
   pageCount: number
   railOpen: boolean
   following: boolean
+  /** True once the note behind the show is gone: the deck holds its last snapshot and nothing follows. */
+  followLost: boolean
   chromeHidden: boolean
   isFullscreen: boolean
   metrics: StageMetrics
@@ -165,16 +162,14 @@ function useSessionPresenter(options: {
 
 export function usePresentationSession(options: PresentationSessionOptions): PresentationSession {
   const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0, startedAt } = options
-  const { content: presentedContent, title: liveTitle } = usePresentedContent({ open, noteId, snapshot, following })
+  const { content: presentedContent, title: liveTitle, followLost, toggleFollowing } = usePresentedNote({ open, noteId, snapshot, following })
   const { deck, notes, fingerprint } = useShowDeck(presentedContent)
-  useCapturePresented(open, following, presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
   const nav = usePresentationNav(deck, initialSlideIndex)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
   const { railOpen, toggleRail } = useSlideList(open)
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
-  const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
@@ -193,6 +188,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     cacheKeys,
     railOpen,
     following,
+    followLost,
     chromeHidden,
     isFullscreen,
     metrics,
@@ -247,32 +243,6 @@ function useListProgress(): { listProgress: PreflightProgress; onProgress: (prog
   const [listProgress, setListProgress] = useState<PreflightProgress>({ measured: 0, slides: 0, finished: false })
   const onProgress = useCallback((progress: PreflightProgress) => setListProgress(progress), [])
   return { listProgress, onProgress }
-}
-
-// What the show puts on screen: the note body while following, the frozen copy while
-// frozen. The debounce coalesces a burst of keystrokes into a single re-split of the deck,
-// and the note id keys it so a show that opens presents the deck the note has now instead
-// of replaying what the closed overlay was holding — which was an empty deck, so the slide
-// list showed one page until the real deck arrived.
-function usePresentedContent({ open, noteId, snapshot, following }: {
-  open: boolean
-  noteId: string | null
-  snapshot: string
-  following: boolean
-}): { content: string; title: string | undefined } {
-  const { content: live, title, exists } = useLiveNote(noteId)
-  const debounced = useDebounced(live ?? '', FOLLOW_DEBOUNCE_MS, open ? noteId : null)
-  const content = presentedNoteContent({ following, snapshot, live: live === undefined ? undefined : debounced, noteExists: exists })
-  return { content, title }
-}
-
-// The show reads the note it follows straight from the store instead of taking a copy
-// at start, so an edit from another tab, device or MCP write reaches the projector.
-function useLiveNote(noteId: string | null) {
-  const content = useNotes((s) => (noteId ? s.contents[noteId] : undefined))
-  const title = useNotes((s) => (noteId ? s.notes[noteId]?.title : undefined))
-  const exists = useNotes((s) => Boolean(noteId && s.notes[noteId]))
-  return { content, title, exists }
 }
 
 // Presentation typography follows the reader's settings, so the projector looks like
@@ -335,15 +305,6 @@ function useShowDeck(presentedContent: string) {
   const { slides: deck, notes } = useMemo(() => splitIntoSlidesWithNotes(presentedContent), [presentedContent])
   const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
   return { deck, notes, fingerprint }
-}
-
-// Following keeps the store's snapshot equal to what is on screen: freezing then
-// pins exactly that, and a note that disappears mid-talk still has a last-seen deck
-// to fall back to.
-function useCapturePresented(open: boolean, following: boolean, presentedContent: string): void {
-  useEffect(() => {
-    if (open && following) usePresentation.getState().capture(presentedContent)
-  }, [open, following, presentedContent])
 }
 
 // Renders the enhanced markup off-DOM and caches it per slide; the cache hit is

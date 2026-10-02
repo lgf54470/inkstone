@@ -96,6 +96,8 @@ export const messages = {
 'workspace.presentation_measuring': '正在量测第 {value0} / {value1} 张',
 'workspace.presentation_follow': '跟随笔记更新',
 'workspace.presentation_freeze': '冻结当前快照',
+'workspace.presentation_follow_lost': '笔记已被删除，本场放映保持冻结',
+'workspace.presentation_start_no_note': '这条笔记已经不在了，没有可放映的内容',
 'workspace.presentation_presenter': '演讲者视图',
 'workspace.presentation_presenter_panel': '演讲者面板',
 'workspace.presentation_popup_blocked': '浏览器拦截了演讲者窗口，已改在本窗口内显示演讲者面板',
