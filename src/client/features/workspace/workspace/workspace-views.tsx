@@ -303,6 +303,7 @@ export function LocalGraphSection({ b }: { b: WorkspaceBundle }) {
       noteId={b.note.id}
       onClose={b.toggleLocalGraph}
       onOpenFullGraph={() => b.openPanel('graph')}
+      onOpenSettings={() => useUi.getState().openGraphSettings()}
     />
   ) : null
 }

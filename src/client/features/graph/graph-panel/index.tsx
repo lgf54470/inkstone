@@ -16,30 +16,33 @@ import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../../comp
 import { Empty, LoadingBlock } from '../../../components/feedback'
 import { useBreakpoint } from '../../../lib/hooks'
 import { useNotes } from '../../../store/notes'
-import { useSession } from '../../../store/session'
 import { useUi } from '../../../store/ui'
 import { t } from '../../../lib/i18n'
 import { GraphCanvas } from './canvas'
 import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
+import { useGraphPreferences } from './use-graph-prefs'
 import { DEFAULT_PREFERENCES } from './constants'
-import { countWikiLinkEdges, graphNodeCounts, graphPrefsStorageKey, graphSearchHits, loadPreferences, normalizedResponse } from './helpers'
+import { countWikiLinkEdges, graphNodeCounts, graphSearchHits, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps, GraphSearchState } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
-function useGraphPrefs() {
-  const userId = useSession((state) => state.user?.id)
-  const [prefs, setPrefs] = useState(() => loadPreferences(userId))
+/**
+ * The drawer the settings live in, which a reader can also arrive at from outside the panel: the note's
+ * companion graph holds no settings of its own and asks for this one (G-20). A request is spent the
+ * moment it is honoured, so opening the graph again goes back to the panel's own default.
+ */
+function useGraphSettingsDisclosure() {
+  const requested = useUi((state) => state.graphSettingsRequested)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   useEffect(() => {
-    try {
-      localStorage.setItem(graphPrefsStorageKey(userId), JSON.stringify(prefs))
-    } catch {
-      // Private browsing or a locked-down browser can reject local preferences.
-    }
-  }, [prefs, userId])
-  return [prefs, setPrefs] as const
+    if (!requested) return
+    useUi.setState({ graphSettingsRequested: false })
+    setIsSettingsOpen(true)
+  }, [requested])
+  return [isSettingsOpen, setIsSettingsOpen] as const
 }
 
 function useDebouncedQuery(search: string, delayMs: number): string {
@@ -429,8 +432,8 @@ function clearAllGraphFilters(
 export function GraphPanel({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
-  const [prefs, setPrefs] = useGraphPrefs()
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [prefs, setPrefs] = useGraphPreferences()
+  const [isSettingsOpen, setIsSettingsOpen] = useGraphSettingsDisclosure()
   const [isLimitOpen, setIsLimitOpen] = useState(false)
   const { search, query, isOnlyMatching, changeSearch, cycleLegend, toggleOnlyMatching } = useGraphSearchMode()
   const openNote = useNotes((state) => state.openNote)

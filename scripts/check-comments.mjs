@@ -3392,6 +3392,9 @@ const allowed = new Map([
   ['src/client/features/command/shortcuts-panel.tsx', [
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
+  ['src/client/features/graph/companion-settings-entry.test.ts', [
+    '/**\n * The companion panel holds no settings of its own — it reads the ones the full graph writes (G-20) —\n * so the way out it offers has to lead there. These cases press the button in the companion\'s header and\n * then mount the real panel to see whether it honours what was asked.\n */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-a11y.test.ts', [
     '/**\n * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it\n * answers to has a keyboard equivalent. These cases mount the real panel surface, drive it with keys\n * instead of a mouse, and read the end state a reader would hear: the canvas name, the announcement of\n * the node that got selected, the badge drawn for it, and the note opened from it.\n */',
     '/**\n * Puts the fixture\'s nodes where the case wants them. The arrow keys read the drawing\'s own layout\n * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —\n * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel\'s.\n */',
@@ -3527,6 +3530,7 @@ const allowed = new Map([
     '// keeps the sentence the app has always drawn (G-19).',
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
+    '/** How many nodes the note\'s companion graph asks the server for: it fills a panel, not a screen. */',
     '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
     '/** A title is cut to this many characters, however it is drawn. */',
     '/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */',
@@ -3615,7 +3619,7 @@ const allowed = new Map([
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
   ]],
   ['src/client/features/graph/graph-panel/index.tsx', [
-    '// Private browsing or a locked-down browser can reject local preferences.',
+    '/**\n * The drawer the settings live in, which a reader can also arrive at from outside the panel: the note\'s\n * companion graph holds no settings of its own and asks for this one (G-20). A request is spent the\n * moment it is honoured, so opening the graph again goes back to the panel\'s own default.\n */',
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
@@ -3720,9 +3724,33 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/use-graph-export.ts', [
     '/** A picture is painted off-screen and handed to the browser as a file, so the doors stay shut until it lands. */',
   ]],
+  ['src/client/features/graph/graph-panel/use-graph-prefs.ts', [
+    '/**\n * Graph preferences are one key shared by two surfaces, so the writer says when it has written. The\n * browser\'s own `storage` event belongs to the *other* tabs, which leaves a panel sitting behind the\n * full-screen graph drawing with the settings it was mounted with (G-20).\n */',
+    '/**\n * The preferences the reader set, held by the panel that owns them. Only the full-screen graph writes\n * them back: two surfaces persisting the same key would leave whichever let go of the drawer last\n * holding the graph, so the companion is given no setter to reach for (G-20).\n */',
+    '// Private browsing or a locked-down browser can reject local preferences.',
+    '// Only a real write is worth announcing: the effect runs on every mount, and a reader that re-reads',
+    '// an unchanged key still gets a new object to render.',
+    '/** The same preferences read-only, following every write the owning panel makes. */',
+  ]],
   ['src/client/features/graph/graph-panel/use-graph-preview.ts', [
     '// The two callbacks are written inline by every caller, so the timers read them through a ref: arming a',
     '// timer must not depend on the render that armed it, or each render would re-create the arm itself.',
+  ]],
+  ['src/client/features/graph/local-graph.test.ts', [
+    '/** The same pair with a tag on the first one, so a colour rule has something to paint. */',
+    '/** The request the companion sent, which is where a preference either reaches the server or does not. */',
+    '/** The words of the colour legend the companion draws, which only exists once a preference says to. */',
+    '// A filter the companion cannot show or clear would empty the panel with no way back (G-15).',
+    '// Two surfaces persisting the same key would leave whichever let go last holding the graph (G-20).',
+  ]],
+  ['src/client/features/graph/local-graph.tsx', [
+    '/** The companion holds no settings of its own, so this leads to the panel that writes them (G-20). */',
+    '// The companion asks for the neighbourhood the reader configured, keeping only what is its own: it is',
+    '// always centred on this note, and it fills a panel rather than a screen. The filters a reader sets',
+    '// alongside those preferences stay behind — a tag or folder the companion can neither show nor clear',
+    '// would empty it with no way back (G-20, G-15).',
+    '// Read-only on purpose: the full-screen graph is the one surface that writes these back, and two',
+    '// panels persisting the same key would leave whichever let go last holding the graph (G-20).',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
@@ -12874,8 +12902,10 @@ const allowed = new Map([
     '/** Sort the user left behind when entering a calendar folder view, restored on exit. */',
     '/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */',
     '/** FB-F4: the settings page a caller asked for when it opened the panel; null means the default. */',
+    '/** Set when a caller asks the graph to open with its settings drawer out; the panel spends it (G-20). */',
     '/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */',
     '/** Opens the settings panel on a named section (a caller that knows which page it wants). */',
+    '/** Opens the full graph on its settings drawer, for a surface that holds no settings of its own. */',
   ]],
   ['src/client/store/update.ts', [
     '// Quota or private-mode writes can throw; the user is simply asked about the version again.',

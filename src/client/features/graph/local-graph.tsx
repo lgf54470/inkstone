@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ExternalLink, Maximize2, Waypoints, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ExternalLink, Maximize2, Settings2, Waypoints, X } from 'lucide-react'
 import type { GraphQuery, GraphResponse } from '@shared/types'
 import { api } from '../../lib/api'
 import { errorMessage } from '../../lib/errors'
@@ -8,25 +8,31 @@ import { Tooltip } from '../../components/overlay'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { useNotes } from '../../store/notes'
 import { t } from '../../lib/i18n'
+import type { GraphPreferences } from '../../lib/graph-settings'
 import { GraphCanvas } from './graph-panel/canvas'
-import { DEFAULT_PREFERENCES } from './graph-panel/constants'
+import { LOCAL_GRAPH_LIMIT } from './graph-panel/constants'
 import { normalizedResponse } from './graph-panel/helpers'
 import { useGraphCanvasRefs } from './graph-panel/canvas-hooks'
+import { useStoredGraphPreferences } from './graph-panel/use-graph-prefs'
 
 export interface LocalGraphPanelProps {
   noteId: string
   onClose?: () => void
   onOpenFullGraph?: () => void
+  /** The companion holds no settings of its own, so this leads to the panel that writes them (G-20). */
+  onOpenSettings?: () => void
 }
 
 function LocalGraphHeader({
   count,
   onFit,
+  onOpenSettings,
   onOpenFullGraph,
   onClose,
 }: {
   count?: number
   onFit: () => void
+  onOpenSettings?: () => void
   onOpenFullGraph?: () => void
   onClose?: () => void
 }) {
@@ -43,6 +49,13 @@ function LocalGraphHeader({
             <Maximize2 size={12} />
           </IconButton>
         </Tooltip>
+        {onOpenSettings && (
+          <Tooltip label={t('graph.settings')}>
+            <IconButton label={t('graph.settings')} size='sm' onClick={onOpenSettings}>
+              <Settings2 size={12} />
+            </IconButton>
+          </Tooltip>
+        )}
         {onOpenFullGraph && (
           <Tooltip label={t('graph.open_full_graph')}>
             <IconButton label={t('graph.open_full_graph')} size='sm' onClick={onOpenFullGraph}>
@@ -62,7 +75,7 @@ function LocalGraphHeader({
   )
 }
 
-function useLocalGraphData(noteId: string, reload: number) {
+function useLocalGraphData(noteId: string, reload: number, prefs: GraphPreferences) {
   const [data, setData] = useState<GraphResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -71,13 +84,18 @@ function useLocalGraphData(noteId: string, reload: number) {
     let isCancelled = false
     setData(null)
     setLoadError(null)
+    // The companion asks for the neighbourhood the reader configured, keeping only what is its own: it is
+    // always centred on this note, and it fills a panel rather than a screen. The filters a reader sets
+    // alongside those preferences stay behind — a tag or folder the companion can neither show nor clear
+    // would empty it with no way back (G-20, G-15).
     const request: GraphQuery = {
       mode: 'local',
       center: noteId,
-      depth: 1,
-      limit: 100,
-      includeOrphans: true,
-      includeUnresolved: true,
+      depth: prefs.depth,
+      limit: LOCAL_GRAPH_LIMIT,
+      includeOrphans: prefs.includeOrphans,
+      includeUnresolved: prefs.includeUnresolved,
+      showTagNodes: prefs.showTagNodes,
     }
     void (async () => {
       try {
@@ -93,7 +111,7 @@ function useLocalGraphData(noteId: string, reload: number) {
       isCancelled = true
       controller.abort()
     }
-  }, [noteId, reload])
+  }, [noteId, reload, prefs.depth, prefs.includeOrphans, prefs.includeUnresolved, prefs.showTagNodes])
 
   return { data, loadError }
 }
@@ -102,15 +120,15 @@ interface LocalGraphContentProps {
   data: GraphResponse | null
   loadError: string | null
   noteId: string
+  prefs: GraphPreferences
   refs: ReturnType<typeof useGraphCanvasRefs>
   onRetry: () => void
   onClose?: () => void
 }
 
-function LocalGraphContent({ data, loadError, noteId, refs, onRetry, onClose }: LocalGraphContentProps) {
+function LocalGraphContent({ data, loadError, noteId, prefs, refs, onRetry, onClose }: LocalGraphContentProps) {
   const openNote = useNotes((state) => state.openNote)
   const createNote = useNotes((state) => state.createNote)
-  const prefs = { ...DEFAULT_PREFERENCES, mode: 'local' as const }
 
   if (loadError) {
     return (
@@ -151,9 +169,13 @@ function LocalGraphContent({ data, loadError, noteId, refs, onRetry, onClose }: 
   )
 }
 
-export function LocalGraphPanel({ noteId, onClose, onOpenFullGraph }: LocalGraphPanelProps) {
+export function LocalGraphPanel({ noteId, onClose, onOpenFullGraph, onOpenSettings }: LocalGraphPanelProps) {
   const [reload, setReload] = useState(0)
-  const { data, loadError } = useLocalGraphData(noteId, reload)
+  // Read-only on purpose: the full-screen graph is the one surface that writes these back, and two
+  // panels persisting the same key would leave whichever let go last holding the graph (G-20).
+  const storedPrefs = useStoredGraphPreferences()
+  const canvasPrefs = useMemo<GraphPreferences>(() => ({ ...storedPrefs, mode: 'local' }), [storedPrefs])
+  const { data, loadError } = useLocalGraphData(noteId, reload, storedPrefs)
   const refs = useGraphCanvasRefs(noteId)
 
   return (
@@ -161,6 +183,7 @@ export function LocalGraphPanel({ noteId, onClose, onOpenFullGraph }: LocalGraph
       <LocalGraphHeader
         count={data?.nodes.length}
         onFit={() => refs.controlsRef.current?.fit()}
+        onOpenSettings={onOpenSettings}
         onOpenFullGraph={onOpenFullGraph}
         onClose={onClose}
       />
@@ -169,6 +192,7 @@ export function LocalGraphPanel({ noteId, onClose, onOpenFullGraph }: LocalGraph
           data={data}
           loadError={loadError}
           noteId={noteId}
+          prefs={canvasPrefs}
           refs={refs}
           onRetry={() => setReload((v) => v + 1)}
           onClose={onClose}

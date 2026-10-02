@@ -11,6 +11,9 @@ export const GRAPH_SETTLE_FRAME = 70
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 export const COLOR_GROUP_QUERY_MAX = 120
 
+/** How many nodes the note's companion graph asks the server for: it fills a panel, not a screen. */
+export const LOCAL_GRAPH_LIMIT = 100
+
 /** Ten slots for tag colours, the width of the --graph-tag-* token block. */
 export const GRAPH_TAG_PALETTE_SIZE = 10
 
