@@ -4,7 +4,7 @@ import { type MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
-import { PHYSICS_FRAME_LIMIT } from './constants'
+import { GRAPH_CLICK_TRAVEL_MAX, PHYSICS_FRAME_LIMIT } from './constants'
 import { colorGroupsByNodeId, ensureNodeVisible } from './helpers'
 import type { CanvasNode, CanvasState, GraphDragOptions } from './types'
 
@@ -152,6 +152,14 @@ export function useGraphNodeFocus(stateRef: RefObject<CanvasState>, setSelectedI
   }, [setSelectedId, stateRef])
 }
 
+/**
+ * Whether a press has become a drag. Travel is counted on both axes because the reader can move the pointer
+ * diagonally while dragging, and this is the one line the click and the card are measured against.
+ */
+function hasBeenDragged(drag: { startX: number; startY: number }, clientX: number, clientY: number): boolean {
+  return Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY) > GRAPH_CLICK_TRAVEL_MAX
+}
+
 function applyDragMove(
   state: CanvasState,
   point: { x: number; y: number },
@@ -183,8 +191,12 @@ function applyDragEnd(
     modifierKey?: boolean
   },
 ): void {
-  const moved = Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY)
-  if (moved >= 5) return
+  if (hasBeenDragged(drag, clientX, clientY)) {
+    // Letting go after a drag is not a click, so it selects nothing and opens nothing — but the card the
+    // drag put away belongs on the node where the reader left it, so the drop hangs it back there (G-16).
+    if (drag.node) options.onSelectNode?.(drag.node)
+    return
+  }
   if (!drag.node) {
     options.setSelectedId(null)
     return
@@ -198,7 +210,7 @@ function applyDragEnd(
 }
 
 export function useGraphDrag(options: GraphDragOptions) {
-  const { stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote, onDragStart, onHoverChange, onSelectNode } = options
+  const { stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote, onDragStart, onNodeDragged, onHoverChange, onSelectNode } = options
 
   const beginDrag = useCallback((clientX: number, clientY: number, button: number, forcePan = false) => {
     if (button !== 0 && button !== 1) return
@@ -206,7 +218,7 @@ export function useGraphDrag(options: GraphDragOptions) {
     const state = stateRef.current
     const point = toWorld(clientX, clientY)
     const node = (button === 1 || forcePan) ? null : nodeAt(point.x, point.y)
-    state.dragging = { node, startX: clientX, startY: clientY, ox: state.offsetX, oy: state.offsetY }
+    state.dragging = { node, startX: clientX, startY: clientY, ox: state.offsetX, oy: state.offsetY, cardPutAway: false }
     if (node) {
       setSelectedId(node.id)
       onSelectNode?.(node)
@@ -216,8 +228,16 @@ export function useGraphDrag(options: GraphDragOptions) {
   const moveDrag = useCallback((clientX: number, clientY: number) => {
     const state = stateRef.current
     const point = toWorld(clientX, clientY)
-    if (state.dragging) {
+    const drag = state.dragging
+    if (drag) {
       applyDragMove(state, point, clientX, clientY)
+      // The card hangs from a place worked out while the node was still under the pointer, and a drag never
+      // works it out again: past the click the node is gone from under it, so the drag puts the card away
+      // rather than leave it floating over empty canvas (G-16).
+      if (drag.node && !drag.cardPutAway && hasBeenDragged(drag, clientX, clientY)) {
+        drag.cardPutAway = true
+        onNodeDragged?.()
+      }
       return
     }
     const node = nodeAt(point.x, point.y)
@@ -227,13 +247,14 @@ export function useGraphDrag(options: GraphDragOptions) {
       onHoverChange?.(node)
       state.schedule?.()
     }
-  }, [hoverRef, nodeAt, onHoverChange, setHover, stateRef, toWorld])
+  }, [hoverRef, nodeAt, onHoverChange, onNodeDragged, setHover, stateRef, toWorld])
 
   const endDrag = useCallback((clientX: number, clientY: number, modifierKey = false) => {
     const state = stateRef.current
     const drag = state.dragging
     state.dragging = null
-    if (drag) applyDragEnd(drag, clientX, clientY, { setSelectedId, onSelectNode, onOpenNote, onCreateNote, modifierKey })
+    if (!drag) return
+    applyDragEnd(drag, clientX, clientY, { setSelectedId, onSelectNode, onOpenNote, onCreateNote, modifierKey })
   }, [onCreateNote, onOpenNote, onSelectNode, setSelectedId, stateRef])
 
   return { beginDrag, moveDrag, endDrag }

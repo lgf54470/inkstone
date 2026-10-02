@@ -108,8 +108,25 @@ export function pressKey(target: Element, key: string, init: KeyboardEventInit =
  * A pointer press as the canvas reads it: jsdom has no PointerEvent and no pointer capture, so the
  * gesture carries the fields the handlers read and the capture call is stubbed by the cases.
  */
-export function pressPointer(target: Element, type: 'pointerdown' | 'pointerup', clientX: number, clientY: number): void {
+export function pressPointer(target: Element, type: 'pointerdown' | 'pointerup', clientX: number, clientY: number, init: MouseEventInit = {}): void {
   act(() => {
-    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0 }))
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0, ...init }))
+  })
+}
+
+/** A pointer move as the canvas reads it: the middle of a gesture `pressPointer` opens and closes. */
+export function movePointer(target: Element, clientX: number, clientY: number): void {
+  act(() => {
+    target.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, cancelable: true, clientX, clientY, button: 0 }))
+  })
+}
+
+/**
+ * A gesture the browser takes back, which the canvas drops without ever reaching the release: what a
+ * reader gets when a touch turns into a scroll, or another app steals the pointer.
+ */
+export function cancelPointer(target: Element): void {
+  act(() => {
+    target.dispatchEvent(new MouseEvent('pointercancel', { bubbles: true, cancelable: true }))
   })
 }

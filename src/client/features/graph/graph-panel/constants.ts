@@ -20,6 +20,11 @@ export const GRAPH_LABEL_FONT_SIZE = 11
 /** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */
 export const GRAPH_CAMERA_PADDING = 24
 
+/** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line
+ * decides that letting go opens nothing and that the node has left the place its preview card hangs
+ * from, so the two can never disagree about where the click ends (G-16). */
+export const GRAPH_CLICK_TRAVEL_MAX = 4
+
 export const GRAPH_LABEL_OFFSET = 12
 export const GRAPH_LABEL_HALO = 3
 export const GRAPH_EDGE_ALPHA = 0.42

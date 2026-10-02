@@ -425,6 +425,8 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   const { beginDrag: origBeginDrag, moveDrag, endDrag: origEndDrag } = useGraphDrag({
     stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote,
     onDragStart: () => { setIsDragging(true); preview.clearTimers(); preview.closePreview() },
+    // The press re-hangs the card that line put away, so the drag has to put it away again (G-16).
+    onNodeDragged: () => preview.closePreview(),
     onHoverChange: (node) => preview.onHoverNode(node),
     onSelectNode: (node) => preview.showPreview(node),
   })

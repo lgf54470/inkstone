@@ -7,7 +7,8 @@ import { createElement } from 'react'
  */
 export const PREVIEW_RENDER_CAP = 24
 
-export const previewProbe = { renders: 0, subscribes: 0, dark: null as boolean | null }
+/** `anchor` is the element the panel tells the card to hang from, so a case can read where the card is. */
+export const previewProbe = { renders: 0, subscribes: 0, dark: null as boolean | null, anchor: null as HTMLElement | null }
 
 export function previewStubModule(): Record<string, unknown> {
   return {
@@ -19,9 +20,10 @@ export function previewStubModule(): Record<string, unknown> {
       }
       return () => {}
     },
-    WikiLinkHoverCard: ({ card, dark }: { card: { title: string }, dark: boolean }) => {
+    WikiLinkHoverCard: ({ card, dark }: { card: { title: string, anchor: HTMLElement }, dark: boolean }) => {
       previewProbe.renders++
       previewProbe.dark = dark
+      previewProbe.anchor = card.anchor
       if (previewProbe.renders > PREVIEW_RENDER_CAP) {
         throw new Error(`one selection painted the preview ${previewProbe.renders} times`)
       }

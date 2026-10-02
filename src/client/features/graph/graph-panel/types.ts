@@ -28,7 +28,9 @@ export interface CanvasState {
    * asking the layout engine for the box on every move, which forced a synchronous layout per event. */
   viewLeft: number
   viewTop: number
-  dragging: { node: CanvasNode | null; startX: number; startY: number; ox: number; oy: number } | null
+  /** The press the reader is holding, and where its pointer started. `cardPutAway` remembers that this gesture
+   * has already dismissed the preview card, so the moves that follow it do not ask again (G-16). */
+  dragging: { node: CanvasNode | null; startX: number; startY: number; ox: number; oy: number; cardPutAway: boolean } | null
   pointers: Map<number, { x: number; y: number }>
   pinch: { distance: number; scale: number; centerX: number; centerY: number } | null
   /** The nodes the search box hit, or null when nothing is being located. Held here rather than passed
@@ -123,6 +125,8 @@ export interface GraphDragOptions {
   onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
   onCreateNote: (title: string) => void
   onDragStart?: () => void
+  /** The node has left the place its preview card was anchored to, once per drag rather than per move (G-16). */
+  onNodeDragged?: () => void
   onHoverChange?: (node: CanvasNode | null) => void
   onSelectNode?: (node: CanvasNode) => void
 }

@@ -190,7 +190,7 @@ describe('nodes the reader is responsible for', () => {
     const state = trio()
     const held = state.nodes[0]!
     const offset = { x: state.offsetX, y: state.offsetY }
-    state.dragging = { node: held, startX: 40, startY: 40, ox: offset.x, oy: offset.y }
+    state.dragging = { node: held, startX: 40, startY: 40, ox: offset.x, oy: offset.y, cardPutAway: false }
 
     const frames = runPhysics(state)
     for (let tick = 0; tick < 10; tick++) frames.step()

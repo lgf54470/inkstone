@@ -1,8 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { act } from 'react'
 import type { GraphNode, GraphResponse } from '@shared/types'
 import { initI18n } from '../../../lib/i18n'
-import { mountGraphCanvas, pressPointer, releaseGraphCanvases } from './graph-canvas-mount.test-helpers'
+import { movePointer, mountGraphCanvas, pressPointer, releaseGraphCanvases } from './graph-canvas-mount.test-helpers'
 
 /**
  * A drag reads the pointer's place in the graph on every move, and the canvas box that reading is
@@ -40,13 +39,6 @@ beforeAll(async () => {
 
 afterEach(() => releaseGraphCanvases())
 
-/** The moves of a drag in flight: the shared helper presses, this one only moves. */
-function pointerMove(target: Element, clientX: number, clientY: number): void {
-  act(() => {
-    target.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, cancelable: true, clientX, clientY, button: 0 }))
-  })
-}
-
 describe('pointer moves during a drag (G-09)', () => {
   it('drags a node without measuring the canvas box again', () => {
     const graph = mountGraphCanvas(pair)
@@ -65,7 +57,7 @@ describe('pointer moves during a drag (G-09)', () => {
     // Selecting the node is where the panel's own preview card measures the canvas: once per
     // selection, and that is where the count starts, because the moves are what this case is about.
     const settled = reads
-    for (let step = 1; step <= 6; step++) pointerMove(graph.canvas, fromX + step, fromY + step)
+    for (let step = 1; step <= 6; step++) movePointer(graph.canvas, fromX + step, fromY + step)
 
     expect(graph.state.dragging?.node?.id).toBe('note-1')
     expect(first.x).toBeGreaterThan(startedAt)
