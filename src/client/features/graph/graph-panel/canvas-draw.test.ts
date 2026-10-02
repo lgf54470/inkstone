@@ -403,3 +403,37 @@ describe('the ticker\'s own contract (G-33)', () => {
     restoreContext()
   })
 })
+
+describe('the font the titles are drawn with (G-12)', () => {
+  it('takes whatever --font-ui says on the frame it draws, not on the frame it started', () => {
+    const queued: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { queued.push(cb); return queued.length })
+    const fonts: string[] = []
+    const painted = {
+      setTransform: () => {}, clearRect: () => {}, save: () => {}, restore: () => {}, translate: () => {}, scale: () => {},
+      beginPath: () => {}, closePath: () => {}, arc: () => {}, fill: () => {}, stroke: () => {},
+      moveTo: () => {}, lineTo: () => {}, fillText: () => {}, strokeText: () => {},
+    } as unknown as CanvasRenderingContext2D
+    // The font the drawing asked for, kept in the order the frames asked: a value frozen at mount would
+    // leave the second frame wearing the first frame's font.
+    Object.defineProperty(painted, 'font', { set: (value: string) => { fonts.push(value) }, get: () => '' })
+
+    let token = 'Inter'
+    const style = { getPropertyValue: (name: string) => (name === '--font-ui' ? token : '') } as unknown as CSSStyleDeclaration
+    const state = createInitialState()
+    buildInitialLayout(sampleData, { ...DEFAULT_PREFERENCES, labels: true }, state)
+    createGraphTicker({
+      state, canvas: document.createElement('canvas'), ctx: painted,
+      colorsRef: { current: readThemeColors() }, prefsRef: { current: DEFAULT_PREFERENCES },
+      hoverRef: { current: null }, selectedIdRef: { current: null }, activeNoteIdRef: { current: null }, style,
+    })
+
+    state.schedule?.()
+    queued.shift()?.(0)
+    token = 'Georgia'
+    queued.shift()?.(0)
+
+    expect(fonts[0]).toContain('Inter')
+    expect(fonts[fonts.length - 1]).toContain('Georgia')
+  })
+})

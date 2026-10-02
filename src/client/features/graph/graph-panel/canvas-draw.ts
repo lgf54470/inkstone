@@ -229,6 +229,10 @@ function renderGraphScene(options: GraphTickerOptions): void {
   ctx.globalAlpha = 1
   drawNodes({ ctx, state, colors, emphasizedId, neighborIds, groupBy: prefs.groupBy, selectedIdRef, activeNoteIdRef })
   ctx.globalAlpha = 1
+  // Read on the frame it draws, deliberately (G-12): `--font-ui` has no runtime writer today — it is
+  // declared once in tokens.css — so the only thing that could ever change it is a stylesheet the
+  // attribute observers cannot see. Caching it here is what ADR-0002 warns about: a picture frozen at
+  // the moment the canvas happened to mount. Pinned by the frame-by-frame case in canvas-draw.test.ts.
   drawLabels({ ctx, state, colors, emphasizedId, neighborIds, fontFamily: style.getPropertyValue('--font-ui'), scale: state.scale, labels: prefs.labels })
   ctx.globalAlpha = 1
   ctx.restore()
