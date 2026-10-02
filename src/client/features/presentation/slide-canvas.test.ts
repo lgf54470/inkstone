@@ -1,11 +1,20 @@
 import { act, createElement, useRef } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { createFenceBodies, takeFenceIndex } from '../../lib/markdown/fence-bodies'
-import { applySlidePage, prefersReducedMotion, useBentoSlidesFallback, useSlideLinkInterceptor } from './slide-canvas'
+import { clearSlideHtmlCache, hashContent, rememberSlideHtml, renderSlideSource, slideCacheKey } from './slide-html'
+import { SlideCanvas, applySlidePage, prefersReducedMotion, useBentoSlidesFallback, useSlideLinkInterceptor } from './slide-canvas'
 import type { SlidePlan } from './slide-pagination'
+
+// The plain render is what this file counts: the spy wraps the real function so every other case
+// here still renders markup the way the canvas does, and only the call count is observable.
+const renderSlideSourceMock = vi.mocked(renderSlideSource)
+vi.mock('./slide-html', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./slide-html')>()
+  return { ...actual, renderSlideSource: vi.fn(actual.renderSlideSource) }
+})
 
 describe('prefersReducedMotion', () => {
   const originalMatchMedia = window.matchMedia
@@ -156,3 +165,60 @@ describe('useSlideLinkInterceptor', () => {
   })
 })
 
+
+// N-25: the plain markdown render covers the first paint before the prepared markup lands. Once the
+// cache holds this slide, running it again is work whose result is thrown away — and the measuring
+// pass walks slide after slide it has *just* prepared, so the waste is per page, mid-talk.
+const CACHED_SOURCE = '# Prepared\n\nThere is nothing to render twice here.'
+const CACHED_KEY = slideCacheKey({ fingerprint: hashContent(CACHED_SOURCE), dark: false, index: 0, contentWidth: 1120, contentHeight: 630 })
+
+function mountPreparedCanvas() {
+  return renderElement(createElement(SlideCanvas, {
+    cacheKey: CACHED_KEY,
+    source: CACHED_SOURCE,
+    subPage: 0,
+    onPlan: vi.fn(),
+    contentWidth: 1120,
+    contentHeight: 630,
+  }))
+}
+
+beforeEach(() => {
+  renderSlideSourceMock.mockClear()
+  clearSlideHtmlCache()
+})
+
+describe('SlideCanvas — a cache hit renders nothing twice', () => {
+  it('takes the prepared markup without running the plain render at all', () => {
+    rememberSlideHtml(CACHED_KEY, { html: '<h1>Prepared</h1>', fences: createFenceBodies() })
+
+    const view = mountPreparedCanvas()
+
+    expect(view.container.textContent).toContain('Prepared')
+    expect(renderSlideSourceMock).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('renders the source exactly once while nothing is prepared yet', () => {
+    const view = mountPreparedCanvas()
+
+    expect(renderSlideSourceMock).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+})
+
+// The memo has to re-run when the prepared markup arrives mid-paint — that is what the measuring pass
+// does to a slide the presenter is already looking at.
+describe('SlideCanvas — the prepared markup landing after the first paint', () => {
+  it('switches to it without rendering the source a second time', () => {
+    const view = mountPreparedCanvas()
+
+    act(() => {
+      rememberSlideHtml(CACHED_KEY, { html: '<h1>Prepared later</h1>', fences: createFenceBodies() })
+    })
+
+    expect(view.container.textContent).toContain('Prepared later')
+    expect(renderSlideSourceMock).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+})

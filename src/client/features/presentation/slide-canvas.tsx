@@ -78,16 +78,13 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const hostRef = useRef<HTMLDivElement>(null)
   const prepared = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey))
   // The cache is the prepared markup for this slide; the plain render only exists to cover the
-  // first paint before it lands. Rendering it unconditionally would double the markdown work of
-  // every slide the measuring pass walks — the pass has just prepared that slide, so the cache
-  // hits and the plain render is pure waste in the middle of a talk.
-  const fallbackRender = useMemo(
-    () => renderSlideSource(source, preview.externalImages),
-    [source, preview.externalImages],
-  )
-  const html = prepared?.html ?? fallbackRender.html
-  const fences = prepared?.fences ?? fallbackRender.fences
-  const requestedLayout = prepared?.layout ?? fallbackRender.layout
+  // first paint before it lands. It is therefore *not* run when the cache already answers: the
+  // measuring pass walks slide after slide it has just prepared, and rendering each of them a second
+  // time to throw the result away is markdown work paid for in the middle of a talk.
+  const shown = useMemo(() => prepared ?? renderSlideSource(source, preview.externalImages), [prepared, source, preview.externalImages])
+  const html = shown.html
+  const fences = shown.fences
+  const requestedLayout = shown.layout
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
   const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, subPage, contentWidth, contentHeight, renderVersion)
