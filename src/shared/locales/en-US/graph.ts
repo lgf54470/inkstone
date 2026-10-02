@@ -67,7 +67,6 @@ export const messages = {
 'graph.showing_limit': 'Showing {shown} of {total} nodes; add filters to narrow the graph',
 'graph.tag': 'Tag',
 'graph.unresolved_short': ' unresolved',
-'graph.reset': 'Reset',
 'graph.stats_summary': '{notes} notes · {links} links',
 'graph.stats_unresolved': '{count} unresolved',
 'graph.stats_tags': '{count} tags',

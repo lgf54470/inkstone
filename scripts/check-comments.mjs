@@ -3702,6 +3702,10 @@ const allowed = new Map([
     '// The legend is the row the band lays first, which is what leaves the badge on the edge it has',
     '// always sat on rather than floating over the colour list.',
   ]],
+  ['src/client/features/graph/graph-panel/panel-control-naming.test.ts', [
+    '/**\n * A control that says one thing out loud and another in print is the kind of mismatch a reader only\n * finds out about when the screen reader names a button they have never seen called that (G-35). The\n * graph\'s fit control used to be exactly that: the tooltip read `graph.fit` while the accessible name\n * read `graph.reset`. The pair itself — the message id on the print and on the name — is guarded in\n * `tests/graph-control-naming.test.ts`, because a tooltip\'s text only exists once a browser lays it out.\n */',
+    '// The tooltip only shows for a pointer that can hover, which is the device this case is about.',
+  ]],
   ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
     '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
     '/** The shape jsdom hands the panel: no media query matches, so it lays out as it would on a phone. */',
@@ -15216,6 +15220,11 @@ const allowed = new Map([
   ]],
   ['tests/fullscreen-policy.test.ts', [
     '/**\n * The browser\'s own full screen belongs to exactly one surface: the presentation\n * panel, which owns a stable element and tracks `fullscreenchange` itself.\n *\n * Everything else that offers "full screen" goes through an in-app overlay\n * instead. A widget cannot hold the browser\'s full screen in this app: the\n * preview re-renders the note\'s markup on every commit and re-parents (or\n * rebuilds) the widget\'s element, and the browser drops out of full screen the\n * moment its full screen element leaves the document — mid-edit, with the user\n * watching. The mind map library shipped exactly that button; it is disarmed and\n * routed to the overlay (lib/markdown/mindmap/view.ts `disarmNativeFullscreen`,\n * asserted in features/preview/mindmap-fullscreen.test.ts and in the visual\n * gate). This test keeps the next such button from being wired straight to the\n * browser API.\n */',
+  ]],
+  ['tests/graph-control-naming.test.ts', [
+    '/**\n * A `Tooltip` and the control it wraps are the same message, said twice: once in print for a reader who\n * hovers, once as the accessible name for a reader who never sees it. The graph\'s fit control spent a\n * long time saying `graph.fit` out loud and `graph.reset` in print (G-35) — the two arguments are one\n * prop each, so nothing but a check keeps them from drifting apart again.\n *\n * The tooltip\'s text only exists in the DOM once the browser has laid the bubble out, which jsdom never\n * does, so this reads the source the mismatch was written in rather than the rendered tree. The\n * companion case in `graph-panel/panel-control-naming.test.ts` asserts the rendered name.\n */',
+    '// A guard that matches nothing is a guard that was silently deleted; the graph header alone has more',
+    '// than a handful of these pairs.',
   ]],
   ['tests/graph-routes.test.ts', [
     '// 26-char valid ids ([0-9a-hjkmnp-tv-z]{26}); the graph route validates center/folder formats',

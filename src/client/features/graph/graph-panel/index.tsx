@@ -225,7 +225,7 @@ function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
   return (
     <div className='ml-auto flex items-center gap-1'>
       <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!hasGraph} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('graph.fit')}><IconButton label={t('graph.reset')} size='sm' disabled={!hasGraph} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
+      <Tooltip label={t('graph.fit')}><IconButton label={t('graph.fit')} size='sm' disabled={!hasGraph} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
       <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!hasGraph} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_png')}><IconButton label={t('graph.export_png')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportPng}><ImageDown size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_svg')}><IconButton label={t('graph.export_svg')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportSvg}><Download size={14}/></IconButton></Tooltip>

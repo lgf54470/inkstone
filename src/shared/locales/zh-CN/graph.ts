@@ -67,7 +67,6 @@ export const messages = {
 'graph.showing_limit': '显示 {shown} / {total} 个节点；继续筛选可缩小范围',
 'graph.tag': '标签',
 'graph.unresolved_short': '篇未创建',
-'graph.reset': '复位',
 'graph.stats_summary': '{notes} 篇笔记 · {links} 条链接',
 'graph.stats_unresolved': '{count} 篇未创建',
 'graph.stats_tags': '{count} 个标签',
