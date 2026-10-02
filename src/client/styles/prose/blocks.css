@@ -66,6 +66,27 @@
 .ink-prose .markdown-example-preview details:not(.callout):not(.frontmatter-properties) > :last-child {
   margin-bottom: 0.72em;
 }
+.ink-prose .details-block > .markdown-details {
+  margin-block: 0;
+}
+.ink-prose .markdown-details[data-details-variant='plain'] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ink-prose .markdown-details[data-details-variant='plain'] > summary {
+  padding-inline: 0;
+}
+.ink-prose .markdown-details[data-details-variant='plain'][open] > summary {
+  border-bottom: 0;
+}
+.ink-prose .markdown-details[data-details-variant='card'] {
+  background: var(--bg-base);
+  box-shadow: var(--shadow-soft);
+}
+.ink-prose .markdown-details[data-details-variant='card'] > summary {
+  background: color-mix(in oklab, var(--bg-inset) 65%, var(--bg-base));
+}
 
 .ink-prose .callout {
   --callout-color: var(--accent);

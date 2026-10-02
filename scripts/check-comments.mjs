@@ -7270,6 +7270,12 @@ const allowed = new Map([
     '/** The panel, pre-filled from what the block drew with; every value here also names its own default. */',
     '/** This block family\'s toolbar, in the shape the shared click route and enhancer dispatch over. */',
   ]],
+  ['src/client/features/preview/details-toolbar.ts', [
+    '/**\n * The settings toolbar for a `::: details` block: whether it starts open and which chrome it draws\n * with. The block is wrapped rather than given a header of its own — anything prepended inside a\n * `<details>` is content, and content is exactly what the block hides.\n */',
+    '/**\n * The block is the wrapper rather than the `<details>` itself: the toolbar sits above the fold, and\n * a `<details>` hides everything prepended inside it, so its header has to be a sibling.\n */',
+    '/** Rewrites the container\'s header line; the content below it is left byte-identical. */',
+    '/** This block family\'s toolbar, in the shape the shared click route and enhancer dispatch over. */',
+  ]],
   ['src/client/features/preview/example-layout.test.ts', [
     '// The runnable block keeps its own controls; the layout tools sit beside them.',
   ]],
@@ -11828,6 +11834,14 @@ const allowed = new Map([
     '// The outer element is the containment context: querying it lets the block itself (not only',
     '// its children) collapse vertical layout inside a narrow split pane — container queries on a',
     '// node that establishes its own containment measure the *ancestor* container, not itself.',
+  ]],
+  ['src/client/lib/markdown/renderer/details-options.ts', [
+    '/**\n * What a `::: details` container lets the note say about itself: the title, whether it starts open\n * (the `open` / `+` flag the container has always taken) and which chrome it draws with. The header\n * line is the block\'s whole state, so the settings toolbar rewrites exactly that line.\n */',
+    '// The active prefix has no word boundary to lean on: "+" and ":" are non-word characters, so a',
+    '// boundary never meets the space that follows them.',
+    '/** Reads the header the container writes: the flags, the variant, and the rest as the title. */',
+    '/** The header with the managed parts put back; a default variant is dropped rather than written. */',
+    '/** The summary text to draw, with the container\'s own fallback for an unnamed block. */',
   ]],
   ['src/client/lib/markdown/renderer/fence.ts', [
     '/**\n * The grid\'s split, resolved: layout and ratio are always emitted, because the toolbar and the CSS\n * both need a value to read and the renderer is the only place that knows the family\'s default.\n */',

@@ -4,6 +4,7 @@ import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import { renderEnv } from './env'
 import { parseTableOptions, TABLE_OPTION_DEFAULTS } from './table-options'
+import { detailsTitle, parseDetailsOptions } from './details-options'
 import type { TableOptions } from './table-options'
 import { escapeAttr } from './util'
 export 
@@ -358,15 +359,13 @@ function renderTableContainer(state: StateBlock, startLine: number, end: number,
 }
 
 function renderDetailsContainer(state: StateBlock, startLine: number, end: number, legacyMatch: RegExpExecArray | null): void {
-  const rawInfo = (legacyMatch?.[3] ?? '').trim()
-  const open = /^(?:open|\+)\b/.test(rawInfo)
-  const title = stripBracketTitle(rawInfo.replace(/^(?:open|\+)\b[ \t]*/, '')) || t('markdown.details')
+  const options = parseDetailsOptions((legacyMatch?.[3] ?? '').trim())
   const openToken = state.push('details_open', 'details', 1)
   openToken.block = true
   openToken.map = [startLine, end + 1]
-  openToken.meta = { open }
+  openToken.meta = { open: options.open, variant: options.variant }
   const summary = state.push('details_summary', 'summary', 0)
-  summary.content = title
+  summary.content = detailsTitle(options)
   state.md.block.tokenize(state, startLine + 1, end)
   state.push('details_close', 'details', -1).block = true
 }
@@ -413,10 +412,9 @@ export function registerContainers(md: MarkdownIt): void {
   )
   md.renderer.rules.details_open = (tokens, index) => {
     const sourceLine = tokens[index]!.map?.[0]
-    const open = Boolean((tokens[index]!.meta as {
-      open?: boolean
-    })?.open)
-    return `<details class="markdown-details"${sourceLine === undefined ? '' : ` data-line="${sourceLine}"`}${open ? ' open' : ''}>`
+    const meta = tokens[index]!.meta as { open?: boolean; variant?: string } | undefined
+    const variant = meta?.variant && meta.variant !== 'default' ? ` data-details-variant="${escapeAttr(meta.variant)}"` : ''
+    return `<details class="markdown-details"${sourceLine === undefined ? '' : ` data-line="${sourceLine}"`}${meta?.open ? ' open' : ''}${variant}>`
   }
   md.renderer.rules.details_summary = (tokens, index) => `<summary>${md.renderInline(tokens[index]!.content)}</summary>`
   md.renderer.rules.details_close = () => '</details>'

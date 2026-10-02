@@ -136,5 +136,12 @@ export {
   parseTableOptions,
 } from './table-options'
 export type { TableDensity, TableFrames, TableOptions } from './table-options'
+export {
+  DETAILS_OPTION_DEFAULTS,
+  detailsTitle,
+  formatDetailsOptions,
+  parseDetailsOptions,
+} from './details-options'
+export type { DetailsOptions, DetailsVariant } from './details-options'
 export { infoFlag, infoOption, infoTokens } from './info-string'
 export { escapeAttr } from './util'

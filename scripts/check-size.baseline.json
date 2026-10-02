@@ -196,19 +196,19 @@
     "longFns": 1
   },
   "src/client/styles/prose/blocks.css": {
-    "lines": 637
+    "lines": 658
   },
   "src/shared/locales/en-US/music.ts": {
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 615
+    "lines": 625
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 615
+    "lines": 625
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908
