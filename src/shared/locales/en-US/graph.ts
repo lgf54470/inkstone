@@ -11,6 +11,7 @@ export const messages = {
 'graph.choose_a_note': 'Choose a note…',
 'graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here': 'Connect notes with [[wiki links]] and their graph will appear here',
 'graph.could_not_load_graph': 'Could not load the graph',
+'graph.could_not_draw': 'Could not draw the graph',
 'graph.create_note': 'Create this note',
 'graph.depth': 'Link depth',
 'graph.direction_counts': '{incoming} in · {outgoing} out',

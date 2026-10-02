@@ -1,6 +1,8 @@
 import { type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
 import { Button } from '../../../components/primitives'
+import { Empty } from '../../../components/feedback'
+import { errorMessage } from '../../../lib/errors'
 import { t } from '../../../lib/i18n'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from '../../preview'
 import type { ColorLegendItem } from './helpers'
@@ -88,6 +90,20 @@ function ColorLegend({ items, query, onSelect }: {
           </Button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * A frame that threw stops the loop, so what is on screen is whatever the half of it managed to paint.
+ * That picture is not a graph the reader can use, and the physics will not come back on its own: this
+ * surface says which part failed and hands back the one thing that can restart the loop (G-13).
+ */
+export function GraphPaintError({ error, onRetry }: { error: unknown, onRetry: () => void }) {
+  return (
+    <div data-graph-paint-error='' role='alert' className='absolute inset-0 z-[var(--z-raised)] flex items-center justify-center bg-[var(--bg-base)] p-6'>
+      <Empty art='notes' title={t('graph.could_not_draw')} description={errorMessage(error)}
+        action={<Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>}/>
     </div>
   )
 }

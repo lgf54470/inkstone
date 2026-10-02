@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
 import { Menu } from '../../../components/overlay'
+import { GraphPaintError } from './graph-overlays'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { useMediaQuery } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
@@ -21,6 +22,8 @@ import {
   useGraphFit,
   useGraphNodeActions,
   useGraphNodeFocus,
+  useGraphPrefsRef,
+  useGraphPaintError,
   useGraphSearchDim,
   useGraphWorldMath,
   useIsDarkTheme,
@@ -85,7 +88,7 @@ interface CanvasHandlers {
 }
 
 function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
-  const { data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph } = options
+  const { data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph, onPaintError } = options
   const refitOnSettleRef = useRef(false)
 
   useEffect(() => {
@@ -106,6 +109,7 @@ function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
         refitOnSettleRef.current = false
         fitGraph()
       },
+      onPaintError,
     })
     return () => {
       cancelAnimationFrame(state.raf)
@@ -113,7 +117,7 @@ function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
       observer.disconnect()
       themeObserver.disconnect()
     }
-  }, [activeNoteIdRef, canvasRef, fitGraph, hoverRef, prefsRef, selectedIdRef, stateRef])
+  }, [activeNoteIdRef, canvasRef, fitGraph, hoverRef, onPaintError, prefsRef, selectedIdRef, stateRef])
 
   useEffect(() => {
     const state = stateRef.current
@@ -401,16 +405,16 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const paint = useGraphPaintError(stateRef)
   const isSpaceDownRef = useRef(false)
   const { preview, liveAnnouncement, announce } = useGraphPreviewAndA11y(canvasRef, stateRef, hoverRef, setHover, selectedId, activeNoteId, activeNoteIdRef)
 
   useEffect(() => { selectedIdRef.current = selectedId }, [selectedId, selectedIdRef])
-  const prefsRef = useRef(prefs)
-  useEffect(() => { prefsRef.current = prefs }, [prefs])
+  const prefsRef = useGraphPrefsRef(prefs)
   useDynamicGraphPrefs(stateRef, prefs)
   useGraphSearchDim(stateRef, searchHits)
   const fitGraph = useGraphFit(canvasRef, stateRef)
-  useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph })
+  useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph, onPaintError: paint.reportPaintError })
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef)
 
   const { beginDrag: origBeginDrag, moveDrag, endDrag: origEndDrag } = useGraphDrag({
@@ -443,7 +447,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     onOpenNote, onCreateNote, onClose, onFilterByTag, announce, hover, isDragging,
   }
 
-  return { handlers, preview, colorLegends, liveAnnouncement, menuItems, hover, selectedId, context, setContext }
+  return { handlers, preview, colorLegends, liveAnnouncement, menuItems, hover, selectedId, context, setContext, paint }
 }
 
 export function GraphCanvas(props: GraphCanvasProps) {
@@ -459,6 +463,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
   return (
     <>
       <GraphCanvasElement canvasRef={canvasRef} handlers={b.handlers} hintId={hintId}/>
+      {b.paint.paintError !== null && <GraphPaintError error={b.paint.paintError} onRetry={b.paint.retryPaint}/>}
       <GraphOverlays
         data={data}
         hover={b.hover}

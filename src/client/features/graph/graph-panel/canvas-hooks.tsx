@@ -274,6 +274,31 @@ export function useGraphDrag(options: GraphDragOptions) {
   return { beginDrag, moveDrag, endDrag }
 }
 
+/**
+ * The live preferences, kept in a ref so the frame loop and the drawing read whatever is current without
+ * ever being rebuilt by a change to them (G-06).
+ */
+export function useGraphPrefsRef(prefs: GraphPreferences): MutableRefObject<GraphPreferences> {
+  const prefsRef = useRef(prefs)
+  useEffect(() => { prefsRef.current = prefs }, [prefs])
+  return prefsRef
+}
+
+/**
+ * Which frame broke, held where the surface can say so (G-13). The canvas stops drawing on its own and
+ * the reader needs both a word about it and a way back, so this sits beside the loop that reports it.
+ */
+export function useGraphPaintError(stateRef: RefObject<CanvasState>) {
+  const [paintError, setPaintError] = useState<unknown | null>(null)
+  return {
+    paintError,
+    reportPaintError: setPaintError,
+    // `raf` is back at 0 when a frame is refused, so the same ask that drives every other repaint is
+    // the way back here too.
+    retryPaint: () => { setPaintError(null); stateRef.current.schedule?.() },
+  }
+}
+
 /** Where the node menu opens, and what its pin item does — the panel owns persistence, see `onPinChange`. */
 export function useGraphNodeActions(
   canvasRef: RefObject<HTMLCanvasElement | null>,

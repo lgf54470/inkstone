@@ -33,26 +33,32 @@ export interface GraphCanvasMountOptions {
   searchHits?: ReadonlySet<string> | null
   /** The panel the canvas reports a pin to; absent means the pin is not persisted (G-07). */
   onPinChange?: (id: string, pinned: boolean) => void
+  /** A frame the fixture refuses, asked per paint so a case can hand the picture back between presses. */
+  shouldFailPaint?: () => boolean
 }
 
 const mounted: RenderedElement[] = []
 const contexts: Array<() => void> = []
 
 /** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */
-function stubContext(): void {
+function stubContext(shouldFail?: () => boolean): void {
   const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')!
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
     configurable: true,
     writable: true,
     value: () => new Proxy({}, {
-      get: (_target, key) => (key === 'measureText' ? () => ({ width: 10 }) : () => {}),
+      get: (_target, key) => {
+        if (key === 'measureText') return () => ({ width: 10 })
+        if (key === 'clearRect' && shouldFail?.()) return () => { throw new Error('the fixture refuses the frame') }
+        return () => {}
+      },
     }),
   })
   contexts.push(() => Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', original))
 }
 
 export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountOptions = {}): GraphCanvasMount {
-  stubContext()
+  stubContext(options.shouldFailPaint)
   const open = vi.fn()
   const create = vi.fn()
   const close = vi.fn()

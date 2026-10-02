@@ -437,3 +437,38 @@ describe('the font the titles are drawn with (G-12)', () => {
     expect(fonts[fonts.length - 1]).toContain('Georgia')
   })
 })
+
+describe('a frame that cannot paint (G-13)', () => {
+  it('is caught, said out loud, and leaves the picture able to be asked again', () => {
+    const queued: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { queued.push(cb); return queued.length })
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onPaintError = vi.fn()
+    const painted = {
+      setTransform: () => {}, clearRect: () => { throw new Error('the fixture refuses the frame') }, save: () => {},
+      restore: () => {}, translate: () => {}, scale: () => {}, beginPath: () => {}, closePath: () => {},
+      arc: () => {}, fill: () => {}, stroke: () => {}, moveTo: () => {}, lineTo: () => {}, fillText: () => {}, strokeText: () => {},
+    } as unknown as CanvasRenderingContext2D
+    const state = createInitialState()
+    buildInitialLayout(sampleData, DEFAULT_PREFERENCES, state)
+    createGraphTicker({
+      state, canvas: document.createElement('canvas'), ctx: painted,
+      colorsRef: { current: readThemeColors() }, prefsRef: { current: DEFAULT_PREFERENCES },
+      hoverRef: { current: null }, selectedIdRef: { current: null }, activeNoteIdRef: { current: null },
+      style: document.createElement('div').style, onPaintError,
+    })
+
+    state.schedule?.()
+    // Half the frame is already queued by the time it throws; the callback must not carry the error out.
+    expect(() => queued.shift()?.(0)).not.toThrow()
+
+    expect(logged).toHaveBeenCalledWith('[inkstone] graph paint failed', expect.any(Error))
+    expect(onPaintError).toHaveBeenCalledTimes(1)
+    // The loop stops rather than spinning on a broken frame, but it stays askable: raf is back at 0.
+    expect(queued).toHaveLength(0)
+    expect(state.raf).toBe(0)
+    state.schedule?.()
+    expect(queued).toHaveLength(1)
+    logged.mockRestore()
+  })
+})

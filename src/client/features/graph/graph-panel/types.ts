@@ -100,6 +100,8 @@ export interface GraphTickerOptions {
   activeNoteIdRef: MutableRefObject<string | null>
   style: CSSStyleDeclaration
   onSettled?: () => void
+  /** A frame that threw: the loop has stopped by then, so this is the only thing the reader can be told through. */
+  onPaintError?: (error: unknown) => void
 }
 
 export interface GraphCanvasLoopOptions {
@@ -113,6 +115,8 @@ export interface GraphCanvasLoopOptions {
   setHover: (node: CanvasNode | null) => void
   setSelectedId: Dispatch<SetStateAction<string | null>>
   fitGraph: () => void
+  /** Tells the panel the drawing stopped, so it can say so and offer the one way back (G-13). */
+  onPaintError: (error: unknown) => void
 }
 
 export interface GraphDragOptions {

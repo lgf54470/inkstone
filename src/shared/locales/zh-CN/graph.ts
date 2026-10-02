@@ -11,6 +11,7 @@ export const messages = {
 'graph.choose_a_note': '选择笔记…',
 'graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here': '用 [[双链]] 把笔记连起来，这里就会长出一张网',
 'graph.could_not_load_graph': '无法加载关系图谱',
+'graph.could_not_draw': '无法绘制关系图谱',
 'graph.create_note': '创建这篇笔记',
 'graph.depth': '链接深度',
 'graph.direction_counts': '入 {incoming} · 出 {outgoing}',

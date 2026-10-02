@@ -243,7 +243,16 @@ export function createGraphTicker(options: GraphTickerOptions): void {
   const schedule = () => { if (!options.state.raf) options.state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     options.state.raf = 0
-    renderGraphScene(options)
+    try {
+      renderGraphScene(options)
+    } catch (error) {
+      // A frame that cannot paint has to say so: the loop stops here, so without this the reader keeps a
+      // half-drawn graph and nothing about it changes (G-13). `raf` is already back at 0, which is what
+      // lets a retry ask for a frame again.
+      console.error('[inkstone] graph paint failed', error)
+      options.onPaintError?.(error)
+      return
+    }
     const frame = options.state.frame
     if (frame >= GRAPH_SETTLE_FRAME && previousFrame < GRAPH_SETTLE_FRAME) options.onSettled?.()
     previousFrame = frame
