@@ -35,11 +35,34 @@ export interface SlideRender extends RenderResult {
 // of resetting diagrams to their loading placeholders. The slide list renders the
 // same cache, which is why the key is derived here instead of inside the canvas.
 const slideHtmlCache = new Map<string, SlideMarkup>()
-const SLIDE_HTML_CACHE_LIMIT = 60
+// The floors are what a short note needs; a long deck raises them for as long as it is on screen
+// through `reserveSlideCache` below, because a cap under the deck's page count makes the measuring
+// pass evict the pages it has already prepared while it prepares the ones it has not.
+const SLIDE_HTML_CACHE_FLOOR = 60
+let slideHtmlCacheLimit = SLIDE_HTML_CACHE_FLOOR
 const slideHtmlListeners = new Set<() => void>()
 
 const slidePlanCache = new Map<string, SlidePlan>()
-const SLIDE_PLAN_CACHE_LIMIT = 120
+// A plan is a small array per page rather than a page of markup, so this cache carries twice the
+// floor of the markup one and grows by the same reservation.
+const SLIDE_PLAN_CACHE_FLOOR = 120
+let slidePlanCacheLimit = SLIDE_PLAN_CACHE_FLOOR
+
+/**
+ * Let the caches hold one entry per page of the deck the show is presenting. Without this a deck
+ * longer than the floor evicts its own beginning mid-pass: the rail and the projector then re-render
+ * what was just thrown away, so the same page is prepared twice and the pass never reads as done.
+ * A deck shorter than the floor leaves the floors alone, and the next show shrinks the ceiling back
+ * down rather than inheriting the widest deck of the evening.
+ */
+export function reserveSlideCache(pages: number): void {
+  slideHtmlCacheLimit = Math.max(SLIDE_HTML_CACHE_FLOOR, pages)
+  slidePlanCacheLimit = Math.max(SLIDE_PLAN_CACHE_FLOOR, pages)
+}
+
+export function clearSlideHtmlCache(): void {
+  slideHtmlCache.clear()
+}
 
 export function readSlidePlan(hash: string): SlidePlan | undefined {
   return slidePlanCache.get(hash)
@@ -48,7 +71,7 @@ export function readSlidePlan(hash: string): SlidePlan | undefined {
 export function rememberSlidePlan(hash: string, plan: SlidePlan): void {
   slidePlanCache.delete(hash)
   slidePlanCache.set(hash, plan)
-  while (slidePlanCache.size > SLIDE_PLAN_CACHE_LIMIT) {
+  while (slidePlanCache.size > slidePlanCacheLimit) {
     const oldest = slidePlanCache.keys().next().value
     if (oldest === undefined) break
     slidePlanCache.delete(oldest)
@@ -118,7 +141,7 @@ const slideKeyListeners = new Map<string, Set<() => void>>()
 export function rememberSlideHtml(key: string, markup: SlideMarkup): void {
   slideHtmlCache.delete(key)
   slideHtmlCache.set(key, markup)
-  while (slideHtmlCache.size > SLIDE_HTML_CACHE_LIMIT) {
+  while (slideHtmlCache.size > slideHtmlCacheLimit) {
     const oldest = slideHtmlCache.keys().next().value
     if (oldest === undefined) break
     slideHtmlCache.delete(oldest)

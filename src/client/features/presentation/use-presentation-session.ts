@@ -10,7 +10,7 @@ import type { DeckExportProgress } from './deck-print'
 import { deckProgress, railOpenFor } from './presentation-state'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
-import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheKey } from './slide-html'
+import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, reserveSlideCache, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
@@ -313,6 +313,11 @@ function useChromeAutoHide(active: boolean): boolean {
 function useShowDeck(presentedContent: string) {
   const { slides: deck, notes } = useMemo(() => splitIntoSlidesWithNotes(presentedContent), [presentedContent])
   const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
+  // Before the pass starts preparing pages: a cap under the deck's page count makes it evict the
+  // pages it has already prepared, and the rail then re-renders what was just thrown away.
+  useEffect(() => {
+    reserveSlideCache(deck.length)
+  }, [deck.length])
   return { deck, notes, fingerprint }
 }
 
