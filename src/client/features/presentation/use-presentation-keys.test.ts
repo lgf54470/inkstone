@@ -4,8 +4,8 @@
  * exited when the show itself closes.
  */
 import { act, createElement } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { renderElement } from '../../lib/test-render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderElement, type RenderedElement } from '../../lib/test-render'
 import { usePresentationKeys, type PresentationKeysOptions } from './use-presentation-keys'
 
 function Host({ props }: { props: PresentationKeysOptions }) {
@@ -310,5 +310,64 @@ describe('usePresentationKeys — the speaker notes pane', () => {
     press('ArrowRight', notes)
     expect(props.goNext, 'the sideways turn is not a scroll key, so the show still owns it').toHaveBeenCalledTimes(1)
     view.unmount()
+  })
+})
+
+// The show hangs its key handling on `window`, which is the only way a keystroke nothing on the
+// page claimed still turns a page. That listener is re-armed whenever what it has to know changes —
+// and a re-render that changed nothing it reads must not re-arm it. Unmounting is left to the
+// afterEach because a case that fails mid-flight would otherwise leave a capture listener on the
+// window that preventDefaults the keystroke the next case is still trying to send.
+let spied: { add: ReturnType<typeof vi.spyOn>; remove: ReturnType<typeof vi.spyOn> } | null = null
+let host: RenderedElement | null = null
+
+function keyListenerOps(): { add: number; remove: number } {
+  if (!spied) throw new Error('the spies are the point of these cases')
+  const isKey = (call: unknown[]) => call[0] === 'keydown'
+  return {
+    add: spied.add.mock.calls.filter(isKey).length,
+    remove: spied.remove.mock.calls.filter(isKey).length,
+  }
+}
+
+function mountKeys(props: PresentationKeysOptions): RenderedElement {
+  host = renderElement(createElement(Host, { props }))
+  return host
+}
+
+describe('usePresentationKeys — the listener it hangs on the window', () => {
+  beforeEach(() => {
+    // Spied without an implementation, so the listener still reaches the window and the keystroke
+    // below is answered by something.
+    spied = { add: vi.spyOn(window, 'addEventListener'), remove: vi.spyOn(window, 'removeEventListener') }
+  })
+
+  afterEach(() => {
+    host?.unmount()
+    host = null
+    spied = null
+    vi.restoreAllMocks()
+  })
+
+  it('hangs one listener and keeps it while the show re-renders under it', () => {
+    const view = mountKeys(options())
+    expect(keyListenerOps().add).toBe(1)
+
+    for (let render = 0; render < 5; render++) {
+      view.rerender(createElement(Host, { props: { ...options(), goNext: vi.fn() } }))
+    }
+    expect(keyListenerOps().add, 'every re-render of the session re-armed the window listener').toBe(1)
+    expect(keyListenerOps().remove).toBe(0)
+  })
+
+  it('hands the keystroke to the action the current render passed in', () => {
+    const first = vi.fn()
+    const view = mountKeys({ ...options(), goNext: first })
+    const second = vi.fn()
+    view.rerender(createElement(Host, { props: { ...options(), goNext: second } }))
+
+    press('ArrowRight')
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
   })
 })

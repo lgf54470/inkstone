@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { presentationCommand, type PresentationCommand } from './presentation-keys'
 
 export type ScreenCoverType = 'black' | 'white' | null
@@ -55,6 +55,9 @@ function useOverviewMode(open: boolean) {
 
 // One runner per command keeps the listener itself short, and a command that is not
 // claimed leaves the event alone instead of swallowing it for the rest of the page.
+// The actions are held in a ref rather than in the callback's dependencies: the caller passes a
+// fresh object on every render of the show, and a keystroke has to reach the action that render
+// ended up with — while the listener on `window` stays where it was hung.
 function usePresentationRunner(actions: {
   goNext: () => void
   goPrev: () => void
@@ -70,36 +73,39 @@ function usePresentationRunner(actions: {
   toggleOverview: () => void
   openPresenter?: () => void
 }) {
+  const latest = useRef(actions)
+  latest.current = actions
   return useCallback((command: PresentationCommand) => {
+    const current = latest.current
     switch (command) {
       case 'next':
-        return actions.goNext()
+        return current.goNext()
       case 'prev':
-        return actions.goPrev()
+        return current.goPrev()
       case 'first':
-        return actions.jumpTo(0)
+        return current.jumpTo(0)
       case 'last':
-        return actions.jumpTo(actions.slideCount - 1)
+        return current.jumpTo(current.slideCount - 1)
       case 'fullscreen':
-        return actions.toggleFullscreen()
+        return current.toggleFullscreen()
       case 'slideList':
-        return actions.toggleRail()
+        return current.toggleRail()
       case 'follow':
-        return actions.toggleFollowing()
+        return current.toggleFollowing()
       case 'blackout':
-        return actions.toggleBlackout()
+        return current.toggleBlackout()
       case 'whiteout':
-        return actions.toggleWhiteout()
+        return current.toggleWhiteout()
       case 'laser':
-        return actions.toggleLaser()
+        return current.toggleLaser()
       case 'spotlight':
-        return actions.toggleSpotlight()
+        return current.toggleSpotlight()
       case 'overview':
-        return actions.toggleOverview()
+        return current.toggleOverview()
       case 'presenter':
-        return actions.openPresenter?.()
+        return current.openPresenter?.()
     }
-  }, [actions])
+  }, [])
 }
 
 export interface PresentationKeysResult {

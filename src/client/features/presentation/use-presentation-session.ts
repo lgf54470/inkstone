@@ -8,6 +8,7 @@ import { useUi } from '../../store/ui'
 import { type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
 import { deckProgress, railOpenFor } from './presentation-state'
+import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, reserveSlideCache, slideCacheKey } from './slide-html'
@@ -21,7 +22,6 @@ import { usePresentationKeys } from './use-presentation-keys'
 import { useFullscreenToggle } from './use-fullscreen-toggle'
 import { useSlideHtml } from './use-slide-html'
 
-const CHROME_IDLE_MS = 2600
 // Everything the show holds that is not markup: which note is on screen, how it splits, where the
 // presenter is in it, and which mode (fullscreen, slide list, overview, laser, cover) is on. It is
 // one hook because those pieces are one state machine — a page plan changes the list, the list
@@ -185,7 +185,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
-  const slideUnprepared = useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
+  const slideUnprepared = useSlideHtml({ open, deck, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
   // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the
   // controls ask for. What stays explicit is what only the session decides.
@@ -275,36 +275,6 @@ function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => voi
   const railOpen = railOpenFor(choice, fitsViewport)
   const toggleRail = useCallback(() => setChoice(!railOpen), [railOpen])
   return { railOpen, toggleRail }
-}
-
-// Presenting is a full-screen activity: the controls and the slide list fade out
-// while nothing happens and come back on the next pointer move or key press, so
-// the slide itself owns the whole screen.
-function useChromeAutoHide(active: boolean): boolean {
-  const [hidden, setHidden] = useState(false)
-  useEffect(() => {
-    if (!active) {
-      setHidden(false)
-      return
-    }
-    let timer = 0
-    const reveal = () => {
-      window.clearTimeout(timer)
-      setHidden(false)
-      timer = window.setTimeout(() => setHidden(true), CHROME_IDLE_MS)
-    }
-    window.addEventListener('pointermove', reveal)
-    window.addEventListener('pointerdown', reveal)
-    window.addEventListener('keydown', reveal, true)
-    reveal()
-    return () => {
-      window.clearTimeout(timer)
-      window.removeEventListener('pointermove', reveal)
-      window.removeEventListener('pointerdown', reveal)
-      window.removeEventListener('keydown', reveal, true)
-    }
-  }, [active])
-  return hidden
 }
 
 // The deck is exactly what the show presents: while following, every debounced edit

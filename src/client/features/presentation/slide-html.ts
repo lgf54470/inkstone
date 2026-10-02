@@ -17,6 +17,14 @@ export interface SlideMarkup {
   /** The layout the slide's own source asked for, taken out of the markup before it was rendered. */
   layout?: SlideLayout
   /**
+   * Set when the markup has been through the enhancement chain — or was captured from a page that
+   * has. A plain render is what the cache holds *while* a page is being prepared, so a reader that
+   * took it for the finished page would leave the diagrams as placeholders for good: the run that
+   * was interrupted (the presenter turned the page, the show re-rendered under it) cached the text
+   * before it started drawing, and nothing would come back to draw it.
+   */
+  prepared?: boolean
+  /**
    * Set when the page could not be enhanced: its diagrams, math and embeds stayed placeholders while
    * the text of the slide is still there. It travels with the entry rather than with a surface
    * because the slide list, the projector and the export all read the same prepared page — one of
