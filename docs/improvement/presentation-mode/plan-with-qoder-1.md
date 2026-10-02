@@ -21,7 +21,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **R2-0** | 文档基线 | 本报告与执行计划 | 极低 | `[x]` 已提交 (`48e645b5`) |
 | **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[x]` 五条提交全部落地（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`、收尾 `cab2d30f` + `3303479e`），批次收尾四条重型门禁已跑；其余批次的页数断言以本批为新基线，本批新开的两条门禁红见 L-3 / L-4 |
-| **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[~]` N-07 已提交 `7120d1c2`；N-08 ~ N-10 待办（N-08 与 N-10 共用一份协议白名单，按顺序做） |
+| **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[~]` N-07 已提交 `7120d1c2`、N-10 已提交 `07d97b7f`；N-08 / N-09 待办（N-08 直接复用 N-10 抽出的 `isSafeSlideLinkHref`，无需再等） |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[ ]` 待办 |
 | **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红） |
 | **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 待办（依赖 R2-1） |
@@ -68,17 +68,18 @@
   - 涉及文件：`presentation-state.ts`、`presentation-context-menu.tsx`、两侧测试
   - 目标：把 `interceptSlideLink` 的协议判定抽成 `isSafeSlideLinkHref(href): boolean` 纯函数，左键与右键共用；右键侧对非白名单 href 不渲染这两项。
   - 验证：`javascript:` / `data:` 链接在菜单里不出现「打开链接」，纯函数表驱动用例。
-  - 代价：小 · 依赖：N-10（同一份谓词）
+  - 代价：小 · 依赖：N-10（同一份谓词）——`07d97b7f` 已把 `isSafeSlideLinkHref()` 落在 `presentation-state.ts` 并导出，本条直接引用即可
 - [ ] **N-09** 右键菜单可穿透解析到放映画面之外的链接（`中` · 安全/正确性）
   - 涉及文件：`presentation-context-menu.tsx`、`presentation-context-menu.test.ts`
   - 目标：命中栈只取第一个非背板元素，并加 `panelRef.current.contains(el)` 约束，不再全栈搜索。
   - 验证：在遮罩外放一个链接、遮罩内画面无链接，断言菜单不提供「打开链接」。
   - 代价：小
-- [ ] **N-10** 链接协议判定大小写敏感、非白名单链接静默失效（`中` · 正确性）
-  - 涉及文件：`presentation-state.ts`、`slide-canvas.tsx`、`src/shared/locales/{en-US,zh-CN}/workspace.ts`
+- [x] **N-10** 链接协议判定大小写敏感、非白名单链接静默失效（`中` · 正确性）— 已提交 `07d97b7f`
+  - 涉及文件：`presentation-state.ts`、`presentation-state.test.ts`、`slide-canvas.tsx`、`slide-canvas.test.ts`、`src/shared/locales/{en-US,zh-CN}/workspace.ts`、`scripts/check-comments.mjs`
   - 目标：比较先 `toLowerCase()`；被拦下的非白名单链接给一次 toast（复用 `useUi`，同模块用法见 `deck-print.tsx:101`）。
   - 验证：`HTTP://` 大写链接仍可翻页内跳转；`mailto:` 之类断言有 toast 而非无声。
   - 代价：小
+  - 落地：协议白名单从 `interceptSlideLink` 体内抽成 `SLIDE_LINK_PROTOCOLS` + `isSafeSlideLinkHref()`（只折叠比较用的副本，交出去打开的 href 保留原大小写），另出 `isBlockedSlideLinkHref()`（真 href 且不在白名单；页内 `#` 跳转与空 href 不算被拒）——N-08 要用的谓词已在此，可直接引用。
 
 ---
 
@@ -301,3 +302,8 @@
   - 变异在案：7 项变异，控制运行 15 例先绿（源文件 md5 `aa166025`，跑完 `restored-clean: true`）。**M1–M5 全被具名用例杀死**（M1 频道名忽略令牌 → 2 红；M2 广播端去掉 `!token` → 1 红；M3 接收端去掉 `!token` → 1 红；M4 空串当令牌（`|| null`→`?? null`）→ 1 红；M5 路由丢掉令牌 → 1 红）。**M6、M7 存活并如实记录**：M6 去掉 `encodeURIComponent`——`secureRandomId()` 三条取值路径（randomUUID / CSPRNG hex / `base36-base36`）产出的字符全在 URL 安全集内，没有测试能在不伪造「app 永远不会生成的令牌」的前提下命中它；编码留着作为 URL 拼接的常规正确写法，不为它编一条假值用例。M7 把接收端 effect 依赖 `[token]` 改回 `[]`——`PresenterWindow` 的令牌是 `useMemo(…, [])` 一次性读的，同一文档生命周期内不会变，故两者等价；`[token]` 是 exhaustive-deps 的正确形式，保留。
   - 门禁在案：`npm run typecheck` 通过；13 项静态门禁 rc=0（钩子逐条打印：`comment policy check passed: 13122 approved English architecture notes across 1355 files`、`surface coverage check passed: all 8 full screen surfaces are opened and read by scripts/e2e-visual.mjs`、`i18n check passed: 3900 English keys`、`token drift check passed (89 tokens, values stable)`、`hardcoded/escape/empty-catch/module-state/deep-imports/style/size/vendor/budget` 全绿；`comments:check` 由 `sync-comments-allowlist.mjs` 按当前工作区重建，工作区只有本条 5 个文件在改）；`npx vitest run src/client/features/presentation src/client/store` = **27 文件 / 762 例全绿**（其中 `presenter-view` 两文件 31 例：频道 15 + 演讲者窗 16）；提交钩子另跑 `vitest related` **7 文件 / 49 例全绿**。
   - 落地取舍与残留：①与报告方案的两处偏差写明——令牌**按点击现铸**而非 `start()` 时铸（放映一开始就建通道正是本条要消除的行为，且多数放映不开演讲者窗）；**没有**加「忽略无令牌消息并 `console.warn`」那一步，因为频道名即凭据，陌生文档的消息根本到不了 handler，要 warn 就得重新监听公共名、把泄露面再开一次。②`app.tsx` 未改：路由选择器 `has('presenter')` 原样成立，令牌走的是同一个参数的值，不需要新增接线。③未加消息级令牌字段（名称已承重，多一层是重复判定，`YAGNI`）。④本条**只有 jsdom 证据**，没有跨窗口真实链路或浏览器端断言——`e2e-visual.mjs` 目前完全不打开演讲者窗；真实双窗链路与「弹窗被拦」的降级（`openPresenterWindow` 返回 `null` 仍未处理）一并留给 R2-3 的 N-04/N-06，届时补浏览器断言。⑤`PRESENTER_CHANNEL_NAME` 旧导出无任何使用者，直接删，不留兼容别名（`铁律 5`）。
+- 2026-10-02 · R2-2 / N-10（`07d97b7f`）：幻灯片链接的协议判定改为大小写不敏感，并把白名单从 `interceptSlideLink` 体内抽成可复用谓词。`presentation-state.ts` 新增模块私有 `SLIDE_LINK_PROTOCOLS`（`https://` `http://` `mailto:` `tel:`）+ 导出的 `isSafeSlideLinkHref()`（比较用 `(href ?? '').trim().toLowerCase()` 的副本，交给 `openWindow` 的仍是原样 trim 的 href——路径的大小写有意义）与 `isBlockedSlideLinkHref()`（真 href 且不在白名单才算被拒，页内 `#` 跳转与空 href 由私有的 `isInPageSlideLink()` 排除）；`interceptSlideLink()` 收成「谓词 + 打开」两步，行为除大写协议外与改前一致。`slide-canvas.tsx` 的 `useSlideLinkInterceptor()` 改为导出（同文件已有 `applySlidePage`/`useBentoSlidesFallback` 为测试导出的先例），左键点击若被白名单拒下则 `useUi.getState().toast({ tone: 'warning' })` 一次——该点击在此之前已被 `preventDefault` 吞掉，放映者两头都没有反馈。文案 `workspace.presentation_link_blocked` 双语补齐。
+  - 红先在案：实现前两文件合跑 `Tests 20 failed | 54 passed (74)`。其中 **1 条是旧代码的真实行为差异**：`folds only the scheme, so the path the author wrote keeps its case` —— 旧 `interceptSlideLink('HTTPS://Example.COM/Talk#Section')` 直接返回 `false`，大写协议根本打不开。另 **19 条是 API 尚不存在**（`TypeError: isSafeSlideLinkHref / isBlockedSlideLinkHref / useSlideLinkInterceptor is not a function`，日志里 4 处具名报错），不作为行为证据：14 条表驱动判定 + 2 条 `isBlockedSlideLinkHref` + 3 条拦截器用例。既有的 5 条 `interceptSlideLink` 用例一条未改，改前改后皆绿。
+  - 变异在案：8 项变异（`/tmp/mut-n10.mjs`），控制运行 `red=0 green=74`，两文件 md5 `052433e9` / `398dae3a`，跑完 `restored … true` 双双回到原值。**8/8 全被具名用例杀死**：M1 比较不折叠大小写 → 6 红；M2 把折叠后的副本交出去打开 → 2 红；M3 被拒链接不 toast → 1 红；M4 页内 `#` 也算被拒 → 2 红；M5 白名单去掉 `mailto:` → 3 红；M6 白名单接受一切 → 12 红；M7 `interceptSlideLink` 不走谓词（只判 `!href`）→ 4 红；M8 被拒判定不再回头查白名单 → 1 红（大写协议那条被误报成「被拒」）。
+  - 门禁在案：`npm run typecheck` rc=0；13 项静态门禁逐条 rc=0，其中 `comments:check` 先红 7 条新注释、`node scripts/sync-comments-allowlist.mjs` 重建后 **13129 条 / 1355 文件** 通过（工作区只有本条 6 个文件在改，重建安全），`i18n:check` **3901 English keys** 双语完整，`size:check` 1903 文件通过（`presentation-state.ts` 193 行）；`npm run test:unit` 全量 **617 文件 / 5987 通过 + 1 跳过 / 2 失败**，两条都是 `Error: Test timed out in 5000ms`（`blog-comments-window.test.ts > mounts one page of rows and grows on demand`、`music-hub-modal.test.ts > says how many matches the capped grid leaves out`），单独复跑这两文件 **22 例全绿**——与 R2-1 收尾记下的负载敏感超时同类，且两文件不引用演示目录；提交钩子另跑 `vitest related` **412 文件 / 3989 例全绿**（`presentation-state` 被放映各处引用，related 覆盖面因此很大）。
+  - 落地取舍与残留：①toast 不带被拒的 href 原文，只说「演示模式无法打开该链接」——长 URL 放进一次性提示不可读，且这条是用户可见反馈不是错误路径，不另加 `console.warn`。②行为位移如实记录：笔记间相对链接（`/notes/another`）在放放映时过去是**静默无效**，现在会出一次提示；这与 N-10「非白名单链接静默失效」的判定一致，但确实改了作者能看见的东西，R2-4 的 N-19（幻灯片内笔记间跳转语义）若要支持站内链接，得在白名单或专用路径里显式加它。③本条仍只有 jsdom 证据，浏览器端「点大写链接真开新标签、点被拒链接出 toast」未进 `e2e-visual.mjs`；与 N-07 的 ④ 同类，一并留给 R2-3。④右键侧本条**未动**，`presentation-context-menu.tsx:57` 仍把原值直接交给 `window.open`——那是 N-08，用的就是这里抽出的同一份谓词。
