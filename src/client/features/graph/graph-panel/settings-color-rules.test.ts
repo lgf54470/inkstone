@@ -31,6 +31,7 @@ function panel(colorGroups: GraphColorGroup[], onChange: (key: string, value: un
     selectedTags: [],
     isLimitOpen: false,
     onToggleLimit: vi.fn(),
+    drawerId: 'graph-settings-drawer',
     onClose: vi.fn(),
     onResetTagFilters: vi.fn(),
     onRestoreDefaults: vi.fn(),

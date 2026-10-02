@@ -79,7 +79,8 @@ export function panelButton(name: string): HTMLButtonElement {
 }
 
 export function panelDrawer(label: string): HTMLElement | null {
-  return surface().querySelector<HTMLElement>(`aside[aria-label="${label}"]`)
+  // The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).
+  return surface().querySelector<HTMLElement>(`aside[aria-label="${label}"], [role="dialog"][aria-label="${label}"], [role="region"][aria-label="${label}"]`)
 }
 
 export function panelSwitch(label: string): HTMLButtonElement {

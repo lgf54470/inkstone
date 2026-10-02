@@ -3510,6 +3510,7 @@ const allowed = new Map([
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
     '/** Lets the graph request that is already in flight land, which is when the canvas appears. */',
     '/** Mounts the panel with its graph already on screen. */',
+    '// The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).',
     '/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */',
     '/** React only sees a value the browser itself wrote, so a test types through the native setter. */',
     '/** Escape as a reader presses it: from whatever the dialog holds focus on. */',
@@ -3543,9 +3544,16 @@ const allowed = new Map([
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
+    '/* Beside the canvas the drawer is a column of this panel, so claiming a popup dialog there was a\n          claim about something this control does not open (G-25). */',
+    '/** A folder filter whose folder is gone would keep narrowing the graph to nothing, so it is dropped. */',
+    '/** Focus goes into the drawer when it opens and comes back to the control that opened it when it closes. */',
   ]],
   ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
     '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
+    '/** The shape jsdom hands the panel: no media query matches, so it lays out as it would on a phone. */',
+    '/** The wide layout, where the same drawer is a column beside the canvas rather than over it. */',
+    '// A case that widens the viewport for itself must not hand that width to the next one.',
+    '// A control that opens a column must not claim a popup dialog it does not open.',
   ]],
   ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
     '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',
@@ -3563,11 +3571,22 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
     '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/settings.tsx', [
+    '/** Named by the header control that opens this drawer, so `aria-controls` has something to point at. */',
+    '// Opening a panel has to take focus into it: left where it was, the next Tab walks the header and',
+    '// the drawer the reader just asked for is skipped entirely. The id is the one the header control',
+    '// points `aria-controls` at, so both name the same element.',
+    '// `dialog` is not an allowed role on `aside` (the overlay Drawer reads the same rule off axe), so the',
+    '// shell that covers the canvas is a div; beside the canvas this is a named region, not a dialog.',
+    '/** Everything that narrows which notes are in the graph, plus the cap notice the sidebar selection hits. */',
+  ]],
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
     '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
     '/** The canvas box\'s viewport offset, kept by the resizer: pointer math subtracts it instead of\n   * asking the layout engine for the box on every move, which forced a synchronous layout per event. */',
     '/** The ten tag colours of the theme, in slot order, read from the --graph-tag-* tokens. */',
+    '/** The drawer this control opens, for `aria-controls`. */',
+    '/** Focus returns here when the drawer closes, whichever control closed it. */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-export.test.ts', [
     '/**\n * Exporting is the one graph action that leaves the app: the reader presses a button and a file\n * appears somewhere else. So the button has to stay shut while the picture is being painted, the\n * failure has to reach the reader rather than vanish, and the graph that gets drawn is the one on\n * screen. The file itself is the subject of `graph-export.test.ts`; here the promise is held open on\n * purpose to watch what the panel does around it.\n */',

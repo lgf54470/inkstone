@@ -128,6 +128,10 @@ export interface GraphHeaderActionsProps {
   hasGraph: boolean
   isSettingsOpen: boolean
   isExporting: boolean
+  /** The drawer this control opens, for `aria-controls`. */
+  settingsId: string
+  /** Focus returns here when the drawer closes, whichever control closed it. */
+  settingsButtonRef: RefObject<HTMLButtonElement | null>
   onZoomOut: () => void
   onFit: () => void
   onZoomIn: () => void

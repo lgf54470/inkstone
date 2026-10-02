@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Download, ImageDown, Maximize2, Minus, Plus, Search, Settings2, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
@@ -14,6 +14,7 @@ import { Button, IconButton } from '../../../components/primitives'
 import { Input, Segmented } from '../../../components/form'
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../../components/overlay'
 import { Empty, LoadingBlock } from '../../../components/feedback'
+import { useBreakpoint } from '../../../lib/hooks'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { useUi } from '../../../store/ui'
@@ -179,7 +180,8 @@ function GraphSearchBox({ search, onSearchChange }: {
 }
 
 function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
-  const { hasGraph, isSettingsOpen, isExporting, onZoomOut, onFit, onZoomIn, onExportPng, onExportSvg, onToggleSettings, onClose } = actions
+  const { hasGraph, isSettingsOpen, isExporting, settingsId, settingsButtonRef, onZoomOut, onFit, onZoomIn, onExportPng, onExportSvg, onToggleSettings, onClose } = actions
+  const drawerIsDialog = useBreakpoint() === 'mobile'
   return (
     <div className='ml-auto flex items-center gap-1'>
       <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!hasGraph} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
@@ -187,7 +189,9 @@ function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
       <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!hasGraph} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_png')}><IconButton label={t('graph.export_png')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportPng}><ImageDown size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_svg')}><IconButton label={t('graph.export_svg')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportSvg}><Download size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' aria-haspopup='dialog' aria-expanded={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
+      {/* Beside the canvas the drawer is a column of this panel, so claiming a popup dialog there was a
+          claim about something this control does not open (G-25). */}
+      <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' ref={settingsButtonRef} aria-controls={settingsId} aria-haspopup={drawerIsDialog ? 'dialog' : undefined} aria-expanded={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
       <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-1'><X size={16}/></IconButton></Tooltip>
     </div>
   )
@@ -197,15 +201,19 @@ function useGraphHeaderActions(options: {
   data: GraphResponse | null
   isSettingsOpen: boolean
   setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  settingsId: string
+  settingsButtonRef: RefObject<HTMLButtonElement | null>
   refs: ReturnType<typeof useGraphCanvasRefs>
   exportActions: ReturnType<typeof useGraphExport>
   onClose: () => void
 }): GraphHeaderActionsProps {
-  const { data, isSettingsOpen, setIsSettingsOpen, refs, exportActions, onClose } = options
+  const { data, isSettingsOpen, setIsSettingsOpen, settingsId, settingsButtonRef, refs, exportActions, onClose } = options
   return useMemo(() => ({
     hasGraph: Boolean(data?.nodes.length),
     isSettingsOpen,
     isExporting: exportActions.isExporting,
+    settingsId,
+    settingsButtonRef,
     onZoomOut: () => refs.controlsRef.current?.zoomOut(),
     onFit: () => refs.controlsRef.current?.fit(),
     onZoomIn: () => refs.controlsRef.current?.zoomIn(),
@@ -213,7 +221,33 @@ function useGraphHeaderActions(options: {
     onExportSvg: exportActions.exportSvg,
     onToggleSettings: () => setIsSettingsOpen((value) => !value),
     onClose,
-  }), [data?.nodes.length, isSettingsOpen, onClose, refs.controlsRef, setIsSettingsOpen, exportActions])
+  }), [data?.nodes.length, isSettingsOpen, onClose, refs.controlsRef, setIsSettingsOpen, settingsId, settingsButtonRef, exportActions])
+}
+
+/** A folder filter whose folder is gone would keep narrowing the graph to nothing, so it is dropped. */
+function useFolderFilterRepair(
+  prefs: GraphPreferences,
+  folders: readonly { id: string }[],
+  changePref: <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => void,
+): void {
+  useEffect(() => {
+    if (prefs.folderId && folders.length > 0 && !folders.some((folder) => folder.id === prefs.folderId)) {
+      changePref('folderId', '')
+    }
+  }, [folders, prefs.folderId])
+}
+
+/** Focus goes into the drawer when it opens and comes back to the control that opened it when it closes. */
+function useSettingsDisclosureFocus(isOpen: boolean): RefObject<HTMLButtonElement | null> {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const wasOpenRef = useRef(false)
+  useEffect(() => {
+    if (isOpen) { wasOpenRef.current = true; return }
+    if (!wasOpenRef.current) return
+    wasOpenRef.current = false
+    triggerRef.current?.focus({ preventScroll: true })
+  }, [isOpen])
+  return triggerRef
 }
 
 function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, actions }: GraphHeaderProps) {
@@ -305,17 +339,15 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   }, [selectedTags.length])
   const request = useGraphQueryRequest(prefs, activeNoteId, query, selectedTags)
   const { data, loadError, isLoading, setReload } = useGraphData(request)
+  const settingsId = useId()
+  const settingsButtonRef = useSettingsDisclosureFocus(isSettingsOpen)
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
-  useEffect(() => {
-    if (prefs.folderId && folders.length > 0 && !folders.some((f) => f.id === prefs.folderId)) {
-      changePref('folderId', '')
-    }
-  }, [folders, prefs.folderId])
+  useFolderFilterRepair(prefs, folders, changePref)
   const resetTagFilters = useTagReset(prefs, changePref)
   const exportActions = useGraphExport(refs.stateRef, prefs)
-  const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, refs, exportActions, onClose })
+  const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, settingsId, settingsButtonRef, refs, exportActions, onClose })
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
     <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} actions={headerActions}/>
@@ -326,7 +358,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         </GraphBody>
         <GraphRefreshBadge visible={isLoading && Boolean(data)}/>
       </main>
-      {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))}/>}
+      {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} drawerId={settingsId} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))}/>}
     </div>
   </div>, document.body)
 }
