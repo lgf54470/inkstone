@@ -54,6 +54,10 @@ export function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stat
     const rect = canvas.getBoundingClientRect()
     const xs = state.nodes.map((node) => node.x)
     const ys = state.nodes.map((node) => node.y)
+    // Spread extremes, not a loop: the call takes one argument per node, and the most a response can
+    // carry is `LIMITS.graphNodeLimitMax` (the route clamps to it, and the setting cannot ask for more),
+    // which is three orders of magnitude below the argument ceiling. Raising that bound means rewriting
+    // these two lines as a reduction — the same premise the review records as V-04 (G-21).
     const minX = Math.min(...xs), maxX = Math.max(...xs)
     const minY = Math.min(...ys), maxY = Math.max(...ys)
     const width = Math.max(80, maxX - minX + 80)

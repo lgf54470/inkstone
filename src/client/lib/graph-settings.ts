@@ -1,3 +1,4 @@
+import { LIMITS } from '@shared/constants'
 import type { MessageKey } from '@shared/locales/en-US'
 
 export type GroupBy = 'none' | 'folder' | 'tag'
@@ -15,6 +16,8 @@ export const GRAPH_COLOR_GROUP_LIMIT = 5
 export interface GraphPreferences {
   mode: 'global' | 'local'
   depth: number
+  /** How many nodes to ask the server for, inside the bounds it clamps to (G-21). */
+  limit: number
   includeOrphans: boolean
   includeUnresolved: boolean
   /** Draw each tag as a node of its own, pulling notes that share it into one cluster. */
@@ -37,6 +40,12 @@ export interface GraphPreferences {
 }
 
 type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences]
+
+/** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */
+export const GRAPH_DEPTHS: number[] = Array.from(
+  { length: LIMITS.graphDepthMax - LIMITS.graphDepthMin + 1 },
+  (_unused, index) => LIMITS.graphDepthMin + index,
+)
 
 
 interface GraphToggleControl {

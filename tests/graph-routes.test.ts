@@ -10,6 +10,7 @@ import { errorResponse } from '../src/worker/lib/errors'
 import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
 import { GRAPH_EDGE_CANDIDATE_LIMIT } from '../src/worker/routes/search/helpers'
 import { GRAPH_TAG_EDGE_LIMIT } from '../src/shared/graph-tag-nodes'
+import { LIMITS } from '../src/shared/constants'
 
 const NOW = 2_000_000_000_000
 
@@ -566,5 +567,20 @@ describe('graph read budget (G-03, real D1)', () => {
       .bind(`graph-read:${userId}`)
       .first<{ fails: number }>()
     expect(row).toEqual({ fails: 1 })
+  })
+})
+
+describe('the node limit the interface can ask for (G-21)', () => {
+  it('clamps a requested limit into the bounds the settings offer, whichever way it is off', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('lim'), userId, NOW)
+
+    const high = await graphBody('/api/search/graph?limit=9999', userId)
+    expect(high.meta).toMatchObject({ limit: LIMITS.graphNodeLimitMax })
+    const low = await graphBody('/api/search/graph?limit=1', userId)
+    expect(low.meta).toMatchObject({ limit: LIMITS.graphNodeLimitMin })
+    const unset = await graphBody('/api/search/graph', userId)
+    expect(unset.meta).toMatchObject({ limit: LIMITS.graphNodeLimitDefault })
   })
 })

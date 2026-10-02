@@ -4,13 +4,13 @@ import type { GraphQuery, GraphResponse } from '@shared/types'
 import { api } from '../../lib/api'
 import { errorMessage } from '../../lib/errors'
 import { Button, IconButton } from '../../components/primitives'
+import { Select } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { useNotes } from '../../store/notes'
 import { t } from '../../lib/i18n'
-import type { GraphPreferences } from '../../lib/graph-settings'
+import { GRAPH_DEPTHS, type GraphPreferences } from '../../lib/graph-settings'
 import { GraphCanvas } from './graph-panel/canvas'
-import { LOCAL_GRAPH_LIMIT } from './graph-panel/constants'
 import { normalizedResponse } from './graph-panel/helpers'
 import { useGraphCanvasRefs } from './graph-panel/canvas-hooks'
 import { useStoredGraphPreferences } from './graph-panel/use-graph-prefs'
@@ -25,12 +25,16 @@ export interface LocalGraphPanelProps {
 
 function LocalGraphHeader({
   count,
+  depth,
+  onDepthChange,
   onFit,
   onOpenSettings,
   onOpenFullGraph,
   onClose,
 }: {
   count?: number
+  depth: number
+  onDepthChange: (depth: number) => void
   onFit: () => void
   onOpenSettings?: () => void
   onOpenFullGraph?: () => void
@@ -44,6 +48,16 @@ function LocalGraphHeader({
         {count !== undefined && <span className='tabular text-[length:var(--text-10\.5)]'>· {count}</span>}
       </div>
       <div className='flex items-center gap-0.5'>
+        <Tooltip label={t('graph.depth')}>
+          <Select
+            aria-label={t('graph.depth')}
+            value={String(depth)}
+            onChange={(event) => onDepthChange(Number(event.target.value))}
+            className='h-6 max-w-16 md:h-6 text-[length:var(--text-10\.5)]'
+          >
+            {GRAPH_DEPTHS.map((option) => <option key={option} value={String(option)}>{option}</option>)}
+          </Select>
+        </Tooltip>
         <Tooltip label={t('graph.fit')}>
           <IconButton label={t('graph.fit')} size='sm' onClick={onFit}>
             <Maximize2 size={12} />
@@ -92,7 +106,7 @@ function useLocalGraphData(noteId: string, reload: number, prefs: GraphPreferenc
       mode: 'local',
       center: noteId,
       depth: prefs.depth,
-      limit: LOCAL_GRAPH_LIMIT,
+      limit: prefs.limit,
       includeOrphans: prefs.includeOrphans,
       includeUnresolved: prefs.includeUnresolved,
       showTagNodes: prefs.showTagNodes,
@@ -111,7 +125,7 @@ function useLocalGraphData(noteId: string, reload: number, prefs: GraphPreferenc
       isCancelled = true
       controller.abort()
     }
-  }, [noteId, reload, prefs.depth, prefs.includeOrphans, prefs.includeUnresolved, prefs.showTagNodes])
+  }, [noteId, reload, prefs.depth, prefs.limit, prefs.includeOrphans, prefs.includeUnresolved, prefs.showTagNodes])
 
   return { data, loadError }
 }
@@ -175,13 +189,22 @@ export function LocalGraphPanel({ noteId, onClose, onOpenFullGraph, onOpenSettin
   // panels persisting the same key would leave whichever let go last holding the graph (G-20).
   const storedPrefs = useStoredGraphPreferences()
   const canvasPrefs = useMemo<GraphPreferences>(() => ({ ...storedPrefs, mode: 'local' }), [storedPrefs])
-  const { data, loadError } = useLocalGraphData(noteId, reload, storedPrefs)
+  // How wide this panel reaches is asked for here and lives nowhere else: it is not a setting the full
+  // graph offers, so persisting it would put a second writer on the same key (G-21).
+  const [depthOverride, setDepthOverride] = useState<number | null>(null)
+  const requestPrefs = useMemo<GraphPreferences>(
+    () => ({ ...canvasPrefs, depth: depthOverride ?? canvasPrefs.depth }),
+    [canvasPrefs, depthOverride],
+  )
+  const { data, loadError } = useLocalGraphData(noteId, reload, requestPrefs)
   const refs = useGraphCanvasRefs(noteId)
 
   return (
     <section className='flex h-64 shrink-0 flex-col border-t border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <LocalGraphHeader
         count={data?.nodes.length}
+        depth={requestPrefs.depth}
+        onDepthChange={setDepthOverride}
         onFit={() => refs.controlsRef.current?.fit()}
         onOpenSettings={onOpenSettings}
         onOpenFullGraph={onOpenFullGraph}

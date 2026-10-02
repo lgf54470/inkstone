@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { LIMITS } from '@shared/constants'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, GRAPH_PREFS_KEY } from './constants'
 import {
@@ -66,6 +67,17 @@ describe('graph panel preferences', () => {
     const prefsB = loadPreferences('user-b')
     expect(prefsB.mode).toBe('local')
     expect(prefsB.depth).toBe(2)
+  })
+
+  it('keeps a stored node limit inside the bounds the server answers with (G-21)', () => {
+    // The bounds are the server's own, so a slider cannot offer a number the route would refuse.
+    expect(LIMITS.graphNodeLimitMax).toBeGreaterThan(LIMITS.graphNodeLimitDefault)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ limit: 9_999 }))
+    expect(loadPreferences(null).limit).toBe(LIMITS.graphNodeLimitMax)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ limit: 1 }))
+    expect(loadPreferences(null).limit).toBe(LIMITS.graphNodeLimitMin)
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({}))
+    expect(loadPreferences(null).limit).toBe(LIMITS.graphNodeLimitDefault)
   })
 })
 

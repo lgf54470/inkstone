@@ -1,5 +1,6 @@
 import { createElement, act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIMITS } from '@shared/constants'
 import type { GraphResponse } from '@shared/types'
 import { renderElement } from '../../lib/test-render'
 import { api } from '../../lib/api'
@@ -199,6 +200,76 @@ describe('the companion graph following a change made elsewhere (G-20)', () => {
     await settleGraphPanel()
 
     expect(companionLegend(container)).toContain('work')
+    unmount()
+    releaseGraphPanels()
+  })
+})
+
+/** The requests the companion itself sent, which is the only surface here centred on this note. */
+function companionAsked(): Record<string, unknown> {
+  const calls = vi.mocked(api.graph).mock.calls
+    .map((call) => call[0] as unknown as Record<string, unknown>)
+    .filter((request) => request.center === 'note-1')
+  return calls.at(-1)!
+}
+
+function setDepth(container: HTMLElement, value: string): void {
+  const select = container.querySelector<HTMLSelectElement>('select[aria-label="' + t('graph.depth') + '"]')
+  if (!select) throw new Error('the companion graph offers no link-depth choice')
+  selectOption(select, value)
+}
+
+/** The companion is the one graph a reader looks at while writing, so its own reach is asked for there. */
+describe('the reach the companion panel answers for (G-21)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('asks for the ceiling the reader set, the one it ships no longer being its own', () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ limit: LIMITS.graphNodeLimitMax }))
+    vi.mocked(api.graph).mockResolvedValueOnce(taggedGraph)
+    const { unmount } = renderElement(createElement(LocalGraphPanel, { noteId: 'note-1' }))
+
+    expect(companionAsked().limit).toBe(LIMITS.graphNodeLimitMax)
+    unmount()
+  })
+
+  it('widens the neighbourhood from its own header without rewriting the reader’s settings', async () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ depth: 1 }))
+    vi.mocked(api.graph).mockResolvedValue(taggedGraph)
+    const { container, unmount } = renderElement(createElement(LocalGraphPanel, { noteId: 'note-1' }))
+    await settleGraphPanel()
+    expect(companionAsked().depth).toBe(1)
+
+    act(() => { setDepth(container, '2') })
+    await settleGraphPanel()
+
+    expect(companionAsked().depth).toBe(2)
+    expect(JSON.parse(localStorage.getItem(GRAPH_PREFS_KEY) ?? '{}').depth).toBe(1)
+    unmount()
+  })
+})
+
+describe('the companion panel holding its own width (G-21)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps the choice made here when the full graph changes depth behind it', async () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ mode: 'local', depth: 1 }))
+    vi.mocked(api.graph).mockResolvedValue(taggedGraph)
+    const { container, unmount } = renderElement(createElement(LocalGraphPanel, { noteId: 'note-1' }))
+    await settleGraphPanel()
+    act(() => { setDepth(container, '3') })
+    await settleGraphPanel()
+    expect(companionAsked().depth).toBe(3)
+
+    await mountGraphPanel(taggedGraph)
+    click(panelButton(t('graph.settings')))
+    selectOption(panelSelect(t('graph.depth')), '2')
+    await settleGraphPanel()
+
+    expect(companionAsked().depth).toBe(3)
     unmount()
     releaseGraphPanels()
   })

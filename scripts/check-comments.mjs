@@ -2801,6 +2801,10 @@ const allowed = new Map([
     '// stand-in silence — the shape of the contract is what the demo pins down.',
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
+  ['src/client/demo/backend/routes/search.ts', [
+    '// The same bounds the worker clamps to and the settings offer, so the demo cannot answer a request the',
+    '// real app would refuse (G-21).',
+  ]],
   ['src/client/demo/backend/routes/share-fixtures.ts', [
     '/**\n * The demo backend\'s share fixtures. Kept apart from the route handlers because this is data the\n * routes read, not logic they run: the constants below describe one plausible month of traffic and\n * nothing here branches.\n */',
     '/**\n * The demo\'s seeded collection (`state.ts`) publishes this slug, so the marker its directory hands\n * out is this — built through the shared builder as it is in the product, never typed by hand.\n */',
@@ -3452,6 +3456,10 @@ const allowed = new Map([
     '/** Put a named node under the reader: the selection, the camera and the announcement of it. */',
     '// Read off the document rather than the store: the account menu is out of reach while the graph is',
     '// open, and a follow-the-system flip reaches the attribute without a store change.',
+    '// Spread extremes, not a loop: the call takes one argument per node, and the most a response can',
+    '// carry is `LIMITS.graphNodeLimitMax` (the route clamps to it, and the setting cannot ask for more),',
+    '// which is three orders of magnitude below the argument ceiling. Raising that bound means rewriting',
+    '// these two lines as a reduction — the same premise the review records as V-04 (G-21).',
     '/**\n * The hit set belongs to the frame, not to the response: a search that locates its matches repaints the\n * nodes the layout already holds, so a new building never starts and the positions a reader dragged stay.\n */',
     '/**\n * Putting the search\'s first hit under the reader: the same path an arrow key takes, so a jumped-to node is\n * selected, kept inside the viewport, and announced like one the reader reached themselves (G-14).\n */',
     '/**\n * Whether a press has become a drag. Travel is counted on both axes because the reader can move the pointer\n * diagonally while dragging, and this is the one line the click and the card are measured against.\n */',
@@ -3530,10 +3538,10 @@ const allowed = new Map([
     '// keeps the sentence the app has always drawn (G-19).',
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
-    '/** How many nodes the note\'s companion graph asks the server for: it fills a panel, not a screen. */',
     '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
     '/** A title is cut to this many characters, however it is drawn. */',
     '/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */',
+    '/** How far one press of the node-limit slider moves: a screenful of notes, not one of them. */',
     '/** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line\n * decides that letting go opens nothing and that the node has left the place its preview card hangs\n * from, so the two can never disagree about where the click ends (G-16). */',
     '/** A search that locates its matches leaves the rest of the graph on screen: lighter than the hover\n * focus, which hides the whole field, because these nodes are the context the match sits in (G-14). */',
   ]],
@@ -3595,6 +3603,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/helpers.test.ts', [
     '/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */',
+    '// The bounds are the server\'s own, so a slider cannot offer a number the route would refuse.',
     '/** The rows a single note produces on its own, which is the colour it is drawn under. */',
     '/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */',
   ]],
@@ -3670,6 +3679,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',
+    '/**\n * The server answers up to `LIMITS.graphNodeLimitMax` nodes and the panel used to ask for the same 350\n * however full the library got, so the only sign a reader had of the ceiling was the badge counting what\n * came back (G-21). The limit is now a preference like the others that decide what is sent.\n */',
   ]],
   ['src/client/features/graph/graph-panel/panel-search-focus.test.ts', [
     '/**\n * A reader who types a name into the graph\'s search box is looking for something in the graph they are\n * already looking at, not asking for a different graph (G-14). The old behaviour re-queried, which dropped\n * the links that made the note findable and, with the request throttling, blanked the canvas. These cases\n * type into the real header and count the requests it cost, read what the panel says it matched, and press\n * the two controls the search answers with.\n */',
@@ -3742,6 +3752,8 @@ const allowed = new Map([
     '/** The words of the colour legend the companion draws, which only exists once a preference says to. */',
     '// A filter the companion cannot show or clear would empty the panel with no way back (G-15).',
     '// Two surfaces persisting the same key would leave whichever let go last holding the graph (G-20).',
+    '/** The requests the companion itself sent, which is the only surface here centred on this note. */',
+    '/** The companion is the one graph a reader looks at while writing, so its own reach is asked for there. */',
   ]],
   ['src/client/features/graph/local-graph.tsx', [
     '/** The companion holds no settings of its own, so this leads to the panel that writes them (G-20). */',
@@ -3751,6 +3763,8 @@ const allowed = new Map([
     '// would empty it with no way back (G-20, G-15).',
     '// Read-only on purpose: the full-screen graph is the one surface that writes these back, and two',
     '// panels persisting the same key would leave whichever let go last holding the graph (G-20).',
+    '// How wide this panel reaches is asked for here and lives nowhere else: it is not a setting the full',
+    '// graph offers, so persisting it would put a second writer on the same key (G-21).',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
@@ -8860,10 +8874,12 @@ const allowed = new Map([
   ['src/client/lib/graph-settings.ts', [
     '/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */',
     '/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */',
+    '/** How many nodes to ask the server for, inside the bounds it clamps to (G-21). */',
     '/** Draw each tag as a node of its own, pulling notes that share it into one cluster. */',
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
+    '/** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */',
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
   ]],
   ['src/client/lib/hooks.test.ts', [
@@ -12947,6 +12963,8 @@ const allowed = new Map([
     '// and like the referrer cap it answers 400 rather than truncating what the caller sent.',
     '// Each delete is an R2 head + delete + a ledger write, and the client only fires them one at a',
     '// time; the budget exists to bound a scripted hammer, not any hand-driven cleanup.',
+    '// The graph\'s own reach. The settings offer these bounds and the route clamps to them, so a slider',
+    '// cannot offer a number the server would answer with a different one (G-21).',
     '// Position saves ride a heartbeat while music plays, so they would starve the library-write',
     '// budget if they shared its key; they still deserve their own ceiling.',
     '// A lyric search scans the whole table with LIKE; the id list it ships back stays',

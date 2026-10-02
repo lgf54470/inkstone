@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIMITS } from '@shared/constants'
 import type { GraphResponse } from '@shared/types'
 import { api } from '../../../lib/api'
 import { initI18n, t } from '../../../lib/i18n'
@@ -120,5 +121,33 @@ describe('where the graph preferences get stored', () => {
 
     expect(storedPrefs(`${GRAPH_PREFS_KEY}.prefs-user`)?.repulsion).toBe(1500)
     expect(storedPrefs(GRAPH_PREFS_KEY)).toBeNull()
+  })
+})
+
+/**
+ * The server answers up to `LIMITS.graphNodeLimitMax` nodes and the panel used to ask for the same 350
+ * however full the library got, so the only sign a reader had of the ceiling was the badge counting what
+ * came back (G-21). The limit is now a preference like the others that decide what is sent.
+ */
+describe('the node limit a reader can ask for (G-21)', () => {
+  function lastRequest(): Record<string, unknown> {
+    return vi.mocked(api.graph).mock.calls.at(-1)![0] as unknown as Record<string, unknown>
+  }
+
+  it('asks for the limit the reader stored, not the one the panel shipped', async () => {
+    localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify({ limit: LIMITS.graphNodeLimitMax }))
+    await mountGraphPanel(tagged)
+
+    expect(lastRequest().limit).toBe(LIMITS.graphNodeLimitMax)
+  })
+
+  it('moves the slider into the next request and leaves it stored', async () => {
+    await mountGraphPanel(tagged)
+    click(panelButton(t('graph.settings')))
+    setRangeValue(panelRange(t('graph.node_limit')), String(LIMITS.graphNodeLimitMax))
+    await settleGraphPanel()
+
+    expect(lastRequest().limit).toBe(LIMITS.graphNodeLimitMax)
+    expect(storedPrefs(GRAPH_PREFS_KEY)?.limit).toBe(LIMITS.graphNodeLimitMax)
   })
 })

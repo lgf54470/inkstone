@@ -1,4 +1,5 @@
 import type { GraphNode, GraphResponse } from '@shared/types'
+import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
@@ -79,7 +80,8 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
     const stored = JSON.parse(raw ?? '{}') as Partial<GraphPreferences>
     return {
       mode: stored.mode === 'local' ? 'local' : 'global',
-      depth: boundedPreference(stored.depth, DEFAULT_PREFERENCES.depth, 1, 3),
+      depth: boundedPreference(stored.depth, DEFAULT_PREFERENCES.depth, LIMITS.graphDepthMin, LIMITS.graphDepthMax),
+      limit: boundedPreference(stored.limit, DEFAULT_PREFERENCES.limit, LIMITS.graphNodeLimitMin, LIMITS.graphNodeLimitMax),
       includeOrphans: booleanPreference(stored.includeOrphans, DEFAULT_PREFERENCES.includeOrphans),
       includeUnresolved: booleanPreference(stored.includeUnresolved, DEFAULT_PREFERENCES.includeUnresolved),
       showTagNodes: booleanPreference(stored.showTagNodes, DEFAULT_PREFERENCES.showTagNodes),

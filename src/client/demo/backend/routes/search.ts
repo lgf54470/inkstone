@@ -1,5 +1,6 @@
 import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
+import { LIMITS } from '@shared/constants'
 import { deriveExcerpt, extractWikiLinks, normalizeLinkKey, wikiNoteTarget } from '@shared/markdown-utils'
 import type { GraphResponse, Note, SearchResponse } from '@shared/types'
 import { applyTagNodes } from '@shared/graph-tag-nodes'
@@ -187,8 +188,10 @@ function collectUnresolvedLinks(
 function graphResponse(c: Context, state: DemoState): Response {
   const mode = c.req.query('mode') === 'local' ? 'local' : 'global'
   const centerId = c.req.query('center') || null
-  const depth = Math.max(1, Math.min(3, Number(c.req.query('depth')) || 1))
-  const limit = Math.max(50, Math.min(600, Number(c.req.query('limit')) || 350))
+  // The same bounds the worker clamps to and the settings offer, so the demo cannot answer a request the
+  // real app would refuse (G-21).
+  const depth = Math.max(LIMITS.graphDepthMin, Math.min(LIMITS.graphDepthMax, Number(c.req.query('depth')) || LIMITS.graphDepthDefault))
+  const limit = Math.max(LIMITS.graphNodeLimitMin, Math.min(LIMITS.graphNodeLimitMax, Number(c.req.query('limit')) || LIMITS.graphNodeLimitDefault))
   const includeUnresolved = c.req.query('includeUnresolved') === '1'
   const showTagNodes = c.req.query('tagNodes') === '1'
 

@@ -79,7 +79,7 @@ function graphRequest(prefs: GraphPreferences, activeNoteId: string | null, quer
     includeOrphans: prefs.includeOrphans,
     includeUnresolved: prefs.includeUnresolved,
     showTagNodes: prefs.showTagNodes,
-    limit: 350,
+    limit: prefs.limit,
   }
 }
 
@@ -342,6 +342,7 @@ function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | nu
     activeNoteId,
     prefs.mode,
     prefs.depth,
+    prefs.limit,
     prefs.folderId,
     prefs.tag,
     prefs.tagsMatch,

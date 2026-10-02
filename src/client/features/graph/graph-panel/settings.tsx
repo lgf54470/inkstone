@@ -5,6 +5,7 @@ import type { Folder, Tag } from '@shared/types'
 import {
   GRAPH_APPEARANCE_TOGGLES,
   GRAPH_CLEAR_TOGGLES,
+  GRAPH_DEPTHS,
   GRAPH_SHOW_TOGGLES,
   type GraphPreferences,
   type GroupBy,
@@ -14,6 +15,7 @@ import { Select, Switch } from '../../../components/form'
 import { Tooltip, useEscape } from '../../../components/overlay'
 import { useBreakpoint } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
+import { GRAPH_LIMIT_STEP } from './constants'
 import { GraphColorRules } from './settings-color-rules'
 
 interface GraphSettingsPanelProps {
@@ -103,7 +105,8 @@ function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLi
       {GRAPH_SHOW_TOGGLES.map((control) => (
         <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
       ))}
-      {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={[['1', '1'], ['2', '2'], ['3', '3']]}/>}
+      <GraphRange label={t('graph.node_limit')} min={LIMITS.graphNodeLimitMin} max={LIMITS.graphNodeLimitMax} step={GRAPH_LIMIT_STEP} value={prefs.limit} onChange={(value) => onChange('limit', value)}/>
+      {prefs.mode === 'local' && <GraphSelect label={t('graph.depth')} value={String(prefs.depth)} onChange={(value) => onChange('depth', Number(value))} options={GRAPH_DEPTHS.map((depth) => [String(depth), String(depth)] as [string, string])}/>}
     </GraphSection>
   )
 }

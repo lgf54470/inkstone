@@ -1,4 +1,5 @@
 import type { GraphPreferences } from '../../../lib/graph-settings'
+import { LIMITS } from '@shared/constants'
 
 export const FALLBACK_EDGE_COLOR = 'rgba(127,127,127,.35)'
 export const FALLBACK_NODE_COLOR = '#777'
@@ -11,9 +12,6 @@ export const GRAPH_SETTLE_FRAME = 70
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 export const COLOR_GROUP_QUERY_MAX = 120
 
-/** How many nodes the note's companion graph asks the server for: it fills a panel, not a screen. */
-export const LOCAL_GRAPH_LIMIT = 100
-
 /** Ten slots for tag colours, the width of the --graph-tag-* token block. */
 export const GRAPH_TAG_PALETTE_SIZE = 10
 
@@ -22,6 +20,9 @@ export const GRAPH_LABEL_MAX = 18
 export const GRAPH_LABEL_FONT_SIZE = 11
 /** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */
 export const GRAPH_CAMERA_PADDING = 24
+
+/** How far one press of the node-limit slider moves: a screenful of notes, not one of them. */
+export const GRAPH_LIMIT_STEP = 50
 
 /** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line
  * decides that letting go opens nothing and that the node has left the place its preview card hangs
@@ -44,7 +45,8 @@ export const FALLBACK_FONT_FAMILY = 'sans-serif'
 
 export const DEFAULT_PREFERENCES: GraphPreferences = {
   mode: 'global',
-  depth: 1,
+  depth: LIMITS.graphDepthDefault,
+  limit: LIMITS.graphNodeLimitDefault,
   includeOrphans: true,
   includeUnresolved: true,
   showTagNodes: false,

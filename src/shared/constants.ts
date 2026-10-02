@@ -87,6 +87,15 @@ export const LIMITS = {
   syncBatchSize: 500,
   searchLimit: 50,
 
+  // The graph's own reach. The settings offer these bounds and the route clamps to them, so a slider
+  // cannot offer a number the server would answer with a different one (G-21).
+  graphNodeLimitMin: 50,
+  graphNodeLimitMax: 600,
+  graphNodeLimitDefault: 350,
+  graphDepthMin: 1,
+  graphDepthMax: 3,
+  graphDepthDefault: 1,
+
   ftsContentChars: 200_000,
 
   musicTrackMaxBytes: 64 * 1024 * 1024,

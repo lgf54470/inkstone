@@ -35,6 +35,7 @@ export const messages = {
 'graph.local_requires_note': 'Open a note before viewing its local graph',
 'graph.make_local_center': 'Use as local center',
 'graph.node_actions': 'Node actions',
+'graph.node_limit': 'Node limit',
 'graph.node_size': 'Node size',
 'graph.notes': ' notes · ',
 'graph.nothing_to_graph_yet': 'Nothing to graph yet',

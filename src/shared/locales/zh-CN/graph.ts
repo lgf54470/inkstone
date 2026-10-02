@@ -35,6 +35,7 @@ export const messages = {
 'graph.local_requires_note': '请先打开一篇笔记，再查看它的局部图谱',
 'graph.make_local_center': '以此笔记为中心',
 'graph.node_actions': '节点操作',
+'graph.node_limit': '节点上限',
 'graph.node_size': '节点大小',
 'graph.notes': '篇笔记 ·',
 'graph.nothing_to_graph_yet': '还没有可以画的东西',
