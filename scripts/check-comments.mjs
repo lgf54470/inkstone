@@ -3480,6 +3480,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '/** The nodes the search box hit, or null while nothing is being located. */',
+    '/** The filter line the search box holds, and what to do when a legend row is pressed (G-14 ④). */',
     '/** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */',
     '/** Speaks to the same live region the selection announcement uses, for keys that answer with words. */',
     '/** What Enter does to the node the reader is on: it opens what can be opened, and filters by what cannot. */',
@@ -3529,6 +3530,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/graph-overlays.tsx', [
     '/** The canvas names this hint as its description, so the id is the one both sides agree on. */',
+    '/** The filter line the search box holds; with `onLegendSelect` the legend becomes a control (G-14 ④). */',
+    '/** The filter line the search box holds, so the row it names reads as pressed. */',
     '/* The hint stops being drawn on a phone, so the text the canvas describes itself with has to\n          stay in the accessibility tree there: `hidden` would make the description resolve to nothing. */',
   ]],
   ['src/client/features/graph/graph-panel/graph-panel-mount.test-helpers.ts', [
@@ -3538,6 +3541,8 @@ const allowed = new Map([
     '/** Mounts the panel with its graph already on screen. */',
     '/** Text as a reader types it, so React owns the value the same way it does in the browser. */',
     '/** The search box is debounced, so a case that waits for what it decided has to wait for that timer too. */',
+    '/** A legend row, named by the filter line it stands for. */',
+    '/** The `q` each graph request carried, in the order the panel sent them. */',
     '// The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).',
     '/** The sliders and dropdowns are labelled by the text wrapped around them, not by an attribute. */',
     '/** React only sees a value the browser itself wrote, so a test types through the native setter. */',
@@ -3549,6 +3554,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/helpers.test.ts', [
     '/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */',
+    '/** The rows a single note produces on its own, which is the colour it is drawn under. */',
     '/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */',
   ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
@@ -3565,6 +3571,9 @@ const allowed = new Map([
     '/** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */',
     '/** A node nobody links to is only worth a title once the graph is zoomed in far enough to read it. */',
     '/** A tag with no colour of its own is named by its token, so the legend follows the theme on its own. */',
+    '/** A legend row names a colour and carries the filter line that selects exactly the nodes drawn in it. */',
+    '/** The filter line this row stands for: a rule\'s own query, or the tag/folder term naming the group. */',
+    '// A rule is labelled by its own filter line, so the row it draws can hand that line back.',
     '/**\n * The nodes the search box hit, worked out on the graph that is already on screen (G-14). The same filter\n * grammar the server runs decides the set, so the fading and the `tag:` / `path:` a reader writes mean one\n * thing. A tag node answers for its own name, since the notes filed under it are what it stands for.\n * Returns null for an empty line: with no search running, nothing on the canvas is asked to fade.\n */',
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
   ]],
@@ -3581,6 +3590,8 @@ const allowed = new Map([
     '// A response the server already narrowed has nothing left to fade.',
     '/** The search line\'s two modes are kept together because they end together: an empty box answers nobody. */',
     '// Erasing the line ends that search, so the next word is faded in place rather than arriving already filtered.',
+    '// A legend row is a filter line the reader did not have to type: press it to fade to that colour, press it',
+    '// again to ask the server for only that colour, a third time to put the graph back.',
   ]],
   ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
     '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
@@ -3591,6 +3602,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
     '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-legend-cycle.test.ts', [
+    '/**\n * The legend has always said which colour means what; a reader who wants *only* that colour had to type the\n * filter line out (G-14 ④). Every row is already a line the search box understands — a rule carries its own\n * query, a tag row its `tag:`, a folder row its `path:` — so pressing one writes into the search line rather\n * than inventing a third way to narrow a graph: first press fades to it, second asks the server for only it,\n * third puts the graph back.\n */',
+    '// The rules are preferences, so the legend they draw is on screen only because a reader wrote them.',
   ]],
   ['src/client/features/graph/graph-panel/panel-parameter-isolation.test.ts', [
     '/**\n * Half of the graph\'s preferences are drawn on the client and half of them decide what the server sends.\n * A reader who drags a force slider wants the picture to move, not to disappear behind a new request, so\n * these cases press each kind of control on the real panel and read how many requests it cost and whether\n * the canvas on screen is still the one that was already there.\n */',

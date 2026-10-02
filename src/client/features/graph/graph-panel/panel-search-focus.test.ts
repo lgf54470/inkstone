@@ -12,6 +12,7 @@ import {
   panelInput,
   panelStatusText,
   releaseGraphPanels,
+  searchRequestQueries,
   settleGraphPanel,
   typeInto,
   waitQueryDebounce,
@@ -36,10 +37,6 @@ const threeNotes: GraphResponse = {
   ],
   edges: [{ source: 'note-1', target: 'note-2' }, { source: 'note-2', target: 'note-3' }],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 3, totalEdges: 2, truncated: false, limit: 350 },
-}
-
-function searchRequests(): Array<{ q?: string }> {
-  return vi.mocked(api.graph).mock.calls.map((call) => call[0] as unknown as { q?: string })
 }
 
 function panelText(): string {
@@ -83,7 +80,7 @@ describe('the search box locates the graph on screen instead of replacing it (G-
     await waitQueryDebounce()
 
     // The response the faded graph is drawn from is still the whole one: Beta's two links are on screen.
-    expect(searchRequests()[0]!.q).toBeUndefined()
+    expect(searchRequestQueries()[0]).toBeUndefined()
     expect(api.graph).toHaveBeenCalledTimes(1)
   })
 })
@@ -136,7 +133,7 @@ describe('the search that really does narrow the graph, kept as a choice', () =>
     await settleGraphPanel()
 
     expect(api.graph).toHaveBeenCalledTimes(2)
-    expect(searchRequests()[1]!.q).toBe('Beta')
+    expect(searchRequestQueries()[1]).toBe('Beta')
   })
 
   it('leaves the choice in the search box rather than in the stored preferences', async () => {
@@ -158,7 +155,7 @@ describe('the choice lasts as long as the search it was made for', () => {
     await waitQueryDebounce()
     click(panelButton(t('graph.only_matching_notes')))
     await settleGraphPanel()
-    expect(searchRequests()[1]!.q).toBe('Beta')
+    expect(searchRequestQueries()[1]).toBe('Beta')
 
     typeInto(panelInput(t('graph.search_notes')), '')
     await waitQueryDebounce()
@@ -168,7 +165,7 @@ describe('the choice lasts as long as the search it was made for', () => {
 
     // Emptying the box ends the choice: the next word is faded in place and costs no request at all, since
     // the reader never pressed the switch again.
-    expect(searchRequests().map((request) => request.q)).toEqual([undefined, 'Beta', undefined])
+    expect(searchRequestQueries()).toEqual([undefined, 'Beta', undefined])
     expect(panelButton(t('graph.only_matching_notes')).getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -185,7 +182,7 @@ describe('the choice lasts as long as the search it was made for', () => {
     await waitQueryDebounce()
 
     // A line of spaces matches nothing, so the trimmed query is empty: same request shape as an erased box.
-    expect(searchRequests().map((request) => request.q)).toEqual([undefined, 'Beta', undefined])
+    expect(searchRequestQueries()).toEqual([undefined, 'Beta', undefined])
   })
 })
 

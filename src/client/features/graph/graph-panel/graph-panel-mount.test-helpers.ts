@@ -103,6 +103,19 @@ export function panelStatusText(marker: string): string | null {
   return surface().querySelector(`[data-graph-${marker}='']`)?.textContent ?? null
 }
 
+/** A legend row, named by the filter line it stands for. */
+export function legendRow(query: string): HTMLButtonElement {
+  const row = Array.from(surface().querySelectorAll<HTMLButtonElement>('button[data-legend-query]'))
+    .find((button) => button.getAttribute('data-legend-query') === query)
+  if (!row) throw new Error(`the graph panel draws no legend row for ${query}`)
+  return row
+}
+
+/** The `q` each graph request carried, in the order the panel sent them. */
+export function searchRequestQueries(): Array<string | undefined> {
+  return vi.mocked(api.graph).mock.calls.map((call) => call[0]?.q)
+}
+
 export function panelDrawer(label: string): HTMLElement | null {
   // The drawer is an aside on the wide layout and a dialog over the canvas on the phone one (G-25).
   return surface().querySelector<HTMLElement>(`aside[aria-label="${label}"], [role="dialog"][aria-label="${label}"], [role="region"][aria-label="${label}"]`)

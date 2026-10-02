@@ -375,11 +375,25 @@ function useGraphSearchMode() {
     // Erasing the line ends that search, so the next word is faded in place rather than arriving already filtered.
     if (!value.trim()) setIsOnlyMatching(false)
   }
+  // A legend row is a filter line the reader did not have to type: press it to fade to that colour, press it
+  // again to ask the server for only that colour, a third time to put the graph back.
+  const cycleLegend = (query: string) => {
+    if (search !== query) {
+      changeSearch(query)
+      return
+    }
+    if (!isOnlyMatching) {
+      setIsOnlyMatching(true)
+      return
+    }
+    changeSearch('')
+  }
   return {
     search,
     query,
     isOnlyMatching,
     changeSearch,
+    cycleLegend,
     toggleOnlyMatching: () => { setIsOnlyMatching((value) => !value) },
   }
 }
@@ -400,7 +414,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const [prefs, setPrefs] = useGraphPrefs()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLimitOpen, setIsLimitOpen] = useState(false)
-  const { search, query, isOnlyMatching, changeSearch, toggleOnlyMatching } = useGraphSearchMode()
+  const { search, query, isOnlyMatching, changeSearch, cycleLegend, toggleOnlyMatching } = useGraphSearchMode()
   const openNote = useNotes((state) => state.openNote)
   const folders = useNotes((state) => state.folders ?? [])
   const tags = useNotes((state) => state.tags ?? [])
@@ -433,7 +447,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
-          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
+          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} searchHits={searchState?.dimSet ?? null} legendQuery={search || undefined} onLegendSelect={cycleLegend} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
         <GraphRefreshBadge visible={isLoading && Boolean(data)}/>
       </main>

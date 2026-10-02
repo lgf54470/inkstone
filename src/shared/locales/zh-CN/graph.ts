@@ -89,4 +89,5 @@ export const messages = {
 'graph.no_matching_notes': '没有笔记匹配这个搜索',
 'graph.only_matching_notes': '只显示匹配的笔记',
 'graph.jump_to_first_match': '跳到第一个匹配',
+'graph.legend_filter': '高亮这一色，或只看这一色',
 }

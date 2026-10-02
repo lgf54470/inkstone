@@ -235,42 +235,51 @@ function tagLegendColor(name: string, color: string | null): string {
   return organizerColorOrNull(color) ?? `var(${graphTagTokenName(tagHashIndex(name))})`
 }
 
+/** A legend row names a colour and carries the filter line that selects exactly the nodes drawn in it. */
 function extractNodeLegend(
   node: GraphResponse['nodes'][number],
   groupBy: GroupBy,
   tagColors: Map<string, string | null>,
-): { label: string; color: string } | null {
+): { label: string; color: string; query: string } | null {
   if (node.kind === 'tag') {
-    return { label: node.title, color: tagLegendColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null) }
+    return { label: node.title, color: tagLegendColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null), query: `tag:${node.title}` }
   }
   if (groupBy === 'folder' && node.folderName) {
     const color = organizerColorOrNull(node.folderColor)
-    return color ? { label: node.folderName, color } : null
+    return color ? { label: node.folderName, color, query: `path:${node.folderName}` } : null
   }
   if (groupBy === 'tag' && node.tags[0]) {
     const tag = node.tags[0]
-    return { label: tag.name, color: tagLegendColor(tag.name, tag.color) }
+    return { label: tag.name, color: tagLegendColor(tag.name, tag.color), query: `tag:${tag.name}` }
   }
   return null
+}
+
+export interface ColorLegendItem {
+  label: string
+  color: string
+  /** The filter line this row stands for: a rule's own query, or the tag/folder term naming the group. */
+  query: string
 }
 
 export function buildColorLegends(
   nodes: GraphResponse['nodes'],
   groupBy: GroupBy,
   colorGroups: readonly GraphColorGroup[] = [],
-): Array<{ label: string; color: string }> {
+): ColorLegendItem[] {
   const ruleColors = colorGroupsByNodeId(nodes, colorGroups)
   if (groupBy === 'none' && !ruleColors.size && !nodes.some((node) => node.kind === 'tag')) return []
   const tagColors = tagColorsByName(nodes)
-  const map = new Map<string, string>()
+  const map = new Map<string, ColorLegendItem>()
   for (const entry of ruleColors.values()) {
-    if (!map.has(entry.label)) map.set(entry.label, entry.color)
+    // A rule is labelled by its own filter line, so the row it draws can hand that line back.
+    if (!map.has(entry.label)) map.set(entry.label, { label: entry.label, color: entry.color, query: entry.label })
   }
   for (const node of nodes) {
     const entry = extractNodeLegend(node, groupBy, tagColors)
-    if (entry && !map.has(entry.label)) map.set(entry.label, entry.color)
+    if (entry && !map.has(entry.label)) map.set(entry.label, entry)
   }
-  return [...map.entries()].slice(0, 10).map(([label, color]) => ({ label, color }))
+  return [...map.values()].slice(0, 10)
 }
 
 /**

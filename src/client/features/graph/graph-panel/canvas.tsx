@@ -31,6 +31,9 @@ interface GraphCanvasProps {
   prefs: GraphPreferences
   /** The nodes the search box hit, or null while nothing is being located. */
   searchHits?: ReadonlySet<string> | null
+  /** The filter line the search box holds, and what to do when a legend row is pressed (G-14 ④). */
+  legendQuery?: string
+  onLegendSelect?: (query: string) => void
   activeNoteId: string | null
   canvasRef: RefObject<HTMLCanvasElement | null>
   stateRef: RefObject<CanvasState>
@@ -475,6 +478,8 @@ export function GraphCanvas(props: GraphCanvasProps) {
         onLeavePreview={b.preview.resumeHide}
         onPinPreview={b.preview.onPinPreview}
         colorLegends={b.colorLegends}
+        legendQuery={props.legendQuery}
+        onLegendSelect={props.onLegendSelect}
         liveAnnouncement={b.liveAnnouncement}
       />
       <Menu anchor={b.context ?? { x: 0, y: 0 }} open={Boolean(b.context)} onClose={() => b.setContext(null)} items={b.menuItems} label={t('graph.node_actions')}/>

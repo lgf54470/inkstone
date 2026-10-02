@@ -1,13 +1,10 @@
 import { type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
+import { Button } from '../../../components/primitives'
 import { t } from '../../../lib/i18n'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from '../../preview'
+import type { ColorLegendItem } from './helpers'
 import type { CanvasNode } from './types'
-
-export interface ColorLegendItem {
-  label: string
-  color: string
-}
 
 export interface GraphOverlaysProps {
   data: GraphResponse
@@ -25,6 +22,9 @@ export interface GraphOverlaysProps {
   onLeavePreview?: () => void
   onPinPreview?: (card: WikiLinkHoverCardState, rect: DOMRect) => void
   colorLegends?: ColorLegendItem[]
+  /** The filter line the search box holds; with `onLegendSelect` the legend becomes a control (G-14 ④). */
+  legendQuery?: string
+  onLegendSelect?: (query: string) => void
   liveAnnouncement?: string
 }
 
@@ -50,16 +50,42 @@ function NodeDetailBadge({ node }: { node: CanvasNode | GraphResponse['nodes'][n
   )
 }
 
-function ColorLegend({ items }: { items: ColorLegendItem[] }) {
+function ColorLegend({ items, query, onSelect }: {
+  items: ColorLegendItem[]
+  /** The filter line the search box holds, so the row it names reads as pressed. */
+  query?: string
+  onSelect?: (query: string) => void
+}) {
   if (items.length === 0) return null
   return (
     <div className='pointer-events-none absolute bottom-4 left-4 z-[var(--z-raised)] flex max-h-36 max-w-56 flex-col gap-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-overlay)]/90 p-2 text-[length:var(--text-11)] shadow-[var(--shadow-sm)] backdrop-blur-xs'>
-      {items.map((item) => (
-        <div key={item.label} className='flex items-center gap-1.5 truncate'>
-          <span className='size-2.5 shrink-0 rounded-full' style={{ backgroundColor: item.color }} />
-          <span className='truncate text-[var(--text-secondary)]'>{item.label}</span>
-        </div>
-      ))}
+      {items.map((item) => {
+        const swatch = <span className='size-2.5 shrink-0 rounded-full' style={{ backgroundColor: item.color }} />
+        if (!onSelect) {
+          return (
+            <div key={item.label} className='flex items-center gap-1.5 truncate'>
+              {swatch}
+              <span className='truncate text-[var(--text-secondary)]'>{item.label}</span>
+            </div>
+          )
+        }
+        return (
+          <Button
+            key={item.label}
+            variant='ghost'
+            size='sm'
+            block
+            icon={swatch}
+            data-legend-query={item.query}
+            aria-pressed={query === item.query}
+            title={t('graph.legend_filter')}
+            className='pointer-events-auto justify-start text-left aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]'
+            onClick={() => { onSelect(item.query) }}
+          >
+            {item.label}
+          </Button>
+        )
+      })}
     </div>
   )
 }
@@ -80,6 +106,8 @@ export function GraphOverlays({
   onLeavePreview,
   onPinPreview,
   colorLegends = [],
+  legendQuery,
+  onLegendSelect,
   liveAnnouncement,
   hintId,
 }: GraphOverlaysProps) {
@@ -121,7 +149,7 @@ export function GraphOverlays({
           onPin={onPinPreview}
         />
       )}
-      <ColorLegend items={colorLegends} />
+      <ColorLegend items={colorLegends} query={legendQuery} onSelect={onLegendSelect} />
       <div aria-live='polite' aria-atomic='true' className='sr-only'>
         {liveAnnouncement}
       </div>

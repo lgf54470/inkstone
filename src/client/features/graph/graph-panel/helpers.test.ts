@@ -125,9 +125,9 @@ describe('tag nodes (FEAT-03)', () => {
   it('lists tag nodes in the legend as a reference to their palette token, and stays empty without them', () => {
     const note = { ...createTestNode(), id: 'note-1', tags: [{ name: 'work', color: '#059669' }] }
     const tag = asTagNode({ id: 'tag:work', title: 'work', tagColor: null })
-    expect(buildColorLegends([note, tag], 'none')).toEqual([{ label: 'work', color: '#059669' }])
+    expect(buildColorLegends([note, tag], 'none')).toEqual([{ label: 'work', color: '#059669', query: 'tag:work' }])
     const uncolored = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
-    expect(buildColorLegends([note, uncolored], 'none')).toEqual([{ label: 'idea', color: 'var(--graph-tag-4)' }])
+    expect(buildColorLegends([note, uncolored], 'none')).toEqual([{ label: 'idea', color: 'var(--graph-tag-4)', query: 'tag:idea' }])
     expect(buildColorLegends([note], 'none')).toEqual([])
   })
 
@@ -183,10 +183,10 @@ describe('color group rules legend and storage (FEAT-04)', () => {
 
   it('lists the rules on screen in the legend ahead of the grouping, and drops those with no match', () => {
     const node = createTestNode()
-    expect(buildColorLegends([node], 'none', [colorRule()])).toEqual([{ label: 'tag:urgent', color: '#4f46e5' }])
+    expect(buildColorLegends([node], 'none', [colorRule()])).toEqual([{ label: 'tag:urgent', color: '#4f46e5', query: 'tag:urgent' }])
     expect(buildColorLegends([node], 'folder', [colorRule()])).toEqual([
-      { label: 'tag:urgent', color: '#4f46e5' },
-      { label: 'Work', color: '#dc2626' },
+      { label: 'tag:urgent', color: '#4f46e5', query: 'tag:urgent' },
+      { label: 'Work', color: '#dc2626', query: 'path:Work' },
     ])
     expect(buildColorLegends([{ ...node, tags: [] }], 'none', [colorRule()])).toEqual([])
   })
@@ -216,6 +216,33 @@ describe('color group rules legend and storage (FEAT-04)', () => {
     }))
     localStorage.setItem(key, JSON.stringify({ colorGroups: many }))
     expect(loadPreferences('many-user').colorGroups).toHaveLength(GRAPH_COLOR_GROUP_LIMIT)
+  })
+})
+
+describe('legend rows a reader can press (G-14)', () => {
+  /** The rows a single note produces on its own, which is the colour it is drawn under. */
+  function rowsFor(node: CanvasNode, groupBy: 'folder' | 'tag'): string[] {
+    return buildColorLegends([node], groupBy).map((row) => row.label)
+  }
+
+  it('gives every row the filter line that still selects the nodes drawn under it', () => {
+    const work = { ...createTestNode(), id: 'a' }
+    const play = { ...createTestNode(), id: 'b', folderName: 'Play', folderColor: '#059669', tags: [{ name: 'idea', color: null }] }
+    const nodes: CanvasNode[] = [work, play, asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })]
+    for (const groupBy of ['folder', 'tag'] as const) {
+      for (const row of buildColorLegends(nodes, groupBy)) {
+        const hits = graphSearchHits(nodes, row.query)
+        expect(hits, `${row.query} selects nothing`).not.toBeNull()
+        for (const node of nodes.filter((candidate) => rowsFor(candidate, groupBy).includes(row.label))) {
+          expect(hits!.has(node.id)).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('labels a colour rule row with the rule line itself, so pressing it re-enters that rule', () => {
+    const row = buildColorLegends([createTestNode()], 'none', [colorRule({ query: 'tag:urgent -path:play' })])[0]
+    expect(row).toEqual({ label: 'tag:urgent -path:play', color: '#4f46e5', query: 'tag:urgent -path:play' })
   })
 })
 
