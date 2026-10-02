@@ -20,14 +20,14 @@
 | 批次 | 主题 | 覆盖条目 | 代价 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | **R2-0** | 文档基线 | 本报告与执行计划 | 极低 | `[x]` 已提交 (`48e645b5`) |
-| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[~]` 三条均已提交（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`），批次收尾门禁（`test:e2e` / `e2e-visual.mjs` / `contrast:check`）待跑；其余批次的页数断言以本批为新基线 |
+| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[x]` 五条提交全部落地（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`、收尾 `cab2d30f` + `3303479e`），批次收尾四条重型门禁已跑；其余批次的页数断言以本批为新基线，本批新开的两条门禁红见 L-3 / L-4 |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[ ]` 待办 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[ ]` 待办 |
 | **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红） |
 | **R2-5** | 性能治理 | N-23, N-25, N-27, N-28, N-29, N-24 | 中-高 | `[ ]` 待办（依赖 R2-1） |
 | **R2-6** | 信息量与功能补全 | N-36, N-32, N-37, N-38, N-17, N-18+N-35, N-31, N-33 | 低 → 高 | `[ ]` 待办（按此顺序做） |
 | **R2-7** | 观众侧同步放映 | N-34 | 高 | `[ ]` 待办（**公共契约变更，先写 ADR**） |
-| **收尾** | 台账与文档 | L-1, L-2 | 低-中 | `[ ]` 待办 |
+| **收尾** | 台账与文档 | L-1, L-2, L-3, L-4 | 低-中 | `[ ]` 待办（L-3 / L-4 由 R2-1 批次收尾实测新开） |
 
 **若只允许做三件事**：N-01（地基性正确性）· N-07+N-08（安全红线，`AGENTS.md` 不允许例外）· N-11+N-36+N-12（用户两张截图里直接可见的三项）。
 
@@ -48,11 +48,12 @@
   - 代价：中 · 依赖：N-01
 - [x] **N-03** 分割线分页与标题分页互斥、且无关闭自动分页的取值（`中`）— 已提交 `72b58681`
   - 涉及文件：`slides.ts`（`slideBoundaries()` 取代 `dividerBoundaries()`、`DeclaredSlideLevel` 与 `slideLevelOf()` 认 `none`、`buildDeck()` 走页循环加 `blankRunBefore()` 去重）、`slides.test.ts`（新 describe 4 例 + declared-level describe 补 3 例 + 1 例改名）、`README.md`、`README_ZH.md`、`scripts/check-comments.mjs`
+  - 后续：收尾提交 `cab2d30f` 把该去重判定从「只有空行」扩成「只有空行或一行版式指令」并改名 `holdsNothingToDraw()`，按现名 grep 即以它为准
   - 目标：两种边界取并集去重后一起排序；front matter 支持 `slide-level: none` 显式关闭标题分页。
   - 验证：混写 `---` 与标题的 deck 断言页数 = 并集；`slide-level: none` 断言只按分隔线切。
   - 代价：小-中 · 依赖：N-01
 
-**批次收尾**：重跑 `npm run test:unit` + `test:e2e` + `e2e-visual.mjs` 各一次（页数基线在本批整体位移）。
+**批次收尾**（已跑完，证据在执行日志的 R2-1 收尾条目）：`npm run test:unit` + `test:e2e` + `e2e-visual.mjs` + `contrast:check` 各一遍。跑出来的页数红逐条判为**夹具缺陷**（paste 落在编辑器自有游标 offset 0，把笔记自己的 front matter 顶成分隔线），由 `3303479e` 修好；两条与改动相关度存疑的红另立 L-3 / L-4，不在本批内顺手修（`铁律 14`）。
 
 ---
 
@@ -237,13 +238,24 @@
 
 ## 收尾 · 台账遗留
 
-- [ ] **L-1**（原 `B4-09`）本机浏览器门禁 7 条红未定位（`高`）
+- [ ] **L-1**（原 `B4-09`）本机浏览器门禁基线红未定位（`高`）
   - 步骤：①给两条 `canvas fills the stage` 补 detail（打出 stage 与 canvas 的实测 `w×h` 与 `getBoundingClientRect`）；②按三条线索分头查——几何两条是否与 N-23 同因、缩略图三条与 N-23/N-25 一并复测、axe 那条由 N-11/N-16 顺带解掉（它转绿即 N-16 修对的证据）。
+  - 数量以 R2-1 收尾实测为准：**基线 7 条**（2 几何 + 3 缩略图 + 1 主题反转 + 1 axe `color-contrast` `.bottom-4` 1.67:1），本批两次采样分别报到 8 / 10 条，多出的都归 L-3 / L-4。
   - 判定沿用上一轮台账「对同一 HEAD 快照同法实跑得到同样 7 个失败名 → 非本分支引入」；**本轮未实跑**，落地前须复现一次。
+    - 未实跑：两条 `canvas fills the stage` 的补 detail 与「是否与 N-23 同因」的对照实验**本轮都没做**；上面那 4 条只是台账改口径，不是定位完成。
   - 代价：中
 - [ ] **L-2**（原 `B4-10`）`AGENTS.md` 视觉门禁断言计数已过期（`低`）
   - `AGENTS.md:372` 仍写「当前 380 条断言」，台账实跑为 694 / 717。单独一次 `docs` 提交，以收尾那轮实跑为准；不在功能提交里夹带（`AGENTS.md` 自述需 PR 评审）。
   - 代价：极低
+- [ ] **L-3** R2-1 收尾新发现：`mindmap: a node added from the keyboard reaches the note source` 两次采样皆红（`中` · `[需实测]`）
+  - 现象：`e2e-visual.mjs` 里这一条在本批**改夹具后**的两次采样都红（`/tmp/r21-tail-visual.out`、`/tmp/r21-visual2.out`），改前的三次运行（基线 727/7 与批内 719/15、722/12）都是绿；紧随其后的 `mindmap: the added node is on the map too` 两次都绿，即**节点已上到导图，只是没在 15 秒内出现在编辑器文本里**——写得慢，不是写丢。
+  - 待测假设：该断言读 `.cm-content` 的 `textContent`，而 CodeMirror 只渲染视口内的行；`3303479e` 把写入位置与聚焦动作换了（`writeAtEndOfNote` / `parkCaretAtNoteEnd`），滚动落点随之变了，于是栅栏行可能落在视口外。测法：把该断言改成读已提交的栅栏体（与本仓既有约定一致：笔记侧断言读提交后的 fence 而不是编辑器可视行），或先打印 `firstLine/lastLine` 与 fence 所在行号，再判红是不是纯视口问题。
+  - 归属：不在 R2-1 内顺手修（`铁律 14`），本条**尚未确认与本批改动有因果关系**，只是相关性 2/2 vs 0/3 记录在案。
+  - 代价：低（大概率是断言取数面）
+- [ ] **L-4** R2-1 收尾复证：`cover:` 黑屏/白屏两条在本地实例上随机红（`中` · `[需实测]`）
+  - 现象：`cover: pressing a key lifts the blackout` 与 `cover: W covers the projector in white`（detail `{"insideDialog":false,"hitIsCover":false,"bg":""}` —— 按下键后连遮罩元素本身都没命中）在同一份代码上逐次翻转：批内 `n03-visual.clean` 全绿、`n03b-visual` 双红、收尾 `r21-tail-visual` 全绿、`r21-visual2` 双红。改前改后都红，即**与 `3303479e` 无关**。
+  - 与既有条目的关系：白屏/黑屏元素正是 N-14 要重写的非语义控件，键盘解除路径也在 N-14 与 N-15（焦点落点）的射程内。先实测「红的时候键到底有没有被放映面板收到」，再决定是单开一条还是并入 N-14/N-15 的验收断言。
+  - 代价：待实测
 
 ---
 
@@ -277,3 +289,10 @@
   - 变异在案：11 项变异，控制运行 428 例先绿，最终 10 项被具名用例杀死（红数 M1 4 / M2 16 / M3 16 / M4 1 / M5 1 / M7 4 / M8 3 / M9 22 / M10 17 / M11 16），跑完按字节还原（`restored-clean: true`，md5 与 `/tmp/n03-pristine.ts` 一致）。**M6（删掉 `none` 的早退）是等价变异**，运行结果与删前相同——`heading.level <= 'none'` 在 JS 里恒为假，等于「不取任何标题边界」；它由 `npm run typecheck` 守住：实跑该变异得 `slides.ts(294,87): error TS2365: Operator '<=' cannot be applied to types 'number' and 'string | number'`，随即按原字节还原。这里如实记成「typecheck 杀死」，不冒充测试杀死。首轮电池作废并重跑：`FAIL` 行匹配器写成 `^ FAIL \|`（实际是两个空格）导致全部误报 SURVIVED，而 M9 的锚点在 `autoSlideLevel()` 里也出现一次（`ANCHOR HITS 2`），换成长锚点后重跑；另注意电池跑动期间读 `slides.ts` 会读到 M1 的变异体（那条 `if (breaks.length) return breaks` 就是这么「回来」的），核验一律在还原之后做。
   - 门禁在案：`typecheck` 通过；13 项静态门禁全绿（`size:check` 未动基线，新 describe 4 例；`comments:check` 由 `sync-comments-allowlist.mjs` 重建白名单 +11 条，工作区只有本条改动）；`npm run test:unit` 全量 **617 文件 / 5961 通过 + 1 跳过 / 0 失败**（N-02 时 5954，本条 +7）；演示目录 23 文件 **724** 例全绿；提交钩子另跑 `vitest related` 18 文件 / **570** 例全绿。
   - 落地取舍与残留：去重只作用于标题，**分隔线永远照切**，所以「两条分隔线之间的空白页是有意义的一页」这条既有决定不动（`# A\n\n---\n\n---\n\n# B` 仍 3 页）；`blankRunBefore()` 对空区间 `[from, from)` 返回真，紧贴分隔线的标题因此靠同一条判定去掉，不需要特判；并集已按行排序，`to < from` 的区间不会出现，故不写额外防御。`slide-level` 的取值面仍是 `{1, 2, none}`，`off`/`false` 之类不认（认了就多一条没人写的别名）；报告建议的「逃生是整篇塞满 `---`」由此不再必要。本条**没有**跑 `test:e2e` / `e2e-visual.mjs` / `contrast:check`，页数基线在本批整体位移，三条重型门禁留到 R2-1 批次收尾一次跑完。
+- 2026-10-02 · R2-1 批次收尾（`cab2d30f` + `3303479e`）：四条重型门禁跑完，跑出来的页数红逐条判成**夹具缺陷**而不是分页回归，修复落在门禁脚本里；同一次收尾顺带把 N-03 的去重判定扩到版式指令。
+  - 红先在案：N-03 落地后首跑 `node scripts/e2e-visual.mjs` = **719 通过 / 15 失败**（断言总数 734），比本批前的实测基线 **727 / 7** 多出 8 条，且全在「往笔记里写 deck 夹具」的场景、全朝页数变多的方向：`layout:` 5 条（`a slide that asked for nothing is drawn as it was` 读出 `cardBlocks=6 pages=2`、`the slide the columns could not hold is paged instead of cut off` 读出 `pages=1`、`a split slide reads in two columns of equal width` 读出 `straySwitch:false pageFraction:0.158`、`a slide whose columns overflow the page goes back to the flow layout` 与 `the slide list draws the layout the projector drew` 读出 `marked` 里缺 `ink-slide-split`）、`presentation session:` 2 条（`an edit lands on the projector while following before=1 / 2 after=1 / 4`、`unfreezing catches up with the note position=1 / 5`）、`overview: the matrix opens on the deck it was written for slides=10 position=1 / 10`。
+  - 实测在案（先证伪「分页器读错了同一份源」）：把三份夹具原文（首行是 app 新建笔记模板的 `---` front matter）按两种落点分别喂 `splitIntoSlides()`——落在文件开头时三份都**多出一页纯元数据页**（OVERVIEW 应为 9 却报 10、LAYOUT 4→5、PAGINATED 2→3），落在末尾时页数与各断言声明值一致。根因在门禁脚本：`appendToNote` 用 `paste` 事件写入，而 paste 落在编辑器**自有**游标上，新挂载笔记的游标就是 offset 0（`DEFAULT_NEW_NOTE_TEMPLATE` 没有 `{{cursor}}`，`pendingEditorCursors` 因此从不触发），于是插入把该笔记自己的 title+createdAt 两块 `---` 顶到文件中部，这两条 `---` 在 deck 语义里正是分隔线。**这是作者对一篇真实笔记做不到的操作**，属夹具缺陷。
+  - 修复在案（`3303479e`，只动 `scripts/e2e-visual.mjs`）：新增 `parkCaretAtNoteEnd()`——真实按键 `Control`+`End` 走 CM6 的 `cursorDocEnd`，并断言选点 anchor 确实落在最后一行 `.cm-line` 上，拿不到焦点或没走到末尾就直接抛错而不是静默 paste（puppeteer-core 25.10.0 不解析 `'Control+End'` 这种带 `+` 的串，按 `down/press/up` 分开按）；`assertPresentationSession` 在笔记还可聚焦时先停靠游标，三处场景夹具改走 `writeAtEndOfNote()`（`content.focus()` + `selectAllChildren` + `collapseToEnd` + `insertText`）。改后**既有期望值一条未改**即转绿（session 的 +1/+2、`overview … slides=9` 都是原断言），只把页数读数 `1.1 2.1` 加进三条断言的 detail，下次红的时候能直接读出「谁跳到哪一页」——为此 `presentationSession()` 与 `readDeckSize()` 的返回值多带一个 `deck`。
+  - 顺带扩语义（`cab2d30f`，分页器本体）：`blankRunBefore()` 改名 `holdsNothingToDraw()` 并把判定从「只有空行」扩到「只有空行或一行 `<!-- layout: … -->`」，`buildDeck()` 的跳过条件同处生效；理由写在函数注释里——版式切换是一页的属性而不是页上的内容，单独给它一页会画出一张什么都没有的页，并把版式从真正要它的页上拿走。README / README_ZH 各改一句（「之间只有空行和一行版式指令」）。实现前先落 2 条红（`leaves a layout switch above a heading on the slide that switch belongs to`、`leaves a layout switch at the head of the deck on the slide it opens`），实现后同文件 430 例全绿。
+  - 门禁在案：`typecheck` 通过；13 项静态门禁全绿，其中 `comments:check` 按 `AGENTS.md`「分批与门禁」把 `scripts/check-comments.mjs` 的 4 个 `@@` hunk 拆给两个提交（门禁文件 3 条给 `3303479e`、`slides.ts` 那 1 条给 `cab2d30f`），A 批的暂存快照用 `git checkout-index --prefix=/tmp/snapA/ -a` + `node_modules` 软链单独验过，最终打印 **13111 条 / 1354 文件**；`npm run test:unit` 全量 **617 文件 / 5962 通过 + 1 跳过 / 1 失败**，唯一失败是 `blog-comments-window.test.ts > comment list window > mounts one page of rows and grows on demand`，单独复跑为绿——台账记录的负载敏感噪声，与演示模式无关；演示目录 **23 文件 / 726 例**全绿（收尾复跑实测，N-03 时 724，本批 +2 条版式指令用例）；`npm run test:e2e` **177 通过 / 0 失败**（在 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv` 新起的 :7712 上跑，并把该账号 bootstrap 好给视觉门禁；先前对复用实例跑报 29/82，属实例数据漂移不是代码）；`node scripts/e2e-visual.mjs` 两次采样 **726 / 8**（干净实例）与 **724 / 10**（复用实例），与基线 **727 / 7** 逐条比对：基线那 7 条一条不少（L-1），两次各多出的即 L-3 / L-4；`npm run contrast:check` 通过（两套主题 + 各表面的令牌量测与 axe 全绿；放映表面那条 axe `color-contrast` 1.67:1 红只出现在 `e2e-visual.mjs` 里，属 L-1 的第 4 条，由 N-11/N-16 顺带解掉）。
+  - 落地取舍与残留：①两条收尾提交**没有跑变异电池**——`cab2d30f` 的改动是把已有判定的覆盖面从「空行」扩到「空行 + 版式行」，两条红先用例各钉住一个新分支，未做逐点变异；`3303479e` 是门禁脚本，仓库没有对它的变异机制。②`mindmap:` 那条新红与本批改动的相关性只有 2/2 vs 0/3 的记录，因果未确认，另立 L-3；`cover:` 两条改前改后都随机红，另立 L-4，两者都不在本批内修（`铁律 14`）。③本批整体位移的页数基线以 L-1 那 7 条 + 各场景 detail 里新打印的 `deck` 读数为准，R2-5 的 N-23/N-25 复测直接沿用。
