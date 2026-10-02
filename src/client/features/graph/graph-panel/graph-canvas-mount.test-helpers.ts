@@ -98,6 +98,18 @@ export function releaseGraphCanvases(): void {
   while (contexts.length) contexts.pop()!()
 }
 
+/**
+ * What the device answers when the app asks whether it has a coarse pointer. The panel reads that to
+ * decide which gestures its own description names, so a case that cares about the wording says what
+ * the hardware is rather than leaving the question to the environment's default.
+ */
+export function stubPointerDevice({ coarse }: { coarse: boolean }): void {
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+    matches: coarse && query === '(pointer: coarse)',
+    media: query, addEventListener: () => {}, removeEventListener: () => {},
+  })))
+}
+
 export function pressKey(target: Element, key: string, init: KeyboardEventInit = {}): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
   act(() => { target.dispatchEvent(event) })

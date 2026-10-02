@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type MutableR
 import type { GraphResponse } from '@shared/types'
 import { Menu } from '../../../components/overlay'
 import { usePinnedWindows } from '../../../store/pinned-windows'
+import { useMediaQuery } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../../preview'
 import { buildColorLegends, ensureNodeVisible, graphScaleAfterWheel, pickNeighborInDirection, type GraphArrowDirection } from './helpers'
@@ -461,6 +462,9 @@ export function GraphCanvas(props: GraphCanvasProps) {
   const selected = data.nodes.find((node) => node.id === b.selectedId) ?? null
   const isDark = useIsDarkTheme()
   const hintId = useId()
+  // Only a device that says it has a coarse pointer is told about a long press; one that says nothing
+  // keeps the sentence the app has always drawn (G-19).
+  const isTouchPointer = useMediaQuery('(pointer: coarse)')
 
   return (
     <>
@@ -469,7 +473,8 @@ export function GraphCanvas(props: GraphCanvasProps) {
         data={data}
         hover={b.hover}
         selected={selected}
-        hint={t('graph.interaction_hint')}
+        hint={isTouchPointer ? t('graph.interaction_hint_touch') : t('graph.interaction_hint')}
+        hintBrief={isTouchPointer ? t('graph.interaction_hint_touch_brief') : t('graph.interaction_hint_brief')}
         hintId={hintId}
         previewCard={b.preview.previewCard}
         anchorPos={b.preview.anchorPos}

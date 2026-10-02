@@ -3,7 +3,7 @@ import type { GraphResponse, GraphNode } from '@shared/types'
 import { initI18n, t } from '../../../lib/i18n'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { previewProbe } from './preview-stub.test-helpers'
-import { mountGraphCanvas, pressKey, pressPointer, releaseGraphCanvases, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
+import { mountGraphCanvas, pressKey, pressPointer, releaseGraphCanvases, stubPointerDevice, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
 
 /**
  * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it
@@ -50,6 +50,11 @@ function place(graph: GraphCanvasMount, byTitle: Record<string, [number, number]
     const point = byTitle[node.title]
     if (point) { node.x = point[0]; node.y = point[1] }
   }
+}
+
+/** The text the canvas describes itself with, wherever the panel keeps it. */
+function describedHint(graph: GraphCanvasMount): HTMLElement {
+  return document.getElementById(graph.canvas.getAttribute('aria-describedby')!)!
 }
 
 /**
@@ -274,9 +279,47 @@ describe('the canvas describing itself (G-27)', () => {
     const hint = document.getElementById(describedBy!)!
     expect(hint.textContent).toBe(t('graph.interaction_hint'))
     // The hint stops being drawn on a phone, so the description has to survive there as sr-only text:
-    // a description inside a `hidden` element is not described at all.
-    expect(hint.querySelector('.sr-only')).toBeTruthy()
-    expect(hint.className).not.toContain('hidden')
+    // a description inside a `hidden` element is not described at all. Checked on the class list, since
+    // `md:not-sr-only` and `md:hidden` both carry the other one's name as a substring.
+    expect(hint.classList.contains('sr-only')).toBe(true)
+    expect(hint.classList.contains('hidden')).toBe(false)
+  })
+})
+
+describe('the hint naming the gestures this device has (G-19)', () => {
+  it('writes the long-press sentence for a pointer with no right button', () => {
+    stubPointerDevice({ coarse: true })
+    const graph = mountGraphCanvas(trio)
+
+    expect(describedHint(graph).textContent).toBe(t('graph.interaction_hint_touch'))
+  })
+
+  it('keeps the mouse sentence for a device that never says it is a phone', () => {
+    stubPointerDevice({ coarse: false })
+    const graph = mountGraphCanvas(trio)
+    const hint = describedHint(graph)
+
+    expect(hint.textContent).toBe(t('graph.interaction_hint'))
+    expect(hint.textContent).not.toContain(t('graph.interaction_hint_touch'))
+  })
+
+  it('draws a line a phone can read, and leaves the whole sentence to the screen reader', () => {
+    const graph = mountGraphCanvas(trio)
+    const drawn = graph.container.querySelector<HTMLElement>('[data-graph-hint-brief]')
+
+    expect(drawn?.textContent).toBe(t('graph.interaction_hint_brief'))
+    // The drawn line is an abbreviation of the description, not a second thing to hear, and it is the
+    // only one of the two a phone draws.
+    expect(drawn?.getAttribute('aria-hidden')).toBe('true')
+    expect(drawn?.classList.contains('md:hidden')).toBe(true)
+    expect(describedHint(graph).textContent).toBe(t('graph.interaction_hint'))
+  })
+
+  it('abbreviates the gestures a phone actually has', () => {
+    stubPointerDevice({ coarse: true })
+    const graph = mountGraphCanvas(trio)
+
+    expect(graph.container.querySelector('[data-graph-hint-brief]')?.textContent).toBe(t('graph.interaction_hint_touch_brief'))
   })
 })
 

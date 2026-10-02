@@ -11,6 +11,8 @@ export interface GraphOverlaysProps {
   hover: CanvasNode | null
   selected: GraphResponse['nodes'][number] | null
   hint: string
+  /** The same list in the few words that fit a phone's top edge; the full sentence stays the description. */
+  hintBrief: string
   /** The canvas names this hint as its description, so the id is the one both sides agree on. */
   hintId: string
   previewCard?: WikiLinkHoverCardState | null
@@ -112,11 +114,27 @@ function BottomBand({ node, legends, legendQuery, onLegendSelect }: {
   )
 }
 
+/**
+ * What the canvas says about itself. The full sentence is the description the canvas names, and it has to
+ * survive on a phone as sr-only text: a description inside a `hidden` element is not described at all. What
+ * a phone *draws* is the brief line instead, because the sentence does not fit the top edge it sits on and
+ * would be read out twice if it joined the description rather than standing in for it (G-27, G-19).
+ */
+function CanvasHint({ hint, hintBrief, hintId }: { hint: string, hintBrief: string, hintId: string }) {
+  return (
+    <div className='pointer-events-none absolute top-3 left-4 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <span id={hintId} className='sr-only md:not-sr-only'>{hint}</span>
+      <span data-graph-hint-brief='' aria-hidden='true' className='md:hidden'>{hintBrief}</span>
+    </div>
+  )
+}
+
 export function GraphOverlays({
   data,
   hover,
   selected,
   hint,
+  hintBrief,
   previewCard,
   anchorPos,
   anchorRef,
@@ -138,11 +156,7 @@ export function GraphOverlays({
         <TruncatedBadge shown={data.nodes.length} total={data.meta.totalNodes} />
       )}
       <BottomBand node={shown} legends={colorLegends} legendQuery={legendQuery} onLegendSelect={onLegendSelect} />
-      {/* The hint stops being drawn on a phone, so the text the canvas describes itself with has to
-          stay in the accessibility tree there: `hidden` would make the description resolve to nothing. */}
-      <div id={hintId} className='pointer-events-none absolute top-3 left-4 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-        <span className='sr-only md:not-sr-only'>{hint}</span>
-      </div>
+      <CanvasHint hint={hint} hintBrief={hintBrief} hintId={hintId} />
       {anchorRef && (
         <div
           ref={anchorRef}

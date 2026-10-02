@@ -3395,6 +3395,7 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-a11y.test.ts', [
     '/**\n * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it\n * answers to has a keyboard equivalent. These cases mount the real panel surface, drive it with keys\n * instead of a mouse, and read the end state a reader would hear: the canvas name, the announcement of\n * the node that got selected, the badge drawn for it, and the note opened from it.\n */',
     '/**\n * Puts the fixture\'s nodes where the case wants them. The arrow keys read the drawing\'s own layout\n * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —\n * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel\'s.\n */',
+    '/** The text the canvas describes itself with, wherever the panel keeps it. */',
     '/**\n * Walks the keyboard onto the node placed to the right of the first one: the first press enters at\n * the first node of the response, the second steps right to the neighbour the case placed there.\n */',
     '/** The press pair on a point no node is drawn on: what a reader does to put a node down. */',
     '// jsdom has no pointer capture, and the canvas takes it on every press.',
@@ -3409,7 +3410,10 @@ const allowed = new Map([
     '// The kind comes first: it is the one word that tells a tag node from a note, and the two answer',
     '// Enter differently.',
     '// The hint stops being drawn on a phone, so the description has to survive there as sr-only text:',
-    '// a description inside a `hidden` element is not described at all.',
+    '// a description inside a `hidden` element is not described at all. Checked on the class list, since',
+    '// `md:not-sr-only` and `md:hidden` both carry the other one\'s name as a substring.',
+    '// The drawn line is an abbreviation of the description, not a second thing to hear, and it is the',
+    '// only one of the two a phone draws.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-color-groups.test.ts', [
     '/**\n * Colour rules are edited while the graph is already on screen, so an edit has to reach the nodes the\n * ticker is drawing. Rebuilding the layout would throw away the dragged positions and the physics run,\n * so a dedicated effect re-stamps the live nodes instead — which is what these cases pin.\n */',
@@ -3519,6 +3523,8 @@ const allowed = new Map([
     '// the state that schedules the next render, and the panel would never stop painting.',
     '/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */',
     '// The press re-hangs the card that line put away, so the drag has to put it away again (G-16).',
+    '// Only a device that says it has a coarse pointer is told about a long press; one that says nothing',
+    '// keeps the sentence the app has always drawn (G-19).',
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
     '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
@@ -3533,6 +3539,7 @@ const allowed = new Map([
     '/** The set the search box hit; absent means no search is being located by. */',
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the painting is stubbed, the state it fills is real. */',
     '/** Releases every canvas mounted by the current test, so a stray effect cannot reach the next one. */',
+    '/**\n * What the device answers when the app asks whether it has a coarse pointer. The panel reads that to\n * decide which gestures its own description names, so a case that cares about the wording says what\n * the hardware is rather than leaving the question to the environment\'s default.\n */',
     '/**\n * A pointer press as the canvas reads it: jsdom has no PointerEvent and no pointer capture, so the\n * gesture carries the fields the handlers read and the capture call is stubbed by the cases.\n */',
     '/** A pointer move as the canvas reads it: the middle of a gesture `pressPointer` opens and closes. */',
     '/**\n * A gesture the browser takes back, which the canvas drops without ever reaching the release: what a\n * reader gets when a touch turns into a scroll, or another app steals the pointer.\n */',
@@ -3555,11 +3562,12 @@ const allowed = new Map([
     '/** A colour or a font name arrives from CSS, so it goes into an attribute only after escaping. */',
   ]],
   ['src/client/features/graph/graph-panel/graph-overlays.tsx', [
+    '/** The same list in the few words that fit a phone\'s top edge; the full sentence stays the description. */',
     '/** The canvas names this hint as its description, so the id is the one both sides agree on. */',
     '/** The filter line the search box holds; with `onLegendSelect` the legend becomes a control (G-14 ④). */',
     '/** The filter line the search box holds, so the row it names reads as pressed. */',
     '/**\n * One band for the two bottom overlays. At a phone\'s width the legend and the badge cannot share a line, and\n * a fixed offset would only clear one particular legend height, so the two are laid out in flow — what keeps\n * them apart is the band\'s own gap rather than a number this file has to keep true (G-18).\n */',
-    '/* The hint stops being drawn on a phone, so the text the canvas describes itself with has to\n          stay in the accessibility tree there: `hidden` would make the description resolve to nothing. */',
+    '/**\n * What the canvas says about itself. The full sentence is the description the canvas names, and it has to\n * survive on a phone as sr-only text: a description inside a `hidden` element is not described at all. What\n * a phone *draws* is the brief line instead, because the sentence does not fit the top edge it sits on and\n * would be read out twice if it joined the description rather than standing in for it (G-27, G-19).\n */',
   ]],
   ['src/client/features/graph/graph-panel/graph-panel-mount.test-helpers.ts', [
     '/**\n * The panel is the surface a reader actually uses: the drawer, the header buttons and the canvas all\n * live inside one portal, and its state is written by preferences effects rather than by props. Tests\n * that need that whole wiring mount the real panel here and press the controls by their accessible\n * names; what each of them proves stays in its own file.\n */',
