@@ -589,4 +589,13 @@ export const messages = {
 'preview.code_wrap_on': '自动换行',
 'preview.code_wrap_off': '横向滚动',
 'preview.code_edit_unavailable': '无法编辑该块，请检查围栏是否闭合',
+'preview.graph_mermaid': 'Mermaid 图表',
+'preview.graph_chart': '图表',
+'preview.graph_zoom_in': '放大',
+'preview.graph_zoom_out': '缩小',
+'preview.graph_fit': '适应宽度',
+'preview.graph_source': '查看源码',
+'preview.graph_export': '导出图片',
+'preview.graph_export_empty': '还没有可导出的内容',
+'preview.graph_export_failed': '该块导出失败',
 }

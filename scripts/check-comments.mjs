@@ -7322,6 +7322,11 @@ const allowed = new Map([
   ['src/client/features/preview/file-preview-modal/code-viewer.tsx', [
     '// Highlighting is best-effort; the plain text code stays visible on failure.',
   ]],
+  ['src/client/features/preview/graph-block-toolbar.ts', [
+    '/**\n * The toolbar a rendered diagram carries: zoom and fit for a vector diagram, the fence source behind\n * it, and an image export. Unlike the other block toolbars this one writes nothing to the note — a\n * zoom level is a reading aid, and the theme a diagram draws with is the account\'s, not the note\'s.\n */',
+    '/** The zoom step next to the one currently applied, clamped to the ends of the ladder. */',
+    '/** This block family\'s toolbar: no note writes and no overlay, so its dismiss is nothing to do. */',
+  ]],
   ['src/client/features/preview/js-runner-core.ts', [
     '/**\n * Executes user javascript-example code inside the dedicated Worker thread.\n * Results cross the postMessage boundary as plain strings only, and the Worker\n * has no DOM or parent-page reference, so preview code cannot reach page data.\n * A dedicated thread is also the only way to hard-stop while(true) loops via\n * terminate(); timeouts live in the page-side bridge (js-runner.ts).\n */',
     '// Shadowed to undefined so direct calls raise TypeError; reachable through',

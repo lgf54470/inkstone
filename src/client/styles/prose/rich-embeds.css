@@ -98,6 +98,56 @@
   justify-content: center;
   overflow-x: auto;
 }
+.ink-prose .graph-block > .mermaid-block,
+.ink-prose .graph-block > .chartjs-block {
+  margin: 0;
+}
+.ink-prose .graph-block[data-graph-zoomed='true'] > .mermaid-block {
+  justify-content: flex-start;
+  overflow: auto;
+}
+.ink-prose .graph-block-head {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.ink-prose .graph-block-title {
+  font-family: var(--font-ui);
+  font-size: var(--text-10\.5);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ink-prose .graph-block-head > .block-tools {
+  margin-inline-start: 0;
+}
+.ink-prose .graph-block-source {
+  margin: 0 0 var(--sp-1);
+  max-height: 260px;
+  padding: var(--sp-2\.5) var(--sp-3\.5);
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+}
+.ink-prose .graph-block-source[hidden] {
+  display: none;
+}
+.ink-prose .graph-block-source > code {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
 .ink-prose .chartjs-container {
   position: relative;
   width: 100%;

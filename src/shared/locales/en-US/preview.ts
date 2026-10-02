@@ -589,4 +589,13 @@ export const messages = {
 'preview.code_wrap_on': 'Wrap',
 'preview.code_wrap_off': 'Scroll',
 'preview.code_edit_unavailable': 'Cannot edit this block; check that the fence is closed',
+'preview.graph_mermaid': 'Mermaid diagram',
+'preview.graph_chart': 'Chart',
+'preview.graph_zoom_in': 'Zoom in',
+'preview.graph_zoom_out': 'Zoom out',
+'preview.graph_fit': 'Fit to width',
+'preview.graph_source': 'Show source',
+'preview.graph_export': 'Export image',
+'preview.graph_export_empty': 'Nothing to export yet',
+'preview.graph_export_failed': 'Could not export this block',
 }
