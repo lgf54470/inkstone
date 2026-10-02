@@ -4,6 +4,7 @@ import { presentationCommand } from './presentation-keys'
 const plain = { onControl: false, onSlideList: false }
 const onControl = { onControl: true, onSlideList: false }
 const onSlideList = { onControl: false, onSlideList: true }
+const onOverviewGrid = { onControl: false, onSlideList: false, onOverviewGrid: true }
 const onMenu = { onControl: false, onSlideList: false, onMenu: true }
 const onMenuControl = { onControl: true, onSlideList: false, onMenu: true }
 const onNotesPane = { onControl: false, onSlideList: false, onNotesPane: true }
@@ -60,20 +61,33 @@ describe('presentationCommand — toggles and focus ownership', () => {
     expect(presentationCommand('L', onControl)).toBeNull()
   })
 
-  it('lets the slide list keep the arrows it walks its own items with', () => {
-    expect(presentationCommand('ArrowUp', onSlideList)).toBeNull()
-    expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()
-    expect(presentationCommand('ArrowLeft', onSlideList)).toBeNull()
-    expect(presentationCommand('ArrowRight', onSlideList)).toBeNull()
-    expect(presentationCommand('Home', onSlideList)).toBeNull()
-    expect(presentationCommand('End', onSlideList)).toBeNull()
-  })
-
   it('still turns pages from the list when the key is not an arrow or home/end', () => {
     expect(presentationCommand('PageDown', onSlideList)).toBe('next')
     expect(presentationCommand('PageUp', onSlideList)).toBe('prev')
     expect(presentationCommand(' ', onSlideList)).toBe('next')
     expect(presentationCommand('Escape', onSlideList)).toBeNull()
+  })
+})
+
+// N-15: the two slide lists walk differently, and the keymap has to tell them apart — a key yielded to
+// a list that has no use for it is handled by neither side, which is how the sideways turn died.
+describe('presentationCommand — what each list owns', () => {
+  it('lets the slide list keep only the keys it walks its own items with', () => {
+    expect(presentationCommand('ArrowUp', onSlideList)).toBeNull()
+    expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()
+    expect(presentationCommand('Home', onSlideList)).toBeNull()
+    expect(presentationCommand('End', onSlideList)).toBeNull()
+    expect(presentationCommand('ArrowLeft', onSlideList)).toBe('prev')
+    expect(presentationCommand('ArrowRight', onSlideList)).toBe('next')
+  })
+
+  it('leaves the sideways turn to the grid that roams its rows', () => {
+    expect(presentationCommand('ArrowLeft', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('ArrowRight', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('ArrowUp', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('ArrowDown', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('Home', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('End', onOverviewGrid)).toBeNull()
   })
 })
 
@@ -116,14 +130,14 @@ describe('presentationCommand — slide overview', () => {
     expect(presentationCommand('w', plain)).toBe('whiteout')
   })
 
-  it('lets the grid keep the arrows it roams its cards with, as the slide list does', () => {
-    expect(presentationCommand('ArrowRight', onSlideList)).toBeNull()
-    expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()
-    expect(presentationCommand('Home', onSlideList)).toBeNull()
+  it('lets the grid keep both the arrows it roams its cards with', () => {
+    expect(presentationCommand('ArrowRight', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('ArrowDown', onOverviewGrid)).toBeNull()
+    expect(presentationCommand('Home', onOverviewGrid)).toBeNull()
   })
 
   it('still turns pages with PageDown while the grid holds the arrows', () => {
-    expect(presentationCommand('PageDown', onSlideList)).toBe('next')
+    expect(presentationCommand('PageDown', onOverviewGrid)).toBe('next')
   })
 })
 

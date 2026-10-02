@@ -140,6 +140,29 @@ describe('usePresentationKeys — the slide overview', () => {
     view.unmount()
   })
 
+  // N-15: one Tab from the opened show lands the presenter in the slide list, and the list walks its
+  // column with the vertical keys only — so the sideways turn belongs to the show even while the
+  // list holds the focus ring.
+  it('turns the page sideways while the slide list holds the focus', () => {
+    const props = options()
+    const rail = document.createElement('div')
+    rail.setAttribute('data-presentation-rail', '')
+    const tab = document.createElement('button')
+    rail.append(tab)
+    document.body.append(rail)
+    const view = renderElement(createElement(Host, { props }))
+
+    press('ArrowRight', tab)
+    expect(props.goNext).toHaveBeenCalledTimes(1)
+    press('ArrowLeft', tab)
+    expect(props.goPrev).toHaveBeenCalledTimes(1)
+
+    press('ArrowDown', tab)
+    expect(props.goNext).toHaveBeenCalledTimes(1)
+    expect(props.goPrev).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
   it('lets a screen cover take the key while the grid is up', () => {
     const view = renderElement(createElement(Host, { props: options() }))
     press('o')

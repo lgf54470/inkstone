@@ -135,8 +135,10 @@ export function usePresentationKeys(options: PresentationKeysOptions): Presentat
     const target = event.target instanceof Element ? event.target : null
     const command = presentationCommand(event.key, {
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
-      // Both slide lists walk their own arrows: the rail vertically, the overview grid across rows.
-      onSlideList: Boolean(target?.closest('[data-presentation-rail], [data-presentation-overview]')),
+      // The two slide lists walk differently: the rail its column, the overview grid its rows — so
+      // the sideways turn goes back to the show whenever the rail holds the focus.
+      onSlideList: Boolean(target?.closest('[data-presentation-rail]')),
+      onOverviewGrid: Boolean(target?.closest('[data-presentation-overview]')),
       onNotesPane: Boolean(target?.closest('[data-speaker-notes]')),
       onMenu: Boolean(isMenuOpen || target?.closest('[role="menu"], [data-presentation-menu]')),
     })

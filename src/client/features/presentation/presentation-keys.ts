@@ -1,17 +1,19 @@
 // The show's keymap as a pure function so it can be tested without a browser: which
 // command a key press means, given whether a control or the slide list owns the event.
 // Navigation keys always move slides so a stray focused control can never trap the
-// keyboard; Space/Enter yield to the focused control to avoid double actions, the slide
-// list keeps the arrows it needs to walk its own items, and the notes pane keeps every key
-// a speaker reads by scrolling.
+// keyboard; Space/Enter yield to the focused control to avoid double actions, each list
+// keeps only the keys its own walk uses — the rail the vertical ones, the overview grid
+// both directions — and the notes pane keeps every key a speaker reads by scrolling.
 
 export type PresentationCommand = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'slideList' | 'follow' | 'blackout' | 'whiteout' | 'laser' | 'spotlight' | 'overview' | 'presenter'
 
 export interface PresentationKeyContext {
   /** The event targets a button, link or editable control. */
   onControl: boolean
-  /** The event targets a list of slides — the rail or the overview grid — which walks its own arrows. */
+  /** The event targets the slide rail, which walks its column with the vertical keys. */
   onSlideList: boolean
+  /** The event targets the overview grid, which roams its cards across rows as well as down them. */
+  onOverviewGrid?: boolean
   /** The event targets the speaker notes pane, which is read by scrolling rather than by turning. */
   onNotesPane?: boolean
   /** The event targets an open menu which walks its own items. */
@@ -21,16 +23,19 @@ export interface PresentationKeyContext {
 export function presentationCommand(key: string, context: PresentationKeyContext): PresentationCommand | null {
   if (context.onMenu) return null
   const onNotes = Boolean(context.onNotesPane)
-  // The rail walks arrows and Home/End but still turns pages on PageUp/PageDown; a notes pane pages
-  // as it is read, so it keeps those too. Neither of them claims the sideways turn.
-  const ownsVertical = context.onSlideList || onNotes
+  const onGrid = Boolean(context.onOverviewGrid)
+  // The rail walks its column and the grid roams its rows, both with Home/End; a notes pane pages as
+  // it is read, so it keeps PageUp/PageDown too. Only the grid claims the sideways turn: the rail
+  // has no use for it, and yielding it there left the turn handled by neither side.
+  const ownsVertical = context.onSlideList || onNotes || onGrid
+  const ownsSideways = onGrid
   switch (key) {
     case 'ArrowRight':
-      return context.onSlideList ? null : 'next'
+      return ownsSideways ? null : 'next'
     case 'PageDown':
       return onNotes ? null : 'next'
     case 'ArrowLeft':
-      return context.onSlideList ? null : 'prev'
+      return ownsSideways ? null : 'prev'
     case 'PageUp':
       return onNotes ? null : 'prev'
     case 'ArrowDown':

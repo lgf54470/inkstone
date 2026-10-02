@@ -482,6 +482,18 @@ async function assertPresentationSession(page) {
   const before = await presentationSession(page)
   check('presentation session: starts following the note', LABELS.presentFreeze.includes(before.followLabel), `label=${before.followLabel}`)
 
+  // N-15 measured the report's premise wrong: the opened show keeps the keyboard on the projector
+  // itself, so the sideways turn works before anything is touched. Pinned anyway, because that is the
+  // whole promise of the default state and a focus change would silently take it back.
+  const opened = await presentationFocus(page)
+  check('presentation keys: the opened show keeps the keyboard on the projector', opened.region === 'dialog', `region=${opened.region} label=${opened.label}`)
+  await page.keyboard.press('ArrowRight')
+  await sleep(500)
+  const firstTurn = await presentationSession(page)
+  check('presentation keys: the first sideways turn lands without touching anything', firstTurn.position !== before.position && firstTurn.position.startsWith('2') && firstTurn.total === before.total, `before=${before.position} after=${firstTurn.position}`)
+  await page.keyboard.press('ArrowLeft')
+  await sleep(500)
+
   // The deck length is read from the page counter, not from the slide list: the rail
   // mounts thumbnails lazily, so a deck that grows past the fold lists fewer items
   // than it has pages.
@@ -516,6 +528,37 @@ async function assertPresentationSession(page) {
   const desktop = await presentationSession(page)
   check('presentation session: the show survives switching back', desktop.open && desktop.position === resumed.position, `position=${desktop.position}`)
   check('presentation session: the canvas refills the stage', desktop.filled)
+
+  // A press in the slide list moves the ring there, and the list walks its column with the vertical
+  // keys only: the sideways turn has to stay with the show at that point too, or the keyboard dies
+  // exactly where the presenter is looking — which is what N-15 measured. The chrome fades on idle and
+  // takes the list `inert` with it, so the drive disturbs the pointer first the way a presenter would;
+  // pressing a faded list measures a surface the app is deliberately holding out of reach.
+  await page.mouse.move(20, 20)
+  await sleep(400)
+  const thumbnail = await page.evaluate(() => {
+    const rail = document.querySelector('[data-presentation-rail]')
+    const tab = rail?.querySelector('[data-slide-index]')
+    const box = tab?.getBoundingClientRect()
+    if (!box || box.width < 1) return null
+    return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2), faded: rail?.hasAttribute('inert') === true }
+  })
+  check('presentation keys: the slide list is reachable and has a thumbnail to press', Boolean(thumbnail) && thumbnail?.faded === false, JSON.stringify(thumbnail))
+  if (thumbnail) await page.mouse.click(thumbnail.x, thumbnail.y)
+  await sleep(400)
+  const inList = await presentationFocus(page)
+  check('presentation keys: pressing a thumbnail moves the ring into the list', inList.region === 'rail', `region=${inList.region} ring=${inList.ring}`)
+  const atRing = await presentationSession(page)
+  await page.keyboard.press('ArrowRight')
+  await sleep(500)
+  const turnedFromList = await presentationSession(page)
+  const ringHeld = await presentationFocus(page)
+  check('presentation keys: the sideways turn still turns the page from the list', turnedFromList.position !== atRing.position, `before=${atRing.position} after=${turnedFromList.position}`)
+  check('presentation keys: the turn leaves the ring on the pressed thumbnail', ringHeld.region === 'rail' && ringHeld.ring === inList.ring, JSON.stringify({ from: inList.ring, to: ringHeld.ring }))
+  await page.keyboard.press('ArrowDown')
+  await sleep(500)
+  const walked = await presentationFocus(page)
+  check('presentation keys: the list keeps the vertical walk for itself', walked.region === 'rail' && walked.ring !== ringHeld.ring, JSON.stringify({ from: ringHeld.ring, to: walked.ring }))
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(800)
@@ -2393,6 +2436,24 @@ async function clickPageEntry(browser, slide, pageOffset) {
     const printed = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? ''
     const numbers = (printed.match(/\d+/g) ?? []).map((value) => Number.parseInt(value, 10))
     return { sub: numbers[2] ?? 1, pages: numbers[3] ?? 1, printed }
+  })
+}
+
+// Where the keyboard actually is: the projector, the slide list, or the control pill — plus which
+// thumbnail of the list holds it, counted by position rather than by name because the accessible
+// name of every one of them says the same thing about the deck.
+async function presentationFocus(page) {
+  return page.evaluate(() => {
+    const active = document.activeElement
+    const tabs = [...document.querySelectorAll('[data-presentation-rail] [data-slide-index]')]
+    const ring = active?.closest?.('[data-presentation-rail] [data-slide-index]')
+      ? String(tabs.indexOf(active.closest('[data-presentation-rail] [data-slide-index]')))
+      : ''
+    const region = ring
+      ? 'rail'
+      : active?.closest?.('[data-presentation-chrome]') ? 'chrome'
+        : active?.closest?.('[role="dialog"]') ? 'dialog' : 'outside'
+    return { region, ring, label: active?.getAttribute?.('aria-label') ?? '', tag: active?.tagName?.toLowerCase() ?? '' }
   })
 }
 
