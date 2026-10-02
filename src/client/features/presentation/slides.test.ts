@@ -185,6 +185,16 @@ describe('splitIntoSlides — separators and headings divide together', () => {
     expect(splitIntoSlides('# A\n\n# B\n---\n\n# C\n\nbody')).toEqual(['# A', '# B', '# C\n\nbody'])
   })
 
+  it('leaves a layout switch above a heading on the slide that switch belongs to', () => {
+    const source = '# Cover\n\nbody\n\n---\n\n<!-- layout: split -->\n\n## Two columns\n\nleft\n\n## More columns\n\nright'
+    expect(splitIntoSlides(source)).toEqual(['# Cover\n\nbody', '<!-- layout: split -->\n\n## Two columns\n\nleft', '## More columns\n\nright'])
+  })
+
+  it('leaves a layout switch at the head of the deck on the slide it opens', () => {
+    const source = '---\ntitle: Deck\n---\n\n<!-- layout: cover -->\n\n# Cover\n\nline\n\n---\n\n# Two\n\nline'
+    expect(splitIntoSlides(source)).toEqual(['<!-- layout: cover -->\n\n# Cover\n\nline', '# Two\n\nline'])
+  })
+
   it('still lets an authored separator keep its blank page above a heading', () => {
     expect(splitIntoSlides('# A\n\n---\n\n---\n\n# B')).toEqual(['# A', '', '# B'])
   })

@@ -296,10 +296,16 @@ function slideBoundaries(lines: Line[], bodyStart: number, declaredLevel: Declar
   return edges.sort((left, right) => left.line - right.line)
 }
 
-/** Whether the lines between two cuts hold nothing but blanks: the heading below has no slide of its
- * own to open, because the cut above already starts the slide it would begin. */
-function blankRunBefore(lines: Line[], from: number, to: number): boolean {
-  for (let index = from; index < to; index++) if (lines[index]!.text.trim() !== '') return false
+/** Whether the lines between two cuts hold nothing to draw: blanks and a layout switch. A heading
+ * under them has no slide of its own to open, because the cut above already starts the slide it would
+ * begin — and a switch is a property of the slide rather than content on it, so paging it alone would
+ * leave a slide that shows nothing and take the layout off the slide that asked for it. */
+function holdsNothingToDraw(lines: Line[], from: number, to: number): boolean {
+  for (let index = from; index < to; index++) {
+    const text = lines[index]!.text
+    if (text.trim() === '' || LAYOUT_LINE.test(text)) continue
+    return false
+  }
   return true
 }
 
@@ -323,10 +329,8 @@ function buildDeck(source: string): Deck {
   const starts: number[] = [bodyStart]
   let from = frontMatter.lineOffset
   for (const boundary of boundaries) {
-    // Only a separator divides whatever is above it; a heading with nothing but blank lines above it
-    // opens the very slide the cut before it already opened, and cutting twice there makes a page of
-    // the heading's own blank lines and leaves the heading to the page below.
-    if (boundary.level !== 0 && blankRunBefore(lines, from, boundary.line)) continue
+    // Cutting here too would make a page of the region's own blanks and hand the heading to it.
+    if (boundary.level !== 0 && holdsNothingToDraw(lines, from, boundary.line)) continue
     slides.push(sliceSlide(lines, from, boundary.line))
     notes.push(joinNotes(marks, from, noteLimit(boundary)))
     // A separator only divides, so it belongs to no slide; a heading is the first line of
