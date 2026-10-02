@@ -38,6 +38,7 @@ interface GraphCanvasProps {
   onCreateNote: (title: string) => void
   onClose: () => void
   onMakeLocal: () => void
+  /** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */
   onFilterByTag?: (tag: string) => void
   controlsRef: MutableRefObject<GraphControls | null>
 }
@@ -61,6 +62,9 @@ interface CanvasHandlers {
   onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
   onCreateNote: (title: string) => void
   onClose: () => void
+  onFilterByTag?: (tag: string) => void
+  /** Speaks to the same live region the selection announcement uses, for keys that answer with words. */
+  announce: (message: string) => void
   hover: CanvasNode | null
   isDragging: boolean
 }
@@ -211,18 +215,31 @@ function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: C
   }
   if (event.key === 'Enter' && h.selectedIdRef.current) {
     const selectedNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
-    if (selectedNode?.kind === 'note') {
-      if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
-      void h.onOpenNote(selectedNode.id)
-      h.onClose()
-    } else if (selectedNode?.kind === 'unresolved') {
-      void h.onCreateNote(selectedNode.title)
-      h.onClose()
-    }
+    if (selectedNode) activateSelectedNode(selectedNode, h)
     event.preventDefault(); state.schedule?.(); return
   }
   const direction = ARROW_DIRECTIONS[event.key]
   if (direction) handleCanvasArrowKey(event, state, h, direction)
+}
+
+/** What Enter does to the node the reader is on: it opens what can be opened, and filters by what cannot. */
+function activateSelectedNode(node: CanvasNode, h: CanvasHandlers): void {
+  if (node.kind === 'note') {
+    if (usePinnedWindows.getState().focusPinnedByNote(node.id)) return
+    void h.onOpenNote(node.id)
+    h.onClose()
+    return
+  }
+  if (node.kind === 'unresolved') {
+    void h.onCreateNote(node.title)
+    h.onClose()
+    return
+  }
+  // A tag node is not something to open, so Enter answers it the way the node actions menu answers the
+  // same node: narrow the graph to that tag. Both entries do the one thing (G-24).
+  if (!h.onFilterByTag) { h.announce(t('graph.tag_filter_unavailable')); return }
+  h.onFilterByTag(node.title)
+  h.onClose()
 }
 
 function handleCanvasArrowKey(
@@ -293,6 +310,17 @@ function GraphCanvasElement({ canvasRef, handlers }: {
   )
 }
 
+/**
+ * What a reader hears about the node the arrows reached. A tag node answers Enter differently from a
+ * note, and the only thing on screen that says so is the sigil and the second ring drawn on it — so
+ * the announcement names the kind as well, or the two are the same string to a reader (G-24).
+ */
+function nodeAnnouncement(node: CanvasNode): string {
+  const kind = node.kind === 'tag' ? `${t('graph.tag_node')} ` : ''
+  const title = node.title || t('common.untitled_note')
+  return `${kind}${title}, ${t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}`
+}
+
 function useGraphPreviewAndA11y(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   stateRef: RefObject<CanvasState>,
@@ -315,7 +343,7 @@ function useGraphPreviewAndA11y(
     if (selectedId) {
       const node = stateRef.current.nodes.find((candidate) => candidate.id === selectedId)
       if (node) {
-        setLiveAnnouncement(`${node.title || t('common.untitled_note')}, ${t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}`)
+        setLiveAnnouncement(nodeAnnouncement(node))
         preview.showPreview(node)
       }
     }
@@ -332,7 +360,7 @@ function useGraphPreviewAndA11y(
     state.schedule?.()
   }), [hoverRef, setHover, stateRef, preview.onHoverNode])
 
-  return { preview, liveAnnouncement }
+  return { preview, liveAnnouncement, announce: setLiveAnnouncement }
 }
 
 /** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */
@@ -367,7 +395,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
   const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const isSpaceDownRef = useRef(false)
-  const { preview, liveAnnouncement } = useGraphPreviewAndA11y(canvasRef, stateRef, hoverRef, setHover, selectedId, activeNoteId, activeNoteIdRef)
+  const { preview, liveAnnouncement, announce } = useGraphPreviewAndA11y(canvasRef, stateRef, hoverRef, setHover, selectedId, activeNoteId, activeNoteIdRef)
 
   useEffect(() => { selectedIdRef.current = selectedId }, [selectedId, selectedIdRef])
   const prefsRef = useRef(prefs)
@@ -401,7 +429,7 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,
     setHover, setSelectedId, setContext, openNodeMenu,
     beginDrag, moveDrag, endDrag, toWorld, nodeAt, fitGraph,
-    onOpenNote, onCreateNote, onClose, hover, isDragging,
+    onOpenNote, onCreateNote, onClose, onFilterByTag, announce, hover, isDragging,
   }
 
   return { handlers, preview, colorLegends, liveAnnouncement, menuItems, hover, selectedId, context, setContext }

@@ -27,6 +27,8 @@ export interface GraphCanvasMount {
 export interface GraphCanvasMountOptions {
   prefs?: GraphPreferences
   activeNoteId?: string | null
+  /** The graph inside a note has no tag filter to narrow, and mounts the canvas without the callback. */
+  withoutTagFilter?: boolean
 }
 
 const mounted: RenderedElement[] = []
@@ -71,7 +73,7 @@ export function mountGraphCanvas(data: GraphResponse, options: GraphCanvasMountO
     onCreateNote: create,
     onClose: close,
     onMakeLocal: local,
-    onFilterByTag: filterByTag,
+    onFilterByTag: options.withoutTagFilter ? undefined : filterByTag,
     controlsRef: { current: null },
   }))
   mounted.push(rendered)

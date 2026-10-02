@@ -185,19 +185,53 @@ describe('what the keyboard reaches from a node', () => {
 
     expect(graph.container.querySelector('[data-preview-card="Beta"]')).toBeTruthy()
   })
+})
+
+describe('telling a tag node from a note node (G-24)', () => {
+  // A tag node is a different kind of thing from a note, and the drawing is the only place that says
+  // so: only a tag carries the sigil and the second ring. What the reader hears has to say it too.
+  const withTag: GraphResponse = {
+    ...trio,
+    nodes: [node('note-1', 'Alpha', 1, 0), node('tag:work', 'work', 1, 0, 'tag')],
+  }
+
+  it('names the kind of a tag node in the announcement', () => {
+    const graph = mountGraphCanvas(withTag)
+    walkRightTo(graph, { Alpha: [0, 0], work: [120, 0] })
+
+    // The kind comes first: it is the one word that tells a tag node from a note, and the two answer
+    // Enter differently.
+    expect(liveRegion(graph.container).textContent)
+      .toBe(`${t('graph.tag_node')} work, ${t('graph.direction_counts', { incoming: 1, outgoing: 0 })}`)
+  })
+
+  it('leaves a note node announced without a kind, which is what it is', () => {
+    const graph = mountGraphCanvas(withTag)
+    place(graph, { Alpha: [0, 0], work: [120, 0] })
+    pressKey(graph.canvas, 'ArrowRight')
+
+    expect(liveRegion(graph.container).textContent).toBe(announcement('Alpha', 1, 0))
+  })
 
   it('filters the graph by the tag a reader arrow-keyed to, without pretending to open it', () => {
-    const tagged: GraphResponse = {
-      ...trio,
-      nodes: [node('note-1', 'Alpha', 1, 0), node('tag:work', 'work', 1, 0, 'tag')],
-    }
-    const graph = mountGraphCanvas(tagged)
+    const graph = mountGraphCanvas(withTag)
+    walkRightTo(graph, { Alpha: [0, 0], work: [120, 0] })
+    pressKey(graph.canvas, 'Enter')
+
+    expect(graph.filterByTag).toHaveBeenCalledWith('work')
+    expect(graph.create).not.toHaveBeenCalled()
+    expect(graph.open).not.toHaveBeenCalled()
+    expect(graph.close).toHaveBeenCalledTimes(1)
+  })
+
+  it('says so rather than swallowing the key where there is no tag filter to narrow', () => {
+    const graph = mountGraphCanvas(withTag, { withoutTagFilter: true })
     walkRightTo(graph, { Alpha: [0, 0], work: [120, 0] })
     pressKey(graph.canvas, 'Enter')
 
     expect(graph.filterByTag).not.toHaveBeenCalled()
-    expect(graph.open).not.toHaveBeenCalled()
     expect(graph.close).not.toHaveBeenCalled()
+    expect(liveRegion(graph.container).textContent).toBe(t('graph.tag_filter_unavailable'))
   })
 })
 
