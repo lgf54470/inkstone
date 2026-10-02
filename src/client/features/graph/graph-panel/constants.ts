@@ -1,5 +1,5 @@
 import type { GraphPreferences } from '../../../lib/graph-settings'
-import { GRAPH_FORCE_RANGE } from '../../../lib/graph-settings'
+import { GRAPH_FORCE_RANGE, GRAPH_TOGGLE_DEFAULTS } from '../../../lib/graph-settings'
 import { LIMITS } from '@shared/constants'
 
 export const FALLBACK_EDGE_COLOR = 'rgba(127,127,127,.35)'
@@ -44,22 +44,21 @@ export const GRAPH_TAG_RING_GAP = 2
 export const GRAPH_TAG_RING_WIDTH = 1.5
 export const FALLBACK_FONT_FAMILY = 'sans-serif'
 
+/**
+ * What a reader gets before they touch a setting. Every value here is decided somewhere else: the
+ * booleans come from the settings manifest and the numbers from the shared bounds and the range table,
+ * so this object is an assembly, not a fourth copy of any of them (G-36).
+ */
 export const DEFAULT_PREFERENCES: GraphPreferences = {
   mode: 'global',
   depth: LIMITS.graphDepthDefault,
   limit: LIMITS.graphNodeLimitDefault,
-  includeOrphans: true,
-  includeUnresolved: true,
-  showTagNodes: false,
-  arrows: true,
-  labels: true,
   groupBy: 'none',
   colorGroups: [],
   folderId: '',
   tag: '',
   tagsMatch: 'any',
-  clearResetsTag: true,
-  clearClosesPanel: true,
+  ...GRAPH_TOGGLE_DEFAULTS,
   repulsion: GRAPH_FORCE_RANGE.repulsion.default,
   linkDistance: GRAPH_FORCE_RANGE.linkDistance.default,
   nodeScale: GRAPH_FORCE_RANGE.nodeScale.default,

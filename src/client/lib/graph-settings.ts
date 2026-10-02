@@ -39,7 +39,7 @@ export interface GraphPreferences {
   nodeScale: number
 }
 
-type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences]
+export type GraphTogglePref = { [K in keyof GraphPreferences]: GraphPreferences[K] extends boolean ? K : never }[keyof GraphPreferences]
 
 /** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */
 export const GRAPH_DEPTHS: number[] = Array.from(
@@ -65,6 +65,14 @@ export const GRAPH_SETTINGS_TOGGLES: ReadonlyArray<GraphToggleControl> = [
   { prefKey: 'arrows', labelKey: 'graph.show_arrows', default: true },
   { prefKey: 'labels', labelKey: 'graph.show_labels', default: true },
 ]
+
+/**
+ * The boolean defaults, keyed by preference. `DEFAULT_PREFERENCES` spreads this rather than writing the
+ * seven values out again, so the manifest is the only place a default is decided (G-36).
+ */
+export const GRAPH_TOGGLE_DEFAULTS = Object.fromEntries(
+  GRAPH_SETTINGS_TOGGLES.map((control) => [control.prefKey, control.default]),
+) as Record<GraphTogglePref, boolean>
 
 export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel')
 export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved' || control.prefKey === 'showTagNodes')

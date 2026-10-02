@@ -3583,6 +3583,7 @@ const allowed = new Map([
     '/** How far one press of the node-limit slider moves: a screenful of notes, not one of them. */',
     '/** How far a pointer may travel before a press stops counting as a click and becomes a drag. The same line\n * decides that letting go opens nothing and that the node has left the place its preview card hangs\n * from, so the two can never disagree about where the click ends (G-16). */',
     '/** A search that locates its matches leaves the rest of the graph on screen: lighter than the hover\n * focus, which hides the whole field, because these nodes are the context the match sits in (G-14). */',
+    '/**\n * What a reader gets before they touch a setting. Every value here is decided somewhere else: the\n * booleans come from the settings manifest and the numbers from the shared bounds and the range table,\n * so this object is an assembly, not a fourth copy of any of them (G-36).\n */',
   ]],
   ['src/client/features/graph/graph-panel/graph-canvas-mount.test-helpers.ts', [
     '/**\n * Mounting the graph surface needs a canvas that paints, a physics state the test can read, and the\n * callbacks the panel calls back into. Tests that drive the panel by hand share this scaffolding; what\n * each of them asserts stays in its own file.\n */',
@@ -8928,6 +8929,12 @@ const allowed = new Map([
   ['src/client/lib/fuzzy.ts', [
     '/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */',
   ]],
+  ['src/client/lib/graph-settings.test.ts', [
+    '// The manifest used to carry a `default` nobody read while `DEFAULT_PREFERENCES` wrote the seven',
+    '// booleans out again, and this case pinned its own inline copy of them (G-36). The defaults are now',
+    '// derived from the manifest, so the guard is the one that survives derivation: a boolean preference',
+    '// the panel cannot toggle, or a toggle that governs nothing, fails here.',
+  ]],
   ['src/client/lib/graph-settings.ts', [
     '/** One colour rule: notes whose filter line matches are drawn in `color` whatever `groupBy` says. */',
     '/** Each rule is a filter line the reader has to hold in mind, and the legend has room for a handful. */',
@@ -8938,6 +8945,7 @@ const allowed = new Map([
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
     '/** The link depths a graph can be asked for, in the order both depth controls list them (G-21). */',
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
+    '/**\n * The boolean defaults, keyed by preference. `DEFAULT_PREFERENCES` spreads this rather than writing the\n * seven values out again, so the manifest is the only place a default is decided (G-36).\n */',
     '/**\n * The three force sliders: their bounds, their step and their default, in one table. The drawer draws\n * its sliders from this and `loadPreferences` clamps stored values with it, so a slider cannot offer a\n * number the reader\'s own stored preference would later refuse (G-32).\n */',
     '/** Looked up by preference key, which is how the panel and the storage reader share one row. */',
   ]],

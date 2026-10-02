@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { EN_US_MESSAGES } from '@shared/locales/en-US'
 import { GRAPH_APPEARANCE_TOGGLES, GRAPH_CLEAR_TOGGLES, GRAPH_SETTINGS_TOGGLES, GRAPH_SHOW_TOGGLES } from './graph-settings'
+import { DEFAULT_PREFERENCES } from '../features/graph/graph-panel/constants'
 
 describe('graph settings manifest', () => {
-  it('documents every boolean graph preference with its default', () => {
-    expect(GRAPH_SETTINGS_TOGGLES.map((control) => [control.prefKey, control.default])).toEqual([
-      ['clearResetsTag', true],
-      ['clearClosesPanel', true],
-      ['includeOrphans', true],
-      ['includeUnresolved', true],
-      ['showTagNodes', false],
-      ['arrows', true],
-      ['labels', true],
-    ])
+  it('lists exactly the boolean preferences the app ships', () => {
+    // The manifest used to carry a `default` nobody read while `DEFAULT_PREFERENCES` wrote the seven
+    // booleans out again, and this case pinned its own inline copy of them (G-36). The defaults are now
+    // derived from the manifest, so the guard is the one that survives derivation: a boolean preference
+    // the panel cannot toggle, or a toggle that governs nothing, fails here.
+    const booleans = Object.keys(DEFAULT_PREFERENCES).filter((key) => typeof DEFAULT_PREFERENCES[key as keyof typeof DEFAULT_PREFERENCES] === 'boolean')
+    expect(GRAPH_SETTINGS_TOGGLES.map((control) => control.prefKey).sort()).toEqual(booleans.sort())
+  })
+
+  it('ships the manifest default, not a second copy of it', () => {
+    for (const control of GRAPH_SETTINGS_TOGGLES) {
+      expect(DEFAULT_PREFERENCES[control.prefKey]).toBe(control.default)
+    }
   })
 
   it('covers exactly the boolean graph preferences without duplicates', () => {
