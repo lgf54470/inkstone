@@ -1007,3 +1007,12 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 ### 9.5 台账的最终口径
 
 G-01…G-48 **48 个编号全部有登记在册的结论**：其中完全未落地代码的是 **G-08**（三档全以证据判「不做」）与 **G-10**（A 的契约代价不成立、B 与 `no-store`/`module-state:check` 冲突）；G-43 / G-46 / G-47 / G-48 的主半边已落地，余下半边已判「不做 / 另立」并登记为 F-12 / F-13 或 §9.4 的新编号前置。§2 的 8 条失效条目全程禁止作为任务执行；任何 `[x]` 都只由真实提交与真实门禁输出来填，浏览器门禁没跑成的地方在 §4 与 §8 里写着「未能运行」而不是「全绿」。
+
+### 9.6 并入 dev 的记录（2026-10-03，合并提交 `3549423b`）
+
+- 关系：`dev@a80b7cf9` + `improvement/relationship-graph-agy@67009609` → 合并提交 `3549423b`（128 条本分支提交并入，dev 自己领先的 34 条一条没丢；`--no-ff` 显式合并，两个父提交都在）
+- **只有 1 个文件真冲突**：`src/worker/routes/search/helpers.ts`。按维护者的口径「取舍以 dev 为主」处理——dev 把 `contentWindowSql` / `makeSnippet` 抽到 `src/worker/lib/snippet.ts`、把 `escapeLike` 抽到 `src/worker/lib/like.ts` 并在 helpers 里 re-export，这套结构保留，我们冲突块里遗留的旧 `contentWindowSql` 副本**删掉**（留着会与 dev 的 import 同名冲突，且 `graph.ts` 走的是 helpers 的 re-export，功能不断）；本分支新增的图谱 helper（`parseExcludedNoteIds`、`excludedNoteClause`、`localNeighborhoodSql`、`parseGraphLinkDirection`、`loadFolderPaths` 与三个 `GRAPH_*` 界值）是纯追加，全部留下，`@shared/folder-path` 的 import 接进 dev 的 import 块，`toPlainText` / `sliceText` 随 `makeSnippet` 一起移出、不再引回
+- 另两个两边都碰过的文件由文本自动合并接上，且各有独立验证：`scripts/check-comments.mjs`（合并后 `comments:check` 13928 条 / 2018 文件全绿）、`src/client/styles/tokens.css`（`check-token-drift` 89 枚令牌无漂移、undefined-var 14 条历史豁免不变）
+- 合并后在 dev 那一棵树实测：`typecheck` rc=0；`test:unit` **673 文件 / 5988 通过 + 1 跳过 / 0 失败**；13 项静态门禁全绿（`i18n` **4122** 键＝dev 带来的博客侧键与本分支的图谱键并集、`labels` 150 不变、`surfaces` 8）；`build` rc=0（客户端 6.98s、worker 809ms）；`budget:check` rc=0；pre-commit 钩子又跑了一遍静态门禁 + `vitest related`（**528 文件 / 4780 条全绿**）
+- 未验证项（照实写，不写成通过）：`e2e-visual` 与 `check-contrast` 没跑，原因与 F-05 同一条（两个共享 `node_modules` 的 dev server 互相顶掉 `.vite/deps` 优化器哈希，浏览器首帧导航必 30s 超时）。因此图谱叠加层、色板可访问名、邻居清单这三处可见改动在 dev 上仍只有 jsdom 证据
+- **未推送**：`origin/dev` 仍停在 `a80b7cf9`，本地 dev 领先 129 条。推送是对外可见的动作，等维护者点头再做
