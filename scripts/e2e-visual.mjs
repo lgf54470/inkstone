@@ -441,7 +441,13 @@ async function assertPresentation(page) {
     const host = canvas.querySelector('[data-slide-page]')
     const visible = [...host.children].filter((el) => el.style.visibility !== 'hidden')
     return {
-      fills: box.width >= stage.width - 1 && box.height >= stage.height - 1,
+      // The canvas is a 16:9 design sheet scaled to fit, so it fills the stage along one axis and is
+      // letterboxed along the other: demanding both at once only holds at a 16:9 window, which is why
+      // this reddened on a 16:10 one while the projector was drawing correctly. What the contract
+      // actually promises is that the sheet reaches an edge, never crosses one, and keeps its ratio.
+      fills: (box.width >= stage.width - 1 || box.height >= stage.height - 1)
+        && box.width <= stage.width + 1 && box.height <= stage.height + 1
+        && Math.abs(box.width / box.height - 1280 / 720) < 0.01,
       // The two numbers this comparison is made of, printed when it fails: a `fills` red without them
       // cannot tell a canvas that did not scale from a stage that was never measured.
       size: { stage: `${Math.round(stage.width)}x${Math.round(stage.height)}`, canvas: `${Math.round(box.width)}x${Math.round(box.height)}` },
@@ -3513,9 +3519,13 @@ async function presentationSession(page) {
         .join(' '),
       followLabel: follow?.getAttribute('aria-label') ?? '',
       inDialog: Boolean(document.activeElement?.closest?.('[role="dialog"]')),
-      filled: Boolean(box && stage) && box.height >= stage.height - 1 && box.width >= stage.width - 1,
-      // The same two numbers as the opening check: a breakpoint round trip that leaves the canvas at
-      // the old size shows up here as a pair of measurements, not as a bare `false`.
+      // The letterbox contract, stated the same way as in `assertPresentation`: reach one edge, cross
+      // neither, keep the ratio. A breakpoint round trip that leaves the sheet at the old size still
+      // fails this, and now says so with the two measurements beside it.
+      filled: Boolean(box && stage)
+        && (box.width >= stage.width - 1 || box.height >= stage.height - 1)
+        && box.width <= stage.width + 1 && box.height <= stage.height + 1
+        && Math.abs(box.width / box.height - 1280 / 720) < 0.01,
       size: { stage: `${Math.round(stage?.width ?? -1)}x${Math.round(stage?.height ?? -1)}`, canvas: `${Math.round(box?.width ?? -1)}x${Math.round(box?.height ?? -1)}` },
     }
   }, names)
