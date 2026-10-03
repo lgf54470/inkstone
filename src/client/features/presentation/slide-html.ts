@@ -297,7 +297,7 @@ export function renderSlideSource(source: string, externalImages: boolean): Slid
 // and skips the geometry — that keeps a 14-page slide from mounting 14 full copies
 // of its markup in the slide list. Blocks a page had to shrink keep their factor, and
 // a block that continues over several pages keeps the band this page owns.
-export function slicePageHtml(html: string, plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number): string {
+export function slicePageHtml(html: string, plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number, step?: number): string {
   const page = plan.pages[resolvePageIndex(plan, subPage)]
   if (!page) return html
   const template = document.createElement('template')
@@ -305,9 +305,14 @@ export function slicePageHtml(html: string, plan: SlidePlan, subPage: number, co
   const children = [...template.content.children]
   const kept = children.slice(page.from, page.to)
   kept.forEach((child, offset) => {
-    // The canvas hides off-page blocks with an inline `visibility`; a thumbnail must not
-    // inherit that from the markup it sliced out of, and owns its own layout anyway.
-    if (child instanceof HTMLElement) child.style.visibility = ''
+    // The canvas hides off-page blocks with an inline `visibility`; a sliced page starts from the
+    // markup it was cut out of and states its own visibility instead of inheriting that. A stepped
+    // slide (N-31) hides what the step had not reached, which is how one page becomes several
+    // printed states without a projector to run the reveal for it.
+    if (child instanceof HTMLElement) {
+      const revealed = step !== undefined && plan.steps && offset > step
+      child.style.visibility = revealed ? 'hidden' : ''
+    }
     applySliceBand(child, page.clip)
     applySliceScale(child, plan.scales[page.from + offset] ?? 1, contentWidth, contentHeight)
   })
