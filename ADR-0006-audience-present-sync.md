@@ -1,6 +1,6 @@
 # ADR 0006: 观众侧同步放映（`/s/<slug>` 的跟随位置）
 
-Status: Proposed（**未实现**；本 ADR 先于代码，按 `AGENTS.md`「公共契约与弃用策略」与台账 R2-7 的前置要求写在此处）
+Status: Accepted（已实现：见文末「实现记录」——worker 位置通道、演讲者侧上报、观众端页面与两标签页门禁场景全部落地，落点与该节的差异以实现为准）
 
 Date: 2026-10-04
 
@@ -93,3 +93,34 @@ Date: 2026-10-04
 - 新增：`src/worker/routes/share/presence.ts`、`src/worker/routes/share/public-presence.ts`、`src/shared/types/share-presence.ts`、迁移 version 54、`src/client/features/share/share-present/*`（观众端宿主）、本 ADR 的实现记录段。
 - 修改：`src/client/app.tsx`（`?present=` 读取与观众端路由分支）、`src/worker/app.ts`（挂公共子路由，注意 `PUBLIC_PAGE_PREFIXES` 与安全头）、`src/worker/routes/share/index.ts`（所有者侧）、`src/client/features/share/share-page/*`（跟随开关）、`src/shared/locales/{en-US,zh-CN}/*`（文案两语）。
 - 不动：`SyncHub`、`/api/sync/*`、`share_visits` 的写路径与指纹口径。
+
+## 实现记录（2026-10-04，R2-7 关闭时补）
+
+Status 转为 **Accepted（已实现）**：`8becc13f`（本 ADR）→ `fb0e1ac2`（worker 通道）→ `528855cd`（演讲者侧）→ `85b4d9bb`（口令分享的心跳先过口令）→ `0bd816f5`（观众端页面）→ `537c7f9f`（两标签页门禁场景）。
+
+落点与本文「涉及文件」的差异，以实现为准：
+
+- 观众端宿主住在 **`src/client/features/presentation/audience-view.tsx`**，不在 `features/share/share-present/`。理由是它是放映的一个座位而不是分享的一个板块：它要用 `PresentationStage`、`SlideStepper`、`deck-position`、`slide-pagination` 的夹取与播报，全部是放映模块的内部件；分享页只提供外壳（`features/share/share-page/page.tsx` 按 `?present=` 分流出充满视口的一栏）。跨模块只经由 `features/presentation/index.ts` 导出的一颗 `AudienceView`。
+- 页计划表从放映状态机里拆出 `use-slide-plans.ts`：观众需要的是「每张幻灯量出来的页」这一份映射，不需要 rail / preflight / 导出 / 演讲者窗那一整台机器（也不该把它们拉进公开页面的 chunk）。
+- 位置读时的夹取写成一处纯函数 `readAudiencePosition(where, deckLength, plan)`，`where` 存的是**演讲者写下的原值**：本机尚未量测完成的页不能夹到第 0 页，否则量到之后也回不去。这是本文「已知不精确」那条的实现面。
+- 心跳住在 `features/presentation/use-audience-presence.ts`，`api.presence.read(slug, token, ifNoneMatch, onEtag)` 走 `POST /api/public/:slug/present`、`cache: 'no-store'`。状态四枚：`connecting / live / stale / ended`——`stale` 保留上一页并退避（上限 16 个轮距），`ended` 停止再问。
+
+第 4 条（口令分享）的落法比原文多一个决定：**没有放宽旧 cookie 的路径**。`inkstone_share_<slug>` 只发给 `/api/files/`，心跳取不到它；于是过口令那一次同时铸造一条同值、`Path=/api/public/` 的 `inkstone_share_access_<slug>`，公共位置读用 `verifyShareAssetSession` 验它。把一条能力 cookie 的路径放宽到整个 `/api/`，等于把它递给一批用不上它的端点；两条窄路径比一条宽路径更接近最小化。带令牌未过口令的回答与「链接不存在」逐字相同——本文第 3 条的「五种不配」从此是六种。
+
+第 9 条（demo 模式）选了「显式说明」这一支：演示版后端是**当前标签页内存里的一张 Map**，把观众链接发给别人打开的是另一台从没听说过这场放映的浏览器，对等行为无法在演示版里成立。于是放映按钮在 `IS_DEMO_MODE` 下不出现在胶囊上，右键/门里保留一行禁用说明（`workspace.presentation_audience_unavailable`），而不是留一颗按下只会报「创建失败」的控件。
+
+验证清单的实测证据（数值来自本轮实跑）：
+
+| 条 | 证据 |
+| :--- | :--- |
+| 1 迁移 | version 54 只新增；`tests/schema-migrations.test.ts` 与不可变性检查绿 |
+| 2 一致性 | `tests/share-presence.test.ts` 写后立读；`audience-view.test.ts` 四条 `readAudiencePosition` 夹取（含「未量测不 snap 回第 0 页」） |
+| 3 权限 | 无令牌 / 错令牌 / 已散场 / 没过口令 / 别人的证明 / 陌生 slug 六种情况逐字同答（用例断言两份 body 文本相等） |
+| 4 口令 | `85b4d9bb` 三条：只有令牌 → 404 且与陌生链接同句；过了口令 → 200；证明按 slug 绑定，开不了另一条链接 |
+| 5 限速 | `share-present:view:{slug}:ip` 与 `:ip` 独立于 `share-view:`，用例断言键名不串用 |
+| 6 最小化 | 心跳不写 `share_visits`；响应体无访客字段；`set-cookie` 为空——真实 worker 实例复读：200 带 `no-store` + `W/"…"`，cookie 列表空 |
+| 7 缓存 | 同一 `If-None-Match` → **304、body 0 字节**（实例上实跑，非推断） |
+| 8 UI / a11y | jsdom 29 条（跟随开关为 `role="switch"`、播报走 `role="status"`、脱离跟随后不再被拽回、交回开关回到当下）+ `scripts/e2e-visual.mjs` 两标签页 11 条（陌生浏览器落位、揭示块同步、散场有回声） |
+| 9 demo | 上面那条显式说明 + 2 条断言（`presentation-audience-demo.test.ts`） |
+
+遗留：本文「重开条件」三条未触发；观众举手 / 问答仍是另一份契约，不属本 ADR。
