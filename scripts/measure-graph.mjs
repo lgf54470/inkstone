@@ -22,6 +22,9 @@
 //   LINKS_PER_NOTE=5       outgoing links per note, so the library holds NOTES * LINKS_PER_NOTE rows
 //   D1_PATH=...            the persisted D1 sqlite file, when the default glob finds none
 //   SKIP_BROWSER=1         measure D1 only, no Chrome
+//   SKIP_D1=1              measure the browser only, against an instance with no persisted D1 file
+//   TAG_NODES=1            put a tag on every seeded note, ask the graph for its tag nodes, and add
+//                          the label-halo A/B the G-08 ② decision needs (V-06)
 //   WORST_MS_MAX=250       how long one settling frame may take before the run fails
 //   READ_MS_MAX=400        how long one global read may take before the run fails
 //   INKSTONE_VISUAL_USERNAME/PASSWORD  an account on that instance (defaults suit CI's :7712)
@@ -38,6 +41,7 @@ const LINKS_PER_NOTE = Number(process.env.LINKS_PER_NOTE ?? 5)
 const WORST_MS_MAX = Number(process.env.WORST_MS_MAX ?? 250)
 const READ_MS_MAX = Number(process.env.READ_MS_MAX ?? 400)
 const RUNS = Number(process.env.RUNS ?? 5)
+const TAG_NODES = process.env.TAG_NODES === '1'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -261,7 +265,12 @@ async function seedThroughApi(base, count, linksPerNote) {
     const links = Array.from({ length: linksPerNote }, (_unused, hop) => `[[${id((index + hop * 7) % count)}]]`).join(' and ')
     const res = await fetch(`${base}/api/notes`, {
       method: 'POST', headers: { ...headers, cookie },
-      body: JSON.stringify({ title: `Perf note ${index}`, content: `# Perf note ${index}\n\nLinks to ${links}.\n` }),
+      body: JSON.stringify({
+        title: `Perf note ${index}`,
+        // A tag on every third note, over a pool of 40 names: enough that the tag nodes are the widest
+        // clusters the route will keep, which is the picture G-08 ② asks about.
+        content: `# Perf note ${index}\n\nLinks to ${links}.\n${TAG_NODES && index % 3 === 0 ? `Tags: ${Array.from({ length: 3 }, (_unused, hop) => `#pool-${(index + hop) % 40}`).join(' ')}\n` : ''}`,
+      }),
     })
     if (res.status >= 400) throw new Error(`the instance refused note ${index}: ${res.status}`)
   }
@@ -283,8 +292,8 @@ const SAMPLE_AND_LAYOUT = `
  * the browser reported and that paint cost, because `advancePhysics` is module-private and this script
  * does not export product code just to time it.
  */
-async function paintBenchmark(page, nodes, linksPerNote) {
-  return page.evaluate(async ({ nodes, linksPerNote }) => {
+async function paintBenchmark(page, nodes, linksPerNote, withTags) {
+  return page.evaluate(async ({ nodes, linksPerNote, withTags }) => {
     const module = await import('/src/client/features/graph/graph-panel/canvas-draw.ts')
     const constants = await import('/src/client/features/graph/graph-panel/constants.ts')
     const canvas = document.createElement('canvas')
@@ -292,15 +301,24 @@ async function paintBenchmark(page, nodes, linksPerNote) {
     canvas.height = 760
     const ctx = canvas.getContext('2d')
     const ids = Array.from({ length: nodes }, (_unused, index) => `bench-${index}`)
+    const tagOf = (index) => `pool-${index % 40}`
     const data = {
       nodes: ids.map((id, index) => ({
         id, title: `Bench note ${index}`, kind: 'note', degree: linksPerNote, inDegree: 1, outDegree: linksPerNote,
-        folderId: null, folderPath: null, folderColor: null, tags: [],
+        folderId: null, folderPath: null, folderColor: null,
+        tags: withTags && index % 3 === 0
+          ? Array.from({ length: 3 }, (_unused, hop) => ({ name: tagOf(index + hop), color: null }))
+          : [],
       })),
       edges: ids.flatMap((id, index) => Array.from({ length: linksPerNote }, (_unused, hop) => ({ source: id, target: ids[(index + hop * 7) % ids.length] }))),
       meta: { mode: 'global', centerId: null, depth: 1, totalNodes: nodes, totalEdges: nodes * linksPerNote, truncated: false, limit: nodes },
     }
-    const prefs = { ...constants.DEFAULT_PREFERENCES, limit: nodes }
+    if (withTags) {
+      // The route's own builder, so the tag nodes and their 2k edge budget are the ones the app runs.
+      const tagModule = await import('/src/shared/graph-tag-nodes.ts')
+      tagModule.applyTagNodes(data.nodes, data.edges, new Map(data.nodes.map((node) => [node.id, node.tags])))
+    }
+    const prefs = { ...constants.DEFAULT_PREFERENCES, limit: nodes, showTagNodes: withTags }
     const state = {
       nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: canvas.width, height: canvas.height,
       viewLeft: 0, viewTop: 0, dragging: null, pointers: new Map(), pinch: null, searchHits: null, frame: 0, raf: 0, schedule: null,
@@ -320,6 +338,7 @@ async function paintBenchmark(page, nodes, linksPerNote) {
       module.drawLabels({ ctx, state, colors, emphasizedId: null, neighborIds: new Set(), fontFamily: style.getPropertyValue('--font-ui'), scale: state.scale, labels: true })
       ctx.restore()
     }
+    const median = (list) => { const sorted = list.slice().sort((a, b) => a - b); return sorted[Math.floor(sorted.length / 2)] }
     const samples = []
     for (let frame = 0; frame < 40; frame++) {
       const started = performance.now()
@@ -327,8 +346,41 @@ async function paintBenchmark(page, nodes, linksPerNote) {
       samples.push(performance.now() - started)
     }
     samples.sort((a, b) => a - b)
-    return { nodes: state.nodes.length, edges: state.edges.length, buildMs, paintMedian: samples[20], paintMax: samples[samples.length - 1] }
-  }, { nodes, linksPerNote })
+
+    /**
+     * The label pass on its own, and then the same pass with `strokeText` silenced. The halo is the only
+     * thing in the picture that draws every label twice, so the difference between these two is exactly
+     * what G-08 ② would buy: it proposes drawing the halo only for the emphasised node and its neighbours
+     * once the picture is big enough. Nothing else in the frame changes between the two runs.
+     */
+    const labelPass = () => module.drawLabels({
+      ctx, state, colors, emphasizedId: null, neighborIds: new Set(),
+      fontFamily: style.getPropertyValue('--font-ui'), scale: state.scale, labels: true,
+    })
+    const haloSamples = []
+    for (let frame = 0; frame < 40; frame++) {
+      const started = performance.now()
+      labelPass()
+      haloSamples.push(performance.now() - started)
+    }
+    const originalStrokeText = ctx.strokeText.bind(ctx)
+    ctx.strokeText = () => {}
+    const bareSamples = []
+    for (let frame = 0; frame < 40; frame++) {
+      const started = performance.now()
+      labelPass()
+      bareSamples.push(performance.now() - started)
+    }
+    ctx.strokeText = originalStrokeText
+    const labelled = state.nodes.filter((node) => node.degree >= 1 || state.scale >= 1.1).length
+    return {
+      nodes: state.nodes.length, edges: state.edges.length, buildMs,
+      paintMedian: samples[20], paintMax: samples[samples.length - 1],
+      labelled, withTags: Boolean(withTags),
+      labelsMedian: median(haloSamples), labelsNoHaloMedian: median(bareSamples),
+      haloMedian: median(haloSamples) - median(bareSamples),
+    }
+  }, { nodes, linksPerNote, withTags })
 }
 
 async function browserSection() {
@@ -346,7 +398,8 @@ async function browserSection() {
     await page.evaluate((cookie) => { document.cookie = cookie }, seeded.cookie)
     await page.reload({ waitUntil: 'networkidle2' })
     await sleep(3_500)
-    await page.evaluate((limit) => localStorage.setItem('inkstone.graph.preferences.v1', JSON.stringify({ limit })), limitOf(drawn))
+    await page.evaluate((prefs) => localStorage.setItem('inkstone.graph.preferences.v1', JSON.stringify(prefs)),
+      { limit: limitOf(drawn), showTagNodes: TAG_NODES })
     await page.reload({ waitUntil: 'networkidle2' })
     await sleep(3_500)
     await page.evaluate(SAMPLE_AND_LAYOUT)
@@ -374,7 +427,7 @@ async function browserSection() {
         stats: document.querySelector('[data-surface="graph"]')?.textContent?.slice(0, 60),
       }
     })
-    const bench = await paintBenchmark(page, drawn, LINKS_PER_NOTE)
+    const bench = await paintBenchmark(page, drawn, LINKS_PER_NOTE, TAG_NODES)
     const perFrame = sampled.mean
     return { seededInMs: seeded.ms, count: seeded.count, reused: seeded.reused, settle: sampled, bench, physicsEstimate: perFrame - bench.paintMedian }
   } finally {
@@ -393,6 +446,9 @@ function describeLayout(read) {
     `  settle window: ${read.settle.frames} frames, mean ${read.settle.mean.toFixed(1)}ms, p95 ${read.settle.p95.toFixed(1)}ms, worst ${read.settle.max.toFixed(1)}ms; ${read.settle.tasks} long tasks, longest ${read.settle.worstTask.toFixed(1)}ms`,
     `  painting (real functions, real ctx, offscreen 1200x760): median ${read.bench.paintMedian.toFixed(2)}ms per frame, worst ${read.bench.paintMax.toFixed(2)}ms; building the layout (first physics steps included) ${read.bench.buildMs.toFixed(1)}ms over ${read.bench.nodes} nodes / ${read.bench.edges} edges`,
     `  physics by subtraction: ${read.settle.mean.toFixed(1)}ms frame - ${read.bench.paintMedian.toFixed(1)}ms paint = ${read.physicsEstimate.toFixed(1)}ms, an upper bound because the difference also carries the browser's own compositing and reclaim`,
+    ...(read.bench.withTags ? [
+      `  V-06 the label pass alone (with the tag nodes on screen): ${read.bench.labelled} of ${read.bench.nodes} nodes carry a label; median frame with the halo ${read.bench.labelsMedian.toFixed(2)}ms, without it ${read.bench.labelsNoHaloMedian.toFixed(2)}ms, so the halo costs ${read.bench.haloMedian.toFixed(2)}ms = ${(read.bench.haloMedian / read.bench.paintMedian * 100).toFixed(1)}% of one full paint (${read.bench.paintMedian.toFixed(2)}ms) and ${(read.bench.haloMedian / read.settle.mean * 100).toFixed(1)}% of one settling frame (${read.settle.mean.toFixed(1)}ms)`,
+    ] : []),
     `  what the surface says: ${read.settle.stats}`,
   ]
   return lines.join('\n')
@@ -400,6 +456,15 @@ function describeLayout(read) {
 
 async function main() {
   const numbers = sourceNumbers()
+  if (process.env.SKIP_D1) {
+    // The picture is what this section measures, and it does not care where the notes came from: an
+    // ephemeral instance (no persisted D1 file to copy) is a fine host for it.
+    if (process.env.SKIP_BROWSER) throw new Error('SKIP_D1 with SKIP_BROWSER measures nothing')
+    const layout = await browserSection()
+    console.log(describeLayout(layout))
+    console.log(`\nreading: skipped the D1 section (SKIP_D1) — the numbers above are the browser's only`)
+    return
+  }
   const source = findPersistedDatabase()
   const copy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-graph-measure-')), 'fixture.sqlite')
   fs.copyFileSync(source, copy)
