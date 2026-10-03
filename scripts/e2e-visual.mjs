@@ -1926,6 +1926,7 @@ async function openLightbox(page) {
   await pressImageEditorButton(page, ['图片预览', 'Image preview'])
 }
 
+const SAVE_SETTLE_MS = 2_500
 const IMAGE_PROBE_MARKDOWN = [
   '',
   '![Plain probe](/inkstone-logo.svg)',
@@ -2020,6 +2021,11 @@ function probeOf(measured, alt) {
 async function assertImageAttributes(page) {
   await ensurePaneVisible(page, '.cm-content')
   await writeAtEndOfNote(page, IMAGE_PROBE_MARKDOWN, 'image attributes')
+  // The typing left a debounced save in flight; a write-back issued before it lands is a second
+  // writer on the same note, and the server answers the pair with a 409 the client then rebases.
+  // A reader who clicks a control right after typing meets the same window, so this waits it out
+  // rather than teaching the scenario to expect a conflict it does not need to test.
+  await sleep(SAVE_SETTLE_MS)
   await ensurePaneVisible(page, '.ink-prose')
   await page.waitForFunction((count) => document.querySelectorAll('.ink-prose img[data-image-line]').length >= count, { timeout: 30_000 }, 5)
   const measured = await measureImages(page)
@@ -2047,6 +2053,7 @@ async function assertImageAttributes(page) {
     const image = [...document.querySelectorAll('.ink-prose img')].find((item) => item.alt === 'Plain probe')
     return Boolean(image && image.dataset.imageAlign === 'right')
   }, { timeout: 15_000 }).then(() => true, () => false)
+  await sleep(SAVE_SETTLE_MS)
   const survived = await waitForImageEditor(page)
   const source = await readNoteSource(page)
   check('image controls: a click reveals the toolbar', opened && pressed, `revealed=${opened} pressed=${pressed}`)
@@ -2076,6 +2083,7 @@ async function assertImageAttributes(page) {
     const image = [...document.querySelectorAll('.ink-prose img')].find((item) => item.alt === 'Plain probe')
     return Boolean(image && image.dataset.imageWidth)
   }, { timeout: 15_000 }).then(() => true, () => false)
+  await sleep(SAVE_SETTLE_MS)
   const after = await measureImages(page)
   const afterPlain = after.find((image) => image.alt === 'Plain probe')
   check('image controls: dragging the handle resizes the image in the page',
