@@ -9,6 +9,7 @@ import { type DeckHandoutPayload, type DeckSheetPayload, useDeckExport } from '.
 import type { DeckExportProgress } from './deck-print'
 import { backwardMove, deckProgress, forwardMove, railOpenFor } from './presentation-state'
 import { useChromeAutoHide } from './use-chrome-auto-hide'
+import { useAudienceFollow } from './use-audience-follow'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { buildIncrementalSlidePlans, rememberSlidePlan } from './slide-html'
@@ -100,6 +101,10 @@ export interface PresentationSession {
   spotlight: boolean
   clearSpotlight: () => void
   toggleSpotlight: () => void
+  /** An audience is following this show, and the link is out there (N-34). */
+  audienceFollowing: boolean
+  /** Starts or ends that — the link is handed to the presenter's clipboard on the way in. */
+  toggleAudience: () => void
   /** Whether the whole deck is laid out on top of the slide surface. */
   overview: boolean
   clearOverview: () => void
@@ -188,21 +193,20 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const { deck, notes, hashes, fingerprint } = useShowDeck(presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
   const nav = usePresentationNav(deck, hashes, initialSlideIndex)
-  const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
-  const metrics = useStageMetrics(open, stageRef)
+  const { isFullscreen, toggleFullscreen, metrics, chromeHidden } = useShowStage({ open, panelRef, stageRef })
   const { railOpen, toggleRail, compact } = useShowRoom(open)
-  const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle, notes, proseFont })
   const { listProgress, onProgress } = useListProgress()
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
+  const audience = useSessionAudience(open, noteId, nav)
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight, keyGuideOn: mode.keyGuide, clearKeyGuide: mode.clearKeyGuide })
   const slideUnprepared = useSlideHtml({ open, deck, hashes, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
-  // The session is the union of the pieces above, spread rather than unpacked key by key: `nav` is the
-  // position, `mode` what the keys own, `exports` what the controls ask for; explicit is what only it decides.
+  // The union of the pieces above, spread rather than unpacked key by key; explicit is only what this
+  // file decides — `nav` is the position, `mode` what the keys own, `exports` what the controls ask for.
   return {
     deck,
     notes,
@@ -226,11 +230,37 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     ...presenter,
     occluded: mode.overview || Boolean(mode.screenCover) || Boolean(contextMenu.contextPoint),
     ...nav,
+    ...audience,
     ...mode,
     ...exports,
     ...contextMenu,
     preflight: { deck, hashes, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
   }
+}
+
+/**
+ * The audience follows the same position the room sees, so it is reported from the show's own nav rather
+ * than from a control that would have to be told where the talk got to.
+ */
+function useSessionAudience(open: boolean, noteId: string | null, nav: ReturnType<typeof usePresentationNav>) {
+  const audience = useAudienceFollow({ open, noteId, position: { slide: nav.index, page: nav.sub, step: nav.step } })
+  return { audienceFollowing: audience.on, toggleAudience: audience.toggle }
+}
+
+/**
+ * The physical stage: whether the browser is holding it fullscreen, how big its design canvas lands at,
+ * and whether its own chrome is out of the way. The three are read off the same two elements and all
+ * fade back in on the same activity, so they are asked for in one place.
+ */
+function useShowStage(options: {
+  open: boolean
+  panelRef: RefObject<HTMLDivElement | null>
+  stageRef: RefObject<HTMLDivElement | null>
+}): { isFullscreen: boolean, toggleFullscreen: () => void, metrics: StageMetrics, chromeHidden: boolean } {
+  const { open, panelRef, stageRef } = options
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
+  const metrics = useStageMetrics(open, stageRef)
+  return { isFullscreen, toggleFullscreen, metrics, chromeHidden: useChromeAutoHide(open && isFullscreen) }
 }
 
 function usePresentationContextMenu(open: boolean) {

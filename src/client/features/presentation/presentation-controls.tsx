@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Code, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Code, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, Users, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
@@ -46,10 +46,13 @@ export interface PresentationControlsProps {
   onExportHandout: () => void
   /** The deck as one HTML file the recipient plays without this app (N-33). */
   onExportHtml: () => void
+  /** Whether an audience is following this show, and the press that changes it (N-34). */
+  audienceFollowing: boolean
+  onToggleAudience: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, step, steps, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onExportHtml, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, step, steps, isFullscreen, railOpen, overview, following, followLost, audienceFollowing, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onToggleAudience, onExport, onExportImages, onExportHandout, onExportHtml, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -65,7 +68,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       {compact
         ? <ViewDoor items={[...overflowItems, ...exportMenuItems({ onExport, onExportImages, onExportHandout, onExportHtml })]} exporting={exporting} />
         : <>
-          <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
+          <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} audienceFollowing={audienceFollowing} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleAudience={onToggleAudience} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
           <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
           <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} onExportHtml={onExportHtml} />
         </>}
@@ -87,15 +90,17 @@ function followControlLabel({ following, followLost }: { following: boolean; fol
   return following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
 }
 
-function ViewControls({ railOpen, overview, following, followLost, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter }: {
+function ViewControls({ railOpen, overview, following, followLost, audienceFollowing, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleAudience, onToggleFullscreen, onOpenPresenter }: {
   railOpen: boolean
   overview: boolean
   following: boolean
   followLost: boolean
+  audienceFollowing: boolean
   isFullscreen: boolean
   onToggleRail: () => void
   onToggleOverview: () => void
   onToggleFollowing: () => void
+  onToggleAudience: () => void
   onToggleFullscreen: () => void
   onOpenPresenter: () => void
 }) {
@@ -104,6 +109,7 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
   const overviewLabel = overview ? t('workspace.presentation_hide_overview') : t('workspace.presentation_show_overview')
   const followLabel = followControlLabel({ following, followLost })
   const presenterLabel = t('workspace.presentation_presenter')
+  const audienceLabel = audienceFollowing ? t('workspace.presentation_audience_stop') : t('workspace.presentation_audience_follow')
   return (
     <>
       <Tooltip label={railLabel} combo={presentationKeyCombo('slideList')} side='top'>
@@ -119,6 +125,13 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
       <Tooltip label={presenterLabel} combo={presentationKeyCombo('presenter')} side='top'>
         <IconButton label={presenterLabel} size='sm' onClick={onOpenPresenter}>
           <Presentation size={14} />
+        </IconButton>
+      </Tooltip>
+      {/* The audience control carries no key on purpose: it is a press a presenter makes once, when
+          they decide to let people in, and the door row spells out the same thing on a phone. */}
+      <Tooltip label={audienceLabel} side='top'>
+        <IconButton label={audienceLabel} size='sm' data-audience-toggle='true' active={audienceFollowing} onClick={onToggleAudience}>
+          <Users size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={followLabel} combo={followLost ? undefined : presentationKeyCombo('follow')} side='top'>

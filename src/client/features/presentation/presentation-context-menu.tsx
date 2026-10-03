@@ -16,6 +16,7 @@ import {
   Snowflake,
   Sun,
   SunMedium,
+  Users,
   X,
 } from 'lucide-react'
 import { t } from '../../lib/i18n'
@@ -42,6 +43,8 @@ export interface PresentationMenuItemsOptions {
   spotlight: boolean
   screenCover: 'black' | 'white' | null
   keyGuide: boolean
+  /** An audience is following this show (N-34); the row says which of the two it would do. */
+  audienceFollowing: boolean
   onPrev: () => void
   onNext: () => void
   onToggleRail: () => void
@@ -49,6 +52,7 @@ export interface PresentationMenuItemsOptions {
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
   onToggleKeyGuide: () => void
+  onToggleAudience: () => void
   onOpenPresenter: () => void
   onToggleLaser: () => void
   onToggleSpotlight: () => void
@@ -100,6 +104,25 @@ function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[]
       icon: <ChevronRight size={14} />,
       disabled: isLast,
       onSelect: options.onNext,
+    },
+  ]
+}
+
+/**
+ * The audience row, built apart from the session rows on purpose: the keyed rows are checked against the
+ * key reference table by the door's own test, and this control answers to no keystroke — like the
+ * exports, it is something a presenter presses rather than types.
+ */
+export function buildAudienceItems(options: PresentationMenuItemsOptions): MenuItem[] {
+  const label = options.audienceFollowing ? t('workspace.presentation_audience_stop') : t('workspace.presentation_audience_follow')
+  return [
+    {
+      id: 'audience',
+      label,
+      icon: <Users size={14} />,
+      checked: options.audienceFollowing,
+      onSelect: options.onToggleAudience,
+      separatorBefore: true,
     },
   ]
 }

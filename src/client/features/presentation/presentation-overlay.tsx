@@ -12,7 +12,7 @@ import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
 import { PresenterPanel } from './presenter-view/presenter-panel'
-import { buildPresentationOverflowItems, extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps, type PresentationMenuItemsOptions } from './presentation-context-menu'
+import { buildAudienceItems, buildPresentationOverflowItems, extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps, type PresentationMenuItemsOptions } from './presentation-context-menu'
 import { type PresentationSession, usePresentationSession } from './use-presentation-session'
 
 // The show reads its own store, which the shell hosts: that is what keeps a talk
@@ -148,7 +148,8 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     chromeHidden: session.chromeHidden,
     occluded: session.occluded,
     compact: session.compact,
-    overflowItems: buildPresentationOverflowItems(menuItemsProps(session, onClose)),
+    // The door reads the same rows as the right-click menu, plus the groups that answer to no key.
+    overflowItems: [...buildPresentationOverflowItems(menuItemsProps(session, onClose)), ...buildAudienceItems(menuItemsProps(session, onClose))],
     exporting: Boolean(session.images),
     onPrev: session.goPrev,
     onNext: session.goNext,
@@ -157,6 +158,8 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     onToggleFollowing: session.toggleFollowing,
     onToggleFullscreen: session.toggleFullscreen,
     onOpenPresenter: session.openPresenter,
+    audienceFollowing: session.audienceFollowing,
+    onToggleAudience: session.toggleAudience,
     onExport: session.exportDeck,
     onExportHandout: session.exportHandout,
     onExportHtml: session.exportHtml,
@@ -194,6 +197,8 @@ function menuItemsProps(session: PresentationSession, onClose: () => void): Pres
     onToggleFollowing: session.toggleFollowing,
     onToggleFullscreen: session.toggleFullscreen,
     onOpenPresenter: session.openPresenter,
+    audienceFollowing: session.audienceFollowing,
+    onToggleAudience: session.toggleAudience,
     onToggleKeyGuide: session.toggleKeyGuide,
     onToggleLaser: session.toggleLaser,
     onToggleSpotlight: session.toggleSpotlight,

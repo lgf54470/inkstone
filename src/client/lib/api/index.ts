@@ -19,6 +19,7 @@ import { settings } from './settings'
 import { share } from './share'
 import { music } from './music'
 import { boardLibrary } from './board-library'
+import { presence } from './share-presence'
 export const api = {
   ...account,
   ...vault,
@@ -27,5 +28,6 @@ export const api = {
   ...share,
   music,
   boardLibrary,
+  presence,
 }
 export { uploadKanbanFile, deleteKanbanFile } from './kanban'
