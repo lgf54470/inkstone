@@ -776,6 +776,21 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 - 一次性浏览器脚本的实测读数（同一台机器、自有实例，未并入门禁）：`/tmp/confirm-pin-reload.mjs` **8/8**（6.6 的「真重载一次仍在」）与 `/tmp/confirm-wheel-paint.mjs` **7/7**（7.4 的滚轮与「Chrome 没有被动监听警告」、7.3 的帧错误面与重试）。两者的坑各自记在 6.6 与 7.4 的条目里（点号存储键 `inkstone.graph.preferences.v1`、菜单项要用文档内 `item.click()`、`evaluateOnNewDocument` 里 Proxy 掉 `getContext` 会让外壳自己坏掉）。
 - `npm run build` 未单独运行，由 `budget:check` 内含的构建覆盖（与批次 1–6 同一口径）。
 - 运维备注：停实例只向自己 `setsid` 起的那个进程组发信号（先 `readlink /proc/<pid>/cwd` 核对），未用 `pkill -f`；:7712 全程未动。批次 6 收尾那条关于 :7713 的记录仍然成立，本轮未再涉及。
+#### 批次 7 落地后的追加门禁（F-08 / F-09 / F-10，2026-10-03）
+
+> F 项里 F-10 改了产品代码（节点菜单与开菜单的那道判断），F-08/F-09 只加测试与一条 effect 化的 ref 交接，因此按批次收尾同一口径重跑能跑的部分。
+
+| 门禁 | 命令 | 实测输出 | 结论 |
+| :--- | :--- | :--- | :--- |
+| 全量单元/集成 | `npm run test:unit` | 负载 2.34 → **643 文件 / 5619 通过 + 1 跳过（5620），0 失败**，182.89s（批次 7 收尾为 641 / 5608） | ✅ |
+| 包体积预算（含构建） | `npm run budget:check` | `bundle budget check passed (eager + 9 lazy prefixes)` | ✅ |
+| 图谱统一命令 | `npx vitest run src/client/features/graph …` | **42 文件 / 315 条全绿**（批次 7 收尾为 39 / 293，+3 文件为 F-08/F-09/F-10 的新测试） | ✅ |
+| 13 项静态门禁 | `comments size style i18n labels escape empty-catch hardcoded tokens deep-imports module-state surfaces vendor` | 全绿（`comments` 13212 条 / 1397 文件、`size` 1930 文件 / 47 豁免、`i18n` 3924 键、`surfaces` 8 表面） | ✅ |
+| 三个浏览器门禁 | `scripts/e2e.mjs` / `e2e-visual.mjs` / `check-contrast.mjs` | **未跑成**：同一台自有 :7715 全新实例上 `e2e.mjs` 仍 **177 passed / 0 failed**（纯 API），而两个浏览器门禁在开头导航就 `Navigation timeout of 30000 ms exceeded`；`/api/health` 5ms、`/src/client/main.tsx` 75ms 返回 200，独立探针把导航放宽到 240s 仍然超时；网络层记录到三个 `node_modules/.vite/deps/*.js` 请求只有请求没有响应 | ⚠️ 环境阻塞，见下 |
+
+- **浏览器门禁为什么跑不动（如实定位，不是猜测）**：本 worktree 的 `node_modules` 是指向主检出 `/home/kubuntu/code/cloudflare/inkstone/node_modules` 的**软链**，所以每个 worktree 的 vite 共用同一份 `node_modules/.vite/deps` 预打包缓存；同一时间另有会话在起自己的 dev server（`/tmp/r22-dev.log` 与本机 :7712 的实例在刷同一条 workerd `capnp ... incoming RPC message exceeds size limit`），预打包产物被重写时旧请求就悬住——现象正是「API 全通、浏览器打不开页」。同日 05:20–05:30 的批次 7 收尾三关全部跑过（690/0、106✓/0✗、177/0），可排除本批代码原因。
+- **因此本批的浏览器面结论仍以上面 §4 表为准**（那三条门禁是在 `ace3cb6b` 上跑出来的）；F-10 的改动面由 jsdom 承担：六条新断言（含 DOM 层「不开空菜单」）与 4/4 变异。下一次能起浏览器窗口时应重跑 `e2e-visual` + `check-contrast`，并在同一棵树上确认 690 / 106✓ 未变——这条不写成「已验证」。
+
 - **本批落地后仍 open 的事**：按计划排在批次 7 的五条 F 项（**F-04、F-05、F-08、F-09、F-10**）与决策闸门 **D-3（G-47 归属）**——F 项随后各自一条提交一条登记；D-3 需要的是归属决定而非数字，无证据可替它作答。
 
 ### 6.1 待量测（批次 0 产出，写入台账 §5 的 V 表）
