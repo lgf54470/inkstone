@@ -147,6 +147,7 @@ const LABELS = {
   overviewGrid: localeLabel('workspace.presentation_overview'),
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
+  presentFollowLost: localeLabel('workspace.presentation_follow_lost'),
   presentAudience: localeLabel('workspace.presentation_audience_follow', 'workspace.presentation_audience_stop'),
   audienceFollowing: localeLabel('workspace.presentation_audience_following'),
   audienceBrowsing: localeLabel('workspace.presentation_audience_browsing'),
@@ -2299,12 +2300,6 @@ async function assertAudienceFollow(browser, page, consoleErrors) {
   const controlLabels = { prev: localeLabel('workspace.presentation_prev'), next: localeLabel('workspace.presentation_next') }
   await page.setViewport(DESKTOP_VIEWPORT)
   await openSteppedNote(page)
-  const noteId = (await apiCall(page, 'GET', '/api/notes?limit=1')).data?.notes?.[0]?.id ?? ''
-  const shared = await apiCall(page, 'POST', `/api/share/${noteId}`, {})
-  const slug = shared.data?.share?.slug ?? ''
-  check('audience: the note the show runs on is shared', Boolean(noteId) && Boolean(slug), JSON.stringify({ status: shared.status, slug }))
-  if (!slug) return
-
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   await sleep(900)
@@ -2315,12 +2310,24 @@ async function assertAudienceFollow(browser, page, consoleErrors) {
     show = await readSteppedShow(page, controlLabels)
   }
 
-  const minted = page.waitForResponse((response) => response.url().includes('/present/start') && response.status() === 200, { timeout: 15_000 }).catch(() => null)
-  await clickPresentationControl(page, LABELS.presentAudience)
-  const session = await (await minted)?.json().catch(() => null) ?? null
-  check('audience: the door mints a show whose link names this share', Boolean(session?.token) && session?.slug === slug, JSON.stringify({ slug: session?.slug, hasToken: Boolean(session?.token) }))
-  if (!session?.token) {
-    await contextlessHandback(page)
+  // The first press is allowed to fail: the note the show runs on is shared by the id the door itself
+  // asked with, so the scene never has to guess which of the account's notes is on the projector. A
+  // refusal is read as an answer rather than as a broken channel — the check below names the status.
+  let mint = await pressAudienceDoor(page)
+  let shared = null
+  if (mint.answer && mint.answer.status() !== 200) {
+    const noteId = decodeURIComponent(new URL(mint.answer.url()).pathname.split('/')[3] ?? '')
+    shared = await apiCall(page, 'POST', `/api/share/${noteId}`, {})
+    mint = await pressAudienceDoor(page)
+  }
+  check('audience: the note the show runs on is shared', shared === null || shared.status === 200 || shared.status === 201,
+    JSON.stringify({ status: shared?.status ?? 'already shared', slug: shared?.data?.share?.slug ?? null }))
+  const session = mint.session
+  const slug = session?.slug ?? ''
+  check('audience: the door mints a show whose link is the one a viewer opens', mint.answer?.status() === 200 && Boolean(session?.token) && Boolean(slug),
+    JSON.stringify({ asked: Boolean(mint.answer), status: mint.answer?.status() ?? null, slug, hasToken: Boolean(session?.token) }))
+  if (!session?.token || !slug) {
+    await handAudienceSceneBack(page)
     return
   }
 
@@ -2351,6 +2358,9 @@ async function assertAudienceFollow(browser, page, consoleErrors) {
     check('audience: one press in the room brings one more block to the viewer within a beat',
       caught && followed.blocks === 4 && followed.hidden === moved.hidden, JSON.stringify({ caught, room: [moved.printed[0], moved.hidden], viewer: [followed.printed, followed.hidden] }))
 
+    // Two presses, so the two sides are unambiguously apart: one press would leave the viewer on the
+    // very page the room reaches on its next step, and "not dragged" would then be unreadable.
+    await clickAudienceControl(viewer, controlLabels.next)
     await clickAudienceControl(viewer, controlLabels.next)
     await sleep(500)
     const own = await readAudience(viewer)
@@ -2364,7 +2374,7 @@ async function assertAudienceFollow(browser, page, consoleErrors) {
     await sleep(3_200)
     const held = await readAudience(viewer)
     check('audience: the talk moving on does not drag a viewer who left it',
-      held.printed[0] === own.printed[0] && held.printed[0] !== ahead.printed[0], JSON.stringify({ held: held.printed, room: ahead.printed[0] }))
+      held.printed[0] === own.printed[0] && held.printed[0] !== ahead.printed[0], JSON.stringify({ held: held.printed[0], own: own.printed[0], room: ahead.printed[0] }))
 
     await viewer.click('[data-audience-bar] [role="switch"]')
     const returned = await viewer.waitForFunction((wanted) => document.querySelector('[data-deck-position]')?.textContent?.trim() === wanted, { timeout: 12_000 }, ahead.printed[0]).then(() => true, () => false)
@@ -2381,13 +2391,31 @@ async function assertAudienceFollow(browser, page, consoleErrors) {
     await context.close().catch(() => {})
   }
 
-  await contextlessHandback(page)
+  await handAudienceSceneBack(page)
 }
 
-/** Where a scene that brought its own stepped note has to leave the app for the readers below it. */
-async function contextlessHandback(page) {
-  await page.keyboard.press('Escape')
-  await sleep(600)
+/** One press of the audience door, and the answer it got — a refusal is data, not a missing control. */
+async function pressAudienceDoor(page) {
+  const waiting = page.waitForResponse((response) => response.url().includes('/present/start'), { timeout: 15_000 }).catch(() => null)
+  await clickPresentationControl(page, LABELS.presentAudience)
+  const answer = await waiting
+  return { answer, session: answer ? await answer.json().catch(() => null) : null }
+}
+
+/**
+ * Where a scene that brought its own stepped note has to leave the app for the readers below it.
+ *
+ * The show is put down with its own exit control rather than with `Escape`, and the scene says out loud
+ * whether it came off: a show left open swallows every scenario after this one, and the failure then
+ * surfaces two scenes later as somebody else's red.
+ */
+async function handAudienceSceneBack(page) {
+  if (await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]')))) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(700)
+  }
+  const down = await page.evaluate(() => !document.querySelector('[data-slide-canvas]'))
+  check('audience: the scene puts its show down', down)
   await openDeckNote(page)
 }
 
@@ -3455,13 +3483,16 @@ async function presentationFocus(page) {
 }
 
 async function presentationSession(page) {
-  return page.evaluate(() => {
+  // The follow control is found by the two names it goes by, not by a substring: the audience door
+  // speaks of following too, and a regex that matches both reads the wrong button's label.
+  const names = [...LABELS.presentFollow, ...LABELS.presentFreeze, ...LABELS.presentFollowLost]
+  return page.evaluate((labels) => {
     const panel = document.querySelector('[role="dialog"]')
     const canvas = document.querySelector('[data-slide-canvas]')
     const stage = canvas?.parentElement?.getBoundingClientRect()
     const box = canvas?.getBoundingClientRect()
     const follow = [...(panel?.querySelectorAll('[data-presentation-chrome] button') ?? [])]
-      .find((item) => /跟随|冻结|Follow|Freeze/.test(item.getAttribute('aria-label') ?? ''))
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
     const position = panel?.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
     return {
       open: Boolean(canvas),
@@ -3477,7 +3508,7 @@ async function presentationSession(page) {
       inDialog: Boolean(document.activeElement?.closest?.('[role="dialog"]')),
       filled: Boolean(box && stage) && box.height >= stage.height - 1 && box.width >= stage.width - 1,
     }
-  })
+  }, names)
 }
 
 // Presentation controls carry a locale-dependent aria-label; match either locale the
