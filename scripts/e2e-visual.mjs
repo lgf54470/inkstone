@@ -1899,7 +1899,8 @@ async function assertDeckHtmlExport(browser, page) {
     check('standalone deck: each page is numbered the way the room read it', states[0] === position, `${JSON.stringify(states[0])} vs ${JSON.stringify(position)}`)
     // The file carries the app's own stylesheets, and every colour token of this app is declared under
     // `:root[data-theme=…]` — stylesheets without those attributes are rules with no colours.
-    check('standalone deck: the file is wearing the theme it was exported in', /<html lang="[a-z-]+" [^>]*data-theme=/.test(file), file.slice(0, 120))
+    const rootTag = /<html[^>]*>/.exec(file)?.[0] ?? 'no html tag'
+    check('standalone deck: the file is wearing the theme it was exported in', /<html [^>]*lang="[A-Za-z-]+"[^>]*data-theme=/.test(file), rootTag)
     check('standalone deck: the printed page box comes along too', file.includes('@page { size: 1280px 720px'), `head=${file.slice(0, 60)}`)
     check('standalone deck: an attachment leaves as a whole URL', file.includes(`${BASE}/inkstone-logo.svg`) && !file.includes('src="/'), `srcs=${JSON.stringify([...file.matchAll(/src="([^"]{0,60})/g)].map((m) => m[1]))}`)
 
