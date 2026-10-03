@@ -23,14 +23,14 @@ const TABLE_BLOCK = '.markdown-table[data-line]'
 const OVERLAY_SPEC: BlockOverlaySpec = {
   block: TABLE_BLOCK,
   panels: { settings: '.block-settings' },
-  triggers: { settings: '[data-table-action="toggle-settings"]' },
+  triggers: { settings: '[data-table-style-action="toggle-settings"]' },
   openClasses: { settings: 'is-block-settings-open' },
 }
 
 const SETTINGS_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg>'
 
 function optionButton(action: string, value: string, label: string, active: boolean): string {
-  return `<button type="button" class="block-opt-btn${active ? ' is-active' : ''}" data-table-action="${action}" data-table-val="${value}" aria-pressed="${active}">${escapeHtml(label)}</button>`
+  return `<button type="button" class="block-opt-btn${active ? ' is-active' : ''}" data-table-style-action="${action}" data-table-style-val="${value}" aria-pressed="${active}">${escapeHtml(label)}</button>`
 }
 
 function settingsRow(label: string, content: string): string {
@@ -43,7 +43,7 @@ function renderHeadHtml(panelId: string): string {
     `<div class="block-head">`,
     `<span class="block-head-title">${escapeHtml(t('preview.table_title'))}</span>`,
     `<span class="block-tools">`,
-    `<button type="button" class="block-tool-btn" data-table-action="toggle-settings" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" aria-expanded="false" aria-controls="${panelId}">${SETTINGS_ICON}</button>`,
+    `<button type="button" class="block-tool-btn" data-table-style-action="toggle-settings" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" aria-expanded="false" aria-controls="${panelId}">${SETTINGS_ICON}</button>`,
     `</span>`,
     `</div>`,
   ].join('')
@@ -110,7 +110,7 @@ export function executeTableAction(
     toggleBlockOverlay(OVERLAY_SPEC, block, 'settings')
     return true
   }
-  const value = targetEl.dataset.tableVal ?? ''
+  const value = targetEl.dataset.tableStyleVal ?? ''
   if (action === 'set-density' && (value === 'cozy' || value === 'compact'))
     return commitTable(block, content, onEdit, (current) => ({ ...current, density: value }), toast)
   if (action === 'toggle-zebra')
@@ -140,13 +140,13 @@ export const tableBlockToolbar: BlockToolbarModule = {
   dismiss: dismissTableOverlays,
   close: (target) => closeBlockOverlayFromEvent(OVERLAY_SPEC, target),
   handle: (event, target, ctx) => {
-    const button = target.closest<HTMLButtonElement>('[data-table-action]')
+    const button = target.closest<HTMLButtonElement>('[data-table-style-action]')
     if (!button) return false
     event.preventDefault()
     const editable = blockActionSource(ctx)
     if (!editable) return true
     return executeTableAction(
-      button.dataset.tableAction!,
+      button.dataset.tableStyleAction!,
       button,
       editable.source,
       (next) => ctx.api.editContent(editable.noteId, next),

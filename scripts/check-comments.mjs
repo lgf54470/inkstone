@@ -7539,6 +7539,10 @@ const allowed = new Map([
     '// The row\'s own label is drawn in the property name cell beside it, so the switch is named by',
     '// the property it belongs to rather than by a fixed string.',
   ]],
+  ['src/client/features/preview/table-toolbar.test.ts', [
+    '// The floating bar (table-interactive.ts) answers to `data-table-action` and claims every such',
+    '// click before the block route runs, so a toolbar that reused it could never be clicked.',
+  ]],
   ['src/client/features/preview/table-toolbar.ts', [
     '/**\n * The settings toolbar for a `::: table` block: cell density, stripes and borders. A markdown table\n * has no info string of its own, so the container\'s header line is the block\'s state and every\n * action here rewrites exactly that line.\n */',
     '/** Rewrites the container\'s header line, leaving the table below it untouched. */',

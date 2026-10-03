@@ -63,8 +63,8 @@ describe('enhanceTableToolbarsInRoot', () => {
     expect(wrapper.querySelector(':scope > .block-head .block-tools')).not.toBeNull()
     const panel = wrapper.querySelector<HTMLElement>(':scope > .block-settings')!
     expect(panel.hidden).toBe(true)
-    expect(panel.querySelector('[data-table-action="set-density"][data-table-val="compact"]')?.getAttribute('aria-pressed')).toBe('true')
-    expect(panel.querySelector('[data-table-action="toggle-zebra"][data-table-val="on"]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(panel.querySelector('[data-table-style-action="set-density"][data-table-style-val="compact"]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(panel.querySelector('[data-table-style-action="toggle-zebra"][data-table-style-val="on"]')?.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('does not inject a second head', () => {
@@ -73,6 +73,15 @@ describe('enhanceTableToolbarsInRoot', () => {
     enhanceTableToolbarsInRoot(root)
     expect(root.querySelectorAll('.block-head')).toHaveLength(1)
   })
+
+  it('keeps its action attribute clear of the table floating bar it shares a surface with', () => {
+    // The floating bar (table-interactive.ts) answers to `data-table-action` and claims every such
+    // click before the block route runs, so a toolbar that reused it could never be clicked.
+    const root = mount(TABLE)
+    enhanceTableToolbarsInRoot(root)
+    expect(root.querySelector('[data-table-action]')).toBeNull()
+    expect(root.querySelectorAll('[data-table-style-action]').length).toBeGreaterThan(0)
+  })
 })
 
 describe('executeTableAction', () => {
@@ -80,7 +89,7 @@ describe('executeTableAction', () => {
     const root = mount(TABLE)
     enhanceTableToolbarsInRoot(root)
     const onEdit = vi.fn()
-    executeTableAction('set-density', action(root, '[data-table-action="set-density"][data-table-val="cozy"]'), TABLE, onEdit, vi.fn())
+    executeTableAction('set-density', action(root, '[data-table-style-action="set-density"][data-table-style-val="cozy"]'), TABLE, onEdit, vi.fn())
     expect(onEdit).toHaveBeenCalledWith(['::: table zebra', '| a | b |', '| --- | --- |', '| 1 | 2 |', ':::'].join('\n'))
   })
 
@@ -88,7 +97,7 @@ describe('executeTableAction', () => {
     const root = mount(TABLE)
     enhanceTableToolbarsInRoot(root)
     const onEdit = vi.fn()
-    executeTableAction('toggle-zebra', action(root, '[data-table-action="toggle-zebra"][data-table-val="off"]'), TABLE, onEdit, vi.fn())
+    executeTableAction('toggle-zebra', action(root, '[data-table-style-action="toggle-zebra"][data-table-style-val="off"]'), TABLE, onEdit, vi.fn())
     expect(onEdit).toHaveBeenCalledWith(['::: table density=compact', '| a | b |', '| --- | --- |', '| 1 | 2 |', ':::'].join('\n'))
     expect(root.querySelector('.block-settings')?.hasAttribute('hidden')).toBe(true)
   })
@@ -97,7 +106,7 @@ describe('executeTableAction', () => {
     const root = mount(TABLE)
     enhanceTableToolbarsInRoot(root)
     const onEdit = vi.fn()
-    executeTableAction('set-frames', action(root, '[data-table-action="set-frames"][data-table-val="none"]'), TABLE, onEdit, vi.fn())
+    executeTableAction('set-frames', action(root, '[data-table-style-action="set-frames"][data-table-style-val="none"]'), TABLE, onEdit, vi.fn())
     expect(onEdit).toHaveBeenCalledWith(['::: table density=compact zebra frames=none', '| a | b |', '| --- | --- |', '| 1 | 2 |', ':::'].join('\n'))
   })
 
@@ -106,7 +115,7 @@ describe('executeTableAction', () => {
     enhanceTableToolbarsInRoot(root)
     const onEdit = vi.fn()
     const toast = vi.fn()
-    executeTableAction('set-frames', action(root, '[data-table-action="set-frames"][data-table-val="rows"]'), '| a | b |\n| --- | --- |', onEdit, toast)
+    executeTableAction('set-frames', action(root, '[data-table-style-action="set-frames"][data-table-style-val="rows"]'), '| a | b |\n| --- | --- |', onEdit, toast)
     expect(onEdit).not.toHaveBeenCalled()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' }))
   })
@@ -116,7 +125,7 @@ describe('table overlay', () => {
   it('closes on Escape and hands focus back to the trigger', () => {
     const root = mount(TABLE)
     enhanceTableToolbarsInRoot(root)
-    const trigger = action(root, '[data-table-action="toggle-settings"]')
+    const trigger = action(root, '[data-table-style-action="toggle-settings"]')
     executeTableAction('toggle-settings', trigger, TABLE, vi.fn(), vi.fn())
     expect(root.querySelector('.block-settings')?.hasAttribute('hidden')).toBe(false)
     expect(closeBlockToolbarOverlay(trigger)).toBe(trigger)
