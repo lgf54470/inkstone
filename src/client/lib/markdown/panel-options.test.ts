@@ -46,6 +46,21 @@ describe('the panel header vocabulary', () => {
   it('reads an indented header the same as a flush one', () => {
     expect(align(':::   justify')).toBe('justify')
   })
+
+  it('claims a header whose kind is written tight against the colons', () => {
+    expect(matchPanelHeader(':::center')?.header.kind).toBe('align')
+    expect(matchPanelHeader(':::cols 1fr 2fr')?.header.kind).toBe('cols')
+    expect(matchPanelHeader(':::timeline History')?.header.kind).toBe('timeline')
+    expect(matchPanelHeader(':::t pills')?.header.kind).toBe('tabs')
+    expect(matchPanelHeader(':::tip- Fold')?.header.kind).toBe('callout')
+  })
+
+  it('carries the timeline title out of the header', () => {
+    const header = matchPanelHeader(':::timeline Cherry history')?.header
+    expect(header?.kind === 'timeline' && header.title).toBe('Cherry history')
+    const bare = matchPanelHeader('::: timeline')?.header
+    expect(bare?.kind === 'timeline' && bare.title).toBe('')
+  })
 })
 
 describe('column options', () => {

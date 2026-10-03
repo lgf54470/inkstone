@@ -125,11 +125,12 @@ function timelineNodes(state: BlockLineState, start: number, end: number): Array
   }))
 }
 
-function renderTimelineContainer(state: StateBlock, startLine: number, end: number): void {
+function renderTimelineContainer(state: StateBlock, startLine: number, end: number, title: string): void {
   const nodes = timelineNodes(state, startLine + 1, end)
-  const open = state.push('panel_timeline_open', 'ol', 1)
+  const open = state.push('panel_timeline_open', 'div', 1)
   open.block = true
   open.map = [startLine, end + 1]
+  open.meta = { title }
   nodes.forEach((node) => {
     const item = state.push('timeline_item_open', 'li', 1)
     item.block = true
@@ -137,7 +138,7 @@ function renderTimelineContainer(state: StateBlock, startLine: number, end: numb
     state.md.block.tokenize(state, node.start, node.end)
     state.push('timeline_item_close', 'li', -1).block = true
   })
-  state.push('panel_timeline_close', 'ol', -1).block = true
+  state.push('panel_timeline_close', 'div', -1).block = true
 }
 
 /** A `::: tip` draws the same `<aside class="callout">` as `> [!tip]`, so the two spellings cannot drift. */
@@ -161,7 +162,7 @@ export function renderPanelContainer(state: StateBlock, startLine: number, end: 
   const header = panel.header
   if (header.kind === 'align') renderAlignContainer(state, startLine, end, header.align)
   if (header.kind === 'cols') renderColsContainer(state, startLine, end, header.cols)
-  if (header.kind === 'timeline') renderTimelineContainer(state, startLine, end)
+  if (header.kind === 'timeline') renderTimelineContainer(state, startLine, end, header.title)
   if (header.kind === 'callout') renderCalloutContainer(state, startLine, end, header.callout)
 }
 
@@ -218,8 +219,12 @@ export function registerPanels(md: MarkdownIt): void {
   md.renderer.rules.panel_cols_close = () => '</div>'
   md.renderer.rules.panel_col_open = (tokens, index) => `<div class="markdown-col" data-col="${(tokens[index]!.meta as { index: number }).index}">`
   md.renderer.rules.panel_col_close = () => '</div>'
-  md.renderer.rules.panel_timeline_open = (tokens, index) => `<ol class="markdown-timeline"${sourceLineAttr(tokens[index]!.map?.[0])}>`
-  md.renderer.rules.panel_timeline_close = () => '</ol>'
+  md.renderer.rules.panel_timeline_open = (tokens, index) => {
+    const { title } = tokens[index]!.meta as { title: string }
+    const caption = title ? `<div class="markdown-timeline-caption">${md.renderInline(title)}</div>` : ''
+    return `<div class="markdown-timeline-block"${sourceLineAttr(tokens[index]!.map?.[0])}>${caption}<ol class="markdown-timeline">`
+  }
+  md.renderer.rules.panel_timeline_close = () => '</ol></div>'
   md.renderer.rules.timeline_item_open = (tokens, index) => {
     const { item, sourceLine } = tokens[index]!.meta as { item: TimelineItem; sourceLine: number }
     const status = `<span class="markdown-timeline-status">${escapeHtml(t(TIMELINE_STATUS_KEYS[item.status]))}</span>`

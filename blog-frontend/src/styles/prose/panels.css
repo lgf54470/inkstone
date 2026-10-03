@@ -98,10 +98,18 @@
   }
 }
 
-.ink-prose .markdown-timeline {
+.ink-prose .markdown-timeline-block {
   margin: 1em 0;
+}
+.ink-prose .markdown-timeline {
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+.ink-prose .markdown-timeline-caption {
+  margin-bottom: var(--sp-2);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 .ink-prose .markdown-timeline-item {
   position: relative;

@@ -140,10 +140,11 @@ function timelineNodes(state: StateBlock, start: number, end: number) {
   }))
 }
 
-function renderTimelineContainer(state: StateBlock, startLine: number, end: number): void {
+function renderTimelineContainer(state: StateBlock, startLine: number, end: number, title: string): void {
   const nodes = timelineNodes(state, startLine + 1, end)
-  const open = state.push('panel_timeline_open', 'ol', 1)
+  const open = state.push('panel_timeline_open', 'div', 1)
   open.block = true
+  open.meta = { title }
   nodes.forEach((node) => {
     const item = state.push('timeline_item_open', 'li', 1)
     item.block = true
@@ -151,7 +152,7 @@ function renderTimelineContainer(state: StateBlock, startLine: number, end: numb
     state.md.block.tokenize(state, node.start, node.end)
     state.push('timeline_item_close', 'li', -1).block = true
   })
-  state.push('panel_timeline_close', 'ol', -1).block = true
+  state.push('panel_timeline_close', 'div', -1).block = true
 }
 
 /** A `::: tip` draws the same `<aside class="callout">` as `> [!tip]`, so the two spellings cannot drift. */
@@ -177,7 +178,7 @@ export function renderPanelContainer(state: StateBlock, startLine: number, end: 
       renderColsContainer(state, startLine, end, header.cols)
       return
     case 'timeline':
-      renderTimelineContainer(state, startLine, end)
+      renderTimelineContainer(state, startLine, end, header.title)
       return
     case 'callout':
       renderCalloutContainer(state, startLine, end, header.callout)
@@ -245,8 +246,13 @@ export function registerPanels(md: InstanceType<typeof MarkdownIt>): void {
   md.renderer.rules.panel_cols_close = () => '</div>'
   md.renderer.rules.panel_col_open = (tokens, index) => `<div class="markdown-col" data-col="${(tokens[index]!.meta as { index: number }).index}">`
   md.renderer.rules.panel_col_close = () => '</div>'
-  md.renderer.rules.panel_timeline_open = () => '<ol class="markdown-timeline">'
-  md.renderer.rules.panel_timeline_close = () => '</ol>'
+  md.renderer.rules.panel_timeline_open = (tokens, index, _options, env) => {
+    const { title } = tokens[index]!.meta as { title: string }
+    const rendered = title ? md.renderInline(title, (env ?? {}) as Record<string, unknown>) : ''
+    const caption = title ? `<div class="markdown-timeline-caption">${rendered}</div>` : ''
+    return `<div class="markdown-timeline-block">${caption}<ol class="markdown-timeline">`
+  }
+  md.renderer.rules.panel_timeline_close = () => '</ol></div>'
   md.renderer.rules.timeline_item_open = (tokens, index, _options, env) => {
     const { item } = tokens[index]!.meta as { item: TimelineItem }
     const head = timelineHead(item, env as RenderEnv | undefined, md)

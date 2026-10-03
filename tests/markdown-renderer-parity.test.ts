@@ -34,6 +34,8 @@ const FIXTURES: Record<string, string> = {
   panelTabsColon: '::: tabs\n:: 甲\n内容A\n:: 乙\n内容B\n:::',
   panelTabsT: '::: t pills\n:: 甲\nA\n:::',
   panelTimeline: '::: timeline\n:: [done] 2024-01-15 发布\n细节\n:: [milestone] v1.0 里程碑\n:::',
+  panelTimelineTitle: ':::timeline 发展历程\n:: [done] 2024-01-15 发布\n:::',
+  panelNoSpace: ':::cols\n一\n::\n二\n:::\n\n:::center\n正文\n:::\n\n:::tip 标题\n内容\n:::',
   panelCallout: '::: tip 标题\n内容\n:::',
   panelCalloutFold: '::: warning- 折叠\n内容\n:::',
   panelUnclaimed: '::: whatever\n正文\n:::',

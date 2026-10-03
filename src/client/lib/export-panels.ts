@@ -34,7 +34,9 @@ export const PANEL_EXPORT_CSS = `
 .markdown-cols[data-cols-align="right"] .markdown-col { text-align: right; }
 .markdown-cols[data-cols-align="justify"] .markdown-col { text-align: justify; }
 
-.markdown-timeline { margin: 1.2em 0; padding: 0; list-style: none; }
+.markdown-timeline-block { margin: 1.2em 0; }
+.markdown-timeline { margin: 0; padding: 0; list-style: none; }
+.markdown-timeline-caption { margin-bottom: 0.4em; font-weight: 600; color: ${EXPORT_PALETTE.ink900}; }
 .markdown-timeline-item { position: relative; padding: 0 0 0.9em 1.5em; border-left: 1px solid ${EXPORT_PALETTE.ink200}; break-inside: avoid; }
 .markdown-timeline-item:last-child { padding-bottom: 0; border-left-color: transparent; }
 .markdown-timeline-node { position: absolute; left: -4px; top: 0.34em; width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; border: 1px solid ${EXPORT_PALETTE.ink400}; background: ${EXPORT_PALETTE.white}; }

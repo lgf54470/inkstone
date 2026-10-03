@@ -175,11 +175,50 @@ describe('::: tabs written with :: marks', () => {
   })
 })
 
+describe('the header written without a space', () => {
+  it('claims every kind the way the reference implementation spells it', () => {
+    expect(first(fragment(':::center\nbody\n:::'), '.markdown-align')?.dataset.align).toBe('center')
+    expect(first(fragment(':::cols\na\n::\nb\n:::'), '.markdown-cols')?.dataset.cols).toBe('2')
+    expect(first(fragment(':::timeline\n:: [done] 2024-01-01 A\n:::'), '.markdown-timeline')).not.toBeNull()
+    expect(first(fragment(':::tip T\nbody\n:::'), '.callout')?.dataset.callout).toBe('tip')
+    expect(first(fragment(':::tabs\n:: one\nA\n:::'), '[data-tab-button]')?.textContent).toBe('one')
+  })
+
+  it('still needs the closing fence to carry at least as many colons as the header', () => {
+    const block = first(fragment('::::cols\na\n::\nb\n::::'), '.markdown-cols')
+    expect(block?.dataset.cols).toBe('2')
+    expect(markup(':::cols\nbody\n')).toContain(':::cols')
+  })
+
+  it('does not claim a bare fence or an unknown word written tight against it', () => {
+    expect(markup(':::\nbody\n:::')).not.toContain('markdown-align')
+    expect(markup(':::whatever\nbody\n:::')).not.toContain('markdown-align')
+  })
+
+  it('leaves the brace directive to the tabs block that already owns it', () => {
+    const root = fragment('::::{tab-set}\n::: tab-item A\nx\n:::\n::::')
+    expect([...root.querySelectorAll('[data-tab-button]')].map((b) => b.textContent)).toEqual(['A'])
+    expect(root.querySelector('.markdown-align')).toBeNull()
+  })
+})
+
 describe('::: timeline containers', () => {
   it('draws the nodes as an ordered list of events', () => {
     const root = fragment('::: timeline\n:: 2024-01-01 first\n:: 2024-02-01 second\n:::')
     expect(first(root, 'ol.markdown-timeline')).not.toBeNull()
     expect(root.querySelectorAll('ol.markdown-timeline > li.markdown-timeline-item')).toHaveLength(2)
+  })
+
+  it('keeps the title the header carries instead of dropping it', () => {
+    const root = fragment('::: timeline The long history\n:: [done] 2024-01-01 first\n:::')
+    expect(first(root, '.markdown-timeline-caption')?.textContent).toBe('The long history')
+    expect(first(root, '.markdown-timeline-block ol.markdown-timeline')).not.toBeNull()
+  })
+
+  it('renders the title through the inline rules and leaves it out when there is none', () => {
+    const linked = first(fragment('::: timeline see [the docs](https://example.com)\n:: [done] A\n:::'), '.markdown-timeline-caption')
+    expect(linked?.querySelector('a')?.getAttribute('href')).toBe('https://example.com')
+    expect(first(fragment('::: timeline\n:: [done] A\n:::'), '.markdown-timeline-caption')).toBeNull()
   })
 
   it('splits a node line into status, date and title', () => {

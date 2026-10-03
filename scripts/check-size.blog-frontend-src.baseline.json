@@ -20,8 +20,5 @@
   },
   "blog-frontend/src/lib/markdown/heavy-blocks.ts": {
     "deepFns": 2
-  },
-  "blog-frontend/src/lib/markdown/rules/block.ts": {
-    "longFns": 1
   }
 }

@@ -87,7 +87,7 @@ export type PanelHeader =
   | { kind: 'align'; align: AlignValue }
   | { kind: 'tabs' }
   | { kind: 'cols'; cols: ColsOptions }
-  | { kind: 'timeline' }
+  | { kind: 'timeline'; title: string }
   | { kind: 'callout'; callout: CalloutHeader }
 
 /**
@@ -155,7 +155,7 @@ function resolvePanelHeader(keyword: string, rest: string): PanelHeader | null {
   const align = ALIGN_WORDS[word]
   if (align) return { kind: 'align', align }
   if (word === 'tabs' || word === 't') return { kind: 'tabs' }
-  if (word === 'timeline') return { kind: 'timeline' }
+  if (word === 'timeline') return { kind: 'timeline', title: rest }
   if (word === 'cols' || /^[2-6]cols$/.test(word)) return parseCols(word, rest)
   if (CALLOUT_WORDS.has(word)) return parseCallout(word, fold, rest)
   return null
@@ -166,7 +166,7 @@ function resolvePanelHeader(keyword: string, rest: string): PanelHeader | null {
  * claims, which leaves the line rendering as the plain text it always did.
  */
 export function matchPanelHeader(source: string): PanelHeaderMatch | null {
-  const match = /^(:{3,})[ \t]+([^\s{][^\n]*?)[ \t]*$/.exec(source)
+  const match = /^(:{3,})[ \t]*([^\s{][^\n]*?)[ \t]*$/.exec(source)
   if (!match) return null
   const info = match[2]!
   const keyword = infoTokens(info)[0] ?? ''
