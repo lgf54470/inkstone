@@ -438,3 +438,41 @@ describe('renderMarkdown fence bodies leave the markup', () => {
     expect(bytes * 20).toBeLessThan(first.fences.kanban[0]!.length)
   })
 })
+
+describe('echarts fences', () => {
+  const OPTION = "{ title: { text: 'Hi' }, series: [] }"
+
+  it('draws a block shell and leaves the option in the document body set', () => {
+    const rendered = renderMarkdown('```echarts\n' + OPTION + '\n```')
+    const doc = new DOMParser().parseFromString(rendered.html, 'text/html')
+    const block = doc.querySelector('[data-echarts]')
+    expect(block?.className).toContain('echarts-block')
+    expect(block?.className).toContain('loading')
+    expect(block?.getAttribute('aria-busy')).toBe('true')
+    expect(block?.getAttribute('data-echarts-index')).toBe('0')
+    // markdown-it keeps the body's own trailing newline, so a rewrite compares against the note's text
+    // rather than against what came back out of the markup.
+    expect(rendered.fences.echarts[0]).toBe(`${OPTION}\n`)
+    expect(rendered.html).not.toContain('Hi')
+    expect(rendered.hasEcharts).toBe(true)
+  })
+
+  it('carries the request a fence makes to run JavaScript out as a mark', () => {
+    const asked = new DOMParser().parseFromString(renderMarkdown('```echarts js\n' + OPTION + '\n```').html, 'text/html').querySelector('[data-echarts]')
+    expect(asked?.getAttribute('data-echarts-script')).toBe('true')
+  })
+
+  it('numbers two blocks in one document apart', () => {
+    const rendered = renderMarkdown('```echarts\n{ a: 1 }\n```\n\n```echarts\n{ a: 2 }\n```')
+    const indexes = [...new DOMParser().parseFromString(rendered.html, 'text/html').querySelectorAll('[data-echarts]')]
+      .map((node) => node.getAttribute('data-echarts-index'))
+    expect(indexes).toEqual(['0', '1'])
+    expect(rendered.fences.echarts).toEqual(['{ a: 1 }\n', '{ a: 2 }\n'])
+  })
+
+  it('leaves the script mark off a fence that did not ask', () => {
+    const plain = new DOMParser().parseFromString(renderMarkdown('```echarts\n| :bar: | A |\n| --- | --- |\n| s | 1 |\n```').html, 'text/html')
+    expect(plain.querySelector('[data-echarts-script]')).toBeNull()
+    expect(plain.querySelector('[data-echarts]')).not.toBeNull()
+  })
+})

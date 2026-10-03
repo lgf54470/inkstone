@@ -19,6 +19,7 @@ export interface RenderResult {
   hasMath: boolean
   hasMermaid: boolean
   hasChart: boolean
+  hasEcharts: boolean
   hasMindmap: boolean
   hasKanban: boolean
   hasBentoSlides: boolean
@@ -32,6 +33,7 @@ interface RenderEnvironment {
   hasMath: boolean
   hasMermaid: boolean
   hasChart: boolean
+  hasEcharts: boolean
   hasMindmap: boolean
   hasKanban: boolean
   hasBentoSlides: boolean

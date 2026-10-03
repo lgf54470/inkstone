@@ -10,6 +10,7 @@ function emptyEnvironment(fences: FenceBodies = createFenceBodies()): RenderEnvi
     hasMath: false,
     hasMermaid: false,
     hasChart: false,
+    hasEcharts: false,
     hasMindmap: false,
     hasKanban: false,
     hasBentoSlides: false,

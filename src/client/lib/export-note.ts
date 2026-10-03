@@ -97,6 +97,8 @@ async function runExportEnhancements(container: HTMLDivElement, note: { title: s
       excalidraw: 'snapshot',
       // And for a kanban, whose cards travel as the list the fence describes.
       kanban: 'snapshot',
+      // And for a chart: the exported document carries the drawn image, not the library.
+      echarts: 'snapshot',
       // What the blocks on this container were rendered from; they read it back from here.
       fences: rendered.fences,
       dark: false,

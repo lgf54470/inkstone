@@ -56,6 +56,10 @@ export async function prepareStagedHtml(opts: {
     excalidraw: 'live',
     // Boards too: useKanbanBlocks mounts them from the committed markup and writes edits back to the fence.
     kanban: 'live',
+    // A chart is mounted live here and redrawn when the theme resolves; the option's own JavaScript
+    // runs only on this surface, which is the one the author is looking at.
+    echarts: 'live',
+    echartsScript: true,
     // What the blocks in this markup were rendered from; the host gets the same set when it takes the markup.
     fences,
     // The preview is where the lightbox lives, so this is the surface whose images are controls.

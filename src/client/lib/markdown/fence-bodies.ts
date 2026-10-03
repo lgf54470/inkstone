@@ -18,15 +18,16 @@
  * re-parsed: one set with document-unique indexes is the only shape that survives the trip.
  */
 
-export type FenceFamily = 'kanban' | 'mindmap' | 'excalidraw' | 'slides'
+export type FenceFamily = 'kanban' | 'mindmap' | 'excalidraw' | 'slides' | 'echarts'
 
-const FENCE_FAMILIES: readonly FenceFamily[] = ['kanban', 'mindmap', 'excalidraw', 'slides']
+const FENCE_FAMILIES: readonly FenceFamily[] = ['kanban', 'mindmap', 'excalidraw', 'slides', 'echarts']
 
 export interface FenceBodies {
   kanban: string[]
   mindmap: string[]
   excalidraw: string[]
   slides: string[]
+  echarts: string[]
 }
 
 interface FenceBodiesHost {
@@ -34,7 +35,7 @@ interface FenceBodiesHost {
 }
 
 export function createFenceBodies(): FenceBodies {
-  return { kanban: [], mindmap: [], excalidraw: [], slides: [] }
+  return { kanban: [], mindmap: [], excalidraw: [], slides: [], echarts: [] }
 }
 
 /**
@@ -49,6 +50,7 @@ export function cloneFenceBodies(bodies: FenceBodies): FenceBodies {
     mindmap: [...bodies.mindmap],
     excalidraw: [...bodies.excalidraw],
     slides: [...bodies.slides],
+    echarts: [...bodies.echarts],
   }
 }
 
@@ -110,6 +112,7 @@ const FENCE_INDEX_ATTRIBUTES: Readonly<Record<FenceFamily, string>> = {
   mindmap: 'data-mindmap-index',
   excalidraw: 'data-excalidraw-index',
   slides: 'data-bento-slides-index',
+  echarts: 'data-echarts-index',
 }
 
 /**

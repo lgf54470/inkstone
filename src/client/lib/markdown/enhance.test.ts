@@ -1,11 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { initI18n } from '../i18n'
-import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, enhancePreview, renderChartJs, toggleCodeBlockCollapse } from './enhance'
+import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, destroyEchartsInstances, enhancePreview, renderChartJs, renderEcharts, renderStaticEcharts, showEchartsSource, toggleCodeBlockCollapse } from './enhance'
 import { highlightWithPrism } from './prism'
 import { encodeDataValue } from './data-attr'
-import { createFenceBodies, type FenceBodies, takeFenceIndex } from './fence-bodies'
+import { createFenceBodies, type FenceBodies, registerFenceBodies, takeFenceIndex } from './fence-bodies'
 import { installTestGlobals } from '../test-render'
 import { stubCanvasContext } from './enhance.test-helpers'
+import { renderMarkdown } from './renderer'
 
 beforeAll(async () => {
   await initI18n()
@@ -342,5 +343,216 @@ describe('kanban blocks — a set that never arrived', () => {
     const node = boardNode(root)
     expect(node.querySelector('[data-kanban-snapshot]')?.textContent).not.toContain('Write the changelog')
     expect(node.getAttribute('aria-busy')).toBe('false')
+  })
+})
+
+// A table body reaches the same mount a JSON one does: only how the note says the chart differs, so
+// these blocks are built from rendered markup rather than a hand-made attribute.
+describe('chart table bodies', () => {
+  const tableFence = (rows: string[]) => ['```chart', ...rows, '```'].join('\n')
+
+  it('draws a chart from a table body', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown(tableFence(['| :bar: | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'])).html
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
+      const instance = (root.querySelector('[data-chart]') as unknown as { __chartInstance?: { config: { type?: string; data?: { labels?: unknown } } } }).__chartInstance
+      expect(instance?.config.type).toBe('bar')
+      expect(instance?.config.data?.labels).toEqual(['A', 'B'])
+      destroyChartInstances(root)
+    }
+    finally {
+      restoreCanvasContext()
+      root.remove()
+    }
+  })
+
+  it('points a table naming an echarts-only kind at the block that draws it', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown(tableFence(['| :heatmap: | a |', '| --- | --- |', '| r | 1 |'])).html
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      const block = root.querySelector<HTMLElement>('[data-chart]')!
+      expect(block.classList.contains('chart-error')).toBe(true)
+      expect(block.querySelector('.chart-error-text')?.textContent).toContain('an `echarts` block')
+      expect(block.textContent).toContain(':heatmap:')
+      expect(root.querySelector('canvas.chartjs-canvas')).toBeNull()
+    }
+    finally {
+      restoreCanvasContext()
+      root.remove()
+    }
+  })
+})
+
+const ECHARTS_OPTION = "{ title: { text: 'Tally' }, xAxis: { type: 'category', data: ['a', 'b'] }, yAxis: {}, series: [{ type: 'bar', data: [3, 5] }] }"
+const ECHARTS_SCRIPT = "{ xAxis: {}, yAxis: {}, series: [{ type: 'line', data: [1], tooltip: { formatter: (p) => p.value } }] }"
+
+/** A block as the renderer leaves it, with its option in the document's fence-body set. */
+function echartsRoot(body: string, info = 'echarts'): HTMLElement {
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'echarts', body)
+  const root = document.createElement('div')
+  root.innerHTML = renderMarkdown('```' + info + '\n' + body + '\n```').html
+  registerFenceBodies(root, fences)
+  document.body.append(root)
+  return root
+}
+
+const drawn = (root: HTMLElement): boolean => Boolean(root.querySelector('[data-echarts] svg'))
+const blockOf = (root: HTMLElement): HTMLElement => root.querySelector<HTMLElement>('[data-echarts]')!
+
+describe('echarts blocks', () => {
+  it('draws the option and stops announcing a pending block', async () => {
+    const root = echartsRoot(ECHARTS_OPTION)
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(true)
+      expect(blockOf(root).classList.contains('loading')).toBe(false)
+      expect(blockOf(root).getAttribute('aria-busy')).toBeNull()
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('honours a fence that asked to run JavaScript, on the surface that allows it', async () => {
+    const root = echartsRoot(ECHARTS_SCRIPT, 'echarts js')
+    try {
+      await renderEcharts(root, { allowScript: true, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(true)
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  // Two keys turn this lock: a surface that runs a note's JavaScript does not run one it was never
+  // asked to, and a fence that asks does not get its way on a surface that never offers.
+  it('will not run a function body the fence never asked to run', async () => {
+    const root = echartsRoot(ECHARTS_SCRIPT)
+    try {
+      await renderEcharts(root, { allowScript: true, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(false)
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('not readable as JSON5')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('refuses the same fence where the surface does not run a note\'s JavaScript', async () => {
+    const root = echartsRoot(ECHARTS_SCRIPT)
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(false)
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('write `js` after the fence marker')
+      expect(blockOf(root).textContent).toContain('formatter')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('redraws under a changed theme rather than keeping the colours it first read', async () => {
+    const root = echartsRoot(ECHARTS_OPTION)
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      const first = blockOf(root).dataset.rendered
+      const firstSvg = root.querySelector('[data-echarts] svg')
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(blockOf(root).dataset.rendered).toBe(first)
+      expect(root.querySelector('[data-echarts] svg')).toBe(firstSvg)
+      await renderEcharts(root, { allowScript: false, themeKey: 'd', instant: false })
+      expect(blockOf(root).dataset.rendered).not.toBe(first)
+      expect(root.querySelector('[data-echarts] svg')).not.toBe(firstSvg)
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('shows the option it could not read', async () => {
+    const root = echartsRoot('{ this is not: readable')
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(blockOf(root).classList.contains('echarts-error')).toBe(true)
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('not readable as JSON5')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('draws a snapshot with no entrance animation to catch mid-flight', async () => {
+    const root = echartsRoot(ECHARTS_OPTION)
+    try {
+      await renderStaticEcharts(root, false)
+      expect(drawn(root)).toBe(true)
+      expect(blockOf(root).dataset.rendered).toContain(':j')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('draws a chart from a table body', async () => {
+    const root = echartsRoot(['| :bar:{\"title\": \"Tally\"} | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'].join('\n'))
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(true)
+      expect(blockOf(root).querySelector('svg')?.textContent).toContain('Tally')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('refuses a map whose outlines come from off the allowlist', async () => {
+    const root = echartsRoot(['| :map:{"mapDataSource": "https://evil.example.com/geo.json"} | v |', '| --- | --- |', '| 北京 | 1 |'].join('\n'))
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(false)
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('allowed https source')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('shows the source to a surface that names no echarts mode', async () => {
+    const root = echartsRoot(ECHARTS_OPTION)
+    showEchartsSource(root)
+    expect(blockOf(root).querySelector('pre code')?.textContent).toContain('Tally')
+    expect(drawn(root)).toBe(false)
+    root.remove()
+  })
+
+  it('reads an unregistered block as an empty option rather than as someone else\'s chart', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div class="echarts-block loading" data-echarts="" data-echarts-index="0"></div>'
+    document.body.append(root)
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('no chart option in it')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
   })
 })

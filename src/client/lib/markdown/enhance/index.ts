@@ -10,6 +10,7 @@ import { currentSignature } from './mermaid'
 import { getMermaid } from './mermaid'
 import { showMermaidSource } from './mermaid'
 import { renderChartJs } from './chart'
+import { renderStaticEcharts, showEchartsSource } from './echarts'
 import { getLocale } from '../../i18n'
 import { registerFenceBodies, type FenceBodies } from '../fence-bodies'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
@@ -70,6 +71,19 @@ interface EnhanceOptions {
    * while an animation runs is blank, and a resize clears it and starts another one.
    */
   instantCharts?: boolean
+  /**
+   * How this surface treats ```echarts blocks. A chart is a canvas the library owns, so only a
+   * surface that mounts one itself (the preview pane) asks for `live`; a surface whose markup gets
+   * serialized or printed asks for `snapshot`, which draws once and leaves an image; a surface that
+   * names neither leaves the block showing its option.
+   */
+  echarts?: 'live' | 'snapshot'
+  /**
+   * Whether a fence's own `js` marker is honoured here. The owner's preview is the only surface that
+   * runs a note's JavaScript, so a shared page, a print or an export reads such a block as one it
+   * cannot draw rather than executing what only its author asked to run.
+   */
+  echartsScript?: boolean
 }
 export async function enhancePreview(root: HTMLElement, options: EnhanceOptions): Promise<void> {
   // Every block under this root resolves its fence body through the element chain, so the set has
@@ -98,14 +112,18 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     renderStaticKanbans(root)
   else if (!options.kanban)
     showKanbanSourceAll(root)
+  if (!options.echarts)
+    showEchartsSource(root)
   if (!options.math)
     showMathSource(root)
   await Promise.allSettled([
     highlightCodeBlocks(root),
     options.math ? renderMath(root) : Promise.resolve(),
     root.isConnected ? renderChartJs(root, options.dark, { instant: options.instantCharts ?? false }) : Promise.resolve(),
+
     options.mindmap === 'snapshot' ? renderStaticMindmaps(root, { dark: options.dark, locale: getLocale(), box: options.mindmapBox }) : Promise.resolve(),
     options.excalidraw === 'snapshot' ? renderStaticExcalidraws(root, { dark: options.dark }) : Promise.resolve(),
+    options.echarts === 'snapshot' ? renderStaticEcharts(root, options.dark) : Promise.resolve(),
   ])
   configureCodeBlockCollapsing(root, options.codeBlockCollapseLines ?? 24)
 }
@@ -121,4 +139,5 @@ export { resetMermaidNode } from './mermaid'
 export { showMermaidSource } from './mermaid'
 export { destroyChartInstances } from './chart'
 export { renderChartJs } from './chart'
+export { destroyEchartsInstances, renderEcharts, renderStaticEcharts, showEchartsSource } from './echarts'
 export { invalidateMermaidTheme } from './mermaid'

@@ -36,7 +36,7 @@ const EAGER_BUDGET = 1_000_000
 
 // Landing in the eager graph is how a heavy surface silently becomes everyone's
 // startup cost, so the surfaces that must stay split are named, not inferred.
-const MUST_BE_LAZY = ['music']
+const MUST_BE_LAZY = ['music', 'vendor-echarts']
 
 /**
  * A lazy library whose chunks are named by its own build — and one of which is shared
@@ -46,6 +46,10 @@ const MUST_BE_LAZY = ['music']
  */
 const CONTENT_BUDGETS = [
   { name: '@excalidraw/excalidraw', needle: 'Excalifont', budget: 1_500_000 },
+  // Measured 2026-10-04: one chunk, 1.12 MB raw / 371 kB gzipped, holding the whole library because an
+  // option may name any chart type. It is fetched by the first ```echarts block in a session and by
+  // nothing else — `MUST_BE_LAZY` below is what keeps that from drifting.
+  { name: 'echarts', needle: 'ec_inner_', budget: 1_200_000 },
 ]
 
 // Static imports only: `import("./x.js")` is a dynamic import and stays lazy.

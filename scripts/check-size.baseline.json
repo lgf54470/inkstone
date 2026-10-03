@@ -78,6 +78,9 @@
   "src/client/features/preview/code-block-toolbar.test.ts": {
     "longFns": 1
   },
+  "src/client/features/preview/graph-block-toolbar.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/graph-block-toolbar.ts": {
     "deepFns": 1
   },
@@ -100,6 +103,9 @@
   "src/client/features/preview/tabs-source.ts": {
     "longFns": 2,
     "deepFns": 1
+  },
+  "src/client/features/preview/use-preview.ts": {
+    "longFns": 1
   },
   "src/client/features/workspace/context-menu-detect.test.ts": {
     "longFns": 3
@@ -129,6 +135,25 @@
   },
   "src/client/lib/api/music.ts": {
     "lines": 538
+  },
+  "src/client/lib/export-note.ts": {
+    "lines": 502
+  },
+  "src/client/lib/markdown/chart/config.test.ts": {
+    "longFns": 2
+  },
+  "src/client/lib/markdown/chart/table.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/echarts/body.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/echarts/table-option.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/enhance.test.ts": {
+    "lines": 559,
+    "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1
@@ -208,13 +233,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 651
+    "lines": 659
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 651
+    "lines": 659
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908
