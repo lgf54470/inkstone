@@ -23,7 +23,7 @@ export function wrapZoomableImages(root: HTMLElement): void {
     button.type = 'button'
     button.className = 'image-zoom'
     button.dataset.imageZoom = '1'
-    button.setAttribute('aria-label', t('preview.image_preview'))
+    button.setAttribute('aria-label', t('preview.image_adjust'))
     for (const name of PROPAGATED_ATTRS) {
       const value = image.getAttribute(name)
       if (value !== null) button.setAttribute(name, value)

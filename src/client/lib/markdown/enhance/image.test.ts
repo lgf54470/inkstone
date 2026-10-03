@@ -22,7 +22,10 @@ describe('prose images become controls', () => {
     const button = root.querySelector<HTMLButtonElement>('[data-image-zoom]')!
     expect(button.tagName).toBe('BUTTON')
     expect(button.type).toBe('button')
-    expect(button.getAttribute('aria-label')).toBe(t('preview.image_preview'))
+    // Pressing the image now opens its controls; the lightbox moved into that toolbar, so the name
+    // has to say adjust and not preview.
+    expect(button.getAttribute('aria-label')).toBe(t('preview.image_adjust'))
+    expect(button.getAttribute('aria-label')).not.toBe(t('preview.image_preview'))
     // The image itself keeps the markdown's own attributes: only its parent changed.
     expect(button.querySelector<HTMLImageElement>('img')?.getAttribute('src')).toBe('/probe.png')
     expect(button.querySelector<HTMLImageElement>('img')?.getAttribute('alt')).toBe('probe')

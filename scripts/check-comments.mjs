@@ -7946,6 +7946,29 @@ const allowed = new Map([
     '/** The zoom step next to the one currently applied, clamped to the ends of the ladder. */',
     '/** This block family\'s toolbar: no note writes and no overlay, so its dismiss is nothing to do. */',
   ]],
+  ['src/client/features/preview/image-editor.test.ts', [
+    '/** A FocusEvent\'s target is set by dispatch, not by the init dict, so the events are sent for real. */',
+    '/** The focusable half of a wrapped image is the zoom button, not the img inside it. */',
+    '// The dismissal is spent by that one focus return, so the next ask is a real one.',
+  ]],
+  ['src/client/features/preview/image-editor.ts', [
+    '// Escape means "put the controls away", and focus is what brings them up — so the image that was',
+    '// just dismissed has to be remembered until the pointer or the tab order asks for it again.',
+    '/**\n * The state as the note carries it, read back off the rendered image. The renderer is the only\n * writer of these attributes, so a value outside them is not a state the editor should offer.\n */',
+    '/** An image with no recorded width fills its column, which is the top of the scale. */',
+    '/** The column the image is sized against: the box it sits in, not the image itself. */',
+    '/**\n * A drag that cannot measure its column does not write: a percent of an unknown width is a guess\n * at the note\'s text, and the note is what the user reads.\n *\n * One drag, one write. The pointer path only moves the box on screen; the note is touched once,\n * when the pointer is released, so a drag costs one undo step rather than one per pixel.\n */',
+    '/**\n * How wide the image would be, as a share of its column. A centered image grows twice as fast as\n * the pointer, because both of its edges move; a right-aligned one shrinks as the pointer goes right.\n */',
+    '/** The focusable half of a rendered image: the zoom button when the note preview wrapped it. */',
+    '/** The overlay sits against the image\'s own box, in the coordinates of the block that holds it. */',
+    '/** The image the editor can take, or null when the node is not one the note drew. */',
+    '/**\n * Reveals the controls for an image. Focus is what triggers it — a pointer click and a Tab both\n * land there — so the keyboard path and the pointer path meet at the same control, and the image\n * itself keeps its own activation for the toolbar that opens.\n */',
+    '// The focus that Escape hands back is the one dismissal this covers; the next ask is a real one.',
+    '/**\n * A click on a prose image selects it instead of opening the lightbox: the toolbar carries the\n * preview, so the control that reveals the handles never gets in the way of reading the picture.\n */',
+    '/** Escape closes the image controls and hands focus back to the image they belong to. */',
+    '/**\n * Re-attaches the overlay after the preview re-rendered, which is what writing the image\'s own\n * attributes causes. The key is the line, the number on that line and the src — none of which a\n * style change touches — so the toolbar survives the edit that moved the note.\n */',
+    '// Focus fell out when the rendered node was replaced; it goes back to the image, not to the body.',
+  ]],
   ['src/client/features/preview/image-source.ts', [
     '/**\n * Where a rendered image came from, as the image itself reports it: the line it sits on, its\n * number among the images of that line, and the src it was drawn with. The src is not decoration\n * — a line and an index are only as trustworthy as the note\'s text still being what the preview\n * rendered, and this is the third thing a write can check before it overwrites.\n */',
     '/** Index of the `!`. */',
@@ -8220,6 +8243,9 @@ const allowed = new Map([
     '/** Leaving the note (or the pane) writes the last drawing and drops the instances. */',
     '/**\n * Clicking a shape hands the board the DOM focus its shortcuts need — in a split view\n * the editor would otherwise swallow Tab, Delete and undo. The full screen overlay is\n * portaled outside this host, so it installs its own listener on its body; both resolve\n * the same entry and focusing twice is harmless.\n */',
     '// The note\'s menu is the one a right-click opens, here as on every other block.',
+  ]],
+  ['src/client/features/preview/use-image-editor.ts', [
+    '/**\n * Keeps the image controls alive across the re-render that using them causes. The host element is\n * the prose root and survives every commit, so it is what the editor\'s API is registered against\n * and where focus is watched; the overlay itself is rebuilt from the committed markup.\n */',
   ]],
   ['src/client/features/preview/use-kanban-blocks.ts', [
     '/**\n   * The fence bodies this markup was rendered from (P-01), registered on the host before mount. Also a\n   * mount trigger: a body-only edit leaves the markup string identical.\n   */',
@@ -9608,6 +9634,8 @@ const allowed = new Map([
     '/**\n * The split ratio is a runtime number and the prose whitelist strips inline styles, so the grid\'s\n * tracks are handed to CSS as a custom property instead: one variable for the axis the layout uses\n * and none for the other, so a block that switched between a row split and a column split cannot\n * keep reading the stale one. Runs in every surface — a share page or an export draws the split\n * the note asked for, not the stylesheet\'s fallback.\n */',
   ]],
   ['src/client/lib/markdown/enhance/image.test.ts', [
+    '// Pressing the image now opens its controls; the lightbox moved into that toolbar, so the name',
+    '// has to say adjust and not preview.',
     '// The image itself keeps the markdown\'s own attributes: only its parent changed.',
   ]],
   ['src/client/lib/markdown/enhance/image.ts', [
