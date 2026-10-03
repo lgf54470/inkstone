@@ -485,6 +485,8 @@ export function GraphCanvas(props: GraphCanvasProps) {
         colorLegends={b.colorLegends}
         legendQuery={props.legendQuery}
         onLegendSelect={props.onLegendSelect}
+        onOpenNote={(id) => { props.onOpenNote(id) }}
+        onFocusNode={(id) => { props.controlsRef.current?.selectNode(id) }}
         liveAnnouncement={b.liveAnnouncement}
       />
       <Menu anchor={b.context ?? { x: 0, y: 0 }} open={Boolean(b.context)} onClose={() => b.setContext(null)} items={b.menuItems} label={t('graph.node_actions')}/>

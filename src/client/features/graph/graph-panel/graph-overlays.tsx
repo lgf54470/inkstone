@@ -1,11 +1,15 @@
-import { type RefObject } from 'react'
+import { useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
-import { Button } from '../../../components/primitives'
+import { Button, IconButton } from '../../../components/primitives'
+import { List } from 'lucide-react'
+import { Menu, type MenuItem } from '../../../components/overlay'
 import { Empty } from '../../../components/feedback'
 import { errorMessage } from '../../../lib/errors'
 import { t } from '../../../lib/i18n'
 import { WikiLinkHoverCard, type WikiLinkHoverCardState } from '../../preview'
 import type { ColorLegendItem } from './helpers'
+import { graphNeighbourGroups, graphNeighbours } from './helpers'
+import { GRAPH_NEIGHBOUR_LIST_MAX } from './constants'
 import type { CanvasNode } from './types'
 
 export interface GraphOverlaysProps {
@@ -30,6 +34,9 @@ export interface GraphOverlaysProps {
   legendQuery?: string
   onLegendSelect?: (query: string) => void
   liveAnnouncement?: string
+  /** The two ways out of a neighbour row: the note itself, or the picture moved onto it (G-47). */
+  onOpenNote: (id: string) => void
+  onFocusNode: (id: string) => void
 }
 
 function TruncatedBadge({ shown, total }: { shown: number; total: number }) {
@@ -43,13 +50,18 @@ function TruncatedBadge({ shown, total }: { shown: number; total: number }) {
   )
 }
 
-function NodeDetailBadge({ node }: { node: CanvasNode | GraphResponse['nodes'][number] }) {
+function NodeDetailBadge({ node, neighbors }: {
+  node: CanvasNode | GraphResponse['nodes'][number]
+  /** The way to the notes behind those counts, when the picture holds any (G-47). */
+  neighbors?: ReactNode
+}) {
   return (
-    <div data-graph-detail='' className='pointer-events-none max-w-[80vw] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
+    <div data-graph-detail='' className='pointer-events-none flex max-w-[80vw] items-center rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] py-1.5 pr-2 pl-3.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
       <span className='max-w-[50vw] truncate'>{node.title || t('common.untitled_note')}</span>
       <span className='ml-2 text-[var(--text-quaternary)]'>
         {t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}
       </span>
+      {neighbors}
     </div>
   )
 }
@@ -115,17 +127,86 @@ const OFFSCREEN_COORD = '-9999px'
  * a fixed offset would only clear one particular legend height, so the two are laid out in flow — what keeps
  * them apart is the band's own gap rather than a number this file has to keep true (G-18).
  */
-function BottomBand({ node, legends, legendQuery, onLegendSelect }: {
+/**
+ * The neighbours behind the badge's counts (G-47). A row is the node's own Enter action — a note opens,
+ * anything else is brought into the picture — so the list can never promise a different outcome than
+ * pressing the key on that node, and the two paths cannot drift apart.
+ */
+function NodeNeighborList({ node, data, onOpenNote, onFocusNode }: {
+  node: CanvasNode | GraphResponse['nodes'][number]
+  data: GraphResponse
+  onOpenNote: (id: string) => void
+  onFocusNode: (id: string) => void
+}) {
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
+  const [isOpen, setIsOpen] = useState(false)
+  const neighbours = graphNeighbours(data, node.id)
+  const groups = graphNeighbourGroups(neighbours, GRAPH_NEIGHBOUR_LIST_MAX)
+  if (!groups.length) return null
+
+  const items: MenuItem[] = groups.flatMap((group) => {
+    const heading = group.key === 'incoming' ? t('graph.neighbors_incoming') : t('graph.neighbors_outgoing')
+    const rows = group.nodes.map((neighbour) => ({
+      id: neighbour.id,
+      label: neighbour.title || t('common.untitled_note'),
+      onSelect: () => {
+        if (neighbour.kind === 'note') onOpenNote(neighbour.id)
+        else onFocusNode(neighbour.id)
+        setIsOpen(false)
+      },
+    }))
+    const hidden = group.hidden
+      ? [{ id: `hidden-${group.key}`, label: t('graph.neighbors_hidden', { hidden: group.hidden }), disabled: true }]
+      : []
+    return [{ id: `group-${group.key}`, label: heading, disabled: true, separatorBefore: true }, ...rows, ...hidden]
+  })
+
+  return (
+    <>
+      <IconButton
+        ref={anchorRef}
+        size='sm'
+        variant='ghost'
+        label={t('graph.neighbors')}
+        className='pointer-events-auto size-5 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        onClick={() => { setIsOpen(true) }}
+      >
+        <List size={12}/>
+      </IconButton>
+      <Menu
+        anchor={anchorRef}
+        open={isOpen}
+        onClose={() => { setIsOpen(false) }}
+        items={items}
+        panelId={panelId}
+        label={t('graph.node_actions')}
+      />
+    </>
+  )
+}
+
+function BottomBand({ node, data, legends, legendQuery, onLegendSelect, onOpenNote, onFocusNode }: {
   node: CanvasNode | GraphResponse['nodes'][number] | null
+  data: GraphResponse
   legends: ColorLegendItem[]
   legendQuery?: string
   onLegendSelect?: (query: string) => void
+  onOpenNote: (id: string) => void
+  onFocusNode: (id: string) => void
 }) {
   if (!node && legends.length === 0) return null
   return (
     <div className='pointer-events-none absolute inset-x-4 bottom-4 z-[var(--z-raised)] flex flex-col items-center gap-2'>
       <ColorLegend items={legends} query={legendQuery} onSelect={onLegendSelect} />
-      {node && <NodeDetailBadge node={node} />}
+      {node && (
+        <NodeDetailBadge
+          node={node}
+          neighbors={<NodeNeighborList node={node} data={data} onOpenNote={onOpenNote} onFocusNode={onFocusNode}/>}
+        />
+      )}
     </div>
   )
 }
@@ -164,6 +245,8 @@ export function GraphOverlays({
   onLegendSelect,
   liveAnnouncement,
   hintId,
+  onOpenNote,
+  onFocusNode,
 }: GraphOverlaysProps) {
   const shown = hover ?? selected
   return (
@@ -171,7 +254,15 @@ export function GraphOverlays({
       {data.meta.truncated && (
         <TruncatedBadge shown={data.nodes.length} total={data.meta.totalNodes} />
       )}
-      <BottomBand node={shown} legends={colorLegends} legendQuery={legendQuery} onLegendSelect={onLegendSelect} />
+      <BottomBand
+        node={shown}
+        data={data}
+        legends={colorLegends}
+        legendQuery={legendQuery}
+        onLegendSelect={onLegendSelect}
+        onOpenNote={onOpenNote}
+        onFocusNode={onFocusNode}
+      />
       <CanvasHint hint={hint} hintBrief={hintBrief} hintId={hintId} />
       {anchorRef && (
         <div

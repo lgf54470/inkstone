@@ -262,6 +262,53 @@ export function nodeColor(node: CanvasNode, { groupBy, fallback, tagPalette }: N
   return fallback
 }
 
+export interface GraphNeighbours {
+  incoming: GraphNode[]
+  outgoing: GraphNode[]
+}
+
+export interface GraphNeighbourGroup {
+  key: 'incoming' | 'outgoing'
+  nodes: GraphNode[]
+  hidden: number
+}
+
+/**
+ * The wiki links running into and out of one node, read off the picture that is already on screen. A tag
+ * membership is deliberately not a neighbour here: it says which tag a note carries, not which note it
+ * points at, and the list a link count hands over has to keep meaning links (G-43 ①, G-47).
+ */
+export function graphNeighbours(data: GraphResponse, id: string): GraphNeighbours {
+  const byId = new Map(data.nodes.map((node) => [node.id, node]))
+  const incoming: GraphNode[] = []
+  const outgoing: GraphNode[] = []
+  for (const edge of data.edges) {
+    const isSource = edge.source === id
+    if (!isSource && edge.target !== id) continue
+    const other = byId.get(isSource ? edge.target : edge.source)
+    if (!other || other.kind === 'tag' || other.id === id) continue
+    if (isSource) outgoing.push(other)
+    else incoming.push(other)
+  }
+  return { incoming, outgoing }
+}
+
+/**
+ * The two directions as the list shows them: each group holds the neighbours it can reach and names how
+ * many the cap left out, so nothing a reader can count on the badge disappears without a word (G-47).
+ */
+export function graphNeighbourGroups(
+  neighbours: GraphNeighbours,
+  cap: number,
+): GraphNeighbourGroup[] {
+  const groups: GraphNeighbourGroup[] = []
+  for (const key of ['incoming', 'outgoing'] as const) {
+    const list = neighbours[key]
+    if (!list.length) continue
+    groups.push({ key, nodes: list.slice(0, cap), hidden: Math.max(0, list.length - cap) })
+  }
+  return groups
+}
 /** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */
 export function graphNodeLabel(node: CanvasNode): string {
   const text = node.kind === 'tag' ? `#${node.title}` : node.title

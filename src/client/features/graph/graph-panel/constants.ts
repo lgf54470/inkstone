@@ -28,6 +28,13 @@ export const GRAPH_LIMIT_STEP = 50
 /** How long the search box waits for the reader to stop typing before it acts on the line. */
 export const GRAPH_SEARCH_DEBOUNCE_MS = 220
 
+/**
+ * How many neighbours one direction will list. The badge's count is the truth about the node, while the
+ * list under it is a way to jump — past a screenful it stops being either, so the rest is named, not
+ * hidden (G-47).
+ */
+export const GRAPH_NEIGHBOUR_LIST_MAX = 24
+
 /** How long a node has to hold the pointer before its preview card is asked for, and how long the card
  * stays open once the pointer has left — the shorter of the two is what lets a sweep across the map
  * settle without stacking a card per node (G-37). */
