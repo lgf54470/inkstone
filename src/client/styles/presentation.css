@@ -101,6 +101,62 @@
   print-color-adjust: exact;
 }
 
+.deck-handout-sheet {
+  --deck-handout-scale: 0.46;
+}
+
+.deck-handout-page {
+  display: flex;
+  gap: var(--sp-6);
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: var(--deck-page-width);
+  min-height: var(--deck-page-height);
+  padding: var(--sp-6);
+  background: var(--bg-editor);
+}
+
+.deck-handout-figure {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: calc(var(--deck-page-width) * var(--deck-handout-scale));
+}
+
+.deck-handout-slide {
+  height: calc(var(--deck-page-height) * var(--deck-handout-scale));
+  overflow: hidden;
+}
+
+.deck-handout-slide .deck-print-page {
+  transform: scale(var(--deck-handout-scale));
+  transform-origin: top left;
+}
+
+.deck-handout-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.deck-handout-position {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+}
+
+.deck-handout-notes {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-16);
+  line-height: var(--ui-line);
+  white-space: pre-wrap;
+}
+
 @media print {
   html,
   body {

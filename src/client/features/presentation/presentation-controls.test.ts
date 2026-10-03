@@ -36,6 +36,7 @@ describe('PresentationControls', () => {
     exporting: false,
     onExport: vi.fn(),
     onExportImages: vi.fn(),
+    onExportHandout: vi.fn(),
     onClose: vi.fn(),
   }
 
@@ -152,6 +153,7 @@ function chromeProps(overrides: Partial<PresentationControlsProps> = {}): Presen
     onOpenPresenter: vi.fn(),
     onExport: vi.fn(),
     onExportImages: vi.fn(),
+    onExportHandout: vi.fn(),
     onClose: vi.fn(),
     ...overrides,
   }
@@ -218,6 +220,18 @@ describe('PresentationControls — the export answers from its own button', () =
   it('leaves the control alone when nothing is being written', () => {
     const { container } = renderElement(createElement(PresentationControls, chromeProps()))
     expect(container.querySelectorAll('[data-export-spinner]').length).toBe(0)
+  })
+})
+
+describe('PresentationControls — a handout is asked for like the other exports', () => {
+  it('offers the handout by its own name and hands the press to the session', () => {
+    const onExportHandout = vi.fn()
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ onExportHandout })))
+    const button = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_export_handout')}"]`)
+    expect(button, 'the handout is not reachable by name').not.toBeNull()
+    expect(button?.type).toBe('button')
+    button?.click()
+    expect(onExportHandout).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -1,9 +1,10 @@
 import { act, createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { t } from '../../lib/i18n'
 import { createFenceBodies, takeFenceIndex, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { renderElement } from '../../lib/test-render'
 import * as deckImage from './deck-image'
-import { buildDeckPages, DeckImageSheet, saveDeckPages } from './deck-print'
+import { buildDeckPages, DeckHandoutSheet, DeckImageSheet, saveDeckPages } from './deck-print'
 import { readSlideHtml, rememberSlideHtml, slideCacheKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
@@ -311,6 +312,78 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     await flush(20)
     expect(deckImage.renderDeckPagePng).not.toHaveBeenCalled()
     expect(onDone).not.toHaveBeenCalled()
+  })
+})
+
+describe('DeckHandoutSheet — one page of the handout per slide', () => {
+  const NOTES = ['Say the plan.', 'Ship it, then thank everyone.']
+
+  it('gives each slide one handout page carrying its own pages and its own notes', async () => {
+    stubFonts()
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: NOTES, metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
+      expect(drawn).toBe(true)
+      const handouts = [...document.querySelectorAll('.deck-handout-page')]
+      expect(handouts).toHaveLength(2)
+      expect(handouts[0]?.querySelectorAll('.deck-handout-slide')).toHaveLength(2)
+      expect(handouts[1]?.querySelectorAll('.deck-handout-slide')).toHaveLength(1)
+      expect(handouts[0]?.querySelector('.deck-handout-notes')?.textContent).toBe('Say the plan.')
+      expect(handouts[1]?.querySelector('.deck-handout-notes')?.textContent).toBe('Ship it, then thank everyone.')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('names the slide the handout page belongs to with the number the room read', async () => {
+    stubFonts()
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: NOTES, metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
+      expect(drawn).toBe(true)
+      const positions = [...document.querySelectorAll('.deck-handout-position')].map((node) => node.textContent)
+      expect(positions).toEqual(['1 / 2', '2 / 2'])
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('says a slide has no notes instead of leaving the reader a blank half-page', async () => {
+    stubFonts()
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: ['', ''], metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
+      expect(drawn).toBe(true)
+      const notes = [...document.querySelectorAll('.deck-handout-notes')].map((node) => node.textContent)
+      expect(notes).toEqual([t('workspace.presentation_no_notes'), t('workspace.presentation_no_notes')])
+    } finally {
+      view.unmount()
+    }
+  })
+
+})
+
+describe('DeckHandoutSheet — a slide nobody measured', () => {
+  it('prints a handout page for a slide the show never reached', async () => {
+    // Notes are indexed by slide, so a deck whose plans stop short still gets one page per slide —
+    // the handout is read by the speaker, who is not limited to the pages the idle pass measured.
+    stubFonts()
+    const three = [FIRST, SECOND, '<p>third</p>']
+    const keys = three.map((_, index) => slideCacheKey({ fingerprint: 'fingerprint', dark: false, index, contentWidth: METRICS.contentWidth, contentHeight: METRICS.contentHeight }))
+    rememberSlideHtml(keys[2], { html: three[2], fences: FIRST_BODIES })
+    const pages = buildDeckPages(three, keys, { 0: PAGINATED }, METRICS, false)
+    const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: ['a', 'b', 'c'], metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
+      expect(drawn).toBe(true)
+      expect(document.querySelectorAll('.deck-handout-page')).toHaveLength(3)
+      expect(document.querySelectorAll('.deck-handout-slide')).toHaveLength(4)
+    } finally {
+      view.unmount()
+    }
   })
 })
 

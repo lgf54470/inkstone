@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
-import { DeckImageSheet, DeckPrintSheet } from './deck-print'
+import { DeckHandoutSheet, DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { CoverAnnouncement, PresentationStage, ScreenCover, SlidePreparationNotice, stageProps } from './presentation-stage'
 import { LaserPointer, Spotlight } from './presentation-pointer'
@@ -97,6 +97,9 @@ function PresentationSheets({ session }: { session: PresentationSession }) {
       {session.print && (
         <DeckPrintSheet pages={session.print.pages} metrics={session.print.metrics} font={session.proseFont} dark={session.print.dark} onDone={session.print.done} />
       )}
+      {session.handout && (
+        <DeckHandoutSheet pages={session.handout.pages} notes={session.handout.notes} metrics={session.handout.metrics} font={session.proseFont} dark={session.handout.dark} onDone={session.handout.done} />
+      )}
       {session.images && (
         <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onProgress={session.images.onProgress} onDone={session.images.done} />
       )}
@@ -147,6 +150,7 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     onToggleFullscreen: session.toggleFullscreen,
     onOpenPresenter: session.openPresenter,
     onExport: session.exportDeck,
+    onExportHandout: session.exportHandout,
     onExportImages: session.exportImages,
     onClose,
   }

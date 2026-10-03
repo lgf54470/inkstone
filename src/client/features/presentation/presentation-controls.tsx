@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
@@ -31,10 +31,11 @@ export interface PresentationControlsProps {
   exporting: boolean
   onExport: () => void
   onExportImages: () => void
+  onExportHandout: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -49,7 +50,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} />
+      <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Tooltip label={t('workspace.presentation_exit')} side='top'>
         <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
@@ -116,12 +117,17 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
   )
 }
 
-function ExportControls({ exporting, onExport, onExportImages }: { exporting: boolean; onExport: () => void; onExportImages: () => void }) {
+function ExportControls({ exporting, onExport, onExportImages, onExportHandout }: { exporting: boolean; onExport: () => void; onExportImages: () => void; onExportHandout: () => void }) {
   return (
     <>
       <Tooltip label={t('workspace.presentation_export')} side='top'>
         <IconButton label={t('workspace.presentation_export')} size='sm' onClick={onExport}>
           <Download size={14} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={t('workspace.presentation_export_handout')} side='top'>
+        <IconButton label={t('workspace.presentation_export_handout')} size='sm' onClick={onExportHandout}>
+          <FileText size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('workspace.presentation_export_images')} side='top'>

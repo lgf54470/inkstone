@@ -137,6 +137,7 @@ const LABELS = {
   presentExit: localeLabel('workspace.presentation_exit'),
   presentExport: localeLabel('workspace.presentation_export'),
   presentExportImages: localeLabel('workspace.presentation_export_images'),
+  presentExportHandout: localeLabel('workspace.presentation_export_handout'),
   slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
   slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
@@ -1170,6 +1171,60 @@ async function assertDeckExport(page) {
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// The handout (N-32): one printed page per slide, the slide's own picture beside what the speaker
+// wrote for it. The fixture is three slides, two of them with notes and one without, so the sheet has
+// to answer all three cases — a note printed, a slide named by its number, and an empty note said out
+// loud rather than left as a blank half-page. The PDF is the evidence: it is what the browser prints,
+// not what the DOM holds.
+const HANDOUT_DECK = [
+  '# Opening\n\n<!-- note: Say why we are here. -->\n\nThree plans, one decision.',
+  '# Middle\n\nTwo of them fit the budget.',
+  '# Close\n\n<!-- note: Ask for the decision. -->\n\nWhich one, and by when.',
+].join('\n\n---\n\n')
+
+async function openHandoutNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${HANDOUT_DECK}\n`, 'deck handout')
+  await sleep(1_500)
+}
+
+async function assertDeckHandout(page) {
+  await openHandoutNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await clickPresentationControl(page, LABELS.presentExportHandout)
+  await page.waitForSelector('[data-deck-handout][data-deck-print-ready="true"]', { timeout: 20_000 })
+  const handout = await page.evaluate(() => {
+    const pages = [...document.querySelectorAll('[data-deck-handout] .deck-handout-page')]
+    return {
+      pages: pages.length,
+      figures: pages.map((page) => page.querySelectorAll('.deck-handout-slide').length),
+      positions: pages.map((page) => page.querySelector('.deck-handout-position')?.textContent?.trim() ?? ''),
+      notes: pages.map((page) => page.querySelector('.deck-handout-notes')?.textContent?.trim() ?? ''),
+      numbered: pages.filter((page) => page.querySelector('.deck-handout-slide .deck-print-page-number')?.textContent?.trim()).length,
+    }
+  })
+  const handoutPdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
+  const printedPages = (handoutPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+
+  check('handout: one printed page per slide, not per deck page', handout.pages === 3, `pages=${handout.pages} positions=${JSON.stringify(handout.positions)}`)
+  check('handout: every handout page carries its slide as a picture', handout.figures.every((count) => count === 1), JSON.stringify(handout.figures))
+  check('handout: the notes travel with the slide they belong to', handout.notes[0] === 'Say why we are here.' && handout.notes[2] === 'Ask for the decision.', JSON.stringify(handout.notes))
+  check('handout: a slide without notes says so instead of printing nothing', handout.notes[1] === localeLabel('workspace.presentation_no_notes')[0] || handout.notes[1] === localeLabel('workspace.presentation_no_notes')[1], JSON.stringify(handout.notes[1]))
+  check('handout: the picture keeps the number the room read', handout.numbered === 3, `numbered=${handout.numbered}`)
+  check('handout: the browser prints three pages of handout', printedPages === 3, `pdf=${printedPages} sheet=${handout.pages}`)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read, as every scenario that brings its own note
+  // has to (the same handback the board scenario learned).
+  await openDeckNote(page)
 }
 
 // The image export is the same deck through a different renderer, so what it has to prove is that a
@@ -9155,6 +9210,7 @@ async function main() {
     await assertPresentationLaser(page)
     await assertPresentationScreenCover(page)
     await assertDeckExport(page)
+    await assertDeckHandout(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
     await assertPresenterConsole(browser, page)

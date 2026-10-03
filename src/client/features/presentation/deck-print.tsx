@@ -78,25 +78,29 @@ interface DeckSheetProps {
 // off-screen rather than hidden, because a `display: none` subtree has no size and a chart drawn
 // into a zero-sized canvas exports empty — and `inert` keeps the buttons the prose markup carries
 // out of the tab order, which hidden used to do for free.
+function PrintedPage({ page, metrics, font }: { page: DeckPrintPage; metrics: StageMetrics; font: ProseFont }) {
+  return (
+    // The slide context, not the reader's prose one: these pages were measured with the
+    // slide's own type scale and diagram sizes, and printing them in another scale would reflow
+    // every page against the slice it was handed. Each one also carries the fence bodies its
+    // own blocks were rendered from, which the snapshot draw looks up by walking up.
+    <div className='deck-print-page' ref={(node) => { if (node) registerFenceBodies(node, page.fences) }}>
+      <div className='deck-print-body ink-slide'>
+        <SlideProse html={page.html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={page.layout} />
+      </div>
+      {/* Inside the page box, not beside it: the printer prints this box and the archive
+      rasterizes it, so a number drawn outside would reach one of them and not the other. */}
+      <span className='deck-print-page-number'>{formatDeckPosition(page.position)}</span>
+    </div>
+  )
+}
+
 function DeckSheet({ sheetRef, pages, metrics, font }: DeckSheetProps & { sheetRef: React.RefObject<HTMLDivElement | null> }) {
   const geometry = useMemo(() => deckPrintGeometry(metrics), [metrics])
   return createPortal(
     <div ref={sheetRef} data-deck-print aria-hidden='true' inert className='deck-print-sheet'>
       <style>{geometry}</style>
-      {pages.map((page, index) => (
-        // The slide context, not the reader's prose one: these pages were measured with the
-        // slide's type scale and diagram sizes, and printing them in another scale would reflow
-        // every page against the slice it was handed. Each one also carries the fence bodies its
-        // own blocks were rendered from, which the snapshot draw below looks up by walking up.
-        <div key={index} className='deck-print-page' ref={(node) => { if (node) registerFenceBodies(node, page.fences) }}>
-          <div className='deck-print-body ink-slide'>
-            <SlideProse html={page.html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={page.layout} />
-          </div>
-          {/* Inside the page box, not beside it: the printer prints this box and the archive
-          rasterizes it, so a number drawn outside would reach the paper and not the archive. */}
-          <span className='deck-print-page-number'>{formatDeckPosition(page.position)}</span>
-        </div>
-      ))}
+      {pages.map((page, index) => <PrintedPage key={index} page={page} metrics={metrics} font={font} />)}
     </div>,
     document.body,
   )
@@ -148,6 +152,80 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onProgress, 
   // (`DeckExportProgress`), because this element is laid out off-screen and anything painted beside it
   // lands under the projector.
   return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
+}
+
+/** One slide of the handout: every page it was walked as, and what the speaker wrote for it. */
+export interface DeckHandoutSlide {
+  index: number
+  count: number
+  pages: DeckPrintPage[]
+  note: string
+}
+
+/**
+ * Group the exported pages by the slide they came from.
+ *
+ * The handout is a sheet the speaker reads, and the notes are indexed by slide — so the unit is a
+ * slide, not a printed page. A slide the projector split across pages keeps all of its pages in that
+ * one handout entry, in the order the show walked them (N-32).
+ */
+export function groupDeckHandout(pages: DeckPrintPage[], notes: string[]): DeckHandoutSlide[] {
+  const slides: DeckHandoutSlide[] = []
+  for (const page of pages) {
+    const last = slides.at(-1)
+    if (last && last.index === page.position.index) {
+      last.pages.push(page)
+      continue
+    }
+    slides.push({ index: page.position.index, count: page.position.count, pages: [page], note: (notes[page.position.index] ?? '').trim() })
+  }
+  return slides
+}
+
+/**
+ * The handout sheet as it is printed: one page per slide, the slide's own pages down the left as
+ * pictures beside what the speaker wrote. `styles/presentation.css` keys the layout on
+ * `.deck-handout-page` / `.deck-handout-figure` / `.deck-handout-slide`, and the figure scales a
+ * `.deck-print-page` rather than re-rendering one at a smaller size — the picture has to be the page
+ * the projector measured, only smaller, or the handout and the show disagree about where a line ends.
+ */
+function HandoutSheet({ sheetRef, slides, metrics, font }: { sheetRef: React.RefObject<HTMLDivElement | null> } & Omit<DeckSheetProps, 'pages' | 'dark'> & { slides: DeckHandoutSlide[] }) {
+  const geometry = useMemo(() => deckPrintGeometry(metrics), [metrics])
+  return createPortal(
+    <div ref={sheetRef} data-deck-print data-deck-handout aria-hidden='true' inert className='deck-print-sheet deck-handout-sheet'>
+      <style>{geometry}</style>
+      {slides.map((slide) => (
+        <div key={slide.index} className='deck-handout-page'>
+          <div className='deck-handout-figure'>
+            {slide.pages.map((page, position) => (
+              <div key={position} className='deck-handout-slide'><PrintedPage page={page} metrics={metrics} font={font} /></div>
+            ))}
+          </div>
+          <div className='deck-handout-body'>
+            <p className='deck-handout-position'>{formatDeckPosition({ index: slide.index, count: slide.count, subPage: 0, pageCount: 1 })}</p>
+            <p className='deck-handout-notes'>{slide.note === '' ? t('workspace.presentation_no_notes') : slide.note}</p>
+          </div>
+        </div>
+      ))}
+    </div>,
+    document.body,
+  )
+}
+
+// The handout: one printed page per slide, the slide's own picture beside what the speaker meant to
+// say about it. This is the sheet a reviewer keeps after the talk — the deck page answers "which slide
+// was this", the notes answer what was said — and it goes through the same print pipeline as the deck
+// itself, so the two agree about page size, theme and what a diagram looks like when it is on paper.
+export function DeckHandoutSheet({ pages, notes, metrics, font, dark, onDone }: DeckSheetProps & { notes: string[]; onDone: () => void }) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const slides = useMemo(() => groupDeckHandout(pages, notes), [pages, notes])
+  useDeckSheetReady(sheetRef, dark, metrics, (root) => {
+    // Written straight to the node: the print dialog blocks right after this line, so a re-render
+    // would never land in time for observers of the sheet.
+    root.dataset.deckPrintReady = 'true'
+    window.print()
+  }, onDone)
+  return <HandoutSheet sheetRef={sheetRef} slides={slides} metrics={metrics} font={font} />
 }
 
 // Both exports share one lifecycle: mount the sheet, let it finish drawing what it has to draw, hand

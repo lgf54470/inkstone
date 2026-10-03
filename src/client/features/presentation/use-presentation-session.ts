@@ -5,7 +5,7 @@ import { secureRandomId } from '../../lib/id'
 import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
-import { type DeckSheetPayload, useDeckExport } from './deck-export'
+import { type DeckHandoutPayload, type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
 import { deckProgress, railOpenFor } from './presentation-state'
 import { useChromeAutoHide } from './use-chrome-auto-hide'
@@ -78,6 +78,8 @@ export interface PresentationSession {
   /** Builds the printable deck; the sheet appears until the print dialog is done with it. */
   exportDeck: () => void
   print: DeckSheetPayload | null
+  exportHandout: () => void
+  handout: DeckHandoutPayload | null
   /** Builds the same deck as images; the sheet appears until the PNGs are saved. */
   exportImages: () => void
   images: (DeckSheetPayload & { title: string; onProgress: (progress: DeckExportProgress) => void }) | null
@@ -179,7 +181,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
-  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
+  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle, notes })
   const { listProgress, onProgress } = useListProgress()
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)
