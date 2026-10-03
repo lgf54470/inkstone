@@ -111,6 +111,7 @@ const getVendorChunkName = (id: string) => {
   const path = normalizeModuleId(id)
 
   if (path.includes('/katex/') && !path.includes('.css')) return 'vendor-katex'
+  if (/\/(echarts|zrender)\//.test(path)) return 'vendor-echarts'
   if (/@codemirror|@lezer|crelt|style-mod|w3c-keyname/.test(path)) return 'vendor-editor'
   if (/markdown-it|mdurl|entities|linkify-it|punycode|uc\.micro/.test(path)) {
     return 'vendor-markdown'

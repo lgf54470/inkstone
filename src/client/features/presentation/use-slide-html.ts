@@ -45,6 +45,8 @@ export function useSlideHtml(options: {
         excalidraw: 'snapshot',
         // The staged markup is cached and re-serialized into a page, so a board travels as its cards.
         kanban: 'snapshot',
+        // A chart travels the same way: the page keeps the picture, not the instance.
+        echarts: 'snapshot',
         // The bodies these blocks were rendered from. A snapshot draws from the fence body, and the
         // body no longer rides in the markup that carries it (P-01). The cache keeps this same set
         // beside the string, because the printed deck runs this draw over a page once more.

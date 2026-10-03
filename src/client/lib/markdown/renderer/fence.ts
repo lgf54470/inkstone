@@ -8,6 +8,7 @@ import { EXCALIDRAW_LANGUAGES } from '../excalidraw'
 import { detectKanbanMode, KANBAN_LANGUAGES } from '../kanban'
 import { detectSlidesMode, BENTO_SLIDES_LANGUAGES } from '../slides'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
+import { ECHARTS_LANGUAGES, readsFenceScript } from '../echarts'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
 import { readCodeOptions } from './code-options'
@@ -41,6 +42,7 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
   parentEnv.hasMath ||= childEnv.hasMath
   parentEnv.hasMermaid ||= childEnv.hasMermaid
   parentEnv.hasChart ||= childEnv.hasChart
+  parentEnv.hasEcharts ||= childEnv.hasEcharts
   parentEnv.hasMindmap ||= childEnv.hasMindmap
   parentEnv.hasEmbeds ||= childEnv.hasEmbeds
   parentEnv.tabSequence = childEnv.tabSequence
@@ -124,6 +126,8 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
     renderEnv(rendererEnv).hasChart = true
     return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`
   }
+  if ((ECHARTS_LANGUAGES as readonly string[]).includes(info.language))
+    return renderEchartsBlock(token, line, rendererEnv)
   if ((MINDMAP_LANGUAGES as readonly string[]).includes(info.language))
     return renderMindmapBlock(token, line, rendererEnv)
   if ((EXCALIDRAW_LANGUAGES as readonly string[]).includes(info.language))
@@ -188,6 +192,28 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
     `</span>`,
     `</div>`,
     `<div class="mindmap-block-placeholder" data-mindmap-placeholder>${escapeHtml(t('preview.mindmap_loading'))}</div>`,
+    `</div>`,
+  ].join('')
+}
+
+/**
+ * The echarts placeholder. The option travels through the document's fence-body set rather than an
+ * attribute (see `../fence-bodies`): a gallery option runs to a couple of kilobytes, and that is
+ * re-encoded on every preview pass if it rides in the markup. The head the block gets — title, source,
+ * export, format — is the diagram head, added by `features/preview/graph-block-toolbar`.
+ */
+function renderEchartsBlock(token: Token, line: string, rendererEnv: unknown): string {
+  const env = renderEnv(rendererEnv)
+  env.hasEcharts = true
+  const body = token.content
+  const index = takeFenceIndex(env.fences, 'echarts', body)
+  // The ask travels as its own mark so the surface can weigh it: a note may only run JavaScript where
+  // the person looking at it is the person who wrote it, and only when the fence asked. The body's own
+  // format is not stamped here — a block reads that back from the body, the same way a chart does.
+  const script = readsFenceScript(token.info)
+  return [
+    `<div class="echarts-block loading"${line} data-echarts="" data-echarts-index="${index}"${script ? ' data-echarts-script="true"' : ''} aria-busy="true">`,
+    `<div class="echarts-block-placeholder" data-echarts-placeholder>${escapeHtml(t('markdown.rendering_chart'))}</div>`,
     `</div>`,
   ].join('')
 }

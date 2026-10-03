@@ -7,6 +7,8 @@ const HEAVY_VENDORS = [
   { name: 'client-zip', needles: ['predictLength', 'makeZip'] },
   { name: 'mind-elixir', needles: ['mind-elixir-toolbar', 'me-tpc'] },
   { name: '@excalidraw/excalidraw', needles: ['Excalifont'] },
+  // echarts' own internal event namespace; it is the library's, not a name this app chooses.
+  { name: 'echarts', needles: ['ec_inner_'] },
 ]
 
 const STATIC_IMPORT_RE = /import"\.\/([A-Za-z0-9_.-]+\.js)"/g

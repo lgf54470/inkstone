@@ -98,6 +98,7 @@ export function renderMarkdown(source: string, options?: {
     hasMath: env.hasMath,
     hasMermaid: env.hasMermaid,
     hasChart: env.hasChart,
+    hasEcharts: env.hasEcharts,
     hasMindmap: env.hasMindmap,
     hasEmbeds: env.hasEmbeds,
     hasKanban: env.hasKanban,

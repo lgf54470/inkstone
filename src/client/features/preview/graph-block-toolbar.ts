@@ -1,5 +1,6 @@
 import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
+import { fenceBody } from '../../lib/markdown/fence-bodies'
 import { escapeAttr } from '../../lib/markdown/renderer'
 import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure, type ChartMode } from '../../lib/markdown/chart'
 import { downloadBlob } from '../../lib/export-note'
@@ -13,7 +14,7 @@ import type { BlockToolbarModule, BlockToast } from './block-overlay'
  * zoom level is a reading aid, and the theme a diagram draws with is the account's, not the note's.
  */
 
-type GraphKind = 'mermaid' | 'chart'
+type GraphKind = 'mermaid' | 'chart' | 'echarts'
 
 interface GraphBlock {
   wrapper: HTMLElement
@@ -24,9 +25,13 @@ interface GraphBlock {
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
 const GRAPH_BLOCKS = '[data-graph-block]'
 
+/** Where a block's own source lives: an attribute for the two that carry it there, the document's
+ * fence-body set for the one that does not. */
 function decodedSource(block: HTMLElement, kind: GraphKind): string {
-  const raw = kind === 'mermaid' ? block.dataset.mermaid : block.dataset.chart
-  return raw === undefined ? '' : decodeDataValue(raw)
+  if (kind === 'mermaid') return decodeDataValue(block.dataset.mermaid ?? '')
+  if (kind === 'chart') return decodeDataValue(block.dataset.chart ?? '')
+  const index = Number(block.dataset.echartsIndex)
+  return fenceBody(block, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
 }
 
 /** Why a body will not write the other way, in the words the author needs to act on. */
@@ -42,11 +47,14 @@ const CONVERT_MESSAGES: Record<ChartConvertFailure, MessageKey> = {
   lossy: 'markdown.chart_convert_lossy',
 }
 
+const GRAPH_SOURCES = '[data-mermaid], [data-chart], [data-echarts]'
+
 function graphOf(element: HTMLElement): GraphBlock | null {
   const wrapper = element.closest<HTMLElement>(GRAPH_BLOCKS)
-  const block = wrapper?.querySelector<HTMLElement>('[data-mermaid], [data-chart]') ?? null
+  const block = wrapper?.querySelector<HTMLElement>(GRAPH_SOURCES) ?? null
   if (!wrapper || !block) return null
-  return { wrapper, block, kind: wrapper.dataset.graphBlock === 'chart' ? 'chart' : 'mermaid' }
+  const named = wrapper.dataset.graphBlock
+  return { wrapper, block, kind: named === 'chart' || named === 'echarts' ? named : 'mermaid' }
 }
 
 function toolButton(action: string, label: string, icon: string): string {
@@ -75,15 +83,16 @@ function convertButton(mode: ChartMode): string {
 
 function renderHeadHtml(kind: GraphKind, mode: ChartMode): string {
   const zoomable = kind === 'mermaid'
+  const titleKey = kind === 'mermaid' ? 'preview.graph_mermaid' : kind === 'chart' ? 'preview.graph_chart' : 'preview.graph_echarts'
   const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
   return [
     `<div class="block-head">`,
-    `<span class="block-head-title">${escapeHtml(kind === 'mermaid' ? t('preview.graph_mermaid') : t('preview.graph_chart'))}</span>`,
+    `<span class="block-head-title">${escapeHtml(t(titleKey))}</span>`,
     `<span class="block-tools">`,
     zoomable ? toolButton('zoom-in', t('preview.graph_zoom_in'), ICONS.zoomIn) : '',
     zoomable ? toolButton('zoom-out', t('preview.graph_zoom_out'), ICONS.zoomOut) : '',
     zoomable ? toolButton('fit', t('preview.graph_fit'), ICONS.fit) : '',
-    zoomable ? '' : convertButton(mode),
+    kind === 'chart' ? convertButton(mode) : '',
     badge,
     toolButton('export-image', t('preview.graph_export'), ICONS.export),
     `</span>`,
@@ -115,9 +124,9 @@ function wrapGraphBlock(block: HTMLElement, kind: GraphKind): HTMLElement {
 }
 
 export function enhanceGraphBlockToolbarsInRoot(root: HTMLElement): void {
-  root.querySelectorAll<HTMLElement>('[data-mermaid], [data-chart]').forEach((block) => {
+  root.querySelectorAll<HTMLElement>(GRAPH_SOURCES).forEach((block) => {
     if (block.closest('.note-embed-body') || block.parentElement?.matches(GRAPH_BLOCKS)) return
-    const kind: GraphKind = block.hasAttribute('data-chart') ? 'chart' : 'mermaid'
+    const kind: GraphKind = block.hasAttribute('data-echarts') ? 'echarts' : block.hasAttribute('data-chart') ? 'chart' : 'mermaid'
     wrapGraphBlock(block, kind)
   })
 }
@@ -154,6 +163,17 @@ function exportSvg(block: HTMLElement, toast: BlockToast): void {
   }
   const markup = new XMLSerializer().serializeToString(svg)
   downloadBlob('inkstone-mermaid.svg', new Blob([markup], { type: 'image/svg+xml' }))
+}
+
+/** An echarts block draws SVG, so it leaves the same way a diagram does: the markup, not a raster. */
+function exportEcharts(block: HTMLElement, toast: BlockToast): void {
+  const svg = block.querySelector<SVGSVGElement>('svg')
+  if (!svg) {
+    toast({ title: t('preview.graph_export_empty'), tone: 'warning' })
+    return
+  }
+  const markup = new XMLSerializer().serializeToString(svg)
+  downloadBlob('inkstone-echarts.svg', new Blob([markup], { type: 'image/svg+xml' }))
 }
 
 function exportPng(block: HTMLElement, toast: BlockToast): void {
@@ -216,6 +236,7 @@ export function executeGraphBlockAction(action: string, targetEl: HTMLElement, t
   else if (action === 'toggle-source') toggleSource(graph)
   else if (action === 'export-image') {
     if (graph.kind === 'mermaid') exportSvg(graph.block, toast)
+    else if (graph.kind === 'echarts') exportEcharts(graph.block, toast)
     else exportPng(graph.block, toast)
   }
   else return false

@@ -84,7 +84,7 @@ export function useShareRendering(note: PublicNote | null, dark: boolean) {
     const isCurrent = () => !isCancelled && revisionRef.current === revision && hostRef.current === host
     void (async () => {
       // The host holds this markup, so it is where the fence bodies it was built from get registered.
-      await enhancePreview(host, { math: true, mermaid: true, mindmap: 'snapshot', excalidraw: 'snapshot', kanban: 'snapshot', fences: rendered.fences, dark, codeBlockCollapseLines: 24 })
+      await enhancePreview(host, { math: true, mermaid: true, mindmap: 'snapshot', excalidraw: 'snapshot', kanban: 'snapshot', echarts: 'snapshot', fences: rendered.fences, dark, codeBlockCollapseLines: 24 })
       if (!isCurrent())
         return
       await renderPendingMermaid(host, dark, { isCurrent })

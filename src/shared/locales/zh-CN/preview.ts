@@ -617,6 +617,7 @@ export const messages = {
 'preview.code_edit_unavailable': '无法编辑该块，请检查围栏是否闭合',
 'preview.graph_mermaid': 'Mermaid 图表',
 'preview.graph_chart': '图表',
+'preview.graph_echarts': 'ECharts',
 'preview.graph_zoom_in': '放大',
 'preview.graph_zoom_out': '缩小',
 'preview.graph_fit': '适应宽度',

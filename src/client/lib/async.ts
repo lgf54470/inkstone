@@ -3,6 +3,27 @@
  * comes next instead of hanging it. The timeout is the contract: the caller cannot wait
  * forever, and it must not learn about a failure it can do nothing about.
  */
+/**
+ * A promise that must not be waited on forever, with the sentence the caller wants in the rejection.
+ * A lazy library that never arrives — a dropped request, a worker that will not start — otherwise
+ * leaves its block spinning with no answer for the reader.
+ */
+export function withTimeout<T>(work: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs)
+    work.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (err: unknown) => {
+        window.clearTimeout(timer)
+        reject(err)
+      },
+    )
+  })
+}
+
 export function settleWithin(work: Promise<unknown>, timeoutMs: number): Promise<void> {
   return new Promise<void>((resolve) => {
     const timer = window.setTimeout(resolve, timeoutMs)

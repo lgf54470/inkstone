@@ -5,7 +5,7 @@ import { useDebounced } from '../../lib/hooks'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget, renderMarkdown, type Heading } from '../../lib/markdown/renderer'
 import { useLocale } from '../../lib/i18n'
-import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
+import { destroyChartInstances, destroyEchartsInstances, renderChartJs, renderEcharts, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useUi } from '../../store/ui'
 import { findNoteByTitle } from '../../store/notes'
 import { useNotes } from '../../store/notes'
@@ -257,6 +257,16 @@ function usePreviewPostRender(opts: {
     if (!host) return
     void renderChartJs(host, theme === 'dark')
     return () => destroyChartInstances(host)
+  }, [committedHtml, theme])
+
+  // echarts bakes its colours into the canvas at draw time, so a theme change has to redraw the chart
+  // rather than restyle it (ADR-0002 §4). The theme is part of the draw signature for the same reason
+  // it is for chart.js: an unchanged block under a changed theme is a block to redraw.
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    void renderEcharts(host, { allowScript: true, themeKey: theme === 'dark' ? 'd' : 'l', instant: false })
+    return () => destroyEchartsInstances(host)
   }, [committedHtml, theme])
 
   useLayoutEffect(() => {

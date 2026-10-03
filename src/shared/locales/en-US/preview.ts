@@ -617,6 +617,7 @@ export const messages = {
 'preview.code_edit_unavailable': 'Cannot edit this block; check that the fence is closed',
 'preview.graph_mermaid': 'Mermaid diagram',
 'preview.graph_chart': 'Chart',
+'preview.graph_echarts': 'ECharts',
 'preview.graph_zoom_in': 'Zoom in',
 'preview.graph_zoom_out': 'Zoom out',
 'preview.graph_fit': 'Fit to width',

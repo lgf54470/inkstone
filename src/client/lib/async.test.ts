@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mapWithConcurrency, throttledProgress } from './async'
+import { withTimeout, mapWithConcurrency, throttledProgress } from './async'
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve: () => void = () => {}
@@ -67,5 +67,28 @@ describe('throttledProgress', () => {
     vi.advanceTimersByTime(250)
     report(4)
     expect(seen).toEqual([1, 4])
+  })
+})
+
+describe('withTimeout', () => {
+  it('passes the value through while it arrives in time', async () => {
+    await expect(withTimeout(Promise.resolve(7), 1000, 'too late')).resolves.toBe(7)
+  })
+
+  it('rejects with the caller\'s own sentence when the work never answers', async () => {
+    vi.useFakeTimers()
+    try {
+      const pending = withTimeout(new Promise<number>(() => {}), 500, 'never came')
+      const settled = pending.catch((err: unknown) => (err as Error).message)
+      await vi.advanceTimersByTimeAsync(500)
+      await expect(settled).resolves.toBe('never came')
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('carries the work\'s own rejection, not a timeout', async () => {
+    await expect(withTimeout(Promise.reject(new Error('dropped')), 1000, 'too late')).rejects.toThrow('dropped')
   })
 })
