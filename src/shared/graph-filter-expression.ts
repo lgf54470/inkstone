@@ -43,7 +43,8 @@ export function parseGraphFilter(raw: string): GraphFilterExpression {
 
 export interface GraphFilterSubject {
   title: string
-  folderName: string | null
+  /** What a `path:` term is matched against: the folder's whole way down, not just its last word (G-48). */
+  folderPath: string | null
   tags: Array<{ name: string }>
 }
 
@@ -57,8 +58,17 @@ export function graphFilterMatches(subject: GraphFilterSubject, expression: Grap
   for (const term of expression.terms) {
     const isMatched = term.kind === 'tag'
       ? subject.tags.some((tag) => tag.name.toLowerCase() === term.value.toLowerCase())
-      : Boolean(subject.folderName) && containsTerm(subject.folderName!, term.value)
+      : Boolean(subject.folderPath) && containsTerm(subject.folderPath!, term.value)
     if (isMatched === term.isExcluded) return false
   }
   return true
+}
+
+/**
+ * How to write a folder back into a filter line. A path is one term only while it holds no space, so
+ * `Reading Room/Notes` has to arrive quoted — otherwise the grammar reads it as a folder called
+ * `Reading` plus the free text `Room/Notes` (G-48).
+ */
+export function graphPathTerm(value: string): string {
+  return /\s/.test(value) ? `path:"${value}"` : `path:${value}`
 }

@@ -21,7 +21,7 @@ vi.mock('../../../lib/api', () => ({
 function node(id: string, title: string, tags: Array<{ name: string, color: string }>): GraphResponse['nodes'][number] {
   return {
     id, title, kind: 'note', degree: 1, inDegree: 0, outDegree: 1,
-    folderId: null, folderName: 'Work', folderColor: null, tags,
+    folderId: null, folderPath: 'Work', folderColor: null, tags,
   }
 }
 

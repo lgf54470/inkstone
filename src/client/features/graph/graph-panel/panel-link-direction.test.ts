@@ -30,8 +30,8 @@ const BETA = 'b'.repeat(26)
 
 const pair: GraphResponse = {
   nodes: [
-    { id: ALPHA, title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
-    { id: BETA, title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+    { id: ALPHA, title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
+    { id: BETA, title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: null, folderColor: null, tags: [] },
   ],
   edges: [{ source: ALPHA, target: BETA }],
   meta: { mode: 'local', centerId: ALPHA, depth: 1, totalNodes: 2, totalEdges: 1, truncated: false, limit: 350 },

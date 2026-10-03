@@ -3,15 +3,28 @@ import { LIMITS } from '@shared/constants'
 import { truncateText } from '@shared/text-utils'
 import { wikiNoteTarget } from '@shared/markdown-utils'
 import { parseGraphFilter, type GraphFilterTerm } from '@shared/graph-filter-expression'
+import { folderIdsMatchingPath } from '@shared/folder-path'
 import type { GraphResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { isValidId } from '../../lib/id'
 import { clampInt } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
-import { excludedNoteClause, GRAPH_EDGE_CANDIDATE_LIMIT, GRAPH_QUERY_MAX_CHARS, GRAPH_UNRESOLVED_ALLOWANCE, GRAPH_UNRESOLVED_MAX, localNeighborhoodSql, parseExcludedNoteIds, parseGraphLinkDirection, type GraphLinkDirection } from './helpers'
+import {
+  GRAPH_EDGE_CANDIDATE_LIMIT,
+  GRAPH_QUERY_MAX_CHARS,
+  GRAPH_UNRESOLVED_ALLOWANCE,
+  GRAPH_UNRESOLVED_MAX,
+  excludedNoteClause,
+  loadFolderPaths,
+  localNeighborhoodSql,
+  parseExcludedNoteIds,
+  parseGraphLinkDirection,
+  type GraphLinkDirection,
+} from './helpers'
 import { escapeLike } from './helpers'
 import { applyUnresolvedNodes } from './graph-nodes'
+import { degreeColumns, degreeJoin } from './graph-degree-sql'
 import { consumeGraphReadBudget } from './read-budget'
 import { applyTagNodes } from '@shared/graph-tag-nodes'
 
@@ -45,7 +58,6 @@ type GraphRow = {
   id: string
   title: string
   folder_id: string | null
-  folder_name: string | null
   folder_color: string | null
   degree: number
   in_degree: number
@@ -61,32 +73,6 @@ type GraphLinkRow = {
 
 type GraphTagRow = { note_id: string; name: string; color: string | null }
 
-// Link degrees are aggregated once per user (single pass over links) and
-// joined by note id, instead of three correlated sub-probes per note row.
-const degreeJoin = `
-  LEFT JOIN (
-    SELECT note_id,
-           SUM(is_endpoint) AS degree,
-           SUM(is_target) AS in_degree,
-           SUM(is_source) AS out_degree
-    FROM (
-      SELECT l.source_note_id AS note_id, 1 AS is_endpoint, 0 AS is_target, 1 AS is_source
-        FROM links l
-        JOIN notes adj ON adj.id = l.target_note_id AND adj.user_id = l.user_id
-          AND adj.deleted_at IS NULL AND adj.is_archived = 0
-        WHERE l.user_id = ? AND l.target_note_id IS NOT NULL
-      UNION ALL
-      SELECT l.target_note_id AS note_id, 1, 1, 0
-        FROM links l
-        JOIN notes adj ON adj.id = l.source_note_id AND adj.user_id = l.user_id
-          AND adj.deleted_at IS NULL AND adj.is_archived = 0
-        WHERE l.user_id = ? AND l.target_note_id IS NOT NULL
-    ) GROUP BY note_id
-  ) d ON d.note_id = n.id`
-
-const degreeColumns = `COALESCE(d.degree, 0) AS degree,
-  COALESCE(d.in_degree, 0) AS in_degree, COALESCE(d.out_degree, 0) AS out_degree`
-
 export function registerSearchGraphRoutes(searchRoutes: Hono<AppBindings>): void {
   searchRoutes.get('/graph', requireAuth, graphHandler)
 }
@@ -96,7 +82,8 @@ async function graphHandler(c: Context<AppBindings>): Promise<Response> {
   // Charged after the request line has been read, so a malformed query answers 400 without spending
   // the account's read budget, and before the queries, so a runaway loop is what meets the 429.
   await consumeGraphReadBudget(c.env.DB, params.userId)
-  const { filters, filterBinds } = buildGraphFilters(params)
+  const folderPaths = await loadFolderPaths(c.env.DB, params.userId)
+  const { filters, filterBinds } = buildGraphFilters(params, folderPaths)
   const { rows, totalNodes } = params.mode === 'local'
     ? await runLocalGraphQuery(c.env.DB, params, filters, filterBinds)
     : await runGlobalGraphQuery(c.env.DB, params, filters, filterBinds)
@@ -106,7 +93,7 @@ async function graphHandler(c: Context<AppBindings>): Promise<Response> {
   const graph = await loadGraphEdgesAndTags(c.env.DB, params.userId, pageRows, params.includeUnresolved)
   if (graph.truncated) truncated = true
   if (graph.unresolved.size >= GRAPH_UNRESOLVED_MAX) truncated = true
-  const body = buildGraphBody(pageRows, graph.edges, graph.unresolved, graph.tagsByNote, {
+  const body = buildGraphBody(pageRows, graph.edges, graph.unresolved, graph.tagsByNote, folderPaths, {
     mode: params.mode,
     centerId: params.mode === 'local' ? params.centerId : null,
     depth: params.depth,
@@ -169,7 +156,7 @@ function validateGraphParams(params: GraphParams): void {
   }
 }
 
-function buildGraphFilters(params: GraphParams): { filters: string[]; filterBinds: unknown[] } {
+function buildGraphFilters(params: GraphParams, folderPaths: Map<string, string>): { filters: string[]; filterBinds: unknown[] } {
   const filters: string[] = ['n.user_id = ?', 'n.deleted_at IS NULL', 'n.is_archived = 0']
   const filterBinds: unknown[] = [params.userId]
   const expression = parseGraphFilter(params.query)
@@ -177,7 +164,7 @@ function buildGraphFilters(params: GraphParams): { filters: string[]; filterBind
     filters.push(`n.title LIKE ? ESCAPE '\\' COLLATE NOCASE`)
     filterBinds.push(`%${escapeLike(expression.text)}%`)
   }
-  for (const term of expression.terms) appendFilterTerm(filters, filterBinds, term)
+  for (const term of expression.terms) appendFilterTerm(filters, filterBinds, term, folderPaths)
   // A local graph keeps the note it is built around, whatever the reader took out of the overview (G-42).
   const exclusion = excludedNoteClause(params.excluded, params.mode === 'local' ? params.centerId : null)
   if (exclusion) {
@@ -220,7 +207,7 @@ function buildGraphFilters(params: GraphParams): { filters: string[]; filterBind
 }
 
 /** One qualified term of the filter line: `tag:` / `path:` must match, `-tag:` / `-path:` must not. */
-function appendFilterTerm(filters: string[], filterBinds: unknown[], term: GraphFilterTerm): void {
+function appendFilterTerm(filters: string[], filterBinds: unknown[], term: GraphFilterTerm, folderPaths: Map<string, string>): void {
   if (term.kind === 'tag') {
     filters.push(`${term.isExcluded ? 'NOT ' : ''}EXISTS (
       SELECT 1 FROM note_tags nt_term
@@ -230,11 +217,13 @@ function appendFilterTerm(filters: string[], filterBinds: unknown[], term: Graph
     filterBinds.push(term.value)
     return
   }
-  // A note without a folder has no path to exclude, so the negation reads the missing name as blank.
+  // A `path:` term names where a folder sits, so it selects folders first and the notes they hold second.
+  // The id list travels as one bound json_each argument, however many folders the term reaches (G-48).
+  const ids = folderIdsMatchingPath(term.value, folderPaths)
   filters.push(term.isExcluded
-    ? `COALESCE(f.name, '') NOT LIKE ? ESCAPE '\\' COLLATE NOCASE`
-    : `f.name LIKE ? ESCAPE '\\' COLLATE NOCASE`)
-  filterBinds.push(`%${escapeLike(term.value)}%`)
+    ? `COALESCE(n.folder_id, '') NOT IN (SELECT value FROM json_each(?))`
+    : `n.folder_id IN (SELECT value FROM json_each(?))`)
+  filterBinds.push(JSON.stringify(ids))
 }
 
 async function runLocalGraphQuery(
@@ -247,7 +236,7 @@ async function runLocalGraphQuery(
   const prefixBinds = [params.centerId, params.centerId, params.userId, params.depth]
   const result = await db.prepare(
     `${neighborhood}
-     SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
+     SELECT n.id, n.title, n.folder_id, f.color AS folder_color,
        ${degreeColumns}, nearby.depth
      FROM nearby JOIN notes n ON n.id = nearby.id
      LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
@@ -274,7 +263,7 @@ async function runGlobalGraphQuery(
   filterBinds: unknown[],
 ): Promise<{ rows: GraphRow[]; totalNodes: number }> {
   const result = await db.prepare(
-    `SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
+    `SELECT n.id, n.title, n.folder_id, f.color AS folder_color,
        ${degreeColumns}
      FROM notes n LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
      ${degreeJoin}
@@ -382,6 +371,25 @@ function collectGraphLinkRows(
   return { linkRows, tagRows, truncated }
 }
 
+function graphNodes(
+  rows: GraphRow[],
+  tagsByNote: Map<string, Array<{ name: string; color: string | null }>>,
+  folderPaths: Map<string, string>,
+): GraphResponse['nodes'] {
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    kind: 'note',
+    degree: Number(row.degree),
+    inDegree: Number(row.in_degree),
+    outDegree: Number(row.out_degree),
+    folderId: row.folder_id,
+    folderPath: row.folder_id ? folderPaths.get(row.folder_id) ?? null : null,
+    folderColor: row.folder_color,
+    tags: tagsByNote.get(row.id) ?? [],
+  }))
+}
+
 function buildGraphEdges(
   linkRows: Array<{
     source_note_id: string
@@ -437,6 +445,7 @@ function buildGraphBody(
   edges: GraphResponse['edges'],
   unresolved: Map<string, { title: string; sources: Set<string> }>,
   tagsByNote: Map<string, Array<{ name: string; color: string | null }>>,
+  folderPaths: Map<string, string>,
   meta: {
     mode: 'local' | 'global'
     centerId: string | null
@@ -447,7 +456,7 @@ function buildGraphBody(
     showTagNodes: boolean
   },
 ): GraphResponse {
-  const nodes: GraphResponse['nodes'] = graphNodes(rows, tagsByNote)
+  const nodes: GraphResponse['nodes'] = graphNodes(rows, tagsByNote, folderPaths)
   applyUnresolvedNodes(nodes, edges, unresolved)
   const tagNodes = meta.showTagNodes ? applyTagNodes(nodes, edges, tagsByNote) : { added: 0, dropped: 0 }
   return {
@@ -463,22 +472,4 @@ function buildGraphBody(
       limit: meta.limit,
     },
   }
-}
-
-function graphNodes(
-  rows: GraphRow[],
-  tagsByNote: Map<string, Array<{ name: string; color: string | null }>>,
-): GraphResponse['nodes'] {
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    kind: 'note',
-    degree: Number(row.degree),
-    inDegree: Number(row.in_degree),
-    outDegree: Number(row.out_degree),
-    folderId: row.folder_id,
-    folderName: row.folder_name,
-    folderColor: row.folder_color,
-    tags: tagsByNote.get(row.id) ?? [],
-  }))
 }

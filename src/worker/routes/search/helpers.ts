@@ -1,4 +1,5 @@
 import { segmentCJK, toPlainText } from '@shared/markdown-utils'
+import { folderPathsById } from '@shared/folder-path'
 import { sliceText, truncateText } from '@shared/text-utils'
 import type { SearchHit } from '@shared/types'
 import { drainFtsQueue, hasPendingFtsWork } from '../../db/fts'
@@ -379,6 +380,18 @@ export function parseGraphLinkDirection(raw: string | undefined): GraphLinkDirec
  * bound json_each argument, so its length never runs into D1's hundred-variable ceiling, and one id can
  * be kept in — the centre of a local graph is the note the reader is standing on (G-42).
  */
+/**
+ * Every folder the account has, said by where it sits. The graph page is bounded to a few hundred notes,
+ * while a `path:` term and a legend row have to name the whole way down, so the tree is read once per
+ * request rather than walked per note (G-48).
+ */
+export async function loadFolderPaths(db: D1Database, userId: string): Promise<Map<string, string>> {
+  const result = await db.prepare(
+    `SELECT id, parent_id, name FROM folders WHERE user_id = ? AND deleted_at IS NULL`,
+  ).bind(userId).all<{ id: string; parent_id: string | null; name: string }>()
+  return folderPathsById(result.results.map((row) => ({ id: row.id, parentId: row.parent_id, name: row.name })))
+}
+
 export function excludedNoteClause(excluded: readonly string[], keepId: string | null): { filter: string, bind: string } | null {
   const kept = excluded.filter((id) => id !== keepId)
   return kept.length === 0 ? null : { filter: 'n.id NOT IN (SELECT value FROM json_each(?))', bind: JSON.stringify(kept) }

@@ -19,8 +19,8 @@ vi.mock('../../../lib/api', () => ({
 
 const graph: GraphResponse = {
   nodes: [
-    { id: 'note-1', title: 'Quarterly review', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: 'Work', folderColor: null, tags: [] },
-    { id: 'note-2', title: 'Reading list', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: 'Life', folderColor: null, tags: [] },
+    { id: 'note-1', title: 'Quarterly review', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: 'Work', folderColor: null, tags: [] },
+    { id: 'note-2', title: 'Reading list', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: 'Life', folderColor: null, tags: [] },
   ],
   edges: [{ source: 'note-1', target: 'note-2' }],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 2, totalEdges: 1, truncated: false, limit: 100 },

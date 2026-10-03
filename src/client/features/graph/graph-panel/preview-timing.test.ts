@@ -24,7 +24,7 @@ function node(id: string, title: string, inDegree: number, outDegree: number): G
   return {
     id, title, kind: 'note',
     degree: inDegree + outDegree, inDegree, outDegree,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
   }
 }
 

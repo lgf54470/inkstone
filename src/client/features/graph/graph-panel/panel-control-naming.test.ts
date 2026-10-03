@@ -16,7 +16,7 @@ vi.mock('../../../lib/api', () => ({
 
 const panelGraph: GraphResponse = {
   nodes: [
-    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
+    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
   ],
   edges: [],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 1, totalEdges: 0, truncated: false, limit: 350 },

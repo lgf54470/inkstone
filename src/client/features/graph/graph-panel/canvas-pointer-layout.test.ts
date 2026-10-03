@@ -15,7 +15,7 @@ vi.mock('../../preview', async () => (await import('./preview-stub.test-helpers'
 function node(id: string, title: string): GraphNode {
   return {
     id, title, kind: 'note', degree: 1, inDegree: 0, outDegree: 1,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
   }
 }
 

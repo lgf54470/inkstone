@@ -22,7 +22,7 @@ vi.mock('../../../lib/api', () => ({ api: { graph: vi.fn() } }))
 function node(id: string, degree = 1): GraphNode {
   return {
     id, title: id, kind: 'note', degree, inDegree: 0, outDegree: degree,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
   }
 }
 

@@ -442,12 +442,12 @@ describe('graph route tag nodes (FEAT-03, real D1)', () => {
   })
 })
 
-async function seedFolder(userId: string, folderId: string, name: string): Promise<void> {
+async function seedFolder(userId: string, folderId: string, name: string, parentId: string | null = null): Promise<void> {
   await runSql(
     db,
     `INSERT INTO folders (id, user_id, parent_id, name, position, created_at, updated_at, deleted_at)
-     VALUES (?1, ?2, NULL, ?3, 0, ?4, ?4, NULL)`,
-    folderId, userId, name, NOW,
+     VALUES (?1, ?2, ?5, ?3, 0, ?4, ?4, NULL)`,
+    folderId, userId, name, NOW, parentId,
   )
 }
 
@@ -494,6 +494,37 @@ describe('graph route filter grammar (FEAT-04, real D1)', () => {
 
     const excluded = await graphBody('/api/search/graph?q=-path:shop', userId)
     expect(nodeIds(excluded)).toEqual([vid('loose')])
+  })
+
+  it('keeps two folders that end with the same word as two places on the path', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    const work = vid('wk'), workNotes = vid('wn'), life = vid('lf'), lifeNotes = vid('lo')
+    await seedFolder(userId, work, 'Work')
+    await seedFolder(userId, workNotes, 'Notes', work)
+    await seedFolder(userId, life, 'Life')
+    await seedFolder(userId, lifeNotes, 'Notes', life)
+    await seedNote(vid('aa'), userId, NOW + 6, workNotes)
+    await seedNote(vid('bb'), userId, NOW + 5, lifeNotes)
+    await seedNote(vid('cc'), userId, NOW + 4, work)
+
+    const nested = await graphBody('/api/search/graph?q=path:Work%2FNotes', userId)
+    expect(nodeIds(nested)).toEqual([vid('aa')])
+
+    const whole = await graphBody('/api/search/graph', userId)
+    const paths = new Map((whole.nodes as Array<{ id: string, folderPath: string | null }>).map((node) => [node.id, node.folderPath]))
+    expect(paths.get(vid('aa'))).toBe('Work/Notes')
+    expect(paths.get(vid('bb'))).toBe('Life/Notes')
+    expect(paths.get(vid('cc'))).toBe('Work')
+
+    const either = await graphBody('/api/search/graph?q=path:Notes', userId)
+    expect(nodeIds(either).sort()).toEqual([vid('aa'), vid('bb')].sort())
+
+    const branch = await graphBody('/api/search/graph?q=path:Work', userId)
+    expect(nodeIds(branch).sort()).toEqual([vid('aa'), vid('cc')].sort())
+
+    const notWork = await graphBody('/api/search/graph?q=-path:Work', userId)
+    expect(nodeIds(notWork).sort()).toEqual([vid('bb')].sort())
   })
 
   it('applies text and folder terms together in one filter line', async () => {

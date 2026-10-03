@@ -176,6 +176,26 @@ describe('demo graph route filter grammar', () => {
   })
 })
 
+  it('keeps two folders that end with the same word apart, the way the real route does (G-48)', async () => {
+    const backend = await seededGraphBackend()
+    const parent = await (await call(backend, '/api/folders',
+      graphJson({ method: 'POST', body: JSON.stringify({ name: 'Study' }) }))).json()
+    const nested = await (await call(backend, '/api/folders',
+      graphJson({ method: 'POST', body: JSON.stringify({ name: 'Reading Room', parentId: parent.id }) }))).json()
+    await call(backend, '/api/notes', graphJson({ method: 'POST', body: JSON.stringify({ title: 'Deep Note', content: 'x\n', folderId: nested.id }) }))
+
+    expect(await graphTitles(backend, 'path:"Study/Reading Room"')).toEqual(['Deep Note'])
+
+    const nodes = (await (await call(backend, '/api/graph')).json()).nodes
+      .filter((node: { title: string }) => node.title === 'Deep Note')
+    expect(nodes.map((node: { folderPath: string | null }) => node.folderPath)).toEqual(['Study/Reading Room'])
+    expect(await graphTitles(backend, 'path:Study/Reading')).toEqual(['Deep Note'])
+    expect(await graphTitles(backend, 'path:"Reading Room"')).toEqual(['Deep Note', 'Note Alpha', 'Note Gamma'])
+    const withoutStudy = await graphTitles(backend, '-path:Study')
+    expect(withoutStudy).not.toContain('Deep Note')
+    expect(withoutStudy).toContain('Note Alpha')
+  })
+
 describe('the choices a reader makes about the picture (G-42, G-44)', () => {
   async function createNotes(backend: DemoBackend, bodies: Array<{ title: string, content: string }>): Promise<void> {
     for (const body of bodies) {

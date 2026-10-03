@@ -14,7 +14,7 @@ import type { CanvasNode, CanvasState, GraphTickerOptions } from './types'
 function canvasNode(id: string, x: number, y: number, over: Partial<CanvasNode> = {}): CanvasNode {
   return {
     id, title: id, kind: 'note', degree: 0, inDegree: 0, outDegree: 0,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
     x, y, vx: 0, vy: 0, r: 6, tagColor: null, colorGroup: null,
     ...over,
   }
@@ -36,9 +36,9 @@ function createState(nodes: CanvasNode[], edges: Array<{ source: string, target:
 function trio(): CanvasState {
   const data: GraphResponse = {
     nodes: [
-      { id: 'note-1', title: 'Note 1', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
-      { id: 'note-2', title: 'Note 2', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
-      { id: 'note-3', title: 'Note 3', kind: 'note', degree: 0, inDegree: 0, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+      { id: 'note-1', title: 'Note 1', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
+      { id: 'note-2', title: 'Note 2', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
+      { id: 'note-3', title: 'Note 3', kind: 'note', degree: 0, inDegree: 0, outDegree: 0, folderId: null, folderPath: null, folderColor: null, tags: [] },
     ],
     edges: [{ source: 'note-1', target: 'note-2' }, { source: 'note-2', target: 'note-3' }],
     meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 3, totalEdges: 2, truncated: false, limit: 350 },
@@ -141,8 +141,8 @@ describe('physics convergence', () => {
     vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({ matches: true, media: 'prefers-reduced-motion: reduce' })))
     const data: GraphResponse = {
       nodes: [
-        { id: 'note-1', title: 'Note 1', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
-        { id: 'note-2', title: 'Note 2', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+        { id: 'note-1', title: 'Note 1', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
+        { id: 'note-2', title: 'Note 2', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: null, folderColor: null, tags: [] },
       ],
       edges: [{ source: 'note-1', target: 'note-2' }],
       meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 2, totalEdges: 1, truncated: false, limit: 350 },

@@ -5,6 +5,7 @@ import { deriveExcerpt, extractWikiLinks, normalizeLinkKey, wikiNoteTarget } fro
 import type { GraphResponse, Note, SearchResponse } from '@shared/types'
 import { applyTagNodes } from '@shared/graph-tag-nodes'
 import { graphFilterMatches, parseGraphFilter, type GraphFilterExpression } from '@shared/graph-filter-expression'
+import { folderPathsById } from '@shared/folder-path'
 import { listFolders, summarize } from '../../state'
 
 interface GraphLinkRecord {
@@ -107,15 +108,15 @@ interface GraphNoteFilter {
   excluded: Set<string>
   allowed: Set<string>
   degree: Map<string, number>
-  folderNames: Map<string, string>
+  folderPaths: Map<string, string>
 }
 
 function filterGraphNotes(active: Note[], options: GraphNoteFilter): Note[] {
-  const { allowed, degree, excluded, folderId, folderNames, includeOrphans, tags, tagsMatch, expression } = options
+  const { allowed, degree, excluded, folderId, folderPaths, includeOrphans, tags, tagsMatch, expression } = options
   return active.filter((note) => allowed.has(note.id) && !excluded.has(note.id)
     && graphFilterMatches({
       title: note.title,
-      folderName: note.folderId ? folderNames.get(note.folderId) ?? null : null,
+      folderPath: note.folderId ? folderPaths.get(note.folderId) ?? null : null,
       tags: note.tags.map((name) => ({ name })),
     }, expression)
     && (!folderId || note.folderId === folderId)
@@ -128,9 +129,9 @@ function filterGraphNotes(active: Note[], options: GraphNoteFilter): Note[] {
 
 function graphNoteFilter(
   c: Context,
-  state: DemoState,
   allowed: Set<string>,
   degree: Map<string, number>,
+  folderPaths: Map<string, string>,
 ): GraphNoteFilter {
   const legacyTag = (c.req.query('tag') ?? '').trim().toLocaleLowerCase()
   const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim().toLocaleLowerCase()).filter(Boolean))]
@@ -144,7 +145,7 @@ function graphNoteFilter(
     excluded: new Set((c.req.query('excluded') ?? '').split(',').map((item) => item.trim()).filter(Boolean)),
     allowed,
     degree,
-    folderNames: new Map([...state.folders.values()].map((folder) => [folder.id, folder.name])),
+    folderPaths,
   }
 }
 
@@ -154,6 +155,7 @@ function buildGraphNodes(
   degree: Map<string, number>,
   incoming: Map<string, number>,
   outgoing: Map<string, number>,
+  folderPaths: Map<string, string>,
 ): GraphResponse['nodes'] {
   const folders = new Map(listFolders(state).map((folder) => [folder.id, folder]))
   return shown.map((note) => ({
@@ -164,7 +166,7 @@ function buildGraphNodes(
     inDegree: incoming.get(note.id) ?? 0,
     outDegree: outgoing.get(note.id) ?? 0,
     folderId: note.folderId,
-    folderName: note.folderId ? folders.get(note.folderId)?.name ?? null : null,
+    folderPath: note.folderId ? folderPaths.get(note.folderId) ?? null : null,
     folderColor: note.folderId ? folders.get(note.folderId)?.color ?? null : null,
     tags: note.tags.map((name) => ({ name, color: state.tagColors.get(name) ?? null })),
   }))
@@ -187,7 +189,7 @@ function collectUnresolvedLinks(
   for (const [key, missing] of unresolved) {
     const id = `unresolved:${key}`
     nodes.push({ id, title: missing.title, kind: 'unresolved', degree: missing.sources.size,
-      inDegree: missing.sources.size, outDegree: 0, folderId: null, folderName: null,
+      inDegree: missing.sources.size, outDegree: 0, folderId: null, folderPath: null,
       folderColor: null, tags: [] })
     for (const source of missing.sources) edges.push({ source, target: id })
   }
@@ -210,11 +212,12 @@ function graphResponse(c: Context, state: DemoState): Response {
   if (mode === 'local' && centerId) {
     allowed = localNeighborhood(centerId, depth, uniqueEdges, c.req.query('direction') ?? 'both')
   }
-  const filtered = filterGraphNotes(active, graphNoteFilter(c, state, allowed, degree))
+  const folderPaths = folderPathsById(listFolders(state))
+  const filtered = filterGraphNotes(active, graphNoteFilter(c, allowed, degree, folderPaths))
   const shown = filtered.slice(0, limit)
   const shownIds = new Set(shown.map((note) => note.id))
   const edges = uniqueEdges.filter((edge) => shownIds.has(edge.source) && shownIds.has(edge.target))
-  const nodes = buildGraphNodes(state, shown, degree, incoming, outgoing)
+  const nodes = buildGraphNodes(state, shown, degree, incoming, outgoing, folderPaths)
   const unresolvedCount = includeUnresolved
     ? collectUnresolvedLinks(linkRecords, shownIds, nodes, edges)
     : 0

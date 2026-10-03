@@ -112,7 +112,7 @@ function seedFixture(db, notes, linksPerNote) {
   return userId
 }
 
-const GLOBAL_PAGE = `SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
+const GLOBAL_PAGE = `SELECT n.id, n.title, n.folder_id, f.color AS folder_color,
   COALESCE(d.degree, 0) AS degree, COALESCE(d.in_degree, 0) AS in_degree, COALESCE(d.out_degree, 0) AS out_degree
   FROM notes n LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
   LEFT JOIN (
@@ -295,7 +295,7 @@ async function paintBenchmark(page, nodes, linksPerNote) {
     const data = {
       nodes: ids.map((id, index) => ({
         id, title: `Bench note ${index}`, kind: 'note', degree: linksPerNote, inDegree: 1, outDegree: linksPerNote,
-        folderId: null, folderName: null, folderColor: null, tags: [],
+        folderId: null, folderPath: null, folderColor: null, tags: [],
       })),
       edges: ids.flatMap((id, index) => Array.from({ length: linksPerNote }, (_unused, hop) => ({ source: id, target: ids[(index + hop * 7) % ids.length] }))),
       meta: { mode: 'global', centerId: null, depth: 1, totalNodes: nodes, totalEdges: nodes * linksPerNote, truncated: false, limit: nodes },

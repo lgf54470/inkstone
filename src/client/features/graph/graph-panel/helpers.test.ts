@@ -33,7 +33,7 @@ function createTestNode() {
     inDegree: 1,
     outDegree: 0,
     folderId: 'f1',
-    folderName: 'Work',
+    folderPath: 'Work',
     folderColor: '#dc2626',
     tags: [{ name: 'urgent', color: '#059669' }],
     x: 0,
@@ -339,7 +339,7 @@ describe('legend rows a reader can press (G-14)', () => {
 
   it('gives every row the filter line that still selects the nodes drawn under it', () => {
     const work = { ...createTestNode(), id: 'a' }
-    const play = { ...createTestNode(), id: 'b', folderName: 'Play', folderColor: '#059669', tags: [{ name: 'idea', color: null }] }
+    const play = { ...createTestNode(), id: 'b', folderPath: 'Play', folderColor: '#059669', tags: [{ name: 'idea', color: null }] }
     const nodes: CanvasNode[] = [work, play, asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })]
     for (const groupBy of ['folder', 'tag'] as const) {
       for (const row of buildColorLegends(nodes, groupBy)) {
@@ -359,7 +359,7 @@ describe('legend rows a reader can press (G-14)', () => {
 })
 
 function countedNode(id: string, kind: GraphResponse['nodes'][number]['kind']): GraphResponse['nodes'][number] {
-  return { id, title: id, kind, degree: 0, inDegree: 0, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] }
+  return { id, title: id, kind, degree: 0, inDegree: 0, outDegree: 0, folderId: null, folderPath: null, folderColor: null, tags: [] }
 }
 
 describe('the node counts the header and the badge share (G-38)', () => {
@@ -441,13 +441,13 @@ function searchNode(
 ): GraphResponse['nodes'][number] {
   return {
     id, title, kind: 'note', degree: 0, inDegree: 0, outDegree: 0,
-    folderId: null, folderName: null, folderColor: null, tags: [], ...options,
+    folderId: null, folderPath: null, folderColor: null, tags: [], ...options,
   }
 }
 
 const searched: GraphResponse['nodes'] = [
-  searchNode('note-1', 'Quarterly review', { folderName: 'Work', tags: [{ name: 'work', color: null }] }),
-  searchNode('note-2', 'Reading list', { folderName: 'Life' }),
+  searchNode('note-1', 'Quarterly review', { folderPath: 'Work', tags: [{ name: 'work', color: null }] }),
+  searchNode('note-2', 'Reading list', { folderPath: 'Life' }),
   searchNode('tag:work', 'work', { kind: 'tag' }),
 ]
 

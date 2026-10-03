@@ -22,7 +22,7 @@ import type { CanvasNode, CanvasState } from './types'
 function node(overrides: Partial<CanvasNode> = {}): CanvasNode {
   return {
     id: 'note-1', title: 'Note 1', kind: 'note' as const, degree: 1, inDegree: 1, outDegree: 0,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
     x: 0, y: 0, vx: 0, vy: 0, r: 10, tagColor: null, colorGroup: null,
     ...overrides,
   }

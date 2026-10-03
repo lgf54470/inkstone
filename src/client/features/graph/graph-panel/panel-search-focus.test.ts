@@ -31,9 +31,9 @@ vi.mock('../../../lib/api', () => ({
 
 const threeNotes: GraphResponse = {
   nodes: [
-    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
-    { id: 'note-2', title: 'Beta', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderName: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
-    { id: 'note-3', title: 'Gamma', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: 'Life', folderColor: null, tags: [] },
+    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
+    { id: 'note-2', title: 'Beta', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderPath: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
+    { id: 'note-3', title: 'Gamma', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: 'Life', folderColor: null, tags: [] },
   ],
   edges: [{ source: 'note-1', target: 'note-2' }, { source: 'note-2', target: 'note-3' }],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 3, totalEdges: 2, truncated: false, limit: 350 },

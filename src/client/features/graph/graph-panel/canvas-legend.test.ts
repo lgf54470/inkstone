@@ -15,7 +15,7 @@ const note = {
   inDegree: 0,
   outDegree: 1,
   folderId: null,
-  folderName: null,
+  folderPath: null,
   folderColor: null,
   tags: [{ name: 'work', color: '#059669' }],
 }
@@ -28,7 +28,7 @@ const tag = {
   inDegree: 1,
   outDegree: 0,
   folderId: null,
-  folderName: null,
+  folderPath: null,
   folderColor: null,
   tags: [],
 }
@@ -41,7 +41,7 @@ function response(nodes: GraphResponse['nodes'], edges: GraphResponse['edges']):
   }
 }
 
-function graphElement(data: GraphResponse, canvas: HTMLCanvasElement, prefs: GraphPreferences = DEFAULT_PREFERENCES): ReactNode {
+function graphElement(data: GraphResponse, canvas: HTMLCanvasElement, prefs: GraphPreferences = DEFAULT_PREFERENCES, extra: Record<string, unknown> = {}): ReactNode {
   const state: CanvasState = {
     nodes: [],
     edges: [],
@@ -74,6 +74,7 @@ function graphElement(data: GraphResponse, canvas: HTMLCanvasElement, prefs: Gra
     onClose: vi.fn(),
     onMakeLocal: vi.fn(),
     controlsRef: { current: null },
+    ...extra,
   })
 }
 
@@ -159,6 +160,39 @@ describe('graph color legend', () => {
     const swatches = legendSwatches(graph.container, 'idea')
     expect(swatches).toHaveLength(1)
     expect(swatches[0]?.getAttribute('style')).toContain('background-color: var(--graph-tag-4)')
+    graph.close()
+  })
+})
+
+describe('folders that share their last word (G-48)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** Two notes, two folders, one word: only the path says which is which. */
+  const nested = (): GraphResponse => response([
+    { ...note, id: 'a', folderId: 'wn', folderPath: 'Work/Notes', folderColor: '#dc2626', tags: [] },
+    { ...note, id: 'b', folderId: 'rn', folderPath: 'Reading Room/Notes', folderColor: '#059669', tags: [] },
+  ], [{ source: 'a', target: 'b' }])
+
+  it('draws one row per folder rather than one row per last word', () => {
+    const graph = mountLegend((canvas) => graphElement(nested(), canvas, { ...DEFAULT_PREFERENCES, groupBy: 'folder' }))
+
+    expect(legendSwatches(graph.container, 'Work/Notes')).toHaveLength(1)
+    expect(legendSwatches(graph.container, 'Reading Room/Notes')).toHaveLength(1)
+    expect(legendSwatches(graph.container, 'Notes')).toHaveLength(0)
+    graph.close()
+  })
+
+  it('hands the whole path back as one filter term, quoted when it holds a space', () => {
+    const graph = mountLegend((canvas) => graphElement(
+      nested(), canvas, { ...DEFAULT_PREFERENCES, groupBy: 'folder' }, { onLegendSelect: vi.fn() },
+    ))
+    const queries = [...graph.container.querySelectorAll('button[data-legend-query]')]
+      .map((button) => button.getAttribute('data-legend-query'))
+
+    expect(queries).toContain('path:Work/Notes')
+    expect(queries).toContain('path:"Reading Room/Notes"')
     graph.close()
   })
 })

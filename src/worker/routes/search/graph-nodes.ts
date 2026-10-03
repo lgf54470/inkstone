@@ -17,7 +17,7 @@ export function applyUnresolvedNodes(
       inDegree: missing.sources.size,
       outDegree: 0,
       folderId: null,
-      folderName: null,
+      folderPath: null,
       folderColor: null,
       tags: [],
     })

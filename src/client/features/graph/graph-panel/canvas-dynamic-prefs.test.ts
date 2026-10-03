@@ -19,7 +19,7 @@ function note(id: string, title: string, outDegree: number): GraphNode {
   return {
     id, title, kind: 'note',
     degree: outDegree, inDegree: 0, outDegree,
-    folderId: null, folderName: null, folderColor: null, tags: [],
+    folderId: null, folderPath: null, folderColor: null, tags: [],
   }
 }
 

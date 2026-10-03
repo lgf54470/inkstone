@@ -29,8 +29,8 @@ vi.mock('../../../lib/api', () => ({
 
 const twoTags: GraphResponse = {
   nodes: [
-    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
-    { id: 'note-2', title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: 'Life', folderColor: null, tags: [{ name: 'urgent', color: '#dc2626' }] },
+    { id: 'note-1', title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: 'Work', folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
+    { id: 'note-2', title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: 'Life', folderColor: null, tags: [{ name: 'urgent', color: '#dc2626' }] },
   ],
   edges: [{ source: 'note-1', target: 'note-2' }],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 2, totalEdges: 1, truncated: false, limit: 350 },

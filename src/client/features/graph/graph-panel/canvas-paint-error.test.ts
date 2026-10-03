@@ -18,8 +18,8 @@ import { DEFAULT_PREFERENCES } from './constants'
 
 const pair: GraphResponse = {
   nodes: [
-    { id: 'a'.repeat(26), title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
-    { id: 'b'.repeat(26), title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+    { id: 'a'.repeat(26), title: 'Alpha', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderPath: null, folderColor: null, tags: [] },
+    { id: 'b'.repeat(26), title: 'Beta', kind: 'note', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderPath: null, folderColor: null, tags: [] },
   ],
   edges: [{ source: 'a'.repeat(26), target: 'b'.repeat(26) }],
   meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 2, totalEdges: 1, truncated: false, limit: 350 },

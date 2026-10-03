@@ -7,7 +7,12 @@ export interface GraphNode {
   inDegree: number
   outDegree: number
   folderId: string | null
-  folderName: string | null
+  /**
+   * Where that folder sits, ancestors joined by `/` (`Work/Notes`), and null when the note is unfiled. A
+   * nested vault can hold two folders that end with the same word, so a group and a `path:` term name the
+   * whole way down rather than the last word (G-48).
+   */
+  folderPath: string | null
   folderColor: string | null
   tags: Array<{ name: string; color: string | null }>
 }

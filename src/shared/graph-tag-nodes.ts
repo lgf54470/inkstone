@@ -59,7 +59,7 @@ export function applyTagNodes(
       inDegree: cluster.noteIds.length,
       outDegree: 0,
       folderId: null,
-      folderName: null,
+      folderPath: null,
       folderColor: null,
       tags: [],
     })

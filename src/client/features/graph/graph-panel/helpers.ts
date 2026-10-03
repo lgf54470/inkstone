@@ -2,7 +2,7 @@ import type { GraphNode, GraphResponse } from '@shared/types'
 import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
-import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
+import { graphFilterMatches, graphPathTerm, parseGraphFilter } from '@shared/graph-filter-expression'
 import { GRAPH_COLOR_GROUP_LIMIT, GRAPH_FORCE_RANGE, GRAPH_LINK_DIRECTIONS, GRAPH_PINNED_MAX, type GraphColorGroup, type GraphLinkDirection, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
 import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_CAMERA_PADDING, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
 import type { CanvasNode, CanvasState } from './types'
@@ -234,7 +234,7 @@ export function colorGroupsByNodeId(
     if (node.kind === 'tag') continue
     const matched = rules.find((rule) => graphFilterMatches({
       title: node.title,
-      folderName: node.folderName,
+      folderPath: node.folderPath,
       tags: node.tags,
     }, rule.expression))
     if (matched) byId.set(node.id, { label: matched.label, color: matched.color })
@@ -287,9 +287,9 @@ function extractNodeLegend(
   if (node.kind === 'tag') {
     return { label: node.title, color: tagLegendColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null), query: `tag:${node.title}` }
   }
-  if (groupBy === 'folder' && node.folderName) {
+  if (groupBy === 'folder' && node.folderPath) {
     const color = organizerColorOrNull(node.folderColor)
-    return color ? { label: node.folderName, color, query: `path:${node.folderName}` } : null
+    return color ? { label: node.folderPath, color, query: graphPathTerm(node.folderPath) } : null
   }
   if (groupBy === 'tag' && node.tags[0]) {
     const tag = node.tags[0]
@@ -337,7 +337,7 @@ export function graphSearchHits(nodes: readonly GraphNode[], query: string): Set
   const hits = new Set<string>()
   for (const node of nodes) {
     const tags = node.kind === 'tag' ? [{ name: node.title }] : node.tags
-    if (graphFilterMatches({ title: node.title, folderName: node.folderName, tags }, expression)) hits.add(node.id)
+    if (graphFilterMatches({ title: node.title, folderPath: node.folderPath, tags }, expression)) hits.add(node.id)
   }
   return hits
 }
@@ -366,7 +366,7 @@ export function normalizedResponse(response: GraphResponse): GraphResponse {
     inDegree: node.inDegree ?? 0,
     outDegree: node.outDegree ?? 0,
     folderId: node.folderId ?? null,
-    folderName: node.folderName ?? null,
+    folderPath: node.folderPath ?? null,
     folderColor: node.folderColor ?? null,
     tags: node.tags ?? [],
   }))

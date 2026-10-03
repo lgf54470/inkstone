@@ -3538,6 +3538,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
+    '/** Two notes, two folders, one word: only the path says which is which. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-paint-error.test.ts', [
     '/**\n * A drawing that throws is the one failure mode a canvas panel cannot show a broken picture for: the\n * frame loop stops mid-settle, the camera never fits, and the reader is left holding a half-painted\n * graph with nothing said about it (G-13). These cases refuse the frame from the fixture and read what\n * the panel does about it — a named failure, a way back, and a loop that can be asked again.\n */',
@@ -3758,6 +3759,9 @@ const allowed = new Map([
     '// A legend row is a filter line the reader did not have to type: press it to fade to that colour, press it',
     '// again to ask the server for only that colour, a third time to put the graph back.',
     '/** One press gives the whole graph back: the line, the single tag, the folder, and the tag selection. */',
+  ]],
+  ['src/client/features/graph/graph-panel/legend-folder-paths.test.ts', [
+    '/**\n * A nested vault can hold two folders that end with the same word, and both a legend row and the `path:`\n * term it hands back name a folder. If either of them used only the last word, the two folders would be\n * one row pointing at both — so the row says the whole path and the term selects exactly that folder\n * (G-48). The path itself arrives on the node, worked out by the same code the route filtered with.\n */',
   ]],
   ['src/client/features/graph/graph-panel/panel-bottom-band.test.ts', [
     '/**\n * The colour legend hangs bottom-left and the node detail badge bottom-centre, and both used to be measured\n * from the same `bottom-4`. Measured in a browser at 375px: three rule rows make the legend 16→184px and the\n * badge 126→249px on the same line, so 58px of the badge was laid across the rows a reader presses to filter\n * (G-18). jsdom lays nothing out, so what a case can pin here is the structure that layout comes from — one\n * band holding both, stacked, with no band of its own on either child. The pixels are the browser\'s answer.\n */',
@@ -13179,11 +13183,22 @@ const allowed = new Map([
   ['src/shared/escape.ts', [
     '/**\n * HTML-escape untrusted text (all five metacharacters: & < > " \').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */',
   ]],
+  ['src/shared/folder-path.test.ts', [
+    '/**\n * A `path:` term and a legend row both name a folder, and a nested vault has two folders that can end\n * with the same word. What names a folder to a reader is where it sits — `Work/Notes`, not `Notes` — so\n * the path is worked out once here and every surface that says a folder\'s name says this (G-48).\n */',
+  ]],
+  ['src/shared/folder-path.ts', [
+    '/**\n * Where a folder sits, said the way a reader says it: `Work/Notes`, not `Notes`. A nested vault can hold\n * two folders that end with the same word, and both the `path:` filter line and the legend row name a\n * folder, so the name they use has to be the whole way down or the two collapse into one (G-48).\n *\n * The worker and the demo backend filter on this, and the graph panel labels with it, so one folder\'s\n * name is worked out in exactly one place.\n */',
+    '// A parent that points back into the chain would walk forever; the cycle is cut where it closes and',
+    '// the folder is named by the part of the path that was reachable.',
+    '/**\n * The folders a `path:` term names. The term is a case-insensitive piece of the path, which is what it\n * always was of the folder name — a reader writing `work` still gets the Work branch and everything\n * under it, and one writing `work/notes` now gets that folder rather than nothing.\n */',
+  ]],
   ['src/shared/graph-filter-expression.ts', [
     '/** Free text matched against the note title. */',
     '/** Qualified terms are capped so one filter cannot outgrow the bound-variable budget of the query. */',
     '/**\n * Splits a graph filter line into free text plus `tag:` / `path:` terms, each optionally negated with a\n * leading `-`. A quoted value may contain a space. One unparseable qualifier is kept as text rather than\n * dropped, so a typo hides notes the way the old title-only search did instead of silently widening the\n * graph.\n */',
+    '/** What a `path:` term is matched against: the folder\'s whole way down, not just its last word (G-48). */',
     '/** Client-side evaluation of the same grammar, used by the color groups of the graph panel. */',
+    '/**\n * How to write a folder back into a filter line. A path is one term only while it holds no space, so\n * `Reading Room/Notes` has to arrive quoted — otherwise the grammar reads it as a folder called\n * `Reading` plus the free text `Room/Notes` (G-48).\n */',
   ]],
   ['src/shared/graph-tag-nodes.test.ts', [
     '/**\n * Tag clusters are the densest source of edges one response can fan out into, so the budget that keeps\n * a request finite lives here: clusters are expanded largest-first, and one that does not fit stays\n * unexpanded rather than half-connected, which is what keeps a tag node\'s degree equal to its edges.\n */',
@@ -13357,6 +13372,7 @@ const allowed = new Map([
   ]],
   ['src/shared/types/graph.ts', [
     '/** `tag` nodes are synthesized from note tags, `unresolved` from links to missing notes. */',
+    '/**\n   * Where that folder sits, ancestors joined by `/` (`Work/Notes`), and null when the note is unfiled. A\n   * nested vault can hold two folders that end with the same word, so a group and a `path:` term name the\n   * whole way down rather than the last word (G-48).\n   */',
     '/** Tags to filter by. Overrides `tag`; sent comma-separated. */',
     '/** How multiple tags combine: `any` (default) for union, `all` for intersection. */',
     '/** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */',
@@ -14887,6 +14903,9 @@ const allowed = new Map([
     '// client never re-reads `total` once paging starts); deep pages skip it so',
     '// the cost does not grow with every deleted row the index has to walk.',
   ]],
+  ['src/worker/routes/search/graph-degree-sql.ts', [
+    '/**\n * The one place the graph\'s link degrees are aggregated: a single pass over `links` joined to the notes\n * it can still see, rather than three correlated probes per row of the page (G-01). Both the page and\n * its count read have to use this same pair, or the two disagree about what a degree is.\n */',
+  ]],
   ['src/worker/routes/search/graph-nodes.ts', [
     '/** Turns the collected missing-link map into `unresolved:` nodes, counting each one into its source. */',
   ]],
@@ -14895,14 +14914,13 @@ const allowed = new Map([
     '// plus the note ids on both sides of the join (and its own LIMIT), so a page of notes has to be',
     '// walked in chunks: the graph asks for up to 350 notes, which as one statement is a 500-too-many-',
     '// variables error instead of a graph. 40 keeps the widest of the two queries at 82 bindings.',
-    '// Link degrees are aggregated once per user (single pass over links) and',
-    '// joined by note id, instead of three correlated sub-probes per note row.',
     '// Charged after the request line has been read, so a malformed query answers 400 without spending',
     '// the account\'s read budget, and before the queries, so a runaway loop is what meets the 429.',
     '// A local graph keeps the note it is built around, whatever the reader took out of the overview (G-42).',
     '// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.',
     '/** One qualified term of the filter line: `tag:` / `path:` must match, `-tag:` / `-path:` must not. */',
-    '// A note without a folder has no path to exclude, so the negation reads the missing name as blank.',
+    '// A `path:` term names where a folder sits, so it selects folders first and the notes they hold second.',
+    '// The id list travels as one bound json_each argument, however many folders the term reaches (G-48).',
     '// A `path:` term names the joined folder, so the count reads the same joins as the page.',
     '// A chunk asks for the links leaving its own notes only: binding the page on the target side as',
     '// well would not fit a statement a second time. Which of those links stay in the page is decided',
@@ -14930,6 +14948,7 @@ const allowed = new Map([
     '/**\n * The notes a reader took out of the graph. An entry that is not a note id is dropped rather than\n * answered 400: a preference can outlive the note it named, and a stale entry must not cost the reader\n * the whole picture. The list travels as one bound json_each argument, so it never reaches D1\'s\n * hundred-variable ceiling however long it is (G-42).\n */',
     '/**\n * Which side of a link a local graph walks (G-44). `incoming` is the notes that point at the centre —\n * who references it — `outgoing` is what it points at, and `both` is the neighbourhood the panel has\n * always drawn. Unknown spellings answer `both`, so a stale preference cannot empty the picture.\n */',
     '/**\n * The clause that leaves a reader\'s excluded notes out of a graph page. The whole list travels as one\n * bound json_each argument, so its length never runs into D1\'s hundred-variable ceiling, and one id can\n * be kept in — the centre of a local graph is the note the reader is standing on (G-42).\n */',
+    '/**\n * Every folder the account has, said by where it sits. The graph page is bounded to a few hundred notes,\n * while a `path:` term and a legend row have to name the whole way down, so the tree is read once per\n * request rather than walked per note (G-48).\n */',
     '/**\n * The walk itself, with only one thing varying by direction (G-44): which end of a link has to be the\n * note already reached, and therefore which end the next note is. `both` keeps the two-sided test the\n * panel has always used, so an unset direction answers exactly what it did before.\n */',
   ]],
   ['src/worker/routes/search/query.ts', [

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GRAPH_FILTER_TERM_LIMIT,
   graphFilterMatches,
+  graphPathTerm,
   parseGraphFilter,
 } from './graph-filter-expression'
 
@@ -43,7 +44,7 @@ describe('graph filter expression parsing', () => {
 })
 
 describe('graph filter expression matching', () => {
-  const note = { title: 'Sprint plan', folderName: 'Work', tags: [{ name: 'urgent' }] }
+  const note = { title: 'Sprint plan', folderPath: 'Work', tags: [{ name: 'urgent' }] }
 
   it('matches title text case-insensitively and folder terms as substrings', () => {
     expect(graphFilterMatches(note, parseGraphFilter('sprint'))).toBe(true)
@@ -60,8 +61,29 @@ describe('graph filter expression matching', () => {
   })
 
   it('keeps a note without a folder when only folder exclusions are asked for', () => {
-    const loose = { title: 'Sprint plan', folderName: null, tags: [] }
+    const loose = { title: 'Sprint plan', folderPath: null, tags: [] }
     expect(graphFilterMatches(loose, parseGraphFilter('-path:Work -tag:urgent'))).toBe(true)
     expect(graphFilterMatches(loose, parseGraphFilter('path:Work'))).toBe(false)
+  })
+})
+
+describe('writing a folder back into a filter line (G-48)', () => {
+  it('leaves a path with no space bare and quotes one that has one', () => {
+    expect(graphPathTerm('Work/Notes')).toBe('path:Work/Notes')
+    expect(graphPathTerm('Reading Room/Notes')).toBe('path:"Reading Room/Notes"')
+  })
+
+  it('round-trips both forms back to the same folder the row named', () => {
+    for (const value of ['Work/Notes', 'Reading Room/Notes', 'Notes']) {
+      const terms = parseGraphFilter(graphPathTerm(value)).terms
+      expect(terms).toHaveLength(1)
+      expect(terms[0]?.value).toBe(value)
+    }
+  })
+
+  it('keeps a negated term negated when the row is written back', () => {
+    const terms = parseGraphFilter(`${graphPathTerm('Work/Notes')} -tag:archive`).terms
+    expect(terms.map((term) => [term.kind, term.value, term.isExcluded]))
+      .toEqual([['folder', 'Work/Notes', false], ['tag', 'archive', true]])
   })
 })
