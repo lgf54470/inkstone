@@ -13,7 +13,7 @@ import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { PresentationOverlay } from './presentation-overlay'
 import { useSlideCacheKeys, useShowDeck } from './use-show-deck'
-import { useSlidePlans } from './use-presentation-session'
+import { useSlidePlans } from './use-slide-plans'
 import type { StageMetrics } from './slide-stage'
 
 const probe = vi.hoisted(() => ({

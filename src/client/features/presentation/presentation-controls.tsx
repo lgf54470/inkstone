@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Code, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, Users, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { IS_DEMO_MODE } from '../../lib/runtime'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay'
@@ -128,12 +129,16 @@ function ViewControls({ railOpen, overview, following, followLost, audienceFollo
         </IconButton>
       </Tooltip>
       {/* The audience control carries no key on purpose: it is a press a presenter makes once, when
-          they decide to let people in, and the door row spells out the same thing on a phone. */}
-      <Tooltip label={audienceLabel} side='top'>
-        <IconButton label={audienceLabel} size='sm' data-audience-toggle='true' active={audienceFollowing} onClick={onToggleAudience}>
-          <Users size={14} />
-        </IconButton>
-      </Tooltip>
+          they decide to let people in, and the door row spells out the same thing on a phone. It is not
+          offered in the demo edition at all: the demo's whole backend is a map inside this tab, so a link
+          handed to another person would open a page that never heard of the talk. */}
+      {!IS_DEMO_MODE && (
+        <Tooltip label={audienceLabel} side='top'>
+          <IconButton label={audienceLabel} size='sm' data-audience-toggle='true' active={audienceFollowing} onClick={onToggleAudience}>
+            <Users size={14} />
+          </IconButton>
+        </Tooltip>
+      )}
       <Tooltip label={followLabel} combo={followLost ? undefined : presentationKeyCombo('follow')} side='top'>
         <IconButton label={followLabel} size='sm' data-follow-toggle='true' active={!followLost && following} disabled={followLost} onClick={onToggleFollowing}>
           {!followLost && following ? <Radio size={14} /> : <Snowflake size={14} />}
@@ -237,7 +242,7 @@ export function DeckExportProgress({ current, total }: DeckExportProgress) {
 // of it, and how far that page has arrived. It is printed left of the step buttons and read out by one
 // announcement beside them. The digits are hidden from the accessibility tree on purpose: a screen
 // reader hearing «3 / 14 · 2/4 · 1/3» as a live region learns nothing about which is which.
-function SlideStepper({ slideIndex, slideCount, subPage, pageCount, step, steps, onPrev, onNext }: {
+export function SlideStepper({ slideIndex, slideCount, subPage, pageCount, step, steps, onPrev, onNext }: {
   slideIndex: number
   slideCount: number
   subPage: number

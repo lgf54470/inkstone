@@ -147,6 +147,10 @@ const LABELS = {
   overviewGrid: localeLabel('workspace.presentation_overview'),
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
+  presentAudience: localeLabel('workspace.presentation_audience_follow', 'workspace.presentation_audience_stop'),
+  audienceFollowing: localeLabel('workspace.presentation_audience_following'),
+  audienceBrowsing: localeLabel('workspace.presentation_audience_browsing'),
+  audienceEnded: localeLabel('workspace.presentation_audience_ended'),
   outline: localeLabel('common.outline', 'preview.mindmap_mode_outline'),
   insert: localeLabel('contextmenu.insert'),
   mindMap: localeLabel('contextmenu.convert_to_mindmap', 'preview.mindmap', 'preview.mindmap_untitled', 'workspace.mind_map'),
@@ -2286,6 +2290,129 @@ function clockToSeconds(text) {
   if (parts.length < 2 || parts.length > 3 || parts.some((part) => Number.isNaN(part))) return -1
   return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1]
 }
+
+// The room on the other side of the link (N-34 / ADR-0006): a stranger who has never signed in opens the
+// audience URL, is put on the page the speaker is standing on, and stays there once they turn a page of
+// their own. Two tabs, one position — the numbers each side prints have to agree, and the reveal has to
+// travel with them. That is only measurable in a browser, because both halves paginate by layout.
+async function assertAudienceFollow(browser, page, consoleErrors) {
+  const controlLabels = { prev: localeLabel('workspace.presentation_prev'), next: localeLabel('workspace.presentation_next') }
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openSteppedNote(page)
+  const noteId = (await apiCall(page, 'GET', '/api/notes?limit=1')).data?.notes?.[0]?.id ?? ''
+  const shared = await apiCall(page, 'POST', `/api/share/${noteId}`, {})
+  const slug = shared.data?.share?.slug ?? ''
+  check('audience: the note the show runs on is shared', Boolean(noteId) && Boolean(slug), JSON.stringify({ status: shared.status, slug }))
+  if (!slug) return
+
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+  let show = await readSteppedShow(page, controlLabels)
+  for (let press = 0; press < 4 && show.blocks !== 4; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    show = await readSteppedShow(page, controlLabels)
+  }
+
+  const minted = page.waitForResponse((response) => response.url().includes('/present/start') && response.status() === 200, { timeout: 15_000 }).catch(() => null)
+  await clickPresentationControl(page, LABELS.presentAudience)
+  const session = await (await minted)?.json().catch(() => null) ?? null
+  check('audience: the door mints a show whose link names this share', Boolean(session?.token) && session?.slug === slug, JSON.stringify({ slug: session?.slug, hasToken: Boolean(session?.token) }))
+  if (!session?.token) {
+    await contextlessHandback(page)
+    return
+  }
+
+  const context = await browser.createBrowserContext()
+  const viewer = await context.newPage()
+  viewer.on('pageerror', (error) => consoleErrors.push({ text: `[audience] ${String(error)}`, url: '' }))
+  try {
+    await viewer.setViewport(DESKTOP_VIEWPORT)
+    await viewer.setUserAgent(REAL_VISITOR_UA)
+    await viewer.goto(`${BASE}/s/${slug}?present=${encodeURIComponent(session.token)}`, { waitUntil: 'networkidle2' })
+    const seated = await viewer.waitForSelector('[data-audience-bar] [data-slide-canvas], [data-audience-bar]', { timeout: 20_000 }).then(() => true, () => false)
+    check('audience: the link seats a stranger who has never signed in', seated)
+    if (!seated) return
+    await viewer.waitForFunction(() => document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *').length > 0, { timeout: 20_000 }).catch(() => null)
+
+    const landed = await viewer.waitForFunction((wanted) => [...document.querySelectorAll('[data-deck-position]')].every((item) => item.textContent?.trim() === wanted), { timeout: 15_000 }, show.printed[0]).then(() => true, () => false)
+    const joined = await readAudience(viewer)
+    check('audience: the viewer opens on the page the speaker is standing on',
+      landed && joined.blocks === 4 && joined.hidden === show.hidden, JSON.stringify({ landed, room: [show.printed[0], show.hidden], viewer: [joined.printed, joined.hidden] }))
+    check('audience: the seat is taken, and said out loud',
+      joined.following === 'true' && LABELS.audienceFollowing.includes(joined.state), JSON.stringify(joined))
+
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    const moved = await readSteppedShow(page, controlLabels)
+    const caught = await viewer.waitForFunction((wanted) => document.querySelector('[data-deck-position]')?.textContent?.trim() === wanted, { timeout: 12_000 }, moved.printed[0]).then(() => true, () => false)
+    const followed = await readAudience(viewer)
+    check('audience: one press in the room brings one more block to the viewer within a beat',
+      caught && followed.blocks === 4 && followed.hidden === moved.hidden, JSON.stringify({ caught, room: [moved.printed[0], moved.hidden], viewer: [followed.printed, followed.hidden] }))
+
+    await clickAudienceControl(viewer, controlLabels.next)
+    await sleep(500)
+    const own = await readAudience(viewer)
+    check('audience: a press of their own hands the show back',
+      own.following === 'false' && LABELS.audienceBrowsing.includes(own.state), JSON.stringify(own))
+
+    // The room keeps talking. A viewer who left to look at something else is not dragged after it.
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    const ahead = await readSteppedShow(page, controlLabels)
+    await sleep(3_200)
+    const held = await readAudience(viewer)
+    check('audience: the talk moving on does not drag a viewer who left it',
+      held.printed[0] === own.printed[0] && held.printed[0] !== ahead.printed[0], JSON.stringify({ held: held.printed, room: ahead.printed[0] }))
+
+    await viewer.click('[data-audience-bar] [role="switch"]')
+    const returned = await viewer.waitForFunction((wanted) => document.querySelector('[data-deck-position]')?.textContent?.trim() === wanted, { timeout: 12_000 }, ahead.printed[0]).then(() => true, () => false)
+    const back = await readAudience(viewer)
+    check('audience: handing the show back returns the viewer to where the talk stands now',
+      returned && back.following === 'true' && LABELS.audienceFollowing.includes(back.state), JSON.stringify({ returned, printed: back.printed, room: ahead.printed[0], state: back.state }))
+
+    await clickPresentationControl(page, LABELS.presentAudience)
+    const ended = await viewer.waitForFunction((words) => words.includes(document.querySelector('[data-audience-state]')?.textContent?.trim() ?? ''), { timeout: 15_000 }, LABELS.audienceEnded).then(() => true, () => false)
+    const after = await readAudience(viewer)
+    check('audience: the room emptying is said out loud, and the last page stays up',
+      ended && after.blocks > 0 && after.printed[0] !== '', JSON.stringify({ ended, state: after.state, printed: after.printed }))
+  } finally {
+    await context.close().catch(() => {})
+  }
+
+  await contextlessHandback(page)
+}
+
+/** Where a scene that brought its own stepped note has to leave the app for the readers below it. */
+async function contextlessHandback(page) {
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  await openDeckNote(page)
+}
+
+async function readAudience(viewer) {
+  return viewer.evaluate(() => ({
+    printed: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+    blocks: document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *').length,
+    hidden: [...document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *')].filter((item) => getComputedStyle(item).visibility === 'hidden').length,
+    state: document.querySelector('[data-audience-state]')?.textContent?.trim() ?? '',
+    following: document.querySelector('[data-audience-bar] [role="switch"]')?.getAttribute('aria-checked') ?? '',
+  }))
+}
+
+// The bar's buttons are found by name, in whichever language the visitor's browser asked for.
+async function clickAudienceControl(viewer, labels) {
+  for (const label of labels) {
+    const selector = `[data-audience-bar] button[aria-label="${label}"]`
+    if (await viewer.$(selector)) {
+      await viewer.click(selector)
+      return label
+    }
+  }
+  throw new Error(`audience control missing: ${labels.join('/')}`)
+}
+
 
 async function assertPresenterConsole(browser, page) {
   await openPresenterDeckNote(page)
@@ -9849,6 +9976,7 @@ async function main() {
     await assertDeckImageExport(page)
     await assertDeckHtmlExport(browser, page)
     await assertPresentationOverview(page)
+    await assertAudienceFollow(browser, page, consoleErrors)
     await assertPresenterConsole(browser, page)
     await assertSlideLayouts(page)
     await assertNoteExportCharts(page)

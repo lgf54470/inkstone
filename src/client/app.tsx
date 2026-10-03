@@ -56,6 +56,14 @@ function useIsPresenter(): boolean {
   return isPresenter
 }
 
+// The audience's seat is the same shared page with one thing written on it: which show they are watching
+// (ADR-0006). The token is read once from the URL the speaker handed out and never leaves this tab — it
+// is not written into a cache key, a fingerprint, or anything the owner is told about.
+function usePresentToken(): string | null {
+  const [token] = useState(() => new URLSearchParams(location.search).get('present'))
+  return token
+}
+
 function useAppBoot(shareSlug: string | null) {
   const status = useSession((s) => s.status)
   const load = useSession((s) => s.load)
@@ -98,12 +106,12 @@ function PageFallback() {
   )
 }
 
-function ShareRoute({ slug }: { slug: string }) {
+function ShareRoute({ slug, present }: { slug: string; present: string | null }) {
   return (
     <>
       <ErrorBoundary>
         <Suspense fallback={<PageFallback />}>
-          <SharePage slug={slug} />
+          <SharePage slug={slug} present={present} />
         </Suspense>
       </ErrorBoundary>
       <Toaster />
@@ -165,6 +173,7 @@ function AuthedShell() {
 export function App() {
   useLocale()
   const shareSlug = useShareSlug()
+  const presentToken = usePresentToken()
   const playlistSlug = usePlaylistShareSlug()
   const collectionSlug = useCollectionSlug()
   const isPresenter = useIsPresenter()
@@ -174,7 +183,7 @@ export function App() {
   if (shareSlug) {
     return (
       <>
-        <ShareRoute slug={shareSlug} />
+        <ShareRoute slug={shareSlug} present={presentToken} />
         <ConfirmHost />
         <PromptHost />
       </>

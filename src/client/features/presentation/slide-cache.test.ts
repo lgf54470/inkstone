@@ -7,7 +7,7 @@ import { renderElement } from '../../lib/test-render'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan, reserveSlideCache, subscribeSlideHtmlKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
-import { useSlidePlans } from './use-presentation-session'
+import { useSlidePlans } from './use-slide-plans'
 import { PresentationOverlay } from './presentation-overlay'
 
 describe('slidePlanCache', () => {

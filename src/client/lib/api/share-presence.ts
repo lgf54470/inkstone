@@ -18,6 +18,13 @@ export const presence = {
     request<{ stopped: true }>(`/api/share/${noteId}/present/stop`, { method: 'POST', body: {} }),
   status: (noteId: string, signal?: AbortSignal) =>
     request<PresenceStatus>(`/api/share/${noteId}/present`, { signal }),
+  /**
+   * The viewer's heartbeat. `undefined` means "nothing moved since the last beat" (a 304), which is why
+   * the caller keeps what it holds rather than treating it as a blank. `cache: 'no-store'` because a
+   * stored answer to "where is the talk now" is not a stale answer — it is a different question's.
+   */
+  read: (slug: string, token: string, ifNoneMatch?: string, onEtag?: (etag: string | null) => void) =>
+    request<PublicSharePresence | undefined>(`/api/public/${slug}/present`, { method: 'POST', body: { token }, ifNoneMatch, onEtag, cache: 'no-store' }),
 }
 
 /** What the owner's own question answers: nothing, or where the show is and how long it may run. */

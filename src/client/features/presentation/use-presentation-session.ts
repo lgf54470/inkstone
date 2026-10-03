@@ -12,8 +12,8 @@ import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useAudienceFollow } from './use-audience-follow'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
-import { buildIncrementalSlidePlans, rememberSlidePlan } from './slide-html'
-import { planPageSteps, samePlan, type SlidePlan } from './slide-pagination'
+import { planPageSteps, type SlidePlan } from './slide-pagination'
+import { useSlidePlans } from './use-slide-plans'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
 import { useShowDeck, useSlideCacheKeys } from './use-show-deck'
@@ -417,20 +417,6 @@ function usePageTurn(position: RefObject<{ index: number; sub: number; step: num
     }
   }, [goTo, carryPage, setSubPage])
   return { goNext, goPrev }
-}
-
-export function useSlidePlans(hashes: string[]) {
-  const [plans, setPlans] = useState<Record<number, SlidePlan>>(() => buildIncrementalSlidePlans(hashes))
-  // Edited content re-splits the deck, so plans measured for the previous text would
-  // describe pages that no longer exist.
-  useEffect(() => {
-    setPlans((current) => buildIncrementalSlidePlans(hashes, current))
-  }, [hashes])
-  const reportPlan = useCallback((slide: number, plan: SlidePlan) => {
-    rememberSlidePlan(hashes[slide] ?? '', plan)
-    setPlans((current) => (samePlan(current[slide], plan) ? current : { ...current, [slide]: plan }))
-  }, [hashes])
-  return { plans, reportPlan }
 }
 
 // The page inside the current slide: entering a slide starts at its top, while a jump

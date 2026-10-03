@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { t } from '../../lib/i18n'
+import { IS_DEMO_MODE } from '../../lib/runtime'
 import { Z_INDEX } from '../../lib/z-index'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { presentationKeyCombo } from './presentation-keys'
@@ -114,6 +115,20 @@ function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[]
  * exports, it is something a presenter presses rather than types.
  */
 export function buildAudienceItems(options: PresentationMenuItemsOptions): MenuItem[] {
+  // The demo edition says so rather than offering a door that cannot open: its backend is a map inside
+  // this tab, so a link handed to another person opens a page that never heard of the talk (ADR-0006 —
+  // a capability a surface cannot host is stated, not silently missing).
+  if (IS_DEMO_MODE) {
+    return [
+      {
+        id: 'audience',
+        label: t('workspace.presentation_audience_unavailable'),
+        icon: <Users size={14} />,
+        disabled: true,
+        separatorBefore: true,
+      },
+    ]
+  }
   const label = options.audienceFollowing ? t('workspace.presentation_audience_stop') : t('workspace.presentation_audience_follow')
   return [
     {
