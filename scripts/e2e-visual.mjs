@@ -1919,7 +1919,183 @@ async function openLightbox(page) {
     return Boolean(image && image.complete && image.naturalWidth > 0)
   }, { timeout: 30_000 }).then(() => true, () => false)
   if (!rendered) throw new Error('lightbox: the picture put into the note never decoded')
-  await pressOpener(page, { labels: ['图片预览', 'Image preview'] })
+  // A press on the image reveals its controls, and the lightbox is one of them: the note preview
+  // cannot offer both at once on the same click.
+  await pressProbePicture(page, 'Visual probe')
+  await waitForImageEditor(page)
+  await pressImageEditorButton(page, ['图片预览', 'Image preview'])
+}
+
+const IMAGE_PROBE_MARKDOWN = [
+  '',
+  '![Plain probe](/inkstone-logo.svg)',
+  '![Half probe](/inkstone-logo.svg){width=50%}',
+  '![Fixed probe](/inkstone-logo.svg){width=180px}',
+  '![Cherry probe#120px#float-left#B](/inkstone-logo.svg) and the words that have to sit beside it.',
+  '![Align probe](/inkstone-logo.svg){align=right}',
+  '',
+].join('\n')
+
+function waitForImageEditor(page) {
+  return page.waitForFunction(() => Boolean(document.querySelector('.image-editor')), { timeout: 10_000 })
+    .then(() => true, () => false)
+}
+
+/** A real pointer press on the picture itself, which is what reveals its controls. */
+async function pressProbePicture(page, alt) {
+  const point = await page.evaluate((name) => {
+    const image = [...document.querySelectorAll('.ink-prose img')].find((item) => item.alt === name)
+    const control = image?.closest('[data-image-zoom]') ?? image
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    // The sweep's focus check reads the control that opened a surface, so a press that opens one
+    // has to record itself the way pressOpener does.
+    window.__gateOpeners = [control]
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, alt)
+  if (!point) throw new Error(`image controls: the note holds no picture named ${alt}`)
+  await page.mouse.click(point.x, point.y)
+}
+
+/**
+ * The note's text as the editor holds it. CodeMirror only renders the lines it is showing, so the
+ * probe at the end of a long note has to be brought into view before it can be read.
+ */
+async function readNoteSource(page) {
+  await page.evaluate(() => document.querySelector('.cm-content')?.focus())
+  await page.keyboard.down('Control')
+  await page.keyboard.press('End')
+  await page.keyboard.up('Control')
+  await sleep(400)
+  return page.evaluate(() => document.querySelector('.cm-content')?.textContent ?? '')
+}
+
+async function pressImageEditorButton(page, labels) {
+  const point = await page.evaluate((names) => {
+    const control = [...document.querySelectorAll('.image-editor button')].find((button) => names.includes(button.textContent?.trim()))
+    if (!control) return null
+    // The opener the sweep has to hand focus back to is the picture, which is what pressProbePicture
+    // recorded; the toolbar button it clicks on the way is torn down by the next write.
+    const box = control.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, labels)
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  return true
+}
+
+/** Every prose image's box, measured against the column it was laid out in. */
+function measureImages(page) {
+  return page.evaluate(() => {
+    const images = [...document.querySelectorAll('.ink-prose img')].filter((image) => image.complete && image.naturalWidth > 0)
+    return images.map((image) => {
+      const box = image.getBoundingClientRect()
+      const column = image.closest('p, li, td')?.getBoundingClientRect()
+      const paragraph = image.closest('p')
+      const words = [...(paragraph?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+      const range = words ? document.createRange() : null
+      range?.selectNode(words)
+      const text = range ? range.getBoundingClientRect() : null
+      return {
+        alt: image.alt,
+        align: image.dataset.imageAlign ?? '',
+        width: Math.round(box.width),
+        left: Math.round(box.left),
+        right: Math.round(box.right),
+        bottom: Math.round(box.bottom),
+        columnWidth: column ? Math.round(column.width) : 0,
+        columnLeft: column ? Math.round(column.left) : 0,
+        columnRight: column ? Math.round(column.right) : 0,
+        textTop: text ? Math.round(text.top) : null,
+      }
+    })
+  })
+}
+
+function probeOf(measured, alt) {
+  return measured.find((image) => image.alt === alt) ?? null
+}
+
+async function assertImageAttributes(page) {
+  await ensurePaneVisible(page, '.cm-content')
+  await writeAtEndOfNote(page, IMAGE_PROBE_MARKDOWN, 'image attributes')
+  await ensurePaneVisible(page, '.ink-prose')
+  await page.waitForFunction((count) => document.querySelectorAll('.ink-prose img[data-image-line]').length >= count, { timeout: 30_000 }, 5)
+  const measured = await measureImages(page)
+  const half = probeOf(measured, 'Half probe')
+  const fixed = probeOf(measured, 'Fixed probe')
+  const cherry = probeOf(measured, 'Cherry probe')
+  const aligned = probeOf(measured, 'Align probe')
+  check('image attributes: a percentage width is half the column',
+    Boolean(half && Math.abs(half.width - half.columnWidth / 2) <= 2), half ? `img=${half.width} column=${half.columnWidth}` : 'missing')
+  check('image attributes: a pixel width is drawn exactly and capped by the column',
+    Boolean(fixed && fixed.width === 180 && fixed.columnWidth > 180), fixed ? `img=${fixed.width}` : 'missing')
+  check('image attributes: the Cherry flags leave the alt text alone',
+    Boolean(cherry && cherry.width === 120 && cherry.align === 'float-left'), cherry ? `alt=${cherry.alt} w=${cherry.width} align=${cherry.align}` : 'missing')
+  check('image attributes: a floated image lets the words sit beside it',
+    Boolean(cherry && cherry.textTop !== null && cherry.textTop < cherry.bottom), cherry ? `textTop=${cherry.textTop} imgBottom=${cherry.bottom}` : 'missing')
+  check('image attributes: a right-aligned image rests on the right edge',
+    Boolean(aligned && Math.abs(aligned.right - aligned.columnRight) <= 2 && aligned.left > aligned.columnLeft), aligned ? `right=${aligned.right} column=${aligned.columnRight}` : 'missing')
+
+  // The controls have to survive the re-render that using them causes, which is the whole point of
+  // writing back into the note rather than only restyling the page.
+  await pressProbePicture(page, 'Plain probe')
+  const opened = await waitForImageEditor(page)
+  const pressed = await pressImageEditorButton(page, ['右对齐', 'Right'])
+  const realigned = await page.waitForFunction(() => {
+    const image = [...document.querySelectorAll('.ink-prose img')].find((item) => item.alt === 'Plain probe')
+    return Boolean(image && image.dataset.imageAlign === 'right')
+  }, { timeout: 15_000 }).then(() => true, () => false)
+  const survived = await waitForImageEditor(page)
+  const source = await readNoteSource(page)
+  check('image controls: a click reveals the toolbar', opened && pressed, `revealed=${opened} pressed=${pressed}`)
+  check('image controls: the toolbar is still there after the write redrew the note', survived, 'overlay')
+  check('image controls: the alignment lands on both the image and its markdown',
+    realigned && source.includes('![Plain probe](/inkstone-logo.svg){align=right}'),
+    `rendered=${realigned} ${source.slice(source.indexOf('![Plain probe'), source.indexOf('![Plain probe') + 60)}`)
+
+  await pressProbePicture(page, 'Plain probe')
+  await waitForImageEditor(page)
+  const before = await measureImages(page)
+  const beforePlain = before.find((image) => image.alt === 'Plain probe')
+  const dragged = await page.evaluate(() => {
+    const handle = document.querySelector('.image-resize-handle')
+    if (!handle) return null
+    handle.scrollIntoView({ block: 'center' })
+    const box = handle.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  })
+  if (dragged) {
+    await page.mouse.move(dragged.x, dragged.y)
+    await page.mouse.down()
+    await page.mouse.move(dragged.x + 120, dragged.y, { steps: 6 })
+    await page.mouse.up()
+  }
+  await page.waitForFunction(() => {
+    const image = [...document.querySelectorAll('.ink-prose img')].find((item) => item.alt === 'Plain probe')
+    return Boolean(image && image.dataset.imageWidth)
+  }, { timeout: 15_000 }).then(() => true, () => false)
+  const after = await measureImages(page)
+  const afterPlain = after.find((image) => image.alt === 'Plain probe')
+  check('image controls: dragging the handle resizes the image in the page',
+    Boolean(dragged && afterPlain && afterPlain.width !== beforePlain?.width), dragged ? `before=${beforePlain?.width} after=${afterPlain?.width}` : 'no handle')
+  const draggedSource = await readNoteSource(page)
+  // The canonical order puts the size first, so an image that was already aligned reads
+  // {width=75% align=right} rather than the other way round.
+  const dragWritten = /Plain probe\]\([^)]*\)\{width=\d+%[^}]*\}/.exec(draggedSource)
+  check('image controls: the drag wrote a snap width into the markdown',
+    Boolean(dragWritten), dragWritten ? dragWritten[0] : draggedSource.slice(Math.max(0, draggedSource.indexOf('Plain probe') - 10), draggedSource.indexOf('Plain probe') + 90))
+
+  // Reading the source moved the focus into the editor; the dismissal is about the preview.
+  await pressProbePicture(page, 'Plain probe')
+  await page.keyboard.press('Escape')
+  const closed = await page.evaluate(() => ({
+    toolbar: Boolean(document.querySelector('.image-editor')),
+    focused: document.activeElement?.getAttribute('aria-label') ?? '',
+  }))
+  check('image controls: Escape puts the toolbar away and hands focus back to the image',
+    !closed.toolbar && ['调整这张图片', 'Adjust this image'].includes(closed.focused), JSON.stringify(closed))
 }
 
 /**
@@ -8187,6 +8363,7 @@ async function main() {
     await assertMindmapSplitEditing(page)
     await assertSlidesEditor(page)
     await assertKanbanBoard(page)
+    await assertImageAttributes(page)
     await assertFullscreenToolbars(page)
     await assertContextMenuNesting(page)
     await assertMusicSurface(page)

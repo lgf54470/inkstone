@@ -37,6 +37,14 @@ interface Selection {
 
 let selection: Selection | null = null
 
+// A write replaces the rendered node, and the browser reports that as a focus loss with nowhere to
+// go — the very event a click elsewhere produces. The one focusout after our own write is ignored,
+// until the re-render has had its chance to put the controls back; the timer covers the write that
+// changed nothing and therefore never re-rendered anything.
+const REMOUNT_WINDOW_MS = 1500
+
+let awaitingRemount: ReturnType<typeof setTimeout> | null = null
+
 // Escape means "put the controls away", and focus is what brings them up — so the image that was
 // just dismissed has to be remembered until the pointer or the tab order asks for it again.
 let dismissedKey: string | null = null
@@ -159,9 +167,13 @@ function clearSteppedWidth(image: HTMLElement): void {
 function write(image: HTMLElement, api: ImageEditorApi, attrs: ImageAttrs): void {
   const ref = imageRefOf(image)
   if (!ref) return
-  if (writeImageAttrs(api.noteId(), ref, () => attrs) === 'conflict') {
-    api.toast({ title: t('preview.image_source_moved'), tone: 'warning' })
-  }
+  if (writeImageAttrs(api.noteId(), ref, () => attrs) === 'written') expectRemount()
+  else api.toast({ title: t('preview.image_source_moved'), tone: 'warning' })
+}
+
+function expectRemount(): void {
+  if (awaitingRemount !== null) clearTimeout(awaitingRemount)
+  awaitingRemount = setTimeout(() => { awaitingRemount = null }, REMOUNT_WINDOW_MS)
 }
 
 function handleToolbarClick(image: HTMLElement, api: ImageEditorApi, event: Event): void {
@@ -169,7 +181,12 @@ function handleToolbarClick(image: HTMLElement, api: ImageEditorApi, event: Even
   if (!trigger) return
   const [kind, value] = trigger.dataset.imageAction!.split(':')
   const attrs = imageAttrsOf(image)
-  if (kind === 'preview') api.preview(image.getAttribute('src') ?? '', image.getAttribute('alt') ?? '')
+  if (kind === 'preview') {
+    // The lightbox hands focus back to whatever held it when it opened. That should be the picture
+    // the reader was on, not this button, which the next write tears down.
+    focusableOf(image).focus()
+    api.preview(image.getAttribute('src') ?? '', image.getAttribute('alt') ?? '')
+  }
   else if (kind === 'reset') write(image, api, { ...attrs, widthPct: undefined, widthPx: undefined })
   else if (kind === 'align') write(image, api, { ...attrs, align: attrs.align === value ? undefined : value as ImageAttrs['align'] })
   else write(image, api, { ...attrs, [value as ImageFlag]: attrs[value as ImageFlag] === true ? undefined : true })
@@ -308,7 +325,10 @@ export function handleImageFocusIn(event: FocusEvent): void {
   const api = image ? apiFor(image) : null
   if (!image || !host || !api) return
   const key = keyOf(image)
-  if (selection?.key === key) return
+  if (selection?.key === key) {
+    acceptFocusOut()
+    return
+  }
   // The focus that Escape hands back is the one dismissal this covers; the next ask is a real one.
   if (dismissedKey === key) {
     dismissedKey = null
@@ -319,6 +339,7 @@ export function handleImageFocusIn(event: FocusEvent): void {
 
 export function handleImageFocusOut(event: FocusEvent): void {
   if (!selection) return
+  if (awaitingRemount !== null) return
   const next = event.relatedTarget
   if (next instanceof Node && selection.host.contains(next)) return
   clearImageEditor()
@@ -329,11 +350,19 @@ export function handleImageFocusOut(event: FocusEvent): void {
  * preview, so the control that reveals the handles never gets in the way of reading the picture.
  */
 export function selectImageFromClick(image: HTMLImageElement): boolean {
+  acceptFocusOut()
   const api = apiFor(image)
   const host = image.closest<HTMLElement>('p, li, td')
   if (!api || !host || !image.dataset.imageLine) return false
   if (selection?.key !== keyOf(image)) attach(image, host, api, true)
   return true
+}
+
+/** A deliberate click or key press settles any pending re-render window: the next focusout is the user's. */
+function acceptFocusOut(): void {
+  if (awaitingRemount === null) return
+  clearTimeout(awaitingRemount)
+  awaitingRemount = null
 }
 
 /** Escape closes the image controls and hands focus back to the image they belong to. */
@@ -352,7 +381,16 @@ export function closeImageEditorFromEvent(target: HTMLElement): boolean {
  * style change touches — so the toolbar survives the edit that moved the note.
  */
 export function mountImageEditor(root: HTMLElement): void {
-  if (!selection) return
+  if (awaitingRemount !== null) {
+    clearTimeout(awaitingRemount)
+    awaitingRemount = null
+  }
+  // A note that redrew without a selection left behind has edited since the dismissal, which is a
+  // new ask; the image the user pressed Escape on is no longer the one under their cursor.
+  if (!selection) {
+    dismissedKey = null
+    return
+  }
   const image = [...root.querySelectorAll<HTMLElement>('img[data-image-line]')].find((node) => keyOf(node) === selection?.key)
   const host = image?.closest<HTMLElement>('p, li, td')
   if (!image || !host) {

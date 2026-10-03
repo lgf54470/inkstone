@@ -274,6 +274,20 @@ describe('image controls: across the re-render a write causes', () => {
     expect(document.activeElement).toBe(control())
   })
 
+  it('the focus loss a write causes does not take the controls with it', () => {
+    setup()
+    reveal()
+    action('align:right')!.click()
+    // A browser reports the removal of the focused node as a focusout with nowhere to go, which is
+    // the same event a click elsewhere produces. The re-render has to be told from the click.
+    image.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }))
+    const rewritten = prose('<div class="ink-prose"><p><button type="button" class="image-zoom" data-image-zoom="1"><img src="/api/files/a.png" alt="cat" data-image-line="0" data-image-index="0" data-image-align="right"></button></p></div>')
+    root.replaceChildren(...rewritten.childNodes)
+    image = root.querySelector('img')!
+    mountImageEditor(root)
+    expect(toolbar()).not.toBeNull()
+  })
+
   it('the controls go away when the image does', () => {
     setup()
     reveal()
