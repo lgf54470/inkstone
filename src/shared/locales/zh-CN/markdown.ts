@@ -53,7 +53,7 @@ export const messages = {
 'markdown.echarts_rendering': '正在渲染图表…',
 'markdown.echarts_kind_needs_chart': '这种图表要用 `chart` 代码块来画，`echarts` 画不了',
 'markdown.echarts_map_refused': '地图只能从白名单里的 https 地址加载轮廓数据',
-'markdown.echarts_map_failed': '地图轮廓数据加载失败',
+'markdown.echarts_map_failed': '地图轮廓数据加载失败。地图要从第三方主机读取轮廓，请在设置里允许外部图片，然后重新加载本页。',
 'markdown.echarts_convert_not_table': '这个配置没法用表格重新写出来',
 'markdown.success': '成功',
 'markdown.show_more_code': '显示其余 {count} 行',
