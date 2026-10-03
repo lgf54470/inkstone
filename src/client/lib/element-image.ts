@@ -40,8 +40,15 @@ export async function collectDocumentCss(): Promise<string> {
 
 /** One element as a PNG at `ELEMENT_IMAGE_SCALE` times its own box. */
 export async function renderElementPng(element: HTMLElement, geometry: ElementImageGeometry, css: string): Promise<Blob> {
-  const serialized = new XMLSerializer().serializeToString(elementSvg(element, geometry, css))
+  const svg = await elementSvg(element, geometry, css)
+  const serialized = new XMLSerializer().serializeToString(svg)
+  // A data URL, not an object one: measured (N-24). An SVG loaded from `blob:` counts as
+  // cross-origin here, which taints the canvas — `toBlob` then hands back nothing and the export
+  // dies on its first page. The percent-encoding that costs is the price of a canvas that can read.
   const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`)
+  // A fresh canvas per picture rather than one reused across the deck: measured (N-24), the encoder
+  // costs the same either way, while a shared canvas holds its multi-megapixel backing store open for
+  // the whole export instead of letting it go with the page that needed it.
   const canvas = document.createElement('canvas')
   canvas.width = geometry.width * ELEMENT_IMAGE_SCALE
   canvas.height = geometry.height * ELEMENT_IMAGE_SCALE
@@ -71,7 +78,7 @@ export function saveImage(blob: Blob, filename: string): void {
 // The element as an SVG the browser can draw. The element keeps its own classes and the stylesheet
 // comes along, so what it draws is what it looked like; the box the caller measured is set on the
 // holder, because the element's own live container is not part of what is serialized.
-function elementSvg(element: HTMLElement, geometry: ElementImageGeometry, css: string): SVGSVGElement {
+async function elementSvg(element: HTMLElement, geometry: ElementImageGeometry, css: string): Promise<SVGSVGElement> {
   const svg = document.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('xmlns', SVG_NS)
   svg.setAttribute('width', String(geometry.width))
@@ -89,22 +96,37 @@ function elementSvg(element: HTMLElement, geometry: ElementImageGeometry, css: s
   holder.setAttribute('style', `width:${geometry.width}px;height:${geometry.height}px;`)
   const style = document.createElementNS(XHTML_NS, 'style')
   style.textContent = css
-  holder.append(style, cloneElement(element))
+  holder.append(style, await cloneElement(element))
   foreign.append(holder)
   svg.append(foreign)
   return svg
 }
 
-// A canvas cannot ride inside the SVG — its pixels are not in the markup — so every canvas in the
-// element is swapped for a still of itself, which is the same rule the slide cache follows.
-function cloneElement(element: HTMLElement): HTMLElement {
+// Two kinds of content cannot ride inside the SVG. A canvas's pixels are not in its markup, so each
+// one is swapped for a still of itself — the same rule the slide cache follows. An `<img>` is in the
+// markup, but the picture it points at lives in a document this SVG image has no part in, so a URL
+// resolves to nothing and the exported page shows a broken-image glyph where the slide had a picture.
+// Both travel as bytes instead.
+async function cloneElement(element: HTMLElement): Promise<HTMLElement> {
   const clone = element.cloneNode(true) as HTMLElement
   const sources = [...element.querySelectorAll('canvas')]
   clone.querySelectorAll('canvas').forEach((canvas, index) => {
     const source = sources[index]
     if (source) freezeCanvas(canvas, source)
   })
+  await inlineImages(clone)
   return clone
+}
+
+async function inlineImages(clone: HTMLElement): Promise<void> {
+  for (const image of [...clone.querySelectorAll('img')]) {
+    const src = image.getAttribute('src') ?? ''
+    if (!src || src.startsWith('data:')) continue
+    const dataUrl = await readAssetAsDataUrl(src)
+    // A picture that cannot be read keeps its URL, which the SVG cannot resolve: the export loses
+    // that one image and says so in the log, the way an unreadable canvas still does.
+    if (dataUrl) image.setAttribute('src', dataUrl)
+  }
 }
 
 function freezeCanvas(canvas: HTMLCanvasElement, source: HTMLCanvasElement): void {

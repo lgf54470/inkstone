@@ -35,12 +35,16 @@ export function collectDeckCss(): Promise<string> {
 // One deck page as a PNG. The page is measured into the layer's box; the pads are deck design, not
 // the layer's, so the holder inside the layer reads them off the CSS variables it already carries.
 export async function renderDeckPagePng(page: HTMLElement, geometry: DeckImageGeometry, css: string): Promise<Blob> {
-  return await renderElementPng(page, { width: geometry.width, height: geometry.height }, css + deckPadCss(geometry))
+  return await renderElementPng(page, { width: geometry.width, height: geometry.height }, css + deckGeometryCss(geometry))
 }
 
-/** The deck's pad variables, re-asserted for the clone the layer draws (the layer knows no pads). */
-function deckPadCss(geometry: DeckImageGeometry): string {
-  return `\n:root { --deck-pad-x:${geometry.padX}px; --deck-pad-y:${geometry.padY}px; }`
+/** The deck's own box, re-asserted for the clone the layer draws. */
+function deckGeometryCss(geometry: DeckImageGeometry): string {
+  // The page box and its pads are declared on the export sheet, which is not part of what gets
+  // serialized: a clone of one page carries `.deck-print-page`, and that rule's size variables are
+  // set on its *parent*. Without them the box has no width or height, `overflow: hidden` clips it to
+  // nothing, and every exported page is an empty picture.
+  return `\n:root { --deck-page-width:${geometry.width}px; --deck-page-height:${geometry.height}px; --deck-pad-x:${geometry.padX}px; --deck-pad-y:${geometry.padY}px; }`
 }
 
 /** The pages as one archive: a download per page is a burst a browser may block, and a zip is one. */
