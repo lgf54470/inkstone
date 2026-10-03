@@ -312,7 +312,7 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
     useUi.getState().closePanel()
   }
   return (
-    <div className='mt-1 mb-3 max-w-75 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2'>
+    <div className='mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2'>
       <div className='mb-1 flex items-center justify-between gap-2'>
         <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview')}</span>
         <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview_tip')}</span>
