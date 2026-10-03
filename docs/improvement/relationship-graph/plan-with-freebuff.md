@@ -841,6 +841,19 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 代价：M 的一半（0.5 人日，名字部分）；F-12 估 0.5–1 人日
   - 提交哈希：`7d997a48`｜状态：✅ 已完成（2026-10-03）
 
+- [x] **8.2 G-48 ①｜从笔记自身「以我为中心打开全屏图谱」（XS）**
+  - 台账：§3.8 G-48 候选清单里两条值得做的第一项（另一条是 8.3）
+  - 落地前的事实核对（不做则无需实现）：伴随图谱头部那颗「打开完整图谱」**早就存在**（`local-graph.tsx:73-79`，可访问名 `graph.open_full_graph`），但它只是 `b.openPanel('graph')`——打开的是**读者上次留下的那张图**（模式来自偏好，通常是全局）。所以本项不是新功能面，而是把这条既有出口按它自己的名字兑现：从笔记里出去，就该回到以这篇笔记为中心的图
+  - 文件：`store/ui/types.ts` + `store/ui/store.ts`（新增一次性请求 `graphLocalRequested` 与 `openGraphAroundNote()`，与 G-20 的 `graphSettingsRequested` 同一条通道）、`graph-panel/use-graph-prefs.ts`（`useGraphPreferences` 初值按未花的请求定 mode，新增 `useGraphAroundNoteRequest`）、`graph-panel/index.tsx`（接上该 hook）、`workspace/workspace-views.tsx:305`（改走 `openGraphAroundNote()`）
+  - 方案：请求**在第一次请求之前**就被兑现（初值路径），因此不会先向服务端要一发全局页再要一发局部页；面板已经在屏上时走 effect 那一路。两条路径都需要，且各有一条用例钉住（见变异 M3/M4）。模式是**通过面板自己的 setter 写的**，落盘的仍是这个表面自己做的选择——伴随面板继续只读（G-20 的单写者规则没有被本项破坏）
+  - 先红后绿（实测）：首跑 `companion-open-local.test.ts` **4 failed**（`TypeError: useUi.getState(...).openGraphAroundNote is not a function`、`expected null to be 'graph'`、wiring 那行读到 `onOpenFullGraph={() => b.openPa…}`）；落地后 **4 条 + 3 条源码守卫全绿**
+  - **本轮抓到并修掉自己写的假绿**：第一版用例断言 `api.graph.mock.calls[0]`，而 vitest 配置里没有 `clearMocks`，前一条用例（伴随面板自己的请求）留在同一个 mock 的历史里——`calls[0]` 读到的根本不是面板那一发。改成 `requestsSince(mark)`（按用例内记录的调用水位切片）后，实测面板首发是 `["global",null]` 再发 `["local","note-9"]`，于是把「初值就兑现」补进实现，断言换成**恰好一发且是 local**；改完 M3（只留 effect 那一路）由行为用例杀死，而不是只被源码扫描杀死
+  - 变异（6/6 由具名用例杀死；对照跑收集到 17 条且全绿）：M1 动作只开面板不带请求 → 3；M2 兑现后不花请求 → 4；M3 新挂载的面板读不到请求 → 2；M4 已开的面板收不到转向 → 2；M5 不看请求一律强制 local → 3；M6 头部接线退回 `openPanel('graph')` → 1
+  - 验证命令（已跑）：`npx vitest run src/client/features/graph src/client/store tests/graph-companion-open-local.test.ts src/client/lib/graph-settings.test.ts src/shared/graph-filter-expression.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts` → **47 文件 / 350 条全绿**；`typecheck` rc=0；13 项静态门禁全绿（`size` 1933 文件 / 47 豁免——首版把四个行为用例写在一个 describe 里被 `check-size` 记为一条长函数，按职责拆成两个 describe，没有重摄基线；`style` 第一轮报「双引号可换单引号」已改；`comments` 13228 条 / 1401 文件；`i18n` 3934 键不变、`labels` 150 不变）；`.githooks/pre-commit` 在暂存快照上跑完（`vitest related` 覆盖到 store/ui 的全部下游）
+  - 边界（如实登记）：① 中心取的是 `activeNoteId`，而伴随面板只为当前活动笔记渲染，所以「哪篇笔记」不靠额外传参；② 该请求会把偏好里的 `mode` 真的改成 local 并落盘——这是刻意的（读者的显式选择），代价是下一次单独打开图谱仍是局部视图，要回全局就在抽屉里切；③ 伴随面板自身**不受影响**（它一直覆写 `mode: 'local'`）；④ 未跑浏览器门禁（环境原因见批次 7 追加门禁那条），本项的可见结果——按下后全屏画的是这篇笔记的邻域——需要在下一个能起浏览器的窗口按一次确认
+  - 代价：XS（实测约 0.2 人日，含假绿的复测与拆分）
+  - 提交哈希：`9994348b`｜状态：✅ 已完成（2026-10-03）
+
 ## 8. 新增发现（待登记，本表落地过程中随时追加）
 
 | 编号 | 现象 | 涉及文件 | 严重程度 | 归属批次 | 状态 |
