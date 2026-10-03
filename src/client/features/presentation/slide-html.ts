@@ -238,9 +238,51 @@ function freezeChart(block: HTMLElement, source: HTMLElement): void {
 // slide canvas, before diagrams finish rendering into the cache.
 // The layout switch is consumed here rather than at the surfaces: it is a property of what the
 // slide is drawn from, and a switch left in the text would paint as a stray comment on the page.
+/**
+ * What a slide has to give up: every control a block head ships, and the anchor the heading plugin
+ * puts beside every title.
+ *
+ * Those buttons act on a live root — the note's editor, a pane the room never sees — so on a slide
+ * they are dead, and a dead button is worse than an absent one: the projector turns the page by a
+ * click anywhere on it, and its first rule is to leave a click on an interactive element alone. A
+ * presenter pressing on a block's head therefore pressed into nothing at all (N-37, measured: 13
+ * such controls on one slide of every family). Removing them is also why no "not interactive while
+ * presenting" notice was added — a surface with nothing dead on it needs no apology.
+ */
+const SLIDE_CONTROL_SELECTOR = [
+  'a.heading-anchor',
+  '[data-mindmap-fullscreen]',
+  '[data-mindmap-fit]',
+  '[data-mindmap-theme-pick]',
+  '[data-excalidraw-fullscreen]',
+  '[data-excalidraw-fit]',
+  '[data-excalidraw-library]',
+  '[data-bento-slides-fullscreen]',
+  '[data-kanban-fullscreen]',
+  '[data-js-run]',
+  '[data-js-switch]',
+  '[data-copy]',
+].join(', ')
+
+/**
+ * Strips those controls out of one slide's markup.
+ *
+ * This runs where every slide surface reads from, so the projector, the slide list, the overview
+ * grid, the presenter's panes, the printed sheet and the PNG export cannot disagree about what is
+ * pressable. The blocks themselves, their placeholders and their fence bodies are left alone — a
+ * snapshot still has to be drawn from the body the markup was built with (P-01).
+ */
+export function dropSlideControls(html: string): string {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  template.content.querySelectorAll(SLIDE_CONTROL_SELECTOR).forEach((control) => control.remove())
+  return template.innerHTML
+}
+
 export function renderSlideSource(source: string, externalImages: boolean): SlideRender {
   const { body, layout } = takeLayoutDirective(source)
-  return { ...renderMarkdown(body, { externalImages, hideFrontMatter: true }), layout }
+  const rendered = renderMarkdown(body, { externalImages, hideFrontMatter: true })
+  return { ...rendered, html: dropSlideControls(rendered.html), layout }
 }
 
 // One page of a measured slide, as markup. The canvas shows a page by translating

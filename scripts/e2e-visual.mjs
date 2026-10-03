@@ -1194,6 +1194,123 @@ async function openHandoutNote(page) {
   await sleep(1_500)
 }
 
+// The controls a slide cannot answer (N-37). A block ships a head with it — full screen, fit, run,
+// copy — and those belong to the note, where they act on a live root. On the projector they arrived
+// dead, and worse: the show turns the page by a click anywhere on it, and its first rule is to leave
+// a click on an interactive element alone, so a press on one of them was a press into nothing.
+const SLIDE_CONTROL_SCENE = JSON.stringify({
+  type: 'excalidraw',
+  version: 2,
+  source: 'inkstone',
+  elements: [{ type: 'rectangle', id: 'r1', x: 10, y: 10, width: 80, height: 50 }],
+  appState: {},
+  files: {},
+})
+
+// Two slides, each short enough to stay one page: the press below has to land on the half of the
+// projector that means "next", and a deck that paginates would answer a page-within-slide instead.
+const CONTROL_FREE_DECK = [
+  '# A title worth pressing',
+  '',
+  '```js-example',
+  'console.log(1)',
+  '```',
+  '',
+  '```typescript',
+  'const answer = 42',
+  '```',
+  '',
+  '---',
+  '',
+  '# The next page',
+  '',
+  'Reached by the press that used to be swallowed.',
+  '',
+  '```excalidraw',
+  SLIDE_CONTROL_SCENE,
+  '```',
+].join('\n')
+
+async function openControlFreeNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${CONTROL_FREE_DECK}\n`, 'slide controls')
+  await sleep(1_500)
+}
+
+async function readProjectedControls(page) {
+  return page.evaluate(() => {
+    const surface = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const controls = [...(surface?.querySelectorAll('button, a[href], input, select, textarea, [contenteditable="true"]') ?? [])]
+    const head = surface?.querySelector('.code-block-head')
+    const box = head?.getBoundingClientRect()
+    return {
+      controls: controls.length,
+      labels: controls.map((node) => (node.getAttribute('aria-label') ?? node.textContent ?? node.tagName).trim().slice(0, 24)),
+      // Where the copy button used to sit: the right end of the code block's head, which is on the
+      // half of the projector that means "next" — a press there is the one that used to be eaten.
+      pressBox: box ? { x: Math.round(box.right - 20), y: Math.round(box.top + 10) } : null,
+      picture: Boolean(surface?.querySelector('[data-excalidraw] svg, [data-excalidraw] img, [data-excalidraw] canvas')),
+      code: (surface?.textContent ?? '').includes('const answer = 42'),
+      example: (surface?.textContent ?? '').includes('console.log(1)'),
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+    }
+  })
+}
+
+async function assertSlideCarriesNoControls(page) {
+  await openControlFreeNote(page)
+  // The note reads the same markup and keeps every control, because there they answer to a live root.
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slide controls: the note preview never became visible')
+  const inNote = await page.evaluate(() => {
+    const prose = document.querySelector('.ink-prose')
+    return {
+      controls: prose?.querySelectorAll('button').length ?? 0,
+      anchors: prose?.querySelectorAll('a.heading-anchor').length ?? 0,
+    }
+  })
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // Wait for the board to be drawn, not merely for the page to exist: the picture is the proof that
+  // the strip took the head away and left the block.
+  // Wait for the page to carry both the code head (the press target) and no controls, rather than
+  // asserting on the frame right after the show opened.
+  let read = await readProjectedControls(page)
+  for (let attempt = 0; attempt < 24 && !read.pressBox; attempt += 1) {
+    await sleep(500)
+    read = await readProjectedControls(page)
+  }
+
+  check('presentation controls: the projected page holds nothing to press', read.controls === 0, JSON.stringify({ controls: read.controls, labels: read.labels }))
+  check('presentation controls: the slide still shows what its blocks are about', read.code && read.example, JSON.stringify({ code: read.code, example: read.example, controls: read.controls }))
+
+  const before = read.position
+  if (read.pressBox) await page.mouse.click(read.pressBox.x, read.pressBox.y)
+  await sleep(1_000)
+  const after = await readProjectedControls(page)
+  check('presentation controls: a press where the copy button was turns the page', before !== '' && read.pressBox !== null && after.position !== before, JSON.stringify({ before, after: after.position, press: read.pressBox }))
+  check('presentation controls: the note keeps what the slide gives up', inNote.controls > 0 && inNote.anchors > 0, JSON.stringify(inNote))
+
+  // The board on the second slide keeps its picture, which is what the head used to hang on.
+  await page.keyboard.press('ArrowRight')
+  await sleep(1_500)
+  const second = await readProjectedControls(page)
+  for (let attempt = 0; attempt < 24 && !second.picture && second.controls === 0; attempt += 1) {
+    await sleep(500)
+  }
+  const drawn = await readProjectedControls(page)
+  check('presentation controls: the next slide keeps its picture and drops its head too', drawn.picture && drawn.controls === 0, JSON.stringify({ picture: drawn.picture, controls: drawn.controls, position: drawn.position }))
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read (the same handback every scenario that
+  // brings its own note owes the rest of the gate).
+  await openDeckNote(page)
+}
+
 async function assertDeckHandout(page) {
   await openHandoutNote(page)
   await clickButton(page, LABELS.present)
@@ -9210,6 +9327,7 @@ async function main() {
     await assertPresentationLaser(page)
     await assertPresentationScreenCover(page)
     await assertDeckExport(page)
+    await assertSlideCarriesNoControls(page)
     await assertDeckHandout(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
