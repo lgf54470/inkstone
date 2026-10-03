@@ -843,13 +843,17 @@ async function assertKanbanOnProjector(page) {
   await openDeckNote(page)
 }
 
-// N-31\'s own scene. A slide that arrives block by block has to say so where the room looks and where
-// the speaker looks: the plan and the strings have unit cases, but only a browser walks the reveals,
-// reads the digits off the projector, and asks whether the console previewed the state the next press
-// actually produced. The deck deliberately has one stepped slide and one plain one, so \«nothing to
-// reveal\» is a case the scene reads rather than one it skips.
+// N-31's own scene. A slide that arrives block by block has to say so where the room looks and where
+// the speaker looks: the plan, the strings and the panes all have unit cases, but only a browser walks
+// the reveals, reads the digits off the projector, and asks whether the console previewed the state the
+// next press actually produced.
+//
+// The deck's first line is a heading on purpose. The deck divides on headings as well as on rules, so a
+// switch written *above* the heading lands in the slide before it — measured here, it produced an empty
+// slide one and left the page under the switch unstepped. That is the author's side of the same rule the
+// layout switch follows, and the scene is written against it.
 const STEPPED_DECK = [
-  '<!-- steps -->\n\n## Reveal in stages\n\nFirst point.\n\nSecond point.\n\nThird point.',
+  '## Reveal in stages\n\n<!-- steps -->\n\nFirst point.\n\nSecond point.\n\nThird point.',
   '## Whole at once\n\nThis slide carries no switch, so nothing on it waits.',
 ].join('\n\n---\n\n')
 
@@ -883,14 +887,13 @@ async function readSteppedShow(page, labels) {
 
 async function readSteppedConsole(presenter) {
   return presenter.evaluate(() => {
-    const pane = (selector) => document.querySelector(selector)
-    const hidden = (root) => [...(root?.querySelectorAll('[data-slide-page] > *') ?? [])]
+    const hidden = (selector) => [...document.querySelectorAll(`${selector} [data-slide-page] > *`)]
       .filter((block) => getComputedStyle(block).visibility === 'hidden').length
     return {
       positions: [...document.querySelectorAll('[data-presenter-position]')].map((item) => item.textContent?.trim() ?? ''),
-      currentHidden: hidden(pane('[data-presenter-current-pane]')),
-      nextHidden: hidden(pane('[data-presenter-next-pane]')),
-      nextBlocks: pane('[data-presenter-next-pane]')?.querySelectorAll('[data-slide-page] > *').length ?? 0,
+      currentHidden: hidden('[data-presenter-current-pane]'),
+      nextHidden: hidden('[data-presenter-next-pane]'),
+      nextBlocks: document.querySelectorAll('[data-presenter-next-pane] [data-slide-page] > *').length,
     }
   })
 }
@@ -907,22 +910,32 @@ async function assertPresentationStepping(browser, page) {
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   await sleep(900)
 
-  const opened = await readSteppedShow(page, controlLabels)
-  check('stepped: the slide holds four blocks and opens on the first', opened.blocks === 4 && opened.hidden === 3, JSON.stringify(opened))
-  check('stepped: the projector prints how far its page has arrived', opened.printed[0] === '1 / 2 · 1/4', JSON.stringify(opened.printed))
-  check('stepped: the chip and the pill print one string, reveal included', new Set(opened.printed).size === 1, JSON.stringify(opened.printed))
-  check('stepped: a page still arriving is not the start of the show', !opened.prevDisabled && !opened.nextDisabled, JSON.stringify(opened))
+  // Walk to the stepped page rather than assuming where the deck put it: what sits before it is the
+  // note's own front matter and the heading rule, not anything this scene is about.
+  let opened = await readSteppedShow(page, controlLabels)
+  for (let press = 0; press < 4 && opened.blocks !== 4; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    opened = await readSteppedShow(page, controlLabels)
+  }
+  const here = opened.printed[0]?.split(' · ').slice(0, -1).join(' · ') ?? ''
+  check('stepped: the scene found the page that arrives in stages', opened.blocks === 4 && opened.printed[0] === `${here} · 1/4`, JSON.stringify(opened))
+  check('stepped: only the first block is on the projector at the opening reveal', opened.hidden === 3, JSON.stringify(opened))
+  check('stepped: the chip and the pill print one string, reveal included', new Set(opened.printed).size === 1 && opened.printed.length === 2, JSON.stringify(opened.printed))
+  check('stepped: the opening reveal is the top of the show, the next one is not',
+    opened.prevDisabled && !opened.nextDisabled, JSON.stringify(opened))
   check('stepped: the announcement carries the numbers the digits show',
     digitsOf(opened.spoken).join(',') === digitsOf(opened.printed[0]).join(','), `${opened.spoken} vs ${opened.printed[0]}`)
 
   const walked = []
   for (let press = 0; press < 2; press++) {
     await page.keyboard.press('ArrowRight')
-    await sleep(400)
+    await sleep(450)
     walked.push(await readSteppedShow(page, controlLabels))
   }
   check('stepped: each press brings one more block onto the projector', walked.map((item) => item.hidden).join(',') === '2,1', JSON.stringify(walked.map((item) => item.hidden)))
-  check('stepped: the printed reveal advances with the blocks', walked.map((item) => item.printed[0]).join(' ') === '1 / 2 · 2/4 1 / 2 · 3/4', JSON.stringify(walked.map((item) => item.printed[0])))
+  check('stepped: the printed reveal advances with the blocks', walked.map((item) => item.printed[0]).join(' ') === `${here} · 2/4 ${here} · 3/4`, JSON.stringify(walked.map((item) => item.printed[0])))
+  check('stepped: a page still arriving has a press behind it', walked[0].prevDisabled === false && walked[0].nextDisabled === false, JSON.stringify(walked[0]))
 
   // The console is opened mid-page on purpose: what the speaker needs before the room sees it is the
   // next state, and on this page the next state is one block, not one slide.
@@ -933,7 +946,11 @@ async function assertPresentationStepping(browser, page) {
     check('stepped: the console opens beside a show that is mid-page', Boolean(presenter))
   }
   if (presenter) {
-    await presenter.waitForFunction(() => document.querySelectorAll('[data-presenter-position]').length > 0, { timeout: 15_000 })
+    // Both windows are separate boots of the same app: wait for the console to have drawn its panes,
+    // not for a fixed slice of time, or the scene reads an empty frame as a broken preview.
+    await presenter.waitForFunction(() => document.querySelectorAll('[data-presenter-position]').length > 0
+      && document.querySelectorAll('[data-presenter-next-pane] [data-slide-page] > *').length > 0
+      && document.querySelectorAll('[data-presenter-current-pane] [data-slide-page] > *').length > 0, { timeout: 20_000 })
     await sleep(900)
     const consoleRead = await readSteppedConsole(presenter)
     check('stepped: the console prints the position the projector prints',
@@ -944,21 +961,25 @@ async function assertPresentationStepping(browser, page) {
   }
 
   await page.keyboard.press('ArrowRight')
-  await sleep(400)
+  await sleep(450)
   const finished = await readSteppedShow(page, controlLabels)
-  check('stepped: the last block arrives on the last press', finished.hidden === 0 && finished.printed[0] === '1 / 2 · 4/4', JSON.stringify(finished))
+  check('stepped: the last block arrives on the last press', finished.hidden === 0 && finished.printed[0] === `${here} · 4/4`, JSON.stringify(finished))
   await page.keyboard.press('ArrowRight')
-  await sleep(400)
+  await sleep(450)
   const turned = await readSteppedShow(page, controlLabels)
-  check('stepped: one more press leaves the slide rather than the page', turned.printed[0] === '2 / 2' && turned.hidden === 0, JSON.stringify(turned))
+  check('stepped: one more press leaves the slide rather than the page', turned.blocks === 2 && turned.printed[0] !== finished.printed[0] && turned.hidden === 0, JSON.stringify(turned))
+  // Back across a slide re-enters it at its top — the page case is the one that keeps its end (both are
+  // unit-tested); this reads what the room actually gets, including the reveal number it prints.
   await page.keyboard.press('ArrowLeft')
-  await sleep(400)
+  await sleep(450)
   const back = await readSteppedShow(page, controlLabels)
-  check('stepped: stepping back returns the slide as the room left it', back.printed[0] === '1 / 2 · 4/4' && back.hidden === 0, JSON.stringify(back))
+  check('stepped: stepping back re-enters the slide at its first reveal', back.blocks === 4 && back.printed[0] === `${here} · 1/4` && back.hidden === 3, JSON.stringify(back))
+  await page.keyboard.press('ArrowRight')
+  await sleep(450)
   await page.keyboard.press('ArrowLeft')
-  await sleep(400)
+  await sleep(450)
   const rehidden = await readSteppedShow(page, controlLabels)
-  check('stepped: one press back hides the block it just showed', rehidden.hidden === 1 && rehidden.printed[0] === '1 / 2 · 3/4', JSON.stringify(rehidden))
+  check('stepped: one press back hides the block the last one showed', rehidden.hidden === 3 && rehidden.printed[0] === `${here} · 1/4`, JSON.stringify(rehidden))
 
   await presenter?.close().catch(() => {})
   await clickPresentationControl(page, LABELS.presentExit)
