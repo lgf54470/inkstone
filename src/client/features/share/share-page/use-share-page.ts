@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import type { PublicNote } from '@shared/types'
 import { api, ApiError } from '../../../lib/api'
+import type { FenceBodies } from '../../../lib/markdown/fence-bodies'
 import { renderMarkdown } from '../../../lib/markdown/renderer'
 import { enhancePreview, renderPendingMermaid, resetMermaidNode, toggleCodeBlockCollapse } from '../../../lib/markdown/enhance'
 import { moveMarkdownTabFocus, selectMarkdownTab } from '../../preview'
@@ -56,6 +57,25 @@ export function useShareLoad(slug: string) {
   return { note, isPasswordRequired, password, setPassword, error, isLoading, load }
 }
 
+/**
+ * A shared note is read, never edited, so every rich block on it travels as a drawn still — the map,
+ * the whiteboard, the deck and the board's cards — and the fence bodies come from the render this
+ * markup was built from (P-01).
+ */
+async function enhanceSharedMarkup(host: HTMLElement, fences: FenceBodies, dark: boolean): Promise<void> {
+  await enhancePreview(host, {
+    math: true,
+    mermaid: true,
+    mindmap: 'snapshot',
+    excalidraw: 'snapshot',
+    kanban: 'snapshot',
+    slides: 'snapshot',
+    fences,
+    dark,
+    codeBlockCollapseLines: 24,
+  })
+}
+
 export function useShareRendering(note: PublicNote | null, dark: boolean) {
   const locale = useLocale()
   const toast = useUi((s) => s.toast)
@@ -83,8 +103,7 @@ export function useShareRendering(note: PublicNote | null, dark: boolean) {
     let isCancelled = false
     const isCurrent = () => !isCancelled && revisionRef.current === revision && hostRef.current === host
     void (async () => {
-      // The host holds this markup, so it is where the fence bodies it was built from get registered.
-      await enhancePreview(host, { math: true, mermaid: true, mindmap: 'snapshot', excalidraw: 'snapshot', kanban: 'snapshot', fences: rendered.fences, dark, codeBlockCollapseLines: 24 })
+      await enhanceSharedMarkup(host, rendered.fences, dark)
       if (!isCurrent())
         return
       await renderPendingMermaid(host, dark, { isCurrent })

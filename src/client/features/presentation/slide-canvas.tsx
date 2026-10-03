@@ -8,15 +8,7 @@ import type { SlideLayout } from './slides'
 import { LAYOUT_CLASS, SlideProse } from './slide-prose'
 import { SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
 import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
-import {
-  markSlidesReady,
-  parseSlidesBody,
-  showSlidesError,
-  slidesBlocks,
-  slidesBody,
-  slidesPlaceholder,
-  type BentoDoc,
-} from '../../lib/markdown/slides'
+import { renderStaticSlides } from '../../lib/markdown/slides'
 import { interceptSlideLink, isBlockedSlideLinkHref } from './presentation-state'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
@@ -313,37 +305,6 @@ function useFontLoadedMeasure(onLoaded: () => void): void {
   }, [onLoaded])
 }
 
-function renderBentoSlidesFallback(block: HTMLElement, data: BentoDoc): void {
-  const placeholder = slidesPlaceholder(block) ?? block
-  const container = document.createElement('div')
-  container.className =
-    'bento-slides-fallback-grid grid grid-cols-2 gap-[var(--sp-2)] p-[var(--sp-2)] bg-[var(--bg-inset)] rounded-[var(--radius-md)]'
-  for (const slide of data.slides) {
-    const card = document.createElement('div')
-    card.className =
-      'bento-slides-fallback-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-2)] rounded-[var(--radius-sm)] flex flex-col gap-[var(--sp-1)]'
-    if (slide.title) {
-      const titleEl = document.createElement('div')
-      titleEl.className = 'font-semibold text-[length:var(--text-14)] text-[var(--text-primary)] truncate'
-      titleEl.textContent = slide.title
-      card.appendChild(titleEl)
-    }
-    const snippet = slide.elements
-      ?.filter((el) => el.type === 'text' && 'html' in el && typeof (el as { html?: unknown }).html === 'string')
-      .map((el) => (el as { html: string }).html.replace(/<[^>]+>/g, '').trim())
-      .filter((text): text is string => Boolean(text && text !== slide.title))
-      .slice(0, 2)
-      .join(' · ')
-    if (snippet) {
-      const textEl = document.createElement('div')
-      textEl.className = 'text-[length:var(--text-12)] text-[var(--text-secondary)] line-clamp-2'
-      textEl.textContent = snippet
-      card.appendChild(textEl)
-    }
-    container.appendChild(card)
-  }
-  placeholder.replaceChildren(container)
-}
 
 export function useBentoSlidesFallback(
   hostRef: RefObject<HTMLDivElement | null>,
@@ -355,22 +316,6 @@ export function useBentoSlidesFallback(
     const host = hostRef.current
     if (!host) return
     if (fences) registerFenceBodies(host, fences)
-    const blocks = slidesBlocks(host)
-    if (blocks.length === 0) return
-    let changed = false
-    for (const block of blocks) {
-      if (block.classList.contains('is-ready')) continue
-      const raw = slidesBody(block)
-      const parsed = parseSlidesBody(raw)
-      if (parsed.ok) {
-        renderBentoSlidesFallback(block, parsed.data)
-        markSlidesReady(block)
-        changed = true
-      } else {
-        showSlidesError(block, parsed.error)
-        changed = true
-      }
-    }
-    if (changed && onRendered) onRendered()
+    if (renderStaticSlides(host)) onRendered?.()
   }, [hostRef, html, fences, onRendered])
 }

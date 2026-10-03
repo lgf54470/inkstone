@@ -34,6 +34,7 @@ async function prepareStagedSlide(source: {
     // laid out as the board, because a projector is read from a distance and which column a card sits
     // in is part of what the card says (N-36).
     kanban: 'board',
+    slides: 'snapshot',
     // The bodies these blocks were rendered from. A snapshot draws from the fence body, and the body
     // no longer rides in the markup that carries it (P-01). The cache keeps this same set beside the
     // string, because the printed deck runs this draw over a page once more.

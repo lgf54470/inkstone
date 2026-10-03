@@ -9,12 +9,13 @@ import { describe, expect, it } from 'vitest'
  * back to. The preview pane has both; a share page, an exported document, a slide, a
  * presenter's own pane, a link hover card and the editor's live preview have neither, and for
  * as long as `enhancePreview` knew nothing about boards those surfaces sat at "Loading kanban…"
- * with `aria-busy` up forever (review #21). The option still defaults to "show the source", so a new surface is
- * knew nothing about boards those surfaces sat at "Loading kanban…" with `aria-busy` up
- * forever (review #21). The option still defaults to "show the source", so a new surface is
- * never broken — but a new surface that forgot to answer is a board the reader cannot read,
- * and that is what this scan catches: each caller has to name its channel, and since P-01 it has to
- * name where the fence bodies come from too.
+ * with `aria-busy` up forever (review #21). The option still defaults to "show the source", so a new
+ * surface is never broken — but a new surface that forgot to answer is a board the reader cannot
+ * read, and that is what this scan catches: each caller has to name its channel, and since P-01 it
+ * has to name where the fence bodies come from too.
+ *
+ * It reads the ```bento-slides channel the same way for the same reason (N-38): a deck block nobody
+ * asked about is a page that prints "Loading slides…" as if that were the deck.
  */
 const CLIENT_ROOT = path.resolve('src/client')
 const DEFINITION = path.join('lib', 'markdown', 'enhance', 'index.ts')
@@ -74,6 +75,27 @@ describe('kanban render channels', () => {
       [path.join('features', 'presentation', 'deck-print.tsx')]: 'board',
       [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'board',
       [path.join('features', 'presentation', 'use-slide-html.ts')]: 'board',
+      [path.join('features', 'preview', 'card-content.ts')]: 'snapshot',
+      [path.join('features', 'preview', 'preview-stage.ts')]: 'live',
+      [path.join('features', 'share', 'share-page', 'use-share-page.ts')]: 'snapshot',
+      [path.join('lib', 'export-note.ts')]: 'snapshot',
+    })
+  })
+
+  it('names a bento-slides channel at every enhancement call site', () => {
+    const offenders = enhancementCalls()
+      .filter(({ call }) => !/slides:\s*'(?:live|snapshot)'/.test(call))
+      .map(({ file }) => file)
+    expect(offenders).toEqual([])
+  })
+
+  it('sees the deck channels it lists, so the check cannot pass by finding nothing', () => {
+    const channels = new Map(enhancementCalls().map(({ file, call }) => [file, /slides:\s*'(\w+)'/.exec(call)?.[1]]))
+    expect(Object.fromEntries([...channels].sort())).toEqual({
+      [path.join('editor', 'live-preview.ts')]: 'snapshot',
+      [path.join('features', 'presentation', 'deck-print.tsx')]: 'snapshot',
+      [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'snapshot',
+      [path.join('features', 'presentation', 'use-slide-html.ts')]: 'snapshot',
       [path.join('features', 'preview', 'card-content.ts')]: 'snapshot',
       [path.join('features', 'preview', 'preview-stage.ts')]: 'live',
       [path.join('features', 'share', 'share-page', 'use-share-page.ts')]: 'snapshot',

@@ -1209,8 +1209,22 @@ const SLIDE_CONTROL_SCENE = JSON.stringify({
 
 // Two slides, each short enough to stay one page: the press below has to land on the half of the
 // projector that means "next", and a deck that paginates would answer a page-within-slide instead.
+const SLIDE_CONTROL_DECK = JSON.stringify({
+  format: 'bento-slides',
+  version: 1,
+  title: 'Gate deck',
+  slides: [
+    { id: 'a', title: 'Why now', elements: [{ id: 'e1', type: 'text', html: 'The deadline is Friday.', x: 0, y: 0, w: 10, h: 10 }] },
+    { id: 'b', title: 'What next', elements: [{ id: 'e2', type: 'text', html: 'Two of three plans fit.', x: 0, y: 0, w: 10, h: 10 }] },
+  ],
+})
+
 const CONTROL_FREE_DECK = [
   '# A title worth pressing',
+  '',
+  '```bento-slides',
+  SLIDE_CONTROL_DECK,
+  '```',
   '',
   '```js-example',
   'console.log(1)',
@@ -1254,6 +1268,8 @@ async function readProjectedControls(page) {
       // half of the projector that means "next" — a press there is the one that used to be eaten.
       pressBox: box ? { x: Math.round(box.right - 20), y: Math.round(box.top + 10) } : null,
       picture: Boolean(surface?.querySelector('[data-excalidraw] svg, [data-excalidraw] img, [data-excalidraw] canvas')),
+      deckCards: surface?.querySelectorAll('[data-bento-slides] .bento-slides-fallback-card').length ?? 0,
+      deckWaiting: (surface?.querySelector('[data-bento-slides]')?.textContent ?? '').includes('Loading slides'),
       code: (surface?.textContent ?? '').includes('const answer = 42'),
       example: (surface?.textContent ?? '').includes('console.log(1)'),
       position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
@@ -1286,6 +1302,9 @@ async function assertSlideCarriesNoControls(page) {
 
   check('presentation controls: the projected page holds nothing to press', read.controls === 0, JSON.stringify({ controls: read.controls, labels: read.labels }))
   check('presentation controls: the slide still shows what its blocks are about', read.code && read.example, JSON.stringify({ code: read.code, example: read.example, controls: read.controls }))
+  // The deck is the N-38 case: the projector's canvas drew it, the printed sheet did not, and the
+  // page that came out read "Loading slides…" where the deck should have been.
+  check('presentation controls: the slide shows the deck as cards, not as its loading promise', read.deckCards === 2 && !read.deckWaiting, JSON.stringify({ deckCards: read.deckCards, waiting: read.deckWaiting }))
 
   const before = read.position
   if (read.pressBox) await page.mouse.click(read.pressBox.x, read.pressBox.y)
@@ -1303,6 +1322,17 @@ async function assertSlideCarriesNoControls(page) {
   }
   const drawn = await readProjectedControls(page)
   check('presentation controls: the next slide keeps its picture and drops its head too', drawn.picture && drawn.controls === 0, JSON.stringify({ picture: drawn.picture, controls: drawn.controls, position: drawn.position }))
+
+  await page.keyboard.press('ArrowLeft')
+  await sleep(1_200)
+  await clickPresentationControl(page, LABELS.presentExport)
+  await page.waitForSelector('[data-deck-print][data-deck-print-ready="true"]', { timeout: 20_000 })
+  const printed = await page.evaluate(() => ({
+    cards: document.querySelectorAll('[data-deck-print] .bento-slides-fallback-card').length,
+    waiting: [...document.querySelectorAll('[data-deck-print] [data-bento-slides]')].some((node) => node.textContent.includes('Loading slides')),
+    ready: [...document.querySelectorAll('[data-deck-print] [data-bento-slides]')].every((node) => node.getAttribute('aria-busy') === 'false'),
+  }))
+  check('export: the printed sheet carries the deck rather than its loading promise', printed.cards === 2 && !printed.waiting && printed.ready, JSON.stringify(printed))
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)

@@ -118,6 +118,7 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
     excalidraw: 'snapshot',
     // A board is no different: the pane shows its cards as a list while the fence stays the source of truth.
     kanban: 'snapshot',
+    slides: 'snapshot',
     dark,
     // Collapsing is a control, and a click anywhere in the block drops the caret
     // into the source instead, so the block keeps its code unfolded.

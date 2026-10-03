@@ -9,6 +9,8 @@ export {
 
 export { parseSlidesOutline, serializeSlidesOutline } from './outline'
 
+export { renderStaticSlides } from './static'
+
 export { audienceSlides } from './flow'
 
 export { SLIDE_THEME_PRESETS, getAdaptiveSlideTheme } from './colors'

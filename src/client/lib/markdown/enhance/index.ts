@@ -13,6 +13,7 @@ import { registerFenceBodies, type FenceBodies } from '../fence-bodies'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
 import { renderStaticExcalidraws, showExcalidrawSourceAll } from '../excalidraw'
 import { renderStaticKanbans, showKanbanSourceAll } from '../kanban'
+import { renderStaticSlides } from '../slides'
 
 interface EnhanceOptions {
   math: boolean
@@ -41,6 +42,14 @@ interface EnhanceOptions {
    * markup gets serialized or printed, and omitted where the block shows its scene.
    */
   excalidraw?: 'live' | 'snapshot'
+  /**
+   * How this surface treats ```bento-slides blocks. The deck is an editor that needs a fence to
+   * write back to, so only the preview pane runs one: `live` means the caller mounts the decks
+   * itself, `snapshot` draws the card grid the projector falls back to — for markup that gets
+   * serialized or printed, where a block left at "Loading slides…" is a promise nobody keeps.
+   * Omitted leaves the block as the renderer drew it.
+   */
+  slides?: 'live' | 'snapshot'
   /**
    * How this surface treats ```kanban blocks. A board is a React root that needs a host to
    * write its edits back to, so only the preview pane runs one: `live` means the caller mounts
@@ -96,6 +105,8 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     renderStaticKanbans(root, options.kanban === 'board' ? 'board' : 'list')
   else if (!options.kanban)
     showKanbanSourceAll(root)
+  if (options.slides === 'snapshot')
+    renderStaticSlides(root)
   if (!options.math)
     showMathSource(root)
   await Promise.allSettled([

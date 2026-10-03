@@ -389,6 +389,44 @@ describe('DeckHandoutSheet — a slide nobody measured', () => {
 
 // The sheet is a portal on `document.body`, so the reads below go to the document, and each test
 // takes its own sheet back down: a sheet a failed assertion left up would be read by the next one.
+describe('DeckSheet — the deck a printed page draws', () => {
+  const DECK_BODY = JSON.stringify({
+    format: 'bento-slides',
+    version: 1,
+    title: 'Gate deck',
+    slides: [{ id: 'a', title: 'Why now', elements: [{ id: 'e1', type: 'text', html: 'The deadline is Friday.', x: 0, y: 0, w: 10, h: 10 }] }],
+  })
+
+  function deckMarkup(): string {
+    const fences = createFenceBodies()
+    takeFenceIndex(fences, 'slides', DECK_BODY)
+    rememberSlideHtml(cacheKeys[0], {
+      html: '<div class="bento-slides-block loading" data-bento-slides="" data-bento-slides-index="0" aria-busy="true"><div class="bento-slides-block-placeholder" data-bento-slides-placeholder>Loading slides...</div></div>',
+      fences,
+    })
+    return DECK_BODY
+  }
+
+  it('prints the deck a slide carries instead of the promise it opened with', async () => {
+    // N-38: the block arrives as "Loading slides…", and only a host that mounts the live deck ever
+    // replaces that text. The sheet has no such host, so the printed page used to carry the promise.
+    stubFonts()
+    deckMarkup()
+    const pages = buildDeckPages([FIRST, SECOND], cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector('[data-deck-print] .bento-slides-fallback-card') !== null)
+      expect(drawn).toBe(true)
+      const sheet = document.querySelector('[data-deck-print]')!
+      expect(sheet.textContent).not.toContain(t('preview.slides_loading'))
+      expect(sheet.querySelector('.bento-slides-fallback-card')?.textContent).toContain('Why now')
+      expect(sheet.querySelector('[data-bento-slides]')?.getAttribute('aria-busy')).toBe('false')
+    } finally {
+      view.unmount()
+    }
+  })
+})
+
 describe('DeckSheet — the layout a printed page is drawn in', () => {
   it('draws the page in the layout the plan was measured with, not the switch the slide carries', async () => {
     stubFonts()

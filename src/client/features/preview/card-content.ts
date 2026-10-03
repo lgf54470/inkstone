@@ -147,6 +147,7 @@ async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ ma
         mermaid: false,
         // The card is a reader's surface, so a board travels as its list of cards.
         kanban: 'snapshot',
+        slides: 'snapshot',
         // What the blocks on this staging element were rendered from. A fence body no longer rides in
         // the markup, so drawing the card without it would read every board as empty (P-01).
         fences: rendered.fences,

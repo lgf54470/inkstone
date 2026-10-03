@@ -37,6 +37,7 @@ export function usePresenterSlideMedia(options: {
         excalidraw: 'snapshot',
         // The presenter reads the same page the room reads, board layout included (N-36).
         kanban: 'board',
+        slides: 'snapshot',
         fences,
         dark,
         codeBlockCollapseLines: 0,
