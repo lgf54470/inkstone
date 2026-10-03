@@ -879,8 +879,11 @@ async function assertPresentationAccessibility(page) {
   check('a11y: the presentation key card adds no axe violations', cardReport.violations.length === 0, JSON.stringify(cardReport.violations.slice(0, 3)))
   const cardIncomplete = cardReport.incomplete.filter((item) => !isReviewedIncomplete(item))
   check('a11y: the key card leaves no unexpected review item', cardIncomplete.length === 0, JSON.stringify(cardIncomplete))
-  await page.keyboard.press('Escape')
-  await sleep(300)
+  // Closed with ? rather than Escape: this pass may be reading the show in real fullscreen, where the
+  // browser keeps Escape for itself and the page never sees the keystroke.
+  await page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+  await page.keyboard.press('?')
+  await page.waitForFunction(() => !document.querySelector('[data-presentation-key-guide]'), { timeout: 10_000 })
 
   // Keyboard path next to the automated rules: the slide list walks its own pages with the
   // arrows, and the counter follows it there.
@@ -1435,6 +1438,10 @@ async function assertPresentationKeyGuide(page) {
   await sleep(500)
   const card = await readCard()
   check('keys: ? paints the card over the projector', Boolean(card) && card.inDialog && !card.inChrome && card.aboveProjector && card.width > 240, JSON.stringify(card))
+  // One dialog only: the app binds shift+? to its own keyboard panel, and a modal over the talk would
+  // both cover the projector and take the keystroke before the show could answer it.
+  const dialogs = await page.evaluate(() => document.querySelectorAll('[role="dialog"]').length)
+  check('keys: the projector keeps ? away from the app panel', dialogs === 1, `dialogs=${dialogs}`)
   check('keys: the card lists every binding the map answers with', card?.rows === 15 && card.caps.includes('\u2192') && card.caps.includes('Space') && card.caps.includes('?'), JSON.stringify({ rows: card?.rows, caps: card?.caps }))
   check('keys: the card speaks the language of the room', [localeLabel('workspace.presentation_keys')[0], localeLabel('workspace.presentation_keys')[1]].includes(card?.name ?? ''), `name=${card?.name}`)
 

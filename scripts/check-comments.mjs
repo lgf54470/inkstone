@@ -1004,6 +1004,8 @@ const allowed = new Map([
     '// The key card belongs to this surface, and the mind map\'s reference taught the gate to read a card in',
     '// the state it is measured in: put the keystroke that opens it on the dialog itself (a control holding',
     '// it would keep the key), open the card, then ask axe about the same dialog again.',
+    '// Closed with ? rather than Escape: this pass may be reading the show in real fullscreen, where the',
+    '// browser keeps Escape for itself and the page never sees the keystroke.',
     '// Keyboard path next to the automated rules: the slide list walks its own pages with the',
     '// arrows, and the counter follows it there.',
     '// The pointer the show draws itself. A unit test can prove the mode turns on and the coordinates are',
@@ -1067,6 +1069,8 @@ const allowed = new Map([
     '// talk its show. Windowed on purpose: in real fullscreen the browser keeps Escape for itself.',
     '// The keystroke means what it says only with nothing holding it: focus goes to the dialog, the way a',
     '// presenter who reached the show by keyboard already is.',
+    '// One dialog only: the app binds shift+? to its own keyboard panel, and a modal over the talk would',
+    '// both cover the projector and take the keystroke before the show could answer it.',
     '// The follow lamp is the keyed control this reads by name: it is the one capsule button the markup',
     '// marks for itself, so the hover cannot land on a neighbour whose label moved.',
     '// Hand the run back the deck the scenarios below read, as every scenario that brings its own note has',
@@ -7168,6 +7172,9 @@ const allowed = new Map([
     '// keystroke over is decided by what the event targets, so pressing on plain ground would prove',
     '// nothing about the field it is meant to reach into.',
     '/**\n * The same key read from the other side: a running show, an absent note, and a shortcut that looks\n * like this one. Each of these would be a way for the shell to steal a keystroke from something\n * that already owns it.\n */',
+    '// N-17: `?` is already owed to the app\'s own keyboard panel, and the registry hears a keystroke before',
+    '// the show\'s overlay does — so the panel has to yield while a talk is up, or `?` on the projector would',
+    '// open a modal over the slide instead of the show\'s key card.',
   ]],
   ['src/client/features/presentation/presentation-hotkeys.ts', [
     '/** The key that starts a show, spelled once: the row in the editor\'s right-click menu prints this same\n * string, so the two cannot drift into showing different keys for one action. */',
@@ -9336,6 +9343,9 @@ const allowed = new Map([
   ['src/client/features/shell/app-shell.tsx', [
     '/* A show outlives the layout that started it: the desktop and mobile shells\n          mount different workspace subtrees, so hosting the overlay here keeps a\n          presentation alive across a breakpoint switch instead of dropping the\n          presenter back to the note mid-talk. */',
     '/* The menu every music surface posts to. It lives here rather than inside the hub\'s list\n          because the immersive player and the queue open the same menu, and both outlive the list. */',
+    '// While a show is up, `?` belongs to the projector: it opens the show\'s own key card there, and an',
+    '// app-wide modal stacked over the talk would be the third thing on the screen. The registry runs',
+    '// before the overlay\'s own listener and swallows the keystroke it answers, so this is the gate.',
   ]],
   ['src/client/features/sidebar/calendar-persist.ts', [
     '// Quota or private-mode writes can throw; the calendar view stays authoritative in memory.',

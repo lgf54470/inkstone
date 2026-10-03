@@ -17,6 +17,7 @@ import { initI18n, t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
 import { useUi } from '../../store/ui'
 import { PRESENTATION_HOTKEYS } from './presentation-hotkeys'
+import { GLOBAL_HOTKEYS } from '../shell/app-shell'
 
 const IDLE = { open: false, noteId: null, title: '', snapshot: '', following: true, initialSlideIndex: 0 }
 const MOD = IS_MAC ? { metaKey: true } : { ctrlKey: true }
@@ -111,5 +112,40 @@ describe('presentation hotkey — the keys it leaves alone', () => {
   it('is not the quick-open key it is spelled like', () => {
     press(document.body, { key: 'p', ...MOD })
     expect(start).not.toHaveBeenCalled()
+  })
+})
+
+// N-17: `?` is already owed to the app's own keyboard panel, and the registry hears a keystroke before
+// the show's overlay does — so the panel has to yield while a talk is up, or `?` on the projector would
+// open a modal over the slide instead of the show's key card.
+function shellShortcuts() {
+  const hotkey = GLOBAL_HOTKEYS.find((item) => item.id === 'shortcuts')
+  if (!hotkey) throw new Error('the shell no longer registers a shortcuts hotkey')
+  return hotkey
+}
+
+describe('the app panel and the show both answer to ?', () => {
+  afterEach(() => {
+    useUi.setState({ panel: null })
+  })
+
+  it('is the same keystroke the app panel already carries', () => {
+    expect(shellShortcuts().combo).toBe('shift+?')
+  })
+
+  it('opens the app panel while nothing is being presented', () => {
+    const disposeShell = registerAll([shellShortcuts()])
+    press(document.body, { key: '?', shiftKey: true })
+    disposeShell()
+    expect(useUi.getState().panel).toBe('shortcuts')
+  })
+
+  it('stays out of the way while a show is running, which owns the key', () => {
+    usePresentation.setState({ ...IDLE, open: true })
+    const disposeShell = registerAll([shellShortcuts()])
+    const event = press(document.body, { key: '?', shiftKey: true })
+    disposeShell()
+    expect(useUi.getState().panel).toBeNull()
+    expect(event.defaultPrevented, 'the panel left the keystroke for the show to answer').toBe(false)
   })
 })

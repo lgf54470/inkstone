@@ -10,6 +10,7 @@ import { InlineErrorBoundary } from '../../components/error-boundary'
 import { EditorSkeleton } from '../../components/feedback'
 import { PANEL_WIDTHS, useUi } from '../../store/ui'
 import { createContextualNote } from '../../store/notes'
+import { usePresentation } from '../../store/presentation'
 import { useNotes } from '../../store/notes'
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands'
 import { useSession } from '../../store/session'
@@ -287,7 +288,7 @@ function useGlobalHotkeys(): void {
   useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS, ...PRESENTATION_HOTKEYS]), [])
 }
 
-const GLOBAL_HOTKEYS: Hotkey[] = [
+export const GLOBAL_HOTKEYS: Hotkey[] = [
   {
     id: 'command',
     combo: 'mod+k',
@@ -371,6 +372,10 @@ const GLOBAL_HOTKEYS: Hotkey[] = [
     combo: 'shift+?',
     description: () => t('shell.keyboard_shortcuts'),
     group: () => t('shell.global'),
+    // While a show is up, `?` belongs to the projector: it opens the show's own key card there, and an
+    // app-wide modal stacked over the talk would be the third thing on the screen. The registry runs
+    // before the overlay's own listener and swallows the keystroke it answers, so this is the gate.
+    when: () => !usePresentation.getState().open,
     handler: () => uiState().togglePanel('shortcuts'),
   },
   {

@@ -110,6 +110,7 @@ const KEY_REFERENCE: Record<PresentationKeyCommand, { keys: string[]; labelKey: 
   keyGuide: { keys: ['?'], labelKey: 'workspace.presentation_keys' },
   exit: { keys: ['Escape'], labelKey: 'workspace.presentation_exit' },
 }
+
 // The reference stores a keystroke the way the browser reports it, because that is the spelling
 // `presentationCommand` is asked about, and shows it through the combo grammar the rest of the app
 // already reads — one key, one spelling in the card, the tooltip and the menu row. Only the space bar
