@@ -87,6 +87,8 @@ export interface UiState {
   settingsSection: string | null
   /** Set when a caller asks the graph to open with its settings drawer out; the panel spends it (G-20). */
   graphSettingsRequested: boolean
+  /** Set when a caller asks the graph to open around the note it sits in; the panel spends it (G-48). */
+  graphLocalRequested: boolean
   outlineOpen: boolean
   backlinksOpen: boolean
   localGraphOpen: boolean
@@ -133,6 +135,8 @@ export interface UiState {
   openSettings: (section?: string) => void
   /** Opens the full graph on its settings drawer, for a surface that holds no settings of its own. */
   openGraphSettings: () => void
+  /** Opens the full graph built around the note the reader is on, for a surface already showing that neighbourhood. */
+  openGraphAroundNote: () => void
   closePanel: () => void
   togglePanel: (panel: PanelName) => void
   toggleOutline: () => void

@@ -22,7 +22,7 @@ import { GraphCanvas } from './canvas'
 import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
-import { graphIdListToggles, useGraphPreferences } from './use-graph-prefs'
+import { graphIdListToggles, useGraphAroundNoteRequest, useGraphPreferences } from './use-graph-prefs'
 import { DEFAULT_PREFERENCES, GRAPH_SEARCH_DEBOUNCE_MS } from './constants'
 import { countWikiLinkEdges, graphNodeCounts, graphSearchHits, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps, GraphSearchState } from './types'
@@ -439,6 +439,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const titleId = useId()
   const [prefs, setPrefs] = useGraphPreferences()
   const [isSettingsOpen, setIsSettingsOpen] = useGraphSettingsDisclosure()
+  useGraphAroundNoteRequest(setPrefs)
   const [isLimitOpen, setIsLimitOpen] = useState(false)
   const { search, query, isOnlyMatching, changeSearch, cycleLegend, toggleOnlyMatching } = useGraphSearchMode()
   const openNote = useNotes((state) => state.openNote)

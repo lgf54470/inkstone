@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import { useSession } from '../../../store/session'
+import { useUi } from '../../../store/ui'
 import { graphPrefsStorageKey, loadPreferences, nextIdList } from './helpers'
 
 /**
@@ -52,9 +53,22 @@ export function graphIdListToggles(setPrefs: Dispatch<SetStateAction<GraphPrefer
   }
 }
 
+/**
+ * A note's companion graph asks for this panel to open around that note (G-48), and the ask travels as a
+ * one-shot flag on the ui store. Both surfaces of the panel read it before it is spent: the initial
+ * preference so the very first request is already the neighbourhood the reader asked for, and the effect
+ * for the case where the panel is on screen and the ask arrives after it mounted.
+ */
+function askedAroundNote(): boolean {
+  return useUi.getState().graphLocalRequested
+}
+
 export function useGraphPreferences() {
   const userId = useSession((state) => state.user?.id)
-  const [prefs, setPrefs] = useState(() => loadPreferences(userId))
+  const [prefs, setPrefs] = useState(() => {
+    const stored = loadPreferences(userId)
+    return askedAroundNote() ? { ...stored, mode: 'local' as const } : stored
+  })
   const latest = useRef({ userId, prefs })
   useEffect(() => {
     latest.current = { userId, prefs }
@@ -77,4 +91,19 @@ export function useStoredGraphPreferences(): GraphPreferences {
     return () => window.removeEventListener(GRAPH_PREFS_WRITTEN, follow)
   }, [userId])
   return prefs
+}
+
+/**
+ * Honours that ask for a panel that is already on screen: it cannot be caught in the initial preference
+ * any more than a reader can re-enter a room they are standing in. Applying it *here*, through the
+ * panel's own setter, keeps the single-writer rule the companion panel is read-only for (G-20) — the mode
+ * that lands in storage is one this surface chose, exactly as if the reader had picked it in the drawer.
+ */
+export function useGraphAroundNoteRequest(setPrefs: Dispatch<SetStateAction<GraphPreferences>>): void {
+  const requested = useUi((state) => state.graphLocalRequested)
+  useEffect(() => {
+    if (!requested) return
+    useUi.setState({ graphLocalRequested: false })
+    setPrefs((current) => current.mode === 'local' ? current : { ...current, mode: 'local' })
+  }, [requested, setPrefs])
 }

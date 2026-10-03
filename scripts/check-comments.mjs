@@ -3437,6 +3437,12 @@ const allowed = new Map([
   ['src/client/features/command/shortcuts-panel.tsx', [
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
+  ['src/client/features/graph/companion-open-local.test.ts', [
+    '/**\n * A note\'s companion graph is already centred on that note, so the way out of it should not drop the\n * reader back into a whole-vault picture (G-48). The companion asks, the full panel honours, and the ask\n * is spent on the way — the same one-shot channel the settings drawer uses (G-20).\n */',
+    '// The panel is already on screen, so the ask can only reach it through its own effect.',
+    '// The panel honoured the ask and left its own mark on the preference key, so a reader who now puts',
+    '// the stored mode back to global and opens the graph again gets global: the ask does not fire twice.',
+  ]],
   ['src/client/features/graph/companion-settings-entry.test.ts', [
     '/**\n * The companion panel holds no settings of its own — it reads the ones the full graph writes (G-20) —\n * so the way out it offers has to lead there. These cases press the button in the companion\'s header and\n * then mount the real panel to see whether it honours what was asked.\n */',
   ]],
@@ -3885,7 +3891,9 @@ const allowed = new Map([
     '/**\n * The one place the preference key is written. A reader in private browsing gets a warning rather than\n * a silent loss (AGENTS rule 2\'s best-effort form: the setting still works for this session), and a\n * write that changed nothing is not announced — the companion panel would otherwise re-read on mount.\n */',
     '/**\n * The preferences the reader set, held by the panel that owns them. Only the full-screen graph writes\n * them back: two surfaces persisting the same key would leave whichever let go of the drawer last\n * holding the graph, so the companion is given no setter to reach for (G-20).\n *\n * The write is debounced rather than per-change (G-11), and whatever is still pending when the panel\n * closes is flushed on the way out — a reader who drags a slider and immediately presses Escape has\n * still set it.\n */',
     '/**\n * The two node-id lists a reader decides from the node menu: which notes are pinned, and which are out of\n * the picture. Both are preferences, so the panel writes them like any other and the debounced store\n * picks them up (G-07, G-42).\n */',
+    '/**\n * A note\'s companion graph asks for this panel to open around that note (G-48), and the ask travels as a\n * one-shot flag on the ui store. Both surfaces of the panel read it before it is spent: the initial\n * preference so the very first request is already the neighbourhood the reader asked for, and the effect\n * for the case where the panel is on screen and the ask arrives after it mounted.\n */',
     '/** The same preferences read-only, following every write the owning panel makes. */',
+    '/**\n * Honours that ask for a panel that is already on screen: it cannot be caught in the initial preference\n * any more than a reader can re-enter a room they are standing in. Applying it *here*, through the\n * panel\'s own setter, keeps the single-writer rule the companion panel is read-only for (G-20) — the mode\n * that lands in storage is one this surface chose, exactly as if the reader had picked it in the drawer.\n */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-preview.ts', [
     '// The two callbacks are written inline by every caller, so the timers read them through a ref: arming a',
@@ -13086,9 +13094,11 @@ const allowed = new Map([
     '/** External jump request for the sidebar heatmap calendar (from the settings preview); consumed by SidebarCalendar. */',
     '/** FB-F4: the settings page a caller asked for when it opened the panel; null means the default. */',
     '/** Set when a caller asks the graph to open with its settings drawer out; the panel spends it (G-20). */',
+    '/** Set when a caller asks the graph to open around the note it sits in; the panel spends it (G-48). */',
     '/** Clears the full filter combo (query, date/relative, tags) with an undo toast restoring the exact previous combination. */',
     '/** Opens the settings panel on a named section (a caller that knows which page it wants). */',
     '/** Opens the full graph on its settings drawer, for a surface that holds no settings of its own. */',
+    '/** Opens the full graph built around the note the reader is on, for a surface already showing that neighbourhood. */',
   ]],
   ['src/client/store/update.ts', [
     '// Quota or private-mode writes can throw; the user is simply asked about the version again.',
@@ -15344,6 +15354,9 @@ const allowed = new Map([
   ]],
   ['tests/fullscreen-policy.test.ts', [
     '/**\n * The browser\'s own full screen belongs to exactly one surface: the presentation\n * panel, which owns a stable element and tracks `fullscreenchange` itself.\n *\n * Everything else that offers "full screen" goes through an in-app overlay\n * instead. A widget cannot hold the browser\'s full screen in this app: the\n * preview re-renders the note\'s markup on every commit and re-parents (or\n * rebuilds) the widget\'s element, and the browser drops out of full screen the\n * moment its full screen element leaves the document — mid-edit, with the user\n * watching. The mind map library shipped exactly that button; it is disarmed and\n * routed to the overlay (lib/markdown/mindmap/view.ts `disarmNativeFullscreen`,\n * asserted in features/preview/mindmap-fullscreen.test.ts and in the visual\n * gate). This test keeps the next such button from being wired straight to the\n * browser API.\n */',
+  ]],
+  ['tests/graph-companion-open-local.test.ts', [
+    '/**\n * The companion graph\'s way out is a one-shot ask, and both ends of it are lines nobody presses in a\n * jsdom test: the workspace decides what the header button means, and the panel decides whether to honour\n * the ask. `companion-open-local.test.ts` mounts the real panel with the ask already set, so the two\n * halves each have an owner here (G-48).\n */',
   ]],
   ['tests/graph-control-naming.test.ts', [
     '/**\n * A `Tooltip` and the control it wraps are the same message, said twice: once in print for a reader who\n * hovers, once as the accessible name for a reader who never sees it. The graph\'s fit control spent a\n * long time saying `graph.fit` out loud and `graph.reset` in print (G-35) — the two arguments are one\n * prop each, so nothing but a check keeps them from drifting apart again.\n *\n * The tooltip\'s text only exists in the DOM once the browser has laid the bubble out, which jsdom never\n * does, so this reads the source the mismatch was written in rather than the rendered tree. The\n * companion case in `graph-panel/panel-control-naming.test.ts` asserts the rendered name.\n */',
