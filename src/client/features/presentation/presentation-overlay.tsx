@@ -5,6 +5,7 @@ import { t } from '../../lib/i18n'
 import { usePresentation } from '../../store/presentation'
 import { DeckHandoutSheet, DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
+import { PresentationKeyGuide } from './presentation-key-guide'
 import { CoverAnnouncement, PresentationStage, ScreenCover, SlidePreparationNotice, stageProps } from './presentation-stage'
 import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
@@ -73,6 +74,9 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress page={session.page} pageTotal={session.pageTotal} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
+        {/* Painted over the grid rather than beside it, and put away before it by the same Esc: the
+            card is the topmost layer of the projector whenever it is up. */}
+        <PresentationKeyGuide open={session.keyGuide} onClose={session.clearKeyGuide} />
         {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
         <CoverAnnouncement cover={session.screenCover} />
         <SlidePreparationNotice failed={session.slideUnprepared} />
@@ -175,6 +179,7 @@ function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: P
     laser: session.laser,
     spotlight: session.spotlight,
     screenCover: session.screenCover,
+    keyGuide: session.keyGuide,
     onPrev: session.goPrev,
     onNext: session.goNext,
     onToggleRail: session.toggleRail,
@@ -182,6 +187,7 @@ function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: P
     onToggleFollowing: session.toggleFollowing,
     onToggleFullscreen: session.toggleFullscreen,
     onOpenPresenter: session.openPresenter,
+    onToggleKeyGuide: session.toggleKeyGuide,
     onToggleLaser: session.toggleLaser,
     onToggleSpotlight: session.toggleSpotlight,
     onToggleBlackout: session.toggleBlackout,

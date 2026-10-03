@@ -1,4 +1,5 @@
-export { PRESENTATION_HOTKEYS } from './presentation-hotkeys'
+export { PRESENTATION_HOTKEYS, PRESENTATION_START_COMBO } from './presentation-hotkeys'
+export { presentationKeyReference } from './presentation-keys'
 export { PresentationOverlay } from './presentation-overlay'
 export { startPresentationFromNote } from './start-presentation'
 export { findSlideIndexByOffset, splitIntoSlides } from './slides'

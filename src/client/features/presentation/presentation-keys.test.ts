@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { presentationCommand } from './presentation-keys'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { initI18n, t } from '../../lib/i18n'
+import { prettyCombo } from '../../lib/hotkeys'
+import { presentationCommand, presentationKeyCombo, presentationKeyReference } from './presentation-keys'
 
 const plain = { onControl: false, onSlideList: false }
 const onControl = { onControl: true, onSlideList: false }
@@ -8,6 +10,11 @@ const onOverviewGrid = { onControl: false, onSlideList: false, onOverviewGrid: t
 const onMenu = { onControl: false, onSlideList: false, onMenu: true }
 const onMenuControl = { onControl: true, onSlideList: false, onMenu: true }
 const onNotesPane = { onControl: false, onSlideList: false, onNotesPane: true }
+
+// The card reads its rows out of the locale, so the rows only become words once the messages are in.
+beforeAll(async () => {
+  await initI18n()
+})
 
 describe('presentationCommand — navigation', () => {
   it('walks the deck with the arrow, page and space keys', () => {
@@ -241,5 +248,89 @@ describe('presentationCommand — the speaker notes pane', () => {
     expect(presentationCommand('ArrowLeft', onNotesPane)).toBe('prev')
     expect(presentationCommand('f', onNotesPane)).toBe('fullscreen')
     expect(presentationCommand('p', onNotesPane)).toBe('presenter')
+  })
+})
+
+// N-17: the show had over twenty bindings and nowhere to look them up. The reference is only worth
+// printing if it is the map, so the table below is checked against `presentationCommand` itself —
+// a row that names a key the map answers with a different command is a card that lies to the speaker.
+describe('presentationCommand — the key reference', () => {
+  it('opens and closes the key card on ?', () => {
+    expect(presentationCommand('?', plain)).toBe('keyGuide')
+    expect(presentationCommand('?', onSlideList)).toBe('keyGuide')
+    expect(presentationCommand('?', onOverviewGrid)).toBe('keyGuide')
+    expect(presentationCommand('?', onNotesPane)).toBe('keyGuide')
+  })
+
+  it('leaves ? to a focused control and to an open menu, so typing is not hijacked', () => {
+    expect(presentationCommand('?', onControl)).toBeNull()
+    expect(presentationCommand('?', onMenu)).toBeNull()
+  })
+})
+
+describe('the printed key reference and the keymap', () => {
+  it('names no keystroke twice, so one press is one row of the card', () => {
+    const keys = presentationKeyReference().flatMap((row) => row.bindings)
+    expect(new Set(keys).size).toBe(keys.length)
+    expect(keys.length).toBeGreaterThan(15)
+  })
+
+  it('prints only the keys that actually drive the command each row names', () => {
+    for (const row of presentationKeyReference()) {
+      if (row.command === 'exit') continue
+      for (const key of row.bindings) {
+        expect(presentationCommand(key, plain), `${key} is printed under ${row.command}`).toBe(row.command)
+      }
+    }
+  })
+
+  // Which commands must appear is a compile-time rule: the reference is a `Record` over the command
+  // union, so a command added to the map without a row to document it does not build. What the test
+  // can check is the other direction — that the rows do not repeat themselves.
+  it('gives each command one row, so a press has one line to read', () => {
+    const rows = presentationKeyReference()
+    expect(new Set(rows.map((row) => row.command)).size).toBe(rows.length)
+    expect(rows.length).toBeGreaterThan(14)
+  })
+
+})
+
+describe('what the printed key reference reads like', () => {
+  it('describes each row with the words the control it drives already uses', () => {
+    const rows = presentationKeyReference()
+    expect(rows.find((row) => row.command === 'next')?.description).toBe(t('workspace.presentation_next'))
+    expect(rows.find((row) => row.command === 'exit')?.description).toBe(t('workspace.presentation_exit'))
+    expect(rows.find((row) => row.command === 'keyGuide')?.description).toBe(t('workspace.presentation_keys'))
+  })
+
+  // The card, the capsule's tooltip and the right-click menu are three renderings of one binding: a
+  // speaker who reads `→` on the button and `ArrowRight` on the card has been shown two different maps.
+  it('spells a key the same way in the card as in the tooltip and the menu', () => {
+    for (const row of presentationKeyReference()) {
+      expect(row.caps[0], row.command).toBe(prettyCombo(presentationKeyCombo(row.command))[0])
+    }
+  })
+
+  // The caps are what a presenter actually reads, so they are pinned as words rather than derived from
+  // the same function the card calls: a keystroke that stopped spelling as a key would otherwise read
+  // back as its own browser name.
+  it('spells each binding the way a key on a keyboard is written', () => {
+    const caps = Object.fromEntries(presentationKeyReference().map((row) => [row.command, row.caps]))
+    expect(caps.next).toEqual(['→', 'Page Down', '↓', 'Space', '↵'])
+    expect(caps.prev).toEqual(['←', 'Page Up', '↑'])
+    expect(caps.first).toEqual(['Home'])
+    expect(caps.last).toEqual(['End'])
+    expect(caps.blackout).toEqual(['B', '.'])
+    expect(caps.keyGuide).toEqual(['?'])
+    expect(caps.exit).toEqual(['Esc'])
+  })
+
+  it('offers one canonical key per command for a tooltip or a menu row', () => {
+    expect(presentationKeyCombo('next')).toBe('arrowright')
+    expect(presentationKeyCombo('prev')).toBe('arrowleft')
+    expect(presentationKeyCombo('overview')).toBe('g')
+    expect(presentationKeyCombo('laser')).toBe('c')
+    expect(presentationKeyCombo('exit')).toBe('escape')
+    expect(presentationKeyCombo('keyGuide')).toBe('?')
   })
 })

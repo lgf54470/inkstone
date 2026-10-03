@@ -33,6 +33,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
+import { PRESENTATION_START_COMBO } from '../../presentation'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
 import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
@@ -196,7 +197,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
 
 function buildPresentationItem(ctx: MenuCtx): MenuItem | null {
   if (!ctx.onPresent) return null
-  return { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={14} />, onSelect: ctx.onPresent }
+  return { id: 'presentation', label: t('workspace.presentation_mode'), combo: PRESENTATION_START_COMBO, icon: <Presentation size={14} />, onSelect: ctx.onPresent }
 }
 
 function buildClipboardItems(ctx: MenuCtx): MenuItem[] {

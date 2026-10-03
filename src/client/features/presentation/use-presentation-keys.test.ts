@@ -9,12 +9,13 @@ import { renderElement, type RenderedElement } from '../../lib/test-render'
 import { usePresentationKeys, type PresentationKeysOptions } from './use-presentation-keys'
 
 function Host({ props }: { props: PresentationKeysOptions }) {
-  const { laser, spotlight, overview, screenCover } = usePresentationKeys(props)
+  const { laser, spotlight, overview, screenCover, keyGuide } = usePresentationKeys(props)
   return createElement('span', {
     'data-laser': String(laser),
     'data-spotlight': String(spotlight),
     'data-overview': String(overview),
     'data-cover': screenCover ?? 'none',
+    'data-key-guide': String(keyGuide),
   })
 }
 
@@ -25,6 +26,7 @@ function state(container: HTMLElement) {
     spotlight: marker?.getAttribute('data-spotlight'),
     overview: marker?.getAttribute('data-overview'),
     cover: marker?.getAttribute('data-cover'),
+    keyGuide: marker?.getAttribute('data-key-guide'),
   }
 }
 
@@ -320,6 +322,36 @@ describe('usePresentationKeys — the speaker notes pane', () => {
 // window that preventDefaults the keystroke the next case is still trying to send.
 let spied: { add: ReturnType<typeof vi.spyOn>; remove: ReturnType<typeof vi.spyOn> } | null = null
 let host: RenderedElement | null = null
+
+// N-17: the card is a mode of the screen the way the grid is, so `?` has to turn it on and off again,
+// hand the keystroke back to whatever control is holding it, and take it down with the show.
+describe('usePresentationKeys — the key card', () => {
+  it('opens and closes the card with ?', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('?')
+    expect(state(view.container).keyGuide).toBe('true')
+    press('?')
+    expect(state(view.container).keyGuide).toBe('false')
+    view.unmount()
+  })
+
+  it('hands ? to a focused control instead of hijacking the keystroke', () => {
+    const input = document.createElement('input')
+    document.body.append(input)
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('?', input)
+    expect(state(view.container).keyGuide).toBe('false')
+    view.unmount()
+  })
+
+  it('goes out with the show, so a finished talk leaves no card on the page', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('?')
+    view.rerender(createElement(Host, { props: { ...options(), open: false } }))
+    expect(state(view.container).keyGuide).toBe('false')
+    view.unmount()
+  })
+})
 
 function keyListenerOps(): { add: number; remove: number } {
   if (!spied) throw new Error('the spies are the point of these cases')

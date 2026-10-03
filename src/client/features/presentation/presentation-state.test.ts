@@ -195,6 +195,13 @@ describe('escapeAction', () => {
     expect(escapeAction({ fullscreen: true, laser: true, overview: true, spotlight: true })).toBe('closeOverview')
     expect(escapeAction({ fullscreen: false, laser: false, overview: true })).toBe('closeOverview')
   })
+
+  // N-17: the key card is painted over the grid it sits on, so it is the layer Escape puts away first —
+  // the same rule that keeps the grid from costing a talk its show.
+  it('puts the key card away before the screen it is painted over', () => {
+    expect(escapeAction({ fullscreen: true, laser: true, overview: true, spotlight: true, keyGuide: true })).toBe('closeKeyGuide')
+    expect(escapeAction({ fullscreen: false, laser: false, overview: false, keyGuide: true })).toBe('closeKeyGuide')
+  })
 })
 
 describe('overviewMove', () => {

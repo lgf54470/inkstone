@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
+import { initI18n, t } from '../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { register } from '../../lib/hotkeys'
+import { presentationKeyReference } from '../presentation'
 import { ShortcutsPanel } from './shortcuts-panel'
 
 installTestGlobals()
@@ -79,5 +81,31 @@ describe('ShortcutsPanel registry-backed rows', () => {
     finally {
       dispose()
     }
+  })
+})
+
+// N-17: the panel is where a presenter looks for keys when no show is up, and it used to list none of
+// the show's. Its rows come out of the same table the card on the projector prints.
+describe('ShortcutsPanel — the show is listed too', () => {
+  beforeAll(async () => {
+    await initI18n()
+  })
+
+  it('gives the show its own group with one row per binding', () => {
+    const { unmount } = renderPanel(vi.fn())
+    const group = [...document.body.querySelectorAll('section')].find((section) => section.querySelector('h3')?.textContent === t('workspace.presentation_mode'))
+    expect(group, 'the panel lists no presentation group').toBeTruthy()
+    expect(group?.querySelectorAll('li').length).toBe(presentationKeyReference().length)
+    unmount()
+  })
+
+  it('finds a show key by the word that describes it, and shows the keystroke', () => {
+    const { unmount, input } = renderPanel(vi.fn())
+    act(() => {
+      setInputValue(input, t('workspace.presentation_laser'))
+    })
+    const row = [...document.body.querySelectorAll('[role="option"]')].find((item) => item.textContent?.includes(t('workspace.presentation_laser')))
+    expect(row?.textContent).toContain('C')
+    unmount()
   })
 })

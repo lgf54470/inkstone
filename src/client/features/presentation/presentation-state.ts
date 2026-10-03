@@ -29,10 +29,12 @@ export function railOpenFor(choice: boolean | null, fitsViewport: boolean): bool
   return choice ?? fitsViewport
 }
 
-// The ladder `Esc` walks: the screen the presenter is looking at first, so neither the overview
-// grid nor the laser ever costs a talk its show, then the tool, then the screen, then the show.
-// Named fields because three booleans in a row say nothing about which rung is which.
-export function escapeAction({ fullscreen, laser, overview, spotlight }: { fullscreen: boolean; laser: boolean; overview: boolean; spotlight?: boolean }): 'closeOverview' | 'clearSpotlight' | 'clearLaser' | 'exitFullscreen' | 'close' {
+// The ladder `Esc` walks: the layer the presenter is looking at first, so neither the key card, the
+// overview grid nor the laser ever costs a talk its show, then the screen, then the show. The card is
+// the top rung because it is painted over the grid it can sit on. Named fields because three booleans
+// in a row say nothing about which rung is which.
+export function escapeAction({ fullscreen, laser, overview, spotlight, keyGuide }: { fullscreen: boolean; laser: boolean; overview: boolean; spotlight?: boolean; keyGuide?: boolean }): 'closeKeyGuide' | 'closeOverview' | 'clearSpotlight' | 'clearLaser' | 'exitFullscreen' | 'close' {
+  if (keyGuide) return 'closeKeyGuide'
   if (overview) return 'closeOverview'
   if (spotlight) return 'clearSpotlight'
   if (laser) return 'clearLaser'

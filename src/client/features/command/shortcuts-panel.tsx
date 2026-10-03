@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react'
 import { Kbd } from '../../components/primitives'
 import { Modal } from '../../components/overlay'
 import { hotkeyText, listHotkeys } from '../../lib/hotkeys'
+import { presentationKeyReference } from '../presentation'
 import { cn } from '../../lib/cn'
 import { t, type MessageKey } from '../../lib/i18n'
 
@@ -115,6 +116,12 @@ function registeredHotkeySections(): ShortcutSection[] {
     {
       group: t('command.calendar_year_hints'),
       rows: CALENDAR_YEAR_HINTS.map((item) => ({ keys: item.keys, description: item.description(), keywords: t(item.keywordKey).split(',') })),
+    },
+    {
+      // The show's own keys, read from the table the projector prints: they work only while a show is
+      // up, so the rows carry no `run` — the panel cannot press a key into a screen that is not there.
+      group: t('workspace.presentation_mode'),
+      rows: presentationKeyReference().map((row) => ({ keys: row.caps, description: row.description })),
     },
   ]
 }

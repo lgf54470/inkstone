@@ -25,12 +25,14 @@ const baseOptions = (): PresentationMenuItemsOptions => ({
   laser: false,
   spotlight: false,
   screenCover: null,
+  keyGuide: false,
   onPrev: vi.fn(),
   onNext: vi.fn(),
   onToggleRail: vi.fn(),
   onToggleOverview: vi.fn(),
   onToggleFollowing: vi.fn(),
   onToggleFullscreen: vi.fn(),
+  onToggleKeyGuide: vi.fn(),
   onOpenPresenter: vi.fn(),
   onToggleLaser: vi.fn(),
   onToggleSpotlight: vi.fn(),
@@ -60,6 +62,7 @@ describe('buildPresentationMenuItems — item composition', () => {
       'whiteout',
       'follow',
       'fullscreen',
+      'key-guide',
       'exit',
     ])
     expect(items.find((i) => i.id === 'prev')?.separatorBefore).toBe(false)

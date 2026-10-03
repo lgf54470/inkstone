@@ -4,6 +4,10 @@ import { useUi } from '../../store/ui'
 import { usePresentation } from '../../store/presentation'
 import { startPresentationFromNote } from './start-presentation'
 
+/** The key that starts a show, spelled once: the row in the editor's right-click menu prints this same
+ * string, so the two cannot drift into showing different keys for one action. */
+export const PRESENTATION_START_COMBO = 'mod+alt+p'
+
 /**
  * The show's app-level shortcut: present the note that is on screen, from wherever the keyboard
  * happens to be — including inside the editor, since the cursor's position is what decides which
@@ -16,7 +20,7 @@ import { startPresentationFromNote } from './start-presentation'
 export const PRESENTATION_HOTKEYS: Hotkey[] = [
   {
     id: 'presentation',
-    combo: 'mod+alt+p',
+    combo: PRESENTATION_START_COMBO,
     description: () => t('workspace.presentation_mode'),
     group: () => t('common.note'),
     allowInInput: true,

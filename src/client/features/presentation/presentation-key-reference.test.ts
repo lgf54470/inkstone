@@ -1,0 +1,75 @@
+// N-17 asked where the show's twenty-odd bindings could be looked up, and the answer had better be one
+// table: the card, the capsule's tooltip and the right-click menu are three renderings of the same map.
+// This file is the cross-surface check — a row that quietly drops its key, or spells it differently
+// from the card, fails here rather than in front of a talk.
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { initI18n, t } from '../../lib/i18n'
+import { buildPresentationMenuItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
+import { presentationKeyCombo, presentationKeyReference } from './presentation-keys'
+
+beforeAll(async () => {
+  await initI18n()
+})
+
+afterEach(() => {
+  document.body.innerHTML = ''
+})
+
+const menuOptions = (): PresentationMenuItemsOptions => ({
+  linkUrl: null,
+  slideIndex: 1,
+  slideCount: 5,
+  subPage: 0,
+  pageCount: 1,
+  railOpen: false,
+  overview: false,
+  following: false,
+  followLost: false,
+  isFullscreen: false,
+  laser: false,
+  spotlight: false,
+  screenCover: null,
+  keyGuide: false,
+  onPrev: vi.fn(),
+  onNext: vi.fn(),
+  onToggleRail: vi.fn(),
+  onToggleOverview: vi.fn(),
+  onToggleFollowing: vi.fn(),
+  onToggleFullscreen: vi.fn(),
+  onOpenPresenter: vi.fn(),
+  onToggleLaser: vi.fn(),
+  onToggleSpotlight: vi.fn(),
+  onToggleBlackout: vi.fn(),
+  onToggleWhiteout: vi.fn(),
+  onToggleKeyGuide: vi.fn(),
+  onExit: vi.fn(),
+})
+
+// Home and End have no row of their own: the menu offers no jump to the ends of the deck, so those two
+// bindings live on the card alone.
+const CARD_ONLY = ['first', 'last']
+
+describe('the right-click menu and the key reference', () => {
+  it('prints on each row the key the reference says drives it', () => {
+    const items = buildPresentationMenuItems(menuOptions())
+    for (const row of presentationKeyReference().filter((entry) => !CARD_ONLY.includes(entry.command))) {
+      const item = items.find((entry) => entry.label === row.description)
+      expect(item, `no menu row offers ${row.command}`).toBeTruthy()
+      expect(item?.combo, row.command).toBe(presentationKeyCombo(row.command))
+    }
+  })
+
+  it('leaves the key off the follow row once there is nothing left to follow', () => {
+    const row = buildPresentationMenuItems({ ...menuOptions(), followLost: true }).find((item) => item.id === 'follow')
+    expect(row?.combo).toBeUndefined()
+  })
+
+  it('offers the card itself as a row, marked up while the card is open', () => {
+    const onToggleKeyGuide = vi.fn()
+    const row = buildPresentationMenuItems({ ...menuOptions(), keyGuide: true, onToggleKeyGuide }).find((item) => item.id === 'key-guide')
+    expect(row?.label).toBe(t('workspace.presentation_keys'))
+    expect(row?.checked).toBe(true)
+    row?.onSelect?.()
+    expect(onToggleKeyGuide).toHaveBeenCalledTimes(1)
+  })
+})

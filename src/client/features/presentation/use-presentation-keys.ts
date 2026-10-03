@@ -41,16 +41,16 @@ function usePointerTools(open: boolean) {
   return { laser: tool === 'laser', spotlight: tool === 'spotlight', clearLaser, clearSpotlight, toggleLaser, toggleSpotlight }
 }
 
-// The grid is the same kind of mode: it belongs to the screen, not to the note, and a show that
-// ends or a jump that lands has to take it down with it.
-function useOverviewMode(open: boolean) {
-  const [overview, setOverview] = useState(false)
-  const clearOverview = useCallback(() => setOverview(false), [])
-  const toggleOverview = useCallback(() => setOverview((on) => !on), [])
+// A mode of the screen rather than of the note: the overview grid and the key card both go out with
+// the show, so a talk that ends cannot leave either of them lying on the page for the next one.
+function useShowMode(open: boolean) {
+  const [active, setActive] = useState(false)
+  const clear = useCallback(() => setActive(false), [])
+  const toggle = useCallback(() => setActive((on) => !on), [])
   useEffect(() => {
-    if (!open) setOverview(false)
+    if (!open) setActive(false)
   }, [open])
-  return { overview, clearOverview, toggleOverview }
+  return { active, clear, toggle }
 }
 
 // One runner per command keeps the listener itself short, and a command that is not
@@ -71,6 +71,7 @@ function usePresentationRunner(actions: {
   toggleLaser: () => void
   toggleSpotlight: () => void
   toggleOverview: () => void
+  toggleKeyGuide: () => void
   openPresenter?: () => void
 }) {
   const latest = useRef(actions)
@@ -102,6 +103,8 @@ function usePresentationRunner(actions: {
         return current.toggleSpotlight()
       case 'overview':
         return current.toggleOverview()
+      case 'keyGuide':
+        return current.toggleKeyGuide()
       case 'presenter':
         return current.openPresenter?.()
     }
@@ -119,17 +122,23 @@ export interface PresentationKeysResult {
   spotlight: boolean
   clearSpotlight: () => void
   toggleSpotlight: () => void
+  /** Whether the whole deck is laid out on top of the slide surface. */
   overview: boolean
   clearOverview: () => void
   toggleOverview: () => void
+  /** Whether the show's own key card is lying over the projector. */
+  keyGuide: boolean
+  clearKeyGuide: () => void
+  toggleKeyGuide: () => void
 }
 
 export function usePresentationKeys(options: PresentationKeysOptions): PresentationKeysResult {
   const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter, isMenuOpen } = options
   const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
   const { laser, clearLaser, toggleLaser, spotlight, clearSpotlight, toggleSpotlight } = usePointerTools(open)
-  const { overview, clearOverview, toggleOverview } = useOverviewMode(open)
-  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser, toggleSpotlight, toggleOverview, openPresenter })
+  const grid = useShowMode(open)
+  const card = useShowMode(open)
+  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser, toggleSpotlight, toggleOverview: grid.toggle, toggleKeyGuide: card.toggle, openPresenter })
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
@@ -159,5 +168,5 @@ export function usePresentationKeys(options: PresentationKeysOptions): Presentat
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, onKeyDown])
 
-  return { screenCover, clearCover, toggleBlackout, toggleWhiteout, laser, clearLaser, toggleLaser, spotlight, clearSpotlight, toggleSpotlight, overview, clearOverview, toggleOverview }
+  return { screenCover, clearCover, toggleBlackout, toggleWhiteout, laser, clearLaser, toggleLaser, spotlight, clearSpotlight, toggleSpotlight, overview: grid.active, clearOverview: grid.clear, toggleOverview: grid.toggle, keyGuide: card.active, clearKeyGuide: card.clear, toggleKeyGuide: card.toggle }
 }

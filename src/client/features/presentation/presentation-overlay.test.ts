@@ -313,3 +313,65 @@ describe('PresentationOverlay — a show that cannot follow stops offering to', 
     view.unmount()
   })
 })
+
+// N-17: the show carried over twenty bindings and gave a presenter nowhere to look them up. `?` now
+// opens a card over the projector, and Escape puts the card away before it costs the talk its show.
+const pressKey = (key: string, target: EventTarget = window) => {
+  act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+}
+
+const keyCard = () => document.querySelector('[data-presentation-key-guide]')
+
+describe('PresentationOverlay — the key card', () => {
+  it('opens on ? and puts the card away on Escape before it costs the show', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    expect(keyCard()).toBeNull()
+
+    pressKey('?')
+    expect(keyCard()).toBeTruthy()
+
+    pressKey('Escape')
+    expect(keyCard()).toBeNull()
+    expect(usePresentation.getState().open).toBe(true)
+
+    pressKey('Escape')
+    expect(usePresentation.getState().open).toBe(false)
+    view.unmount()
+  })
+
+  it('paints the card inside the projector rather than beside it', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    pressKey('?')
+    const dialog = document.querySelector('[role="dialog"]')
+    const open = keyCard()
+    // A layer of the dialog, not a row of the capsule: a panel that grew the toolbar would push the
+    // button the presenter just pressed out from under the pointer (the rule the mind map's card obeys).
+    expect(dialog?.contains(open ?? null)).toBe(true)
+    expect(open?.parentElement).toBe(dialog)
+    expect(dialog?.querySelector('[data-presentation-chrome] [data-presentation-key-guide]')).toBeNull()
+    view.unmount()
+  })
+})
+
+describe('PresentationOverlay — reaching the key card', () => {
+  it('gives the keystroke to a control that is holding it', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    const button = document.querySelector<HTMLButtonElement>('[data-presentation-chrome] button')
+    if (!button) throw new Error('the capsule rendered no control to hold the key')
+    pressKey('?', button)
+    expect(keyCard()).toBeNull()
+    view.unmount()
+  })
+
+  it('opens the card from the right-click row that names it', () => {
+    const view = renderElement(createElement(PresentationOverlay))
+    fireContextMenu(document.querySelector('[role="dialog"]')!, 200, 200)
+    const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_keys')))
+    if (!row) throw new Error('the menu offers no row for the key card')
+    fireClick(row)
+    expect(keyCard()).toBeTruthy()
+    view.unmount()
+  })
+})

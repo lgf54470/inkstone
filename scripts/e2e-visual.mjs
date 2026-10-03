@@ -867,6 +867,21 @@ async function assertPresentationAccessibility(page) {
   check('a11y: no unexpected axe review items', unexpected.length === 0, JSON.stringify(unexpected))
   check('a11y: axe actually inspected the slide surface', report.passes >= 10, `passes=${report.passes}`)
 
+  // The key card belongs to this surface, and the mind map's reference taught the gate to read a card in
+  // the state it is measured in: put the keystroke that opens it on the dialog itself (a control holding
+  // it would keep the key), open the card, then ask axe about the same dialog again.
+  await page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+  await page.keyboard.press('?')
+  await page.waitForSelector('[data-presentation-key-guide]', { timeout: 10_000 })
+  await sleep(400)
+  await waitForPanelSettled(page, '[data-presentation-key-guide]')
+  const cardReport = await runAxe(page, '[role="dialog"]')
+  check('a11y: the presentation key card adds no axe violations', cardReport.violations.length === 0, JSON.stringify(cardReport.violations.slice(0, 3)))
+  const cardIncomplete = cardReport.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('a11y: the key card leaves no unexpected review item', cardIncomplete.length === 0, JSON.stringify(cardIncomplete))
+  await page.keyboard.press('Escape')
+  await sleep(300)
+
   // Keyboard path next to the automated rules: the slide list walks its own pages with the
   // arrows, and the counter follows it there.
   const walked = await page.evaluate(async () => {
@@ -1371,6 +1386,107 @@ async function assertDeckHandout(page) {
   await sleep(600)
   // Hand the run back the deck the scenarios below read, as every scenario that brings its own note
   // has to (the same handback the board scenario learned).
+  await openDeckNote(page)
+}
+
+// N-17: the show carries over twenty bindings and used to print none of them where a presenter could
+// look. The card is where they live now, so the gate checks the four things a unit test cannot see: that
+// the card is painted rather than merely in the tree, that it left the capsule exactly where the pointer
+// put it down (the rule the mind map's card follows), that the key a button shows under a real pointer is
+// the key the card shows beside the same words, and that Escape puts the card away before it costs the
+// talk its show. Windowed on purpose: in real fullscreen the browser keeps Escape for itself.
+async function assertPresentationKeyGuide(page) {
+  await openDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+  const chromeBox = () => page.evaluate(() => {
+    const box = document.querySelector('[data-presentation-chrome]')?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null
+  })
+  const readCard = () => page.evaluate(() => {
+    const node = document.querySelector('[data-presentation-key-guide]')
+    if (!node) return null
+    const box = node.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+    return {
+      rows: node.querySelectorAll('li').length,
+      caps: [...node.querySelectorAll('kbd')].map((cap) => cap.textContent?.trim() ?? ''),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      aboveProjector: Boolean(hit && node.contains(hit)),
+      name: node.getAttribute('aria-label') ?? '',
+      inDialog: Boolean(node.closest('[role="dialog"]')),
+      inChrome: Boolean(node.closest('[data-presentation-chrome]')),
+    }
+  })
+  // The keystroke means what it says only with nothing holding it: focus goes to the dialog, the way a
+  // presenter who reached the show by keyboard already is.
+  const holdShow = () => page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+
+  const before = await chromeBox()
+  check('keys: nothing is painted before the show is asked for it', (await readCard()) === null && before !== null, JSON.stringify(before))
+
+  await holdShow()
+  await page.keyboard.press('?')
+  await sleep(500)
+  const card = await readCard()
+  check('keys: ? paints the card over the projector', Boolean(card) && card.inDialog && !card.inChrome && card.aboveProjector && card.width > 240, JSON.stringify(card))
+  check('keys: the card lists every binding the map answers with', card?.rows === 15 && card.caps.includes('\u2192') && card.caps.includes('Space') && card.caps.includes('?'), JSON.stringify({ rows: card?.rows, caps: card?.caps }))
+  check('keys: the card speaks the language of the room', [localeLabel('workspace.presentation_keys')[0], localeLabel('workspace.presentation_keys')[1]].includes(card?.name ?? ''), `name=${card?.name}`)
+
+  const after = await chromeBox()
+  check('keys: the card did not move the capsule the presenter is aiming at', JSON.stringify(before) === JSON.stringify(after), JSON.stringify({ before, after }))
+
+  // The follow lamp is the keyed control this reads by name: it is the one capsule button the markup
+  // marks for itself, so the hover cannot land on a neighbour whose label moved.
+  const railCap = await page.evaluate(() => {
+    const button = document.querySelector('[data-presentation-chrome] [data-follow-toggle="true"]')
+    const box = button?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2), label: button?.getAttribute('aria-label') ?? '' } : null
+  })
+  if (railCap) {
+    await page.mouse.move(railCap.x, railCap.y)
+    await sleep(900)
+    const hovered = await page.evaluate(() => {
+      const tip = document.querySelector('[role="tooltip"]')
+      return tip ? { text: tip.textContent?.trim() ?? '', key: tip.querySelector('kbd')?.textContent?.trim() ?? '' } : null
+    })
+    check('keys: the capsule names the same key the card prints beside those words', hovered !== null && hovered.key === 'L' && hovered.text.includes(railCap.label), JSON.stringify({ hovered, press: railCap }))
+  } else {
+    check('keys: the capsule names the same key the card prints beside those words', false, 'no keyed control to hover')
+  }
+
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  const afterEscape = await readCard()
+  check('keys: Escape puts the card away and keeps the show', afterEscape === null && Boolean(await page.evaluate(() => document.querySelector('[role="dialog"]'))), JSON.stringify(afterEscape))
+
+  await holdShow()
+  await page.mouse.click(400, 300, { button: 'right' })
+  await sleep(500)
+  const openedFromMenu = await page.evaluate((label) => {
+    const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => item.textContent?.includes(label))
+    if (!row) return null
+    row.click()
+    return label
+  }, localeLabel('workspace.presentation_keys')[0])
+  await sleep(500)
+  const menuCard = await readCard()
+  check('keys: the right-click row that names the card opens it', openedFromMenu !== null && menuCard !== null, JSON.stringify({ row: openedFromMenu, card: menuCard === null ? null : { rows: menuCard.rows } }))
+
+  await holdShow()
+  await page.keyboard.press('?')
+  await sleep(400)
+  check('keys: ? closes the card it opened, however it was opened', (await readCard()) === null)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read, as every scenario that brings its own note has
+  // to (the same handback the board and handout scenarios learned).
   await openDeckNote(page)
 }
 
@@ -9359,6 +9475,7 @@ async function main() {
     await assertDeckExport(page)
     await assertSlideCarriesNoControls(page)
     await assertDeckHandout(page)
+    await assertPresentationKeyGuide(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
     await assertPresenterConsole(browser, page)

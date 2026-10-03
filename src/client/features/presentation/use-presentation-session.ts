@@ -102,6 +102,10 @@ export interface PresentationSession {
   overview: boolean
   clearOverview: () => void
   toggleOverview: () => void
+  /** Whether the show's own key card is lying over the projector. */
+  keyGuide: boolean
+  clearKeyGuide: () => void
+  toggleKeyGuide: () => void
   /** Whether the layers under the grid are out of reach: focus, clicks and Tab all stop at it. */
   occluded: boolean
   openPresenter: () => void
@@ -186,7 +190,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
-  useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
+  useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight, keyGuideOn: mode.keyGuide, clearKeyGuide: mode.clearKeyGuide })
   const slideUnprepared = useSlideHtml({ open, deck, hashes, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
   // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the

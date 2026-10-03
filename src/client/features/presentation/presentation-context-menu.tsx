@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import {
   ChevronLeft,
+  Keyboard,
   ChevronRight,
   CircleDot,
   Copy,
@@ -20,6 +21,7 @@ import {
 import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
 import { Menu, type MenuItem } from '../../components/overlay'
+import { presentationKeyCombo } from './presentation-keys'
 import { isSafeSlideLinkHref } from './presentation-state'
 
 export interface PresentationMenuItemsOptions {
@@ -36,12 +38,14 @@ export interface PresentationMenuItemsOptions {
   laser: boolean
   spotlight: boolean
   screenCover: 'black' | 'white' | null
+  keyGuide: boolean
   onPrev: () => void
   onNext: () => void
   onToggleRail: () => void
   onToggleOverview: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
+  onToggleKeyGuide: () => void
   onOpenPresenter: () => void
   onToggleLaser: () => void
   onToggleSpotlight: () => void
@@ -80,7 +84,7 @@ function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[]
     {
       id: 'prev',
       label: t('workspace.presentation_prev'),
-      combo: 'arrowleft',
+      combo: presentationKeyCombo('prev'),
       icon: <ChevronLeft size={14} />,
       disabled: isFirst,
       onSelect: options.onPrev,
@@ -89,7 +93,7 @@ function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[]
     {
       id: 'next',
       label: t('workspace.presentation_next'),
-      combo: 'arrowright',
+      combo: presentationKeyCombo('next'),
       icon: <ChevronRight size={14} />,
       disabled: isLast,
       onSelect: options.onNext,
@@ -102,7 +106,7 @@ function buildViewItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'overview',
       label: t('workspace.presentation_overview'),
-      combo: 'g',
+      combo: presentationKeyCombo('overview'),
       icon: <LayoutGrid size={14} />,
       checked: options.overview,
       onSelect: options.onToggleOverview,
@@ -111,7 +115,7 @@ function buildViewItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'rail',
       label: t('workspace.presentation_slides'),
-      combo: 's',
+      combo: presentationKeyCombo('slideList'),
       icon: <PanelLeft size={14} />,
       checked: options.railOpen,
       onSelect: options.onToggleRail,
@@ -119,7 +123,7 @@ function buildViewItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'presenter',
       label: t('workspace.presentation_presenter'),
-      combo: 'p',
+      combo: presentationKeyCombo('presenter'),
       icon: <Presentation size={14} />,
       onSelect: options.onOpenPresenter,
     },
@@ -131,7 +135,7 @@ function buildToolItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'laser',
       label: t('workspace.presentation_laser'),
-      combo: 'c',
+      combo: presentationKeyCombo('laser'),
       icon: <CircleDot size={14} />,
       checked: options.laser,
       onSelect: options.onToggleLaser,
@@ -140,7 +144,7 @@ function buildToolItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'spotlight',
       label: t('workspace.presentation_spotlight'),
-      combo: 't',
+      combo: presentationKeyCombo('spotlight'),
       icon: <Sun size={14} />,
       checked: options.spotlight,
       onSelect: options.onToggleSpotlight,
@@ -148,7 +152,7 @@ function buildToolItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'blackout',
       label: t('workspace.presentation_blackout'),
-      combo: 'b',
+      combo: presentationKeyCombo('blackout'),
       icon: <Moon size={14} />,
       checked: options.screenCover === 'black',
       onSelect: options.onToggleBlackout,
@@ -156,7 +160,7 @@ function buildToolItems(options: PresentationMenuItemsOptions): MenuItem[] {
     {
       id: 'whiteout',
       label: t('workspace.presentation_whiteout'),
-      combo: 'w',
+      combo: presentationKeyCombo('whiteout'),
       icon: <SunMedium size={14} />,
       checked: options.screenCover === 'white',
       onSelect: options.onToggleWhiteout,
@@ -172,7 +176,7 @@ function buildSessionAndExitItems(options: PresentationMenuItemsOptions): MenuIt
       // gone there is nothing to follow, and the row that shows `L` would be the one place the show
       // still claims to be live.
       label: options.followLost ? t('workspace.presentation_follow_lost') : t('workspace.presentation_follow'),
-      combo: options.followLost ? undefined : 'l',
+      combo: options.followLost ? undefined : presentationKeyCombo('follow'),
       icon: options.followLost ? <Snowflake size={14} /> : <Radio size={14} />,
       checked: !options.followLost && options.following,
       disabled: options.followLost,
@@ -182,15 +186,23 @@ function buildSessionAndExitItems(options: PresentationMenuItemsOptions): MenuIt
     {
       id: 'fullscreen',
       label: options.isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen'),
-      combo: 'f',
+      combo: presentationKeyCombo('fullscreen'),
       icon: options.isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />,
       checked: options.isFullscreen,
       onSelect: options.onToggleFullscreen,
     },
     {
+      id: 'key-guide',
+      label: t('workspace.presentation_keys'),
+      combo: presentationKeyCombo('keyGuide'),
+      icon: <Keyboard size={14} />,
+      checked: options.keyGuide,
+      onSelect: options.onToggleKeyGuide,
+    },
+    {
       id: 'exit',
       label: t('workspace.presentation_exit'),
-      combo: 'esc',
+      combo: presentationKeyCombo('exit'),
       icon: <X size={14} />,
       tone: 'danger',
       onSelect: options.onExit,

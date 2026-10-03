@@ -1,8 +1,10 @@
-import { createElement } from 'react'
-import { initI18n, t } from '../../lib/i18n'
+import { act, createElement } from 'react'
+import { initI18n, t, type MessageKey } from '../../lib/i18n'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { renderElement } from '../../lib/test-render'
+import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
+
+installTestGlobals()
 
 // The toggle is found by the message it shows, which only exists once the locale has loaded.
 beforeAll(async () => {
@@ -11,6 +13,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   document.body.innerHTML = ''
+  vi.restoreAllMocks()
 })
 
 describe('PresentationControls', () => {
@@ -273,5 +276,50 @@ describe('PresentationControls — the show outlived its note', () => {
     const following = renderElement(createElement(PresentationControls, chromeProps({ following: true })))
     expect(following.container.querySelector(`[aria-label="${t('workspace.presentation_freeze')}"]`)).toBeTruthy()
     expect(following.container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_freeze')}"]`)?.disabled).toBe(false)
+  })
+})
+
+// N-17: a binding the presenter cannot find is a binding the presenter does not have. Each capsule
+// control that a keystroke drives now names it, spelled the way the card and the menu spell it.
+const RECT = { width: 24, height: 24, top: 10, left: 10, right: 34, bottom: 34, x: 10, y: 10, toJSON: () => ({}) } as DOMRect
+
+const KEYED_CONTROL: [MessageKey, string][] = [
+  ['workspace.presentation_prev', '←'],
+  ['workspace.presentation_next', '→'],
+  ['workspace.presentation_show_slides', 'S'],
+  ['workspace.presentation_show_overview', 'G'],
+  ['workspace.presentation_presenter', 'P'],
+  ['workspace.presentation_follow', 'L'],
+  ['workspace.presentation_fullscreen', 'F'],
+  ['workspace.presentation_exit', 'Esc'],
+]
+
+// jsdom lays nothing out, so the anchor has to report a size for the hint to mount at all — and the
+// capsule's own delay has to elapse before it does.
+async function hintKeyOf(container: HTMLElement, label: string): Promise<string | undefined> {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(RECT)
+  const trigger = container.querySelector<HTMLElement>(`[aria-label="${label}"]`)
+  if (!trigger) throw new Error(`no capsule control named ${label}`)
+  trigger.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  })
+  return document.querySelector('[role="tooltip"]')?.querySelector('kbd')?.textContent?.trim()
+}
+
+describe('PresentationControls — the key a control answers to', () => {
+  it.each(KEYED_CONTROL)('names the keystroke on %s', async (key, cap) => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps()))
+    expect(await hintKeyOf(container, t(key))).toBe(cap)
+  })
+
+  it('offers no key for a control whose key does nothing', async () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ followLost: true })))
+    expect(await hintKeyOf(container, t('workspace.presentation_follow_lost'))).toBeUndefined()
+  })
+
+  it('offers no key for an export, because no key drives one', async () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps()))
+    expect(await hintKeyOf(container, t('workspace.presentation_export'))).toBeUndefined()
   })
 })

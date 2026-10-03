@@ -3,6 +3,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
+import { presentationKeyCombo } from './presentation-keys'
 import type { DeckExportProgress } from './deck-print'
 import { describeDeckPosition, formatDeckPosition } from './deck-position'
 
@@ -52,7 +53,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <Tooltip label={t('workspace.presentation_exit')} side='top'>
+      <Tooltip label={t('workspace.presentation_exit')} combo={presentationKeyCombo('exit')} side='top'>
         <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
           <X size={15} />
         </IconButton>
@@ -88,27 +89,27 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
   const presenterLabel = t('workspace.presentation_presenter')
   return (
     <>
-      <Tooltip label={railLabel} side='top'>
+      <Tooltip label={railLabel} combo={presentationKeyCombo('slideList')} side='top'>
         <IconButton label={railLabel} size='sm' active={railOpen} onClick={onToggleRail}>
           {railOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
         </IconButton>
       </Tooltip>
-      <Tooltip label={overviewLabel} side='top'>
+      <Tooltip label={overviewLabel} combo={presentationKeyCombo('overview')} side='top'>
         <IconButton label={overviewLabel} size='sm' active={overview} onClick={onToggleOverview}>
           <LayoutGrid size={14} />
         </IconButton>
       </Tooltip>
-      <Tooltip label={presenterLabel} side='top'>
+      <Tooltip label={presenterLabel} combo={presentationKeyCombo('presenter')} side='top'>
         <IconButton label={presenterLabel} size='sm' onClick={onOpenPresenter}>
           <Presentation size={14} />
         </IconButton>
       </Tooltip>
-      <Tooltip label={followLabel} side='top'>
+      <Tooltip label={followLabel} combo={followLost ? undefined : presentationKeyCombo('follow')} side='top'>
         <IconButton label={followLabel} size='sm' data-follow-toggle='true' active={!followLost && following} disabled={followLost} onClick={onToggleFollowing}>
           {!followLost && following ? <Radio size={14} /> : <Snowflake size={14} />}
         </IconButton>
       </Tooltip>
-      <Tooltip label={fullscreenLabel} side='top'>
+      <Tooltip label={fullscreenLabel} combo={presentationKeyCombo('fullscreen')} side='top'>
         <IconButton label={fullscreenLabel} size='sm' onClick={onToggleFullscreen}>
           {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
         </IconButton>
@@ -117,6 +118,8 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
   )
 }
 
+// The three exports are named without a keystroke beside them because the show binds no key to any of
+// them: a tooltip that showed `?` here would point at the card, not at the press.
 function ExportControls({ exporting, onExport, onExportImages, onExportHandout }: { exporting: boolean; onExport: () => void; onExportImages: () => void; onExportHandout: () => void }) {
   return (
     <>
@@ -181,12 +184,12 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
         {formatDeckPosition(position)}
       </span>
       <span className='sr-only' role='status' aria-live='polite'>{describeDeckPosition(position)}</span>
-      <Tooltip label={t('workspace.presentation_prev')} side='top'>
+      <Tooltip label={t('workspace.presentation_prev')} combo={presentationKeyCombo('prev')} side='top'>
         <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={onPrev} disabled={slideIndex === 0 && subPage === 0}>
           <ChevronLeft size={15} />
         </IconButton>
       </Tooltip>
-      <Tooltip label={t('workspace.presentation_next')} side='top'>
+      <Tooltip label={t('workspace.presentation_next')} combo={presentationKeyCombo('next')} side='top'>
         <IconButton label={t('workspace.presentation_next')} size='sm' onClick={onNext} disabled={slideIndex === slideCount - 1 && subPage === pageCount - 1}>
           <ChevronRight size={15} />
         </IconButton>
