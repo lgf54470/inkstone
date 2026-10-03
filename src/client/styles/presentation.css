@@ -149,6 +149,89 @@
   font-size: var(--text-12);
 }
 
+.deck-html-body {
+  margin: 0;
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+}
+
+.deck-html-body .deck-print-sheet {
+  position: fixed;
+  inset: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: transparent;
+}
+
+.deck-html-body .deck-print-page {
+  display: none;
+  transform: scale(var(--deck-html-scale, 1));
+}
+
+.deck-html-body .deck-print-page[data-current] {
+  display: block;
+}
+
+.deck-html-bar {
+  position: fixed;
+  bottom: var(--sp-4);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-pop);
+}
+
+.deck-html-bar button {
+  min-width: var(--sp-12);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-12);
+  cursor: pointer;
+}
+
+.deck-html-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.deck-html-bar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.deck-html-position {
+  min-width: var(--sp-16);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .deck-html-body .deck-print-page[data-current] {
+    animation: deck-html-in var(--dur-base) var(--ease-out);
+  }
+}
+
+@keyframes deck-html-in {
+  from {
+    opacity: 0.6;
+  }
+}
+
 .presentation-key-guide {
   position: absolute;
   inset-block-start: 50%;

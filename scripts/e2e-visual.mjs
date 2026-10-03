@@ -138,6 +138,7 @@ const LABELS = {
   presentExport: localeLabel('workspace.presentation_export'),
   presentExportImages: localeLabel('workspace.presentation_export_images'),
   presentExportHandout: localeLabel('workspace.presentation_export_handout'),
+  presentExportHtml: localeLabel('workspace.presentation_export_html'),
   slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
   slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
@@ -1840,6 +1841,117 @@ async function assertDeckImageExport(page) {
   check('export: the running count goes away with the export', await page.evaluate(() => document.querySelector('[data-export-progress]') === null))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// N-33: the third export is the show itself, handed over as one file. The two above export pictures of
+// the deck; this one has to be *playable* by someone who has never opened this app, so the scene does
+// what that person does — double-click the file, and turn pages.
+const DECK_HTML_SCENARIO = '# Standalone deck\n\nThe first state of the talk.\n\nAnd the second.\n\n---\n\n## With an attachment\n\n![the mark](/inkstone-logo.svg)\n\n---\n\n## Closing\n\nThe last page of the deck.'
+
+async function openStandaloneDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${DECK_HTML_SCENARIO}\n`, 'standalone deck')
+  await sleep(1_500)
+}
+
+async function waitForSavedFile(dir, extension, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = fs.readdirSync(dir).find((name) => name.endsWith(extension))
+    if (found) return path.join(dir, found)
+    if (Date.now() > deadline) return null
+    await sleep(250)
+  }
+}
+
+async function assertDeckHtmlExport(browser, page) {
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-html-'))
+  const client = await page.createCDPSession()
+  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir })
+
+  await openStandaloneDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // What the show walks, counted off the list the idle pass filled: the file has to hold exactly this.
+  const pages = await waitForRailFilled(page)
+  const position = await page.evaluate(() => document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '')
+
+  await clickPresentationControl(page, LABELS.presentExportHtml)
+  const saved = await waitForSavedFile(downloadDir, '.html')
+  check('standalone deck: one html file is written', Boolean(saved), saved ?? `nothing in ${downloadDir}`)
+  if (!saved) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    await openDeckNote(page)
+    fs.rmSync(downloadDir, { recursive: true, force: true })
+    return
+  }
+
+  const file = fs.readFileSync(saved, 'utf8')
+  const states = [...file.matchAll(/<section class="deck-print-page"[^>]*data-position="([^"]*)"/g)].map((match) => match[1] ?? '')
+  const viewer = await browser.newPage()
+  try {
+    check('standalone deck: the file holds every page the show walks', states.length === pages, `file=${states.length} show=${pages} positions=${JSON.stringify(states)}`)
+    check('standalone deck: each page is numbered the way the room read it', states[0] === position, `${JSON.stringify(states[0])} vs ${JSON.stringify(position)}`)
+    // The file carries the app's own stylesheets, and every colour token of this app is declared under
+    // `:root[data-theme=…]` — stylesheets without those attributes are rules with no colours.
+    check('standalone deck: the file is wearing the theme it was exported in', /<html lang="[a-z-]+" [^>]*data-theme=/.test(file), file.slice(0, 120))
+    check('standalone deck: the printed page box comes along too', file.includes('@page { size: 1280px 720px'), `head=${file.slice(0, 60)}`)
+    check('standalone deck: an attachment leaves as a whole URL', file.includes(`${BASE}/inkstone-logo.svg`) && !file.includes('src="/'), `srcs=${JSON.stringify([...file.matchAll(/src="([^"]{0,60})/g)].map((m) => m[1]))}`)
+
+    await viewer.setViewport({ width: 1_000, height: 700 })
+    await viewer.goto(pathToFileURL(saved).href, { waitUntil: 'load' })
+    await sleep(900)
+    const readViewer = () => viewer.evaluate(() => {
+      const shown = [...document.querySelectorAll('.deck-print-page')].filter((sheet) => getComputedStyle(sheet).display !== 'none')
+      const image = [...document.querySelectorAll('.deck-print-page img')].find((item) => item.complete)
+      return {
+        shown: shown.length,
+        heading: shown[0]?.querySelector('h1, h2')?.textContent?.trim() ?? '',
+        position: document.querySelector('[data-deck-html-position]')?.textContent?.trim() ?? '',
+        scale: shown[0] ? getComputedStyle(shown[0]).transform : 'none',
+        box: shown[0] ? Math.round(shown[0].getBoundingClientRect().width) : 0,
+        previous: document.querySelector('[data-deck-html-prev]')?.disabled ?? null,
+        next: document.querySelector('[data-deck-html-next]')?.disabled ?? null,
+        // The window is 1000px wide and a page box is 1280, so the fit has to be a real shrink.
+        background: getComputedStyle(document.body).backgroundColor,
+        picture: image ? { natural: image.naturalWidth, source: image.getAttribute('src') ?? '' } : null,
+      }
+    })
+    const opened = await readViewer()
+    check('standalone deck: the file opens on one page at a time', opened.shown === 1 && opened.previous === true && opened.next === false, JSON.stringify(opened))
+    check('standalone deck: the page is drawn to fit the window it was opened in', opened.scale.startsWith('matrix(0.7') && opened.box > 700 && opened.box < 1000, JSON.stringify({ scale: opened.scale, box: opened.box }))
+    check('standalone deck: the colours the deck was read in come with it', opened.background !== 'rgba(0, 0, 0, 0)', opened.background)
+    check('standalone deck: the bar names the position the page carries', opened.position === states[0], JSON.stringify({ said: opened.position, written: states[0] }))
+
+    await viewer.keyboard.press('ArrowRight')
+    await sleep(400)
+    const turned = await readViewer()
+    check('standalone deck: an arrow turns the file', turned.position === states[1] && turned.previous === false, JSON.stringify({ said: turned.position, previous: turned.previous }))
+
+    await viewer.keyboard.press('End')
+    await sleep(400)
+    const last = await readViewer()
+    check('standalone deck: the file knows where it ends', last.position === states.at(-1) && last.next === true, JSON.stringify({ said: last.position, next: last.next }))
+
+    await viewer.keyboard.press('Home')
+    await viewer.keyboard.press('ArrowRight')
+    await sleep(400)
+    const attached = await readViewer()
+    check('standalone deck: a picture in the deck arrives with the file', attached.picture !== null && attached.picture.natural > 0, JSON.stringify(attached.picture))
+    check('standalone deck: the file reports the press that saved it', await page.evaluate((labels) => [...document.querySelectorAll('[role="status"], .toast, [data-toast]')].some((node) => labels.some((label) => (node.textContent ?? '').includes(label))), [localeLabel('workspace.presentation_html_saved')[0], localeLabel('workspace.presentation_html_saved')[1]]))
+  } finally {
+    await viewer.close().catch(() => {})
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    // The handback every scenario that brings its own note owes the run.
+    await openDeckNote(page)
+    fs.rmSync(downloadDir, { recursive: true, force: true })
+  }
 }
 
 // The deck at a glance is a layer over the slide rather than a re-arrangement of it, and only a
@@ -9734,6 +9846,7 @@ async function main() {
     await assertPresentationKeyGuide(page)
     await assertPresentationOnTouch(page)
     await assertDeckImageExport(page)
+    await assertDeckHtmlExport(browser, page)
     await assertPresentationOverview(page)
     await assertPresenterConsole(browser, page)
     await assertSlideLayouts(page)

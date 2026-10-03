@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Code, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
@@ -44,10 +44,12 @@ export interface PresentationControlsProps {
   onExport: () => void
   onExportImages: () => void
   onExportHandout: () => void
+  /** The deck as one HTML file the recipient plays without this app (N-33). */
+  onExportHtml: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, step, steps, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, step, steps, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onExportHtml, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -61,11 +63,11 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} step={step} steps={steps} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       {compact
-        ? <ViewDoor items={[...overflowItems, ...exportMenuItems({ onExport, onExportImages, onExportHandout })]} exporting={exporting} />
+        ? <ViewDoor items={[...overflowItems, ...exportMenuItems({ onExport, onExportImages, onExportHandout, onExportHtml })]} exporting={exporting} />
         : <>
           <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
           <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-          <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} />
+          <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} onExportHtml={onExportHtml} />
         </>}
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Tooltip label={t('workspace.presentation_exit')} combo={presentationKeyCombo('exit')} side='top'>
@@ -133,9 +135,9 @@ function ViewControls({ railOpen, overview, following, followLost, isFullscreen,
   )
 }
 
-// The three exports are named without a keystroke beside them because the show binds no key to any of
-// them: a tooltip that showed `?` here would point at the card, not at the press.
-function ExportControls({ exporting, onExport, onExportImages, onExportHandout }: { exporting: boolean; onExport: () => void; onExportImages: () => void; onExportHandout: () => void }) {
+// The exports are named without a keystroke beside them because the show binds no key to any of them:
+// a tooltip that showed `?` here would point at the card, not at the press.
+function ExportControls({ exporting, onExport, onExportImages, onExportHandout, onExportHtml }: { exporting: boolean; onExport: () => void; onExportImages: () => void; onExportHandout: () => void; onExportHtml: () => void }) {
   return (
     <>
       <Tooltip label={t('workspace.presentation_export')} side='top'>
@@ -146,6 +148,11 @@ function ExportControls({ exporting, onExport, onExportImages, onExportHandout }
       <Tooltip label={t('workspace.presentation_export_handout')} side='top'>
         <IconButton label={t('workspace.presentation_export_handout')} size='sm' onClick={onExportHandout}>
           <FileText size={14} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={t('workspace.presentation_export_html')} side='top'>
+        <IconButton label={t('workspace.presentation_export_html')} size='sm' onClick={onExportHtml}>
+          <Code size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('workspace.presentation_export_images')} side='top'>
@@ -187,10 +194,11 @@ function ViewDoor({ items, exporting }: { items: MenuItem[]; exporting: boolean 
 
 // The exports the wide bar draws as buttons; on a phone they walk through the door with the rest, and
 // the one that is working still says so on its own row.
-function exportMenuItems({ onExport, onExportImages, onExportHandout }: { onExport: () => void; onExportImages: () => void; onExportHandout: () => void }): MenuItem[] {
+function exportMenuItems({ onExport, onExportImages, onExportHandout, onExportHtml }: { onExport: () => void; onExportImages: () => void; onExportHandout: () => void; onExportHtml: () => void }): MenuItem[] {
   return [
     { id: 'export', label: t('workspace.presentation_export'), icon: <Download size={14} />, onSelect: onExport, separatorBefore: true },
     { id: 'export-handout', label: t('workspace.presentation_export_handout'), icon: <FileText size={14} />, onSelect: onExportHandout },
+    { id: 'export-html', label: t('workspace.presentation_export_html'), icon: <Code size={14} />, onSelect: onExportHtml },
     { id: 'export-images', label: t('workspace.presentation_export_images'), icon: <Images size={14} />, onSelect: onExportImages },
   ]
 }

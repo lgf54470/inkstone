@@ -41,6 +41,7 @@ function props(overrides: Partial<PresentationControlsProps>): PresentationContr
     onExport: vi.fn(),
     onExportImages: vi.fn(),
     onExportHandout: vi.fn(),
+    onExportHtml: vi.fn(),
     onClose: vi.fn(),
     compact: false,
     overflowItems: [],

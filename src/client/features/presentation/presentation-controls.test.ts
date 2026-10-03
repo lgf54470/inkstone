@@ -44,6 +44,7 @@ describe('PresentationControls', () => {
     onExport: vi.fn(),
     onExportImages: vi.fn(),
     onExportHandout: vi.fn(),
+    onExportHtml: vi.fn(),
     onClose: vi.fn(),
     compact: false,
     overflowItems: [],
@@ -165,6 +166,7 @@ function chromeProps(overrides: Partial<PresentationControlsProps> = {}): Presen
     onExport: vi.fn(),
     onExportImages: vi.fn(),
     onExportHandout: vi.fn(),
+    onExportHtml: vi.fn(),
     onClose: vi.fn(),
     compact: false,
     overflowItems: [],
@@ -245,6 +247,31 @@ describe('PresentationControls — a handout is asked for like the other exports
     expect(button?.type).toBe('button')
     button?.click()
     expect(onExportHandout).toHaveBeenCalledTimes(1)
+  })
+})
+
+// N-33's fourth export: a file the recipient plays without this app. It is asked for the same way the
+// other three are — by name, on the bar and through the phone's door.
+describe('PresentationControls — a deck that plays by itself', () => {
+  it('offers the standalone file by its own name and hands the press to the session', () => {
+    const onExportHtml = vi.fn()
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ onExportHtml })))
+    const button = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_export_html')}"]`)
+    expect(button, 'the standalone export is not reachable by name').not.toBeNull()
+    button?.click()
+    expect(onExportHtml).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries the standalone file behind the door too, since the bar has no room for a fourth icon', () => {
+    const onExportHtml = vi.fn()
+    // The exports are added to the door's rows by the bar itself, so the press lands on the prop the
+    // capsule was handed — the same route the handout row takes.
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()), onExportHtml })))
+    act(() => { door()?.click() })
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_export_html')))
+    if (!row) throw new Error('the door has no standalone-export row')
+    act(() => { row.click() })
+    expect(onExportHtml).toHaveBeenCalledTimes(1)
   })
 })
 

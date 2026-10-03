@@ -80,6 +80,8 @@ export interface PresentationSession {
   print: DeckSheetPayload | null
   exportHandout: () => void
   handout: DeckHandoutPayload | null
+  /** Writes the deck as one HTML file that plays on its own, and saves it (N-33). */
+  exportHtml: () => void
   /** Builds the same deck as images; the sheet appears until the PNGs are saved. */
   exportImages: () => void
   images: (DeckSheetPayload & { title: string; onProgress: (progress: DeckExportProgress) => void }) | null
@@ -192,7 +194,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
-  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle, notes })
+  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle, notes, proseFont })
   const { listProgress, onProgress } = useListProgress()
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)

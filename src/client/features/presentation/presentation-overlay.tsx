@@ -159,6 +159,7 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     onOpenPresenter: session.openPresenter,
     onExport: session.exportDeck,
     onExportHandout: session.exportHandout,
+    onExportHtml: session.exportHtml,
     onExportImages: session.exportImages,
     onClose,
   }

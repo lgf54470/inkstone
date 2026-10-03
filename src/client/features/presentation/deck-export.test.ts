@@ -22,6 +22,13 @@ vi.mock('./deck-image', () => ({
   zipDeckImages: vi.fn(async () => new Blob(['fake-zip'], { type: 'application/zip' })),
   saveDeckImages: vi.fn(),
 }))
+// The builder is real — what the third export owes its assertions to is the document it asks for — and
+// only the save is stood in for, because writing to disk is not what this hook decides.
+const saveDeckHtml = vi.hoisted(() => vi.fn())
+vi.mock('./deck-html', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./deck-html')>()
+  return { ...actual, saveDeckHtml }
+})
 // One spy for the whole module: a `getState()` that handed back a fresh `vi.fn()` each call would
 // record the press somewhere the assertions never look.
 const toast = vi.hoisted(() => vi.fn())
@@ -51,6 +58,7 @@ function options(overrides: Partial<DeckExportOptions> = {}): DeckExportOptions 
     dark: false,
     title: 'Release plan',
     notes: NOTES,
+    proseFont: 'sans',
     ...overrides,
   }
 }
@@ -176,6 +184,104 @@ describe('useDeckExport — one press holds one sheet', () => {
       act(() => { show.exports.exportHandout() })
       act(() => { show.exports.handout?.done() })
       expect(show.exports.handout).toBeNull()
+    } finally {
+      show.unmount()
+    }
+  })
+})
+
+// Every slide measured by default: the notice about a deck still being listed is the third export's
+// shared behaviour, and the case that asks for it brings its own plans.
+function mountSteppedFile(plans: Record<number, unknown> = { 0: measured[0], 1: measured[1] }) {
+  clearSlideHtmlCache()
+  DECK.forEach((_, index) => rememberSlideHtml(KEYS[index], { html: `<p>${index}</p>`, fences: createFenceBodies() }))
+  saveDeckHtml.mockClear()
+  saveDeckHtml.mockImplementation(() => undefined)
+  return mountExports({ plans: plans as never })
+}
+
+describe('useDeckExport — the deck as a file someone else can play', () => {
+  it('hands over a complete document, named after the note it came from', async () => {
+    const show = mountSteppedFile()
+    // The theme this document is wearing is part of what the file has to carry, so the case wears one.
+    document.documentElement.dataset.theme = 'dark'
+    try {
+      await act(async () => { show.exports.exportHtml() })
+      expect(saveDeckHtml).toHaveBeenCalledTimes(1)
+      const [html, title] = saveDeckHtml.mock.calls[0] as [string, string]
+      expect(title).toBe('Release plan')
+      expect(html.startsWith('<!doctype html>')).toBe(true)
+      expect(html).toContain('<p>0</p>')
+      expect(html).toContain('data-theme="dark"')
+      expect(html).toContain('<p>1</p>')
+    } finally {
+      delete document.documentElement.dataset.theme
+      show.unmount()
+    }
+  })
+
+  it('says the file is saved, in the words the show already uses for a saved export', async () => {
+    const show = mountSteppedFile()
+    try {
+      await act(async () => { show.exports.exportHtml() })
+      expect(toasts()).toEqual([t('workspace.presentation_html_saved')])
+      expect(show.exports.htmlBusy, 'the export is over, so the control stops saying so').toBe(false)
+    } finally {
+      show.unmount()
+    }
+  })
+})
+
+describe('useDeckExport — what the standalone file says when it cannot be written', () => {
+  it('says out loud when nothing could be written', async () => {
+    const show = mountSteppedFile()
+    saveDeckHtml.mockImplementationOnce(() => { throw new Error('disk said no') })
+    try {
+      await act(async () => { show.exports.exportHtml() })
+      expect(toasts()).toEqual([t('workspace.presentation_html_failed')])
+      expect(show.exports.htmlBusy).toBe(false)
+    } finally {
+      show.unmount()
+    }
+  })
+
+  it('starts no second file while one is still being written', async () => {
+    const show = mountSteppedFile()
+    // The window a second press has to be refused in is the styles being collected: two presses in a
+    // row, then everything settles, and the deck was written once.
+    try {
+      act(() => { show.exports.exportHtml() })
+      act(() => { show.exports.exportHtml() })
+      await act(async () => { await Promise.resolve(); await Promise.resolve() })
+      expect(saveDeckHtml).toHaveBeenCalledTimes(1)
+      expect(show.exports.htmlBusy).toBe(false)
+    } finally {
+      show.unmount()
+    }
+  })
+
+})
+
+describe('useDeckExport — the standalone file keeps the show company', () => {
+  it('presses the third export only once per press, whatever else is held', () => {
+    clearSlideHtmlCache()
+    DECK.forEach((_, index) => rememberSlideHtml(KEYS[index], { html: `<p>${index}</p>`, fences: createFenceBodies() }))
+    const show = mountExports()
+    try {
+      act(() => { show.exports.exportDeck() })
+      act(() => { show.exports.exportHtml() })
+      expect(show.exports.print?.pages).toHaveLength(2)
+      expect(show.exports.htmlBusy, 'the file is being written, and the control says so').toBe(true)
+    } finally {
+      show.unmount()
+    }
+  })
+
+  it('notices a slide nobody measured yet, the same way the other two exports do', async () => {
+    const show = mountSteppedFile({})
+    try {
+      await act(async () => { show.exports.exportHtml() })
+      expect(toasts()).toEqual([t('workspace.presentation_export_unmeasured', { value0: 2 }), t('workspace.presentation_html_saved')])
     } finally {
       show.unmount()
     }
