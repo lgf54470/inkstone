@@ -165,6 +165,7 @@ function useSessionPresenter(options: {
     noteTitle,
     slideIndex: nav.index,
     subPage: nav.sub,
+    step: nav.step,
     slideCount: deck.length,
     pageCount: nav.pageCount,
     deck,

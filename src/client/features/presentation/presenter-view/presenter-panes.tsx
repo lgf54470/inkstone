@@ -10,12 +10,15 @@ export function PresenterNextSlidePane({
   nextLayout,
   nextPlan,
   nextSubPage,
+  nextStep,
   font,
 }: {
   nextSource: string | null
   nextLayout?: SlideLayout
   nextPlan?: SlidePlan
   nextSubPage?: number
+  /** Which reveal the next press lands on, so the preview is that state and not the finished page. */
+  nextStep: number
   font?: ProseFont
 }) {
   return (
@@ -30,6 +33,7 @@ export function PresenterNextSlidePane({
             layout={nextLayout}
             plan={nextPlan}
             sub={nextSubPage}
+            step={nextStep}
             font={font}
           />
         ) : (

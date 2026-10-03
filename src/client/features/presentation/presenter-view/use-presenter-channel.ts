@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProseFont } from '@shared/types'
 import type { SlideLayout } from '../slides'
-import type { SlidePlan } from '../slide-pagination'
+import { planPageSteps, type SlidePlan } from '../slide-pagination'
+import { forwardMove } from '../presentation-state'
 
 const PRESENTER_CHANNEL_PREFIX = 'inkstone-presenter-sync'
 
@@ -25,6 +26,11 @@ export interface PresenterSlideState {
   noteTitle: string
   slideIndex: number
   subPage: number
+  /** How far the page on screen has been revealed, and how many reveals it holds (N-31). The total is
+   * read off `currentPlan` rather than sent across: a count that disagreed with the plan in the same
+   * payload would print a page number the projector never showed. */
+  step: number
+  steps: number
   slideCount: number
   pageCount: number
   currentSlideSource: string
@@ -34,6 +40,8 @@ export interface PresenterSlideState {
   currentPlan?: SlidePlan
   nextPlan?: SlidePlan
   nextSubPage?: number
+  /** Which reveal the next press lands on — zero when the press turns to a page the room has not seen. */
+  nextStep: number
   notes: string
   startedAt: number
   proseFont?: ProseFont
@@ -78,6 +86,8 @@ export interface PresenterStateSource {
   noteTitle: string
   slideIndex: number
   subPage: number
+  /** How far the page on screen has been revealed (N-31) — the console previews the next one. */
+  step: number
   slideCount: number
   pageCount: number
   deck: string[]
@@ -96,39 +106,39 @@ export interface PresenterBroadcasterOptions extends PresenterStateSource {
   jumpTo: (index: number) => void
 }
 
-export function buildPresenterSlideState(options: PresenterStateSource): PresenterSlideState {
-  const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = options
+/** The next press of the turn, which is what the console has to show: one block more while the page is
+ * arriving, then the page, then the slide (N-31). Nothing follows the last reveal of the last slide, and
+ * that is the only case with nothing to preview. */
+function nextPresenterPage(source: { deck: string[]; plans: Record<number, SlidePlan>; slideIndex: number; subPage: number; step: number; steps: number; pageCount: number }): Pick<PresenterSlideState, 'nextSlideSource' | 'nextLayout' | 'nextPlan' | 'nextSubPage' | 'nextStep'> {
+  const { deck, plans, slideIndex, subPage, step, steps, pageCount } = source
   const currentPlan = plans[slideIndex]
-
-  let nextSlideSource: string | null = null
-  let nextLayout: SlideLayout | undefined
-  let nextPlan: SlidePlan | undefined
-  let nextSubPage = 0
-
-  if (subPage + 1 < pageCount) {
-    nextSlideSource = deck[slideIndex] ?? null
-    nextLayout = currentPlan?.layout
-    nextPlan = currentPlan
-    nextSubPage = subPage + 1
-  } else if (slideIndex + 1 < deck.length) {
-    nextSlideSource = deck[slideIndex + 1] ?? null
-    nextLayout = plans[slideIndex + 1]?.layout
-    nextPlan = plans[slideIndex + 1]
-    nextSubPage = 0
+  const move = forwardMove({ step, steps, sub: subPage, pageCount })
+  if (move === 'step') return { nextSlideSource: deck[slideIndex] ?? null, nextLayout: currentPlan?.layout, nextPlan: currentPlan, nextSubPage: subPage, nextStep: step + 1 }
+  if (move === 'page') return { nextSlideSource: deck[slideIndex] ?? null, nextLayout: currentPlan?.layout, nextPlan: currentPlan, nextSubPage: subPage + 1, nextStep: 0 }
+  if (slideIndex + 1 < deck.length) {
+    const next = plans[slideIndex + 1]
+    return { nextSlideSource: deck[slideIndex + 1] ?? null, nextLayout: next?.layout, nextPlan: next, nextSubPage: 0, nextStep: 0 }
   }
+  return { nextSlideSource: null, nextLayout: undefined, nextPlan: undefined, nextSubPage: 0, nextStep: 0 }
+}
 
+export function buildPresenterSlideState(options: PresenterStateSource): PresenterSlideState {
+  const { noteTitle, slideIndex, subPage, step, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = options
+  const currentPlan = plans[slideIndex]
+  // The step total is read off the plan rather than sent: the payload already carries the plan it came
+  // from, and a total that disagreed with it would print a page number the projector never showed.
+  const steps = currentPlan ? planPageSteps(currentPlan, subPage) : 0
   return {
     noteTitle,
     slideIndex,
     subPage,
+    step,
+    steps,
     slideCount,
     pageCount,
     currentSlideSource: deck[slideIndex] ?? '',
     currentLayout: currentPlan?.layout,
-    nextSlideSource,
-    nextLayout,
-    nextPlan,
-    nextSubPage,
+    ...nextPresenterPage({ deck, plans, slideIndex, subPage, step, steps, pageCount }),
     currentPlan,
     notes: notes[slideIndex] ?? '',
     startedAt,
@@ -143,10 +153,10 @@ export function buildPresenterSlideState(options: PresenterStateSource): Present
  * page. A field added to `PresenterStateSource` has to join this list, or the payload starts freezing
  * while the show moves on. */
 export function usePresenterSlideState(source: PresenterStateSource): PresenterSlideState {
-  const { noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = source
+  const { noteTitle, slideIndex, subPage, step, slideCount, pageCount, deck, notes, plans, startedAt, proseFont } = source
   return useMemo(
-    () => buildPresenterSlideState({ noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont }),
-    [noteTitle, slideIndex, subPage, slideCount, pageCount, deck, notes, plans, startedAt, proseFont],
+    () => buildPresenterSlideState({ noteTitle, slideIndex, subPage, step, slideCount, pageCount, deck, notes, plans, startedAt, proseFont }),
+    [noteTitle, slideIndex, subPage, step, slideCount, pageCount, deck, notes, plans, startedAt, proseFont],
   )
 }
 

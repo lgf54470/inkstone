@@ -5,6 +5,8 @@ import { t } from '../../../lib/i18n'
 import { IconButton, Spinner } from '../../../components/primitives'
 import { Tooltip } from '../../../components/overlay'
 import { PresenterSlidePreview } from './presenter-slide-preview'
+import { formatDeckPosition, type DeckPosition } from '../deck-position'
+import { hasBackwardMove, hasForwardMove } from '../presentation-state'
 import { PresenterNextSlidePane, PresenterSpeakerNotesPane } from './presenter-panes'
 import { usePresenterTimer } from './use-presenter-timer'
 import {
@@ -50,6 +52,7 @@ export function PresenterWindow({ initialState, onCommand }: PresenterWindowProp
             nextLayout={state.nextLayout}
             nextPlan={state.nextPlan}
             nextSubPage={state.nextSubPage}
+            nextStep={state.nextStep}
             font={state.proseFont}
           />
           <PresenterSpeakerNotesPane notes={state.notes} />
@@ -59,14 +62,18 @@ export function PresenterWindow({ initialState, onCommand }: PresenterWindowProp
   )
 }
 
+// The console reads the show's own position: the same derivation, so the number the speaker sees is the
+// number the room sees, reveal included (N-11 unified those surfaces and this one was left out).
+function presenterDeckPosition(state: PresenterSlideState): DeckPosition {
+  return { index: state.slideIndex, count: state.slideCount, subPage: state.subPage, pageCount: state.pageCount, step: state.step, steps: state.steps }
+}
+
 function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
   return (
     <div data-presenter-current-pane className='flex flex-[3] min-w-0 flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'>
       <div className='flex items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         <span>{t('workspace.presentation_current_slide')}</span>
-        <span className='tabular text-[var(--text-tertiary)]'>
-          {state.slideIndex + 1} / {state.slideCount}
-        </span>
+        <span data-presenter-position className='tabular text-[var(--text-tertiary)]'>{formatDeckPosition(presenterDeckPosition(state))}</span>
       </div>
       <div className='flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[var(--bg-editor)] p-[var(--sp-3)]'>
         <PresenterSlidePreview
@@ -74,6 +81,7 @@ function PresenterCurrentSlidePane({ state }: { state: PresenterSlideState }) {
           layout={state.currentLayout}
           plan={state.currentPlan}
           sub={state.subPage}
+          step={state.step}
           font={state.proseFont}
         />
       </div>
@@ -156,19 +164,12 @@ function PresenterHeaderStepper({
 }) {
   return (
     <div className='flex items-center gap-[var(--sp-2)]'>
-      <div className='tabular text-[length:var(--text-12)] text-[var(--text-secondary)]'>
-        {state.slideIndex + 1} / {state.slideCount}
-        {state.pageCount > 1 && (
-          <span className='ml-[var(--sp-1)] text-[var(--accent)]'>
-            ({state.subPage + 1}/{state.pageCount})
-          </span>
-        )}
-      </div>
+      <div data-presenter-position className='tabular text-[length:var(--text-12)] text-[var(--text-secondary)]'>{formatDeckPosition(presenterDeckPosition(state))}</div>
       <Tooltip label={t('workspace.presentation_prev')}>
         <IconButton
           size='sm'
           label={t('workspace.presentation_prev')}
-          disabled={state.slideIndex === 0 && state.subPage === 0}
+          disabled={!hasBackwardMove({ index: state.slideIndex, sub: state.subPage, step: state.step })}
           onClick={() => sendCommand('prev')}
         >
           <ChevronLeft size={16} />
@@ -178,7 +179,7 @@ function PresenterHeaderStepper({
         <IconButton
           size='sm'
           label={t('workspace.presentation_next')}
-          disabled={state.slideIndex === state.slideCount - 1 && state.subPage === state.pageCount - 1}
+          disabled={!hasForwardMove({ index: state.slideIndex, count: state.slideCount, sub: state.subPage, pageCount: state.pageCount, step: state.step, steps: state.steps })}
           onClick={() => sendCommand('next')}
         >
           <ChevronRight size={16} />

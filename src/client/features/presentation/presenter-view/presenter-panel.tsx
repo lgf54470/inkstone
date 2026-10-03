@@ -58,6 +58,7 @@ export function PresenterPanel({ state, chromeHidden, occluded, onClose }: Prese
         nextLayout={state.nextLayout}
         nextPlan={state.nextPlan}
         nextSubPage={state.nextSubPage}
+        nextStep={state.nextStep}
         font={state.proseFont}
       />
       <PresenterSpeakerNotesPane notes={state.notes} />

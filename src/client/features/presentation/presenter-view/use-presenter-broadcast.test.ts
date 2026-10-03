@@ -21,6 +21,7 @@ function options(slide: number): PresenterBroadcasterOptions {
     noteTitle: 'Broadcast Economy',
     slideIndex: slide,
     subPage: 0,
+    step: 0,
     slideCount: 3,
     pageCount: 1,
     deck: DECK,

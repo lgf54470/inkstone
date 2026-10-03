@@ -74,12 +74,16 @@ export function PresenterSlidePreview({
   layout,
   plan,
   sub = 0,
+  step,
   font,
 }: {
   source: string
   layout?: SlideLayout
   plan?: SlidePlan
   sub?: number
+  /** How far this page has arrived (N-31). Absent draws it whole, which is what a slide the show never
+   * stepped — and every thumbnail — asks for. */
+  step?: number
   font?: ProseFont
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -93,10 +97,10 @@ export function PresenterSlidePreview({
     if (!source) return { html: '', fences: createFenceBodies() }
     const markup = slideMarkup(renderSlideSource(source, true))
     if (plan && plan.pages.length > 0) {
-      return { html: slicePageHtml(markup.html, plan, sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences }
+      return { html: slicePageHtml(markup.html, plan, sub, metrics.contentWidth, metrics.contentHeight, step), fences: markup.fences }
     }
     return markup
-  }, [source, plan, sub, metrics.contentWidth, metrics.contentHeight])
+  }, [source, plan, sub, step, metrics.contentWidth, metrics.contentHeight])
 
   usePresenterSlideMedia({ hostRef, html: slide.html, fences: slide.fences, dark, metrics })
 

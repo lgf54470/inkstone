@@ -5,6 +5,7 @@ import { renderElement } from '../../../lib/test-render'
 import { PresenterWindow, type PresenterWindowProps } from './presenter-window'
 import { usePresenterTimer } from './use-presenter-timer'
 import type { PresenterSlideState } from './use-presenter-channel'
+import { planSlidePages, type SlideBlock } from '../slide-pagination'
 
 beforeAll(async () => {
   await initI18n()
@@ -29,10 +30,13 @@ const mockSlideState: PresenterSlideState = {
   noteTitle: 'Project Architecture',
   slideIndex: 1,
   subPage: 0,
+  step: 0,
+  steps: 0,
   slideCount: 4,
   pageCount: 1,
   currentSlideSource: '# Core Pillars\n\n- Security\n- Performance',
   nextSlideSource: '# Roadmap\n\nQ4 Deliverables',
+  nextStep: 0,
   notes: 'Emphasize zero overhead and deterministic fallbacks.',
   startedAt: Date.now() - 65000,
 }
@@ -296,5 +300,65 @@ describe('usePresenterTimer — the next show', () => {
 
     unmount()
     vi.useRealTimers()
+  })
+})
+
+// N-31: the console is the speaker's preview of the next press, and on a page that arrives block by
+// block the next press is a block. Two panes, one plan, and the digits the projector prints — this is
+// the surface where a step that stopped travelling would first be visible.
+const STEPPED_SOURCE = '# Stepped\n\nfirst point\n\nsecond point\n\nthird point'
+const STEPPED_BLOCKS: SlideBlock[] = [
+  { top: 0, height: 100, heading: true },
+  { top: 100, height: 100, heading: false },
+  { top: 200, height: 100, heading: false },
+  { top: 300, height: 100, heading: false },
+]
+const STEPPED_PLAN = planSlidePages(STEPPED_BLOCKS, 632, undefined, true)
+
+const paneVisibility = (container: HTMLElement, pane: string) => [...container.querySelectorAll(`[data-presenter-${pane}-pane] [data-slide-page] > *`)]
+  .map((block) => (block as HTMLElement).style.visibility || 'shown')
+
+describe('PresenterWindow — a page the room watches arrive in stages', () => {
+  const STEPPED_STATE: PresenterSlideState = {
+    ...mockSlideState,
+    slideIndex: 2,
+    subPage: 1,
+    step: 0,
+    steps: 3,
+    pageCount: 2,
+    slideCount: 14,
+    currentSlideSource: STEPPED_SOURCE,
+    currentPlan: STEPPED_PLAN,
+    nextSlideSource: STEPPED_SOURCE,
+    nextPlan: STEPPED_PLAN,
+    nextSubPage: 1,
+    nextStep: 1,
+  }
+
+  it('prints the position the projector prints, reveal included', () => {
+    const { container } = renderPresenter({ initialState: { ...STEPPED_STATE, step: 1 } })
+    const printed = [...container.querySelectorAll('[data-presenter-position]')].map((item) => item.textContent?.trim() ?? '')
+    expect(printed.length, 'the console prints the position twice: the pane header and the stepper').toBeGreaterThan(0)
+    expect(printed, 'the console spelled its own position again').toEqual(['3 / 14 · 2/2 · 2/4', '3 / 14 · 2/2 · 2/4'])
+  })
+
+  it('holds the page it is on at the reveal the room has reached, and the next one a block further', () => {
+    const { container } = renderPresenter({ initialState: STEPPED_STATE })
+    expect(paneVisibility(container, 'current'), 'the console shows the state the room is in').toEqual(['shown', 'hidden', 'hidden', 'hidden'])
+    expect(paneVisibility(container, 'next'), 'the next pane is one block further than the projector').toEqual(['shown', 'shown', 'hidden', 'hidden'])
+  })
+
+  it('keeps the turn alive on the first slide while its page is still arriving', () => {
+    const { container } = renderPresenter({ initialState: { ...STEPPED_STATE, slideIndex: 0, subPage: 0, slideCount: 1, pageCount: 1, step: 1 } })
+    const prev = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_prev')}"]`)
+    const next = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_next')}"]`)
+    expect(prev?.disabled, 'a block can still be hidden again').toBe(false)
+    expect(next?.disabled, 'a block can still arrive').toBe(false)
+  })
+
+  it('puts both turns out of reach on the last reveal of the last slide', () => {
+    const { container } = renderPresenter({ initialState: { ...STEPPED_STATE, slideIndex: 0, subPage: 0, slideCount: 1, pageCount: 1, step: 3, steps: 3 } })
+    const next = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_next')}"]`)
+    expect(next?.disabled).toBe(true)
   })
 })

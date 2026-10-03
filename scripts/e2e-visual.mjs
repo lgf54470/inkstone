@@ -843,6 +843,131 @@ async function assertKanbanOnProjector(page) {
   await openDeckNote(page)
 }
 
+// N-31\'s own scene. A slide that arrives block by block has to say so where the room looks and where
+// the speaker looks: the plan and the strings have unit cases, but only a browser walks the reveals,
+// reads the digits off the projector, and asks whether the console previewed the state the next press
+// actually produced. The deck deliberately has one stepped slide and one plain one, so \«nothing to
+// reveal\» is a case the scene reads rather than one it skips.
+const STEPPED_DECK = [
+  '<!-- steps -->\n\n## Reveal in stages\n\nFirst point.\n\nSecond point.\n\nThird point.',
+  '## Whole at once\n\nThis slide carries no switch, so nothing on it waits.',
+].join('\n\n---\n\n')
+
+async function openSteppedNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${STEPPED_DECK}\n`, 'stepped slide')
+  await sleep(1_500)
+}
+
+/** How far the show has arrived, read off the blocks the browser painted and the digits it printed: the
+ * plan is invisible, the `visibility` the canvas wrote from it is not. */
+async function readSteppedShow(page, labels) {
+  return page.evaluate((names) => {
+    const blocks = [...document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *')]
+    const button = (label) => [...document.querySelectorAll('[data-presentation-chrome] button')]
+      .find((item) => item.getAttribute('aria-label') === label)
+    return {
+      blocks: blocks.length,
+      hidden: blocks.filter((block) => getComputedStyle(block).visibility === 'hidden').length,
+      printed: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+      spoken: document.querySelector('[data-presentation-chrome] [aria-live]')?.textContent?.trim() ?? '',
+      prevDisabled: Boolean(button(names.prev)?.disabled),
+      nextDisabled: Boolean(button(names.next)?.disabled),
+    }
+  }, { prev: labels.prev[0], next: labels.next[0] })
+}
+
+async function readSteppedConsole(presenter) {
+  return presenter.evaluate(() => {
+    const pane = (selector) => document.querySelector(selector)
+    const hidden = (root) => [...(root?.querySelectorAll('[data-slide-page] > *') ?? [])]
+      .filter((block) => getComputedStyle(block).visibility === 'hidden').length
+    return {
+      positions: [...document.querySelectorAll('[data-presenter-position]')].map((item) => item.textContent?.trim() ?? ''),
+      currentHidden: hidden(pane('[data-presenter-current-pane]')),
+      nextHidden: hidden(pane('[data-presenter-next-pane]')),
+      nextBlocks: pane('[data-presenter-next-pane]')?.querySelectorAll('[data-slide-page] > *').length ?? 0,
+    }
+  })
+}
+
+const digitsOf = (text) => text.match(/\d+/g) ?? []
+
+async function assertPresentationStepping(browser, page) {
+  const controlLabels = { prev: localeLabel('workspace.presentation_prev'), next: localeLabel('workspace.presentation_next') }
+  // The scene reads a page that has to hold four blocks, so it asks for the room it was written for
+  // rather than inheriting whichever window the scenario before it left behind.
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openSteppedNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+
+  const opened = await readSteppedShow(page, controlLabels)
+  check('stepped: the slide holds four blocks and opens on the first', opened.blocks === 4 && opened.hidden === 3, JSON.stringify(opened))
+  check('stepped: the projector prints how far its page has arrived', opened.printed[0] === '1 / 2 · 1/4', JSON.stringify(opened.printed))
+  check('stepped: the chip and the pill print one string, reveal included', new Set(opened.printed).size === 1, JSON.stringify(opened.printed))
+  check('stepped: a page still arriving is not the start of the show', !opened.prevDisabled && !opened.nextDisabled, JSON.stringify(opened))
+  check('stepped: the announcement carries the numbers the digits show',
+    digitsOf(opened.spoken).join(',') === digitsOf(opened.printed[0]).join(','), `${opened.spoken} vs ${opened.printed[0]}`)
+
+  const walked = []
+  for (let press = 0; press < 2; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(400)
+    walked.push(await readSteppedShow(page, controlLabels))
+  }
+  check('stepped: each press brings one more block onto the projector', walked.map((item) => item.hidden).join(',') === '2,1', JSON.stringify(walked.map((item) => item.hidden)))
+  check('stepped: the printed reveal advances with the blocks', walked.map((item) => item.printed[0]).join(' ') === '1 / 2 · 2/4 1 / 2 · 3/4', JSON.stringify(walked.map((item) => item.printed[0])))
+
+  // The console is opened mid-page on purpose: what the speaker needs before the room sees it is the
+  // next state, and on this page the next state is one block, not one slide.
+  const midPage = walked.at(-1)
+  let presenter = null
+  if (await pressPresenterControl(page)) {
+    presenter = await waitForPresenterPage(browser)
+    check('stepped: the console opens beside a show that is mid-page', Boolean(presenter))
+  }
+  if (presenter) {
+    await presenter.waitForFunction(() => document.querySelectorAll('[data-presenter-position]').length > 0, { timeout: 15_000 })
+    await sleep(900)
+    const consoleRead = await readSteppedConsole(presenter)
+    check('stepped: the console prints the position the projector prints',
+      consoleRead.positions.length === 2 && consoleRead.positions.every((item) => item === midPage.printed[0]), JSON.stringify(consoleRead.positions))
+    check(`stepped: the console's own page is the state the room is looking at`, consoleRead.currentHidden === midPage.hidden, JSON.stringify({ console: consoleRead.currentHidden, room: midPage.hidden }))
+    check('stepped: the next pane previews the block the next press brings',
+      consoleRead.nextBlocks === 4 && consoleRead.nextHidden === midPage.hidden - 1, JSON.stringify(consoleRead))
+  }
+
+  await page.keyboard.press('ArrowRight')
+  await sleep(400)
+  const finished = await readSteppedShow(page, controlLabels)
+  check('stepped: the last block arrives on the last press', finished.hidden === 0 && finished.printed[0] === '1 / 2 · 4/4', JSON.stringify(finished))
+  await page.keyboard.press('ArrowRight')
+  await sleep(400)
+  const turned = await readSteppedShow(page, controlLabels)
+  check('stepped: one more press leaves the slide rather than the page', turned.printed[0] === '2 / 2' && turned.hidden === 0, JSON.stringify(turned))
+  await page.keyboard.press('ArrowLeft')
+  await sleep(400)
+  const back = await readSteppedShow(page, controlLabels)
+  check('stepped: stepping back returns the slide as the room left it', back.printed[0] === '1 / 2 · 4/4' && back.hidden === 0, JSON.stringify(back))
+  await page.keyboard.press('ArrowLeft')
+  await sleep(400)
+  const rehidden = await readSteppedShow(page, controlLabels)
+  check('stepped: one press back hides the block it just showed', rehidden.hidden === 1 && rehidden.printed[0] === '1 / 2 · 3/4', JSON.stringify(rehidden))
+
+  await presenter?.close().catch(() => {})
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Same handback as every scenario that brings its own note: the readers below measure a deck that
+  // paginates, and a one-page stepped slide would be read as a regression.
+  await openDeckNote(page)
+}
+
 // The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
 // missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
 // injected into the live page (its own browser build, evaluated rather than added as a script
@@ -9577,6 +9702,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertPresentationStepping(browser, page)
     await assertKanbanOnProjector(page)
     await assertPresentationAccessibility(page)
     await assertPresentationLaser(page)

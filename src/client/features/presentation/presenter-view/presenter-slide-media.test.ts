@@ -11,10 +11,13 @@ const SLIDE_STATE: PresenterSlideState = {
   noteTitle: 'Project Architecture',
   slideIndex: 1,
   subPage: 0,
+  step: 0,
+  steps: 0,
   slideCount: 4,
   pageCount: 1,
   currentSlideSource: '# Core Pillars\n\n- Security\n- Performance',
   nextSlideSource: '# Roadmap\n\nQ4 Deliverables',
+  nextStep: 0,
   notes: 'Emphasize zero overhead and deterministic fallbacks.',
   startedAt: Date.now() - 65_000,
 }
