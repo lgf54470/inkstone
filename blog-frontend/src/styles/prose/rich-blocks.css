@@ -1,0 +1,273 @@
+/* ── Diagram toolbar (Mermaid / Chart.js) ─────────────────────────────────── */
+
+.ink-prose .block-head {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 7px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 60%, var(--bg-base));
+}
+.ink-prose .block-head-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ink-prose .block-tools {
+  position: relative;
+  z-index: var(--z-float);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.ink-prose .block-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ink-prose .block-tool-btn:hover,
+.ink-prose .block-tool-btn:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ink-prose .graph-block {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+}
+.ink-prose .graph-block > .mermaid-block,
+.ink-prose .graph-block > .chartjs-block {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ink-prose .graph-block[data-graph-zoomed='true'] > .mermaid-block {
+  justify-content: flex-start;
+  overflow: auto;
+}
+.ink-prose .graph-block-source {
+  margin: 0;
+  max-height: 260px;
+  padding: 10px 14px;
+  overflow: auto;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+}
+.ink-prose .graph-block-source[hidden] {
+  display: none;
+}
+.ink-prose .graph-block-source > code {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  white-space: pre;
+}
+
+/* ── Mind map snapshots ───────────────────────────────────────────────────── */
+
+.ink-prose .mindmap-block {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+}
+.ink-prose .mindmap-block-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 60%, var(--bg-base));
+}
+.ink-prose .mindmap-block-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ink-prose .mindmap-block-mode {
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 16px;
+}
+.ink-prose .mindmap-block-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 18px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.ink-prose .mindmap-block.loading .mindmap-block-placeholder::before {
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 1.5px solid color-mix(in oklab, var(--text-tertiary) 32%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: '';
+  animation: mermaid-spin var(--anim-spin) linear infinite;
+}
+.ink-prose .mindmap-canvas {
+  width: 100%;
+  height: 320px;
+}
+.ink-prose .mindmap-canvas.is-static {
+  height: auto;
+}
+.ink-prose .mindmap-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+.ink-prose .mindmap-block.mindmap-source {
+  padding: 0;
+}
+.ink-prose .mindmap-block.mindmap-source pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* ── Kanban stills ───────────────────────────────────────────────────────── */
+
+.ink-prose .kanban-block {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+}
+.ink-prose .kanban-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+.ink-prose .kanban-snapshot-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.ink-prose .kanban-snapshot-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.ink-prose .kanban-snapshot-group {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ink-prose .kanban-snapshot-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-tertiary) 14%, transparent);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.ink-prose .kanban-snapshot-group-cards {
+  margin: 0;
+}
+.ink-prose .kanban-snapshot-cards {
+  margin: 4px 0 0;
+  padding-inline-start: 16px;
+  color: var(--text-primary);
+  font-size: 14px;
+  list-style: disc;
+}
+.ink-prose .kanban-snapshot-empty,
+.ink-prose .kanban-snapshot-truncated {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ── Source frames for blocks the blog cannot mount (whiteboards, slides) ── */
+
+.ink-prose .static-block {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--bg-inset);
+}
+.ink-prose .static-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in oklab, var(--bg-inset) 60%, var(--bg-base));
+}
+.ink-prose .static-block-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ink-prose .static-block-hint {
+  font-size: 11px;
+  color: var(--text-quaternary);
+}
+.ink-prose .static-block-source > summary {
+  padding: 7px 12px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.ink-prose .static-block-source[open] > summary {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ink-prose .static-block-source pre {
+  margin: 0;
+  max-height: 360px;
+  padding: 10px 14px;
+  overflow: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
+  line-height: 1.5;
+  white-space: pre;
+}

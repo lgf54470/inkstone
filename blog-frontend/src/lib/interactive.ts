@@ -2,6 +2,10 @@ import { COPY_FEEDBACK_MS } from './constants'
 import { renderJsOutcome, runUserCode } from './js-runner-runner'
 import { t, getCurrentLocale } from './i18n'
 import { initDiagramLazyRender, isDarkMode, rerenderDiagramsForTheme, revealPanelBlocks } from './diagram-reveal'
+import { applyExampleSplits } from './example-splits'
+import { configureCodeBlockCollapsing, toggleCodeBlockCollapse } from './code-collapse'
+import { enhanceGraphBlockToolbars, executeGraphBlockAction } from './graph-toolbar'
+import { initMindmapSnapshots, revealMindmapBlocks, rerenderMindmapsForTheme } from './mindmap-snapshot'
 
 let interactiveInitialized = false
 
@@ -10,12 +14,19 @@ let interactiveInitialized = false
 export function initInteractiveContent() {
   if (typeof window === 'undefined' || interactiveInitialized) return
   interactiveInitialized = true
+  // 分栏比例是运行时数值，先落 CSS 变量，避免首帧按样式表回退比例绘制
+  applyExampleSplits()
+  enhanceGraphBlockToolbars()
+  configureCodeBlockCollapsing()
   initTabs()
   initCodeCopy()
   initLinkCopy()
   initJsRunners()
   initTaskCheckboxes()
+  initCodeBlockControls()
+  initGraphActions()
   initDiagramLazyRender()
+  initMindmapSnapshots()
   initThemeObserver()
 }
 
@@ -74,10 +85,31 @@ function applyTabSelection(tabs: HTMLElement, index: string, reveal: boolean): v
     panel.hidden = panel.dataset.tabPanel !== index
   })
   if (reveal) {
-    // 首次激活的标签页可能携带尚未渲染的图表，立即触发渲染（见 initDiagramLazyRender）
+    // 首次激活的标签页可能携带尚未渲染的图表/思维导图，立即触发渲染（见 initDiagramLazyRender）
     const active = panels.find((p) => p.dataset.tabPanel === index)
-    if (active) revealPanelBlocks(active)
+    if (active) {
+      revealPanelBlocks(active)
+      revealMindmapBlocks(active)
+    }
   }
+}
+
+function initCodeBlockControls() {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    const collapseBtn = target.closest<HTMLButtonElement>('[data-code-collapse]')
+    if (collapseBtn) toggleCodeBlockCollapse(collapseBtn)
+  })
+}
+
+function initGraphActions() {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    const actionBtn = target.closest<HTMLButtonElement>('[data-graph-action]')
+    if (actionBtn && executeGraphBlockAction(actionBtn.dataset.graphAction!, actionBtn)) {
+      e.preventDefault()
+    }
+  })
 }
 
 export function selectMarkdownTab(button: HTMLButtonElement): void {
@@ -230,11 +262,19 @@ function initThemeObserver() {
     if (nextDark !== isDark) {
       isDark = nextDark
       rerenderDiagramsForTheme()
+      rerenderMindmapsForTheme()
     }
   }
 
   window.addEventListener('inkstone-appearance-change', onChange)
-  const observer = new MutationObserver(onChange)
+  const observer = new MutationObserver(() => {
+    const nextDark = isDarkMode()
+    if (nextDark !== isDark) {
+      isDark = nextDark
+      rerenderDiagramsForTheme()
+      rerenderMindmapsForTheme()
+    }
+  })
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
   if (typeof window !== 'undefined' && window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onChange)

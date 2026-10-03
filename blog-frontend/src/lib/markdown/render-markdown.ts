@@ -17,7 +17,9 @@ import { slugify } from './slugify.ts'
 import { stripFrontmatter } from '../content.ts'
 import { stripObsidianComments } from './obsidian.ts'
 import { parseFenceInfo, splitHtmlIntoLines } from './fence.ts'
+import { EXAMPLE_SPLIT_DEFAULTS, exampleRatioLabel, parseExampleSplit, type ExampleFamily } from './split.ts'
 import type { FenceInfo, RenderEnv, RenderOptions, RenderResult } from './types.ts'
+import { heavyFenceKind, renderHeavyFence } from './heavy-blocks.ts'
 import { registerBlockRules } from './rules/block.ts'
 import { registerCoreRules } from './rules/core.ts'
 import { registerInlineRules } from './rules/inline.ts'
@@ -62,7 +64,7 @@ function createMarkdownRenderer(): InstanceType<typeof MarkdownIt> {
   registerCoreRules(md)
   registerRendererRules(md)
 
-  // Fences: mermaid, chart, md-example, js-example, code
+  // Fences: mermaid, chart, md-example, js-example, mindmap/kanban/… and code
   md.renderer.rules.fence = (tokens, idx, _options, env) => renderFence(tokens, idx, env as RenderEnv)
 
   return md
@@ -76,12 +78,19 @@ function renderChartFence(code: string): string {
   return `<div class="chartjs-block loading" data-chart="${encodeURIComponent(code)}" aria-busy="true">正在加载图表...</div>`
 }
 
-function renderMarkdownExampleFence(code: string, title: string, depth: number): string {
+/** The grid's resolved layout and ratio; both are always emitted so CSS and the client agree. */
+function exampleSplitAttrs(family: ExampleFamily, info: string): string {
+  const split = parseExampleSplit(info, EXAMPLE_SPLIT_DEFAULTS[family])
+  return ` data-example-layout="${escapeAttr(split.layout)}" data-example-ratio="${escapeAttr(exampleRatioLabel(split.ratio))}"`
+}
+
+function renderMarkdownExampleFence(code: string, info: FenceInfo, rawInfo: string, depth: number): string {
   const previewHtml = renderMarkdown(code, { depth }).html
+  const title = info.title || 'Markdown 演示'
   return [
-    `<section class="markdown-example">`,
+    `<section class="markdown-example" data-example-family="md" aria-label="${escapeAttr(title)}">`,
     `<div class="markdown-example-head"><span class="markdown-example-title">${escapeHtml(title)}</span></div>`,
-    `<div class="markdown-example-grid">`,
+    `<div class="markdown-example-grid"${exampleSplitAttrs('md', rawInfo)}>`,
     `<section class="markdown-example-preview" aria-label="预览">`,
     `<div class="markdown-example-preview-body">${previewHtml}</div>`,
     `</section>`,
@@ -96,11 +105,12 @@ function renderMarkdownExampleFence(code: string, title: string, depth: number):
   ].join('')
 }
 
-function renderJsExampleFence(code: string, title: string): string {
+function renderJsExampleFence(code: string, info: FenceInfo, rawInfo: string): string {
+  const title = info.title || '可运行 JavaScript 代码'
   const highlighted = highlightCode(code, 'javascript') || escapeHtml(code)
   const lined = splitHtmlIntoLines(highlighted, 1, [])
   return [
-    `<section class="markdown-example js-example-block">`,
+    `<section class="markdown-example js-example-block" data-example-family="js">`,
     `<div class="markdown-example-head js-example-head">`,
     `<span class="markdown-example-title js-example-title">`,
     `<span class="js-example-badge">JS</span>`,
@@ -119,7 +129,7 @@ function renderJsExampleFence(code: string, title: string): string {
     `</button>`,
     `</div>`,
     `</div>`,
-    `<div class="markdown-example-grid js-example-grid">`,
+    `<div class="markdown-example-grid js-example-grid"${exampleSplitAttrs('js', rawInfo)}>`,
     `<section class="markdown-example-source js-example-source" aria-label="JavaScript">`,
     `<div class="code-block markdown-example-code has-line-numbers" data-lang="javascript" data-code-start="1" data-line-numbers="true">`,
     `<button class="code-copy markdown-example-copy" data-copy type="button" aria-label="复制代码">复制</button>`,
@@ -145,9 +155,14 @@ function renderCodeFence(info: FenceInfo, code: string): string {
   const highlighted = highlightCode(code, lang) || escapeHtml(code)
   const formattedLines = splitHtmlIntoLines(highlighted, info.startLine, info.highlightedLines)
   const title = info.title || (info.language ? info.language.toUpperCase() : 'CODE')
+  const optionAttrs = [
+    info.wrap ? ' data-code-wrap="true"' : '',
+    info.collapse === null ? '' : ` data-code-collapse-at="${info.collapse}"`,
+    info.theme === 'auto' ? '' : ` data-code-theme="${info.theme}"`,
+  ].join('')
 
   return [
-    `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}" data-lang="${escapeAttr(lang)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}>`,
+    `<div class="code-block${info.lineNumbers ? ' has-line-numbers' : ''}" data-lang="${escapeAttr(lang)}" data-code-start="${info.startLine}"${info.lineNumbers ? ' data-line-numbers="true"' : ''}${info.highlightedLines.length ? ` data-highlight-lines="${info.highlightedLines.join(',')}"` : ''}${optionAttrs}>`,
     `<div class="code-block-head">`,
     `<span class="code-title">${escapeHtml(title)}</span>`,
     info.title && info.language ? `<span class="code-lang">${escapeHtml(info.language)}</span>` : '',
@@ -180,15 +195,21 @@ function renderFence(tokens: Token[], idx: number, env: RenderEnv): string {
     if (nextDepth > MAX_MD_EXAMPLE_DEPTH) {
       return renderCodeFence({ ...info, language: 'markdown', title: info.title || 'Markdown 演示' }, code)
     }
-    return renderMarkdownExampleFence(code, info.title || 'Markdown 演示', nextDepth)
+    return renderMarkdownExampleFence(code, info, token.info, nextDepth)
   }
 
   // 4. javascript-example runnable block
   if (lang === 'javascript-example' || lang === 'js-example') {
-    return renderJsExampleFence(code, info.title || '可运行 JavaScript 代码')
+    return renderJsExampleFence(code, info, token.info)
   }
 
-  // 5. Standard code block
+  // 5. App-native blocks: mindmap snapshots, kanban stills, whiteboard/slides source frames
+  const heavyKind = heavyFenceKind(lang)
+  if (heavyKind) {
+    return renderHeavyFence(heavyKind, code, token.info)
+  }
+
+  // 6. Standard code block
   return renderCodeFence(info, code)
 }
 

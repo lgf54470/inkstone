@@ -2,14 +2,25 @@ import MarkdownIt from 'markdown-it'
 import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import type { RenderEnv } from '../types.ts'
+import { TABLE_OPTION_DEFAULTS, type TableOptions } from '../table-options.ts'
+
+function registerDetailsRendererRules(md: InstanceType<typeof MarkdownIt>): void {
+  md.renderer.rules.details_open = (tokens, index) => {
+    const meta = tokens[index]!.meta as { open: boolean; title: string; variant?: string }
+    const variant = meta.variant && meta.variant !== 'default' ? ` data-details-variant="${escapeAttr(meta.variant)}"` : ''
+    return `<details class="markdown-details"${meta.open ? ' open' : ''}${variant}>`
+  }
+  // The summary title is inline markdown (emphasis, code, links…), same rule the root app renders.
+  // markdown-it v15 requires an env object on renderInline (it reads env.references).
+  md.renderer.rules.details_summary = (tokens, index, _options, env) =>
+    `<summary>${md.renderInline(tokens[index]!.content, (env ?? {}) as Record<string, unknown>)}</summary>`
+  md.renderer.rules.details_close = () => '</details>'
+}
 
 function registerContainerRendererRules(md: InstanceType<typeof MarkdownIt>): void {
-  // Renderer rules for details and tabs
-  md.renderer.rules.details_open = (tokens, index) => {
-    const meta = tokens[index]!.meta as { open: boolean; title: string }
-    return `<details class="markdown-details"${meta.open ? ' open' : ''}><summary>${escapeHtml(meta.title)}</summary>`
-  }
-  md.renderer.rules.details_close = () => '</details>'
+  // Renderer rules for details, table style containers and tabs
+  registerDetailsRendererRules(md)
+  registerTableWrapRules(md)
 
   md.renderer.rules.tabs_open = (tokens, index) => {
     const { titles, selectedIndex, options } = tokens[index]!.meta as {
@@ -46,6 +57,19 @@ function registerContainerRendererRules(md: InstanceType<typeof MarkdownIt>): vo
     return `<section class="tab-panel" role="tabpanel" data-tab-panel="${tabIndex}"${selected ? '' : ' hidden'}>`
   }
   md.renderer.rules.tab_panel_close = () => '</section>'
+}
+
+function registerTableWrapRules(md: InstanceType<typeof MarkdownIt>): void {
+  md.renderer.rules.table_wrap_open = (tokens, index) => {
+    const options = (tokens[index]!.meta as { options?: TableOptions } | undefined)?.options ?? TABLE_OPTION_DEFAULTS
+    const state = [
+      ` data-table-density="${escapeAttr(options.density)}"`,
+      options.zebra ? ' data-table-zebra="true"' : '',
+      ` data-table-frames="${escapeAttr(options.frames)}"`,
+    ].join('')
+    return `<div class="markdown-table"${state}>`
+  }
+  md.renderer.rules.table_wrap_close = () => '</div>'
 }
 
 function registerCalloutRendererRules(md: InstanceType<typeof MarkdownIt>): void {

@@ -1,5 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import type { StateBlock } from 'markdown-it'
+import { parseDetailsOptions } from '../details-options.ts'
+import { parseTableOptions } from '../table-options.ts'
 
 function blockLine(state: StateBlock, line: number): string {
   const pos = state.bMarks[line] + state.tShift[line]
@@ -304,7 +306,7 @@ function renderModernContainer(
   silent: boolean
 ): boolean {
   const source = blockLine(state, startLine)
-  const legacyMatch = /^(:{3,})[ \t]+(details|tabs)\b(?:[ \t]+(.*))?$/.exec(source)
+  const legacyMatch = /^(:{3,})[ \t]+(details|tabs|table)\b(?:[ \t]+(.*))?$/.exec(source)
   const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source)
   if (!legacyMatch && !directiveMatch) return false
   const markerLength = (legacyMatch?.[1] ?? directiveMatch![1]!).length
@@ -315,13 +317,22 @@ function renderModernContainer(
   const kind = legacyMatch?.[2] ?? directiveMatch![2]!
   const rawInfo = (legacyMatch?.[3] ?? directiveMatch?.[3] ?? '').trim()
   if (kind === 'details') {
-    const open = /^(?:open|\+)\b/.test(rawInfo)
-    const title = stripBracketTitle(rawInfo.replace(/^(?:open|\+)\b[ \t]*/, '')) || '详细内容'
+    const options = parseDetailsOptions(rawInfo)
     const openToken = state.push('details_open', 'details', 1)
     openToken.block = true
-    openToken.meta = { open, title }
+    openToken.map = [startLine, end + 1]
+    openToken.meta = { open: options.open, variant: options.variant, title: options.title || '详细内容' }
+    const summary = state.push('details_summary', 'summary', 0)
+    summary.content = options.title || '详细内容'
     state.md.block.tokenize(state, startLine + 1, end)
     state.push('details_close', 'details', -1).block = true
+  } else if (kind === 'table') {
+    const openToken = state.push('table_wrap_open', 'div', 1)
+    openToken.block = true
+    openToken.map = [startLine, end + 1]
+    openToken.meta = { options: parseTableOptions(rawInfo) }
+    state.md.block.tokenize(state, startLine + 1, end)
+    state.push('table_wrap_close', 'div', -1).block = true
   } else {
     const tabs = findTabSegments(state, startLine + 1, end)
     if (!tabs.length) {
@@ -347,7 +358,7 @@ function renderModernContainer(
 }
 
 function registerModernContainerRule(md: InstanceType<typeof MarkdownIt>): void {
-  // Containers: ::: details and ::: tabs
+  // Containers: ::: details, ::: table and ::: tabs
   md.block.ruler.before(
     'fence',
     'modern_container',

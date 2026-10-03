@@ -22,10 +22,18 @@ export interface RenderOptions {
   depth?: number
 }
 
+export type CodeTheme = 'auto' | 'light' | 'dark'
+
 export interface FenceInfo {
   language: string
   title: string
   lineNumbers: boolean
   startLine: number
   highlightedLines: number[]
+  /** Long lines wrap instead of scrolling (`wrap` flag). */
+  wrap: boolean
+  /** Fold beyond this many lines; null follows the reading default, 0 never folds. */
+  collapse: number | null
+  /** Palette the block draws with; `auto` follows the page theme. */
+  theme: CodeTheme
 }

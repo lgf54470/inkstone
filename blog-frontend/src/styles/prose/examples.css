@@ -42,6 +42,12 @@
 .ink-prose .markdown-example-source {
   min-width: 0;
 }
+/* The split (layout + ratio) arrives as data attributes on the grid; the client
+   turns the ratio into --ex-cols/--ex-rows tracks. Below 360px every family
+   stacks into one column regardless of the written layout. */
+.ink-prose .markdown-example-grid[data-example-layout] > * {
+  min-width: 0;
+}
 .ink-prose .markdown-example-preview {
   background: var(--bg-base);
 }
@@ -98,13 +104,39 @@
   white-space: pre-wrap;
 }
 
+/* Narrow stacks already drew the separator on the source's top; wide layouts
+   move the boundary according to which edge each panel takes. */
 @container (min-width: 360px) {
-  .ink-prose .markdown-example-grid {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  .ink-prose .markdown-example-grid[data-example-layout='lr'],
+  .ink-prose .markdown-example-grid[data-example-layout='rl'] {
+    grid-template-columns: var(--ex-cols, minmax(0, 0.9fr) minmax(0, 1.1fr));
   }
-  .ink-prose .markdown-example-source {
-    border-top: 0;
+  .ink-prose .markdown-example-grid[data-example-layout='tb'],
+  .ink-prose .markdown-example-grid[data-example-layout='bt'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--ex-rows, minmax(0, 0.9fr) minmax(0, 1.1fr));
+    min-height: 240px;
+  }
+  .ink-prose .markdown-example-grid[data-example-layout='rl'] > :first-child,
+  .ink-prose .markdown-example-grid[data-example-layout='bt'] > :first-child {
+    order: 2;
+  }
+  .ink-prose .markdown-example-grid[data-example-layout='rl'] > :last-child,
+  .ink-prose .markdown-example-grid[data-example-layout='bt'] > :last-child {
+    order: 1;
+  }
+  /* Markdown examples: preview then source. */
+  .ink-prose .markdown-example-grid[data-example-layout] .markdown-example-source,
+  .ink-prose .markdown-example-grid[data-example-layout] .markdown-example-preview {
+    border: 0;
+  }
+  .ink-prose .markdown-example-grid[data-example-layout='lr'] .markdown-example-source,
+  .ink-prose .markdown-example-grid[data-example-layout='rl'] .markdown-example-preview {
     border-left: 1px solid var(--border-subtle);
+  }
+  .ink-prose .markdown-example-grid[data-example-layout='tb'] .markdown-example-source,
+  .ink-prose .markdown-example-grid[data-example-layout='bt'] .markdown-example-preview {
+    border-top: 1px solid var(--border-subtle);
   }
 }
 
@@ -232,24 +264,13 @@
   flex-direction: column;
   min-height: 120px;
   background: color-mix(in oklab, var(--bg-inset) 70%, var(--bg-base));
-  border-top: 1px solid var(--border-subtle);
 }
 
-@container (min-width: 360px) {
-  .ink-prose .js-example-output {
-    border-top: 0;
-    border-left: 1px solid var(--border-subtle);
-  }
-}
-
-/* js-example 块固定为上下结构：JS 代码在上、运行结果在下，代码不自动换行 */
-.ink-prose .markdown-example-grid.js-example-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
+/* JS examples default to a top-bottom split (source above, output below) via the
+   emitted data-example-layout; an explicit layout= is honored the same way as
+   markdown examples. The code itself never wraps: it scrolls horizontally. */
 .ink-prose .markdown-example-source.js-example-source {
-  border-top: 0;
-  border-left: 0;
+  border: 0;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -265,8 +286,22 @@
 }
 
 .ink-prose .markdown-example-preview.js-example-output {
-  border-top: 0;
-  border-left: 0;
+  border: 0;
+}
+
+@container (min-width: 360px) {
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout] .js-example-source,
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout] .js-example-output {
+    border: 0;
+  }
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout='lr'] .js-example-output,
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout='rl'] .js-example-source {
+    border-left: 1px solid var(--border-subtle);
+  }
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout='tb'] .js-example-output,
+  .ink-prose .markdown-example-grid.js-example-grid[data-example-layout='bt'] .js-example-source {
+    border-top: 1px solid var(--border-subtle);
+  }
 }
 
 .ink-prose .js-example-output-head {

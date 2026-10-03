@@ -8,5 +8,20 @@
   },
   "blog-frontend/src/components/home/RandomPostButton.test.ts": {
     "longFns": 1
+  },
+  "blog-frontend/src/lib/graph-toolbar.ts": {
+    "deepFns": 1
+  },
+  "blog-frontend/src/lib/markdown/fence.ts": {
+    "deepFns": 1
+  },
+  "blog-frontend/src/lib/markdown/format-parity.test.ts": {
+    "longFns": 1
+  },
+  "blog-frontend/src/lib/markdown/heavy-blocks.ts": {
+    "deepFns": 2
+  },
+  "blog-frontend/src/lib/markdown/rules/block.ts": {
+    "longFns": 1
   }
 }

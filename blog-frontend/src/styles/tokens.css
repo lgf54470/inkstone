@@ -159,6 +159,7 @@
     0 12px 28px -8px oklch(20% 0.01 265 / 12%), 0 24px 56px -16px oklch(20% 0.01 265 / 10%);
   --shadow-modal: 0 0 0 1px oklch(20% 0.01 265 / 7%), 0 8px 16px -4px oklch(20% 0.01 265 / 8%),
     0 24px 48px -12px oklch(20% 0.01 265 / 16%);
+  --shadow-float: 0 1px 2px oklch(20% 0.01 265 / 12%);
   --shadow-xs: 0 1px 2px oklch(20% 0.01 265 / 5%);
   --shadow-sm: 0 1px 2px oklch(20% 0.01 265 / 6%);
   --shadow-hover: 0 4px 6px -1px oklch(20% 0.01 265 / 10%), 0 2px 4px -2px oklch(20% 0.01 265 / 10%);
@@ -257,6 +258,62 @@
 
 
 :root[data-theme='dark'] { --accent-contrast: oklch(16% 0.008 265); }
+
+/*
+ * Pinned code-block palettes (fence `theme=dark|light`), same contract as the root
+ * app: the block becomes its own themed surface, so a dark code block reads correctly
+ * on a light page (and vice versa). Only the tokens the code-block subtree consumes
+ * are scoped; layout/radius/accent tokens inherit from the page as usual.
+ */
+[data-code-theme='dark'] {
+  color-scheme: dark;
+  --bg-base: #181614;
+  --bg-inset: oklch(14% 0.008 265);
+  --bg-hover: oklch(100% 0 0 / 4.5%);
+  --border-subtle: oklch(100% 0 0 / 6%);
+  --text-secondary: oklch(74% 0.008 265);
+  --text-tertiary: oklch(70% 0.009 265);
+  --text-quaternary: oklch(67% 0.008 265);
+  --code-fg: #adbac7;
+  --code-inline-fg: #6cb6ff;
+  --syntax-comment: #768390;
+  --syntax-keyword: #f47067;
+  --syntax-string: #96d0ff;
+  --syntax-number: #6cb6ff;
+  --syntax-function: #dcbdfb;
+  --syntax-type: #6cb6ff;
+  --syntax-type-definition: #f69d50;
+  --syntax-variable: #adbac7;
+  --syntax-property: #f69d50;
+  --syntax-operator: #f47067;
+  --syntax-punctuation: #adbac7;
+  --syntax-constant: #6cb6ff;
+}
+
+[data-code-theme='light'] {
+  color-scheme: light;
+  --bg-base: #f7f5f1;
+  --bg-inset: oklch(96.8% 0.005 90);
+  --bg-hover: oklch(20% 0.01 265 / 4%);
+  --border-subtle: oklch(20% 0.01 265 / 7%);
+  --text-secondary: oklch(44% 0.01 265);
+  --text-tertiary: oklch(50% 0.009 265);
+  --text-quaternary: oklch(52% 0.008 265);
+  --code-fg: #24292e;
+  --code-inline-fg: #005cc5;
+  --syntax-comment: #6a737d;
+  --syntax-keyword: #d73a49;
+  --syntax-string: #032f62;
+  --syntax-number: #005cc5;
+  --syntax-function: #6f42c1;
+  --syntax-type: #005cc5;
+  --syntax-type-definition: #6f42c1;
+  --syntax-variable: #24292e;
+  --syntax-property: #e36209;
+  --syntax-operator: #d73a49;
+  --syntax-punctuation: #24292e;
+  --syntax-constant: #005cc5;
+}
 
 @media (prefers-reduced-motion: reduce) {
   :root {

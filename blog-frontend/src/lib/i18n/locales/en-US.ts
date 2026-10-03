@@ -249,6 +249,15 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'interactive.chart_error': 'Chart render failed: {error}',
   'interactive.mermaid_loading': 'Loading diagram...',
   'interactive.executed_no_output': 'Code executed with no output',
+  'interactive.code_show_more': 'Show {count} more lines',
+  'interactive.code_collapse': 'Collapse code',
+  'interactive.graph_mermaid': 'Mermaid diagram',
+  'interactive.graph_chart': 'Chart.js chart',
+  'interactive.graph_zoom_in': 'Zoom in',
+  'interactive.graph_zoom_out': 'Zoom out',
+  'interactive.graph_fit': 'Fit',
+  'interactive.graph_source': 'View source',
+  'interactive.graph_export': 'Export image',
 
   // Friend Links & Navigation
   'links.title': 'Links & Navigation',

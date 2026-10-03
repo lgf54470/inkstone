@@ -249,6 +249,15 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'interactive.chart_error': '圖表渲染失敗: {error}',
   'interactive.mermaid_loading': '正在載入圖表...',
   'interactive.executed_no_output': '程式碼已執行，無輸出內容',
+  'interactive.code_show_more': '展開其餘 {count} 行',
+  'interactive.code_collapse': '收合程式碼',
+  'interactive.graph_mermaid': 'Mermaid 流程圖',
+  'interactive.graph_chart': 'Chart.js 圖表',
+  'interactive.graph_zoom_in': '放大',
+  'interactive.graph_zoom_out': '縮小',
+  'interactive.graph_fit': '符合視窗',
+  'interactive.graph_source': '檢視原始碼',
+  'interactive.graph_export': '匯出圖片',
 
   // Friend Links & Navigation
   'links.title': '友鏈與導航',
