@@ -287,7 +287,7 @@ function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
 // blocks overflow the canvas reports its page plan, and next/prev walk through its
 // sub-pages before moving to the neighboring slide. The plans also drive the slide
 // list, which is why the show keeps them instead of only the current page count.
-function usePresentationNav(deck: string[], hashes: string[], initialSlideIndex: number = 0) {
+export function usePresentationNav(deck: string[], hashes: string[], initialSlideIndex: number = 0) {
   const deckLength = deck.length
   const { index, goTo } = useDeckIndex(deckLength, initialSlideIndex)
   const { plans, reportPlan } = useSlidePlans(hashes)
@@ -295,20 +295,27 @@ function usePresentationNav(deck: string[], hashes: string[], initialSlideIndex:
   const pageCount = currentPlan?.pages.length ?? 1
   const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
   const handlePlan = useCallback((plan: SlidePlan) => reportPlan(index, plan), [index, reportPlan])
+  // Where the show stands, read when a control is used rather than written into the closure that
+  // built it. The slide list holds these callbacks on every card of a long deck, and a fresh
+  // identity on each turn would re-render the whole list to move one card.
+  const position = useRef({ index, sub, pageCount, deckLength })
+  position.current = { index, sub, pageCount, deckLength }
   const goNext = useCallback(() => {
-    if (sub < pageCount - 1) setSubPage(sub + 1)
-    else if (index < deckLength - 1) {
+    const at = position.current
+    if (at.sub < at.pageCount - 1) setSubPage(at.sub + 1)
+    else if (at.index < at.deckLength - 1) {
       carryPage(0)
-      goTo(index + 1)
+      goTo(at.index + 1)
     }
-  }, [sub, pageCount, index, deckLength, goTo, carryPage, setSubPage])
+  }, [goTo, carryPage, setSubPage])
   const goPrev = useCallback(() => {
-    if (sub > 0) setSubPage(sub - 1)
-    else if (index > 0) {
+    const at = position.current
+    if (at.sub > 0) setSubPage(at.sub - 1)
+    else if (at.index > 0) {
       carryPage(0)
-      goTo(index - 1)
+      goTo(at.index - 1)
     }
-  }, [sub, index, goTo, carryPage, setSubPage])
+  }, [goTo, carryPage, setSubPage])
   const jumpTo = useCallback((slide: number) => {
     carryPage(0)
     goTo(slide)
@@ -317,12 +324,12 @@ function usePresentationNav(deck: string[], hashes: string[], initialSlideIndex:
   // than the top of the slide that contains it.
   const jumpToPage = useCallback((slide: number, page: number) => {
     const target = Math.max(page, 0)
-    if (slide === index) setSubPage(target)
+    if (slide === position.current.index) setSubPage(target)
     else {
       carryPage(target)
       goTo(slide)
     }
-  }, [goTo, index, carryPage, setSubPage])
+  }, [goTo, carryPage, setSubPage])
   return { index, sub, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
 }
 

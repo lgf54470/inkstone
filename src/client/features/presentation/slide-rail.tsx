@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -120,7 +120,9 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
         {entries.map((entry, item) => (
           <SlideRailItem
             key={`${entry.slide}-${entry.sub}`}
-            entry={entry}
+            slide={entry.slide}
+            sub={entry.sub}
+            pageCount={entry.pageCount}
             entryIndex={item}
             cacheKey={cacheKeys[entry.slide] ?? ''}
             source={deck[entry.slide] ?? ''}
@@ -140,7 +142,12 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
 }
 
 interface SlideRailItemProps {
-  entry: RailEntry
+  // The page this card shows, as the three numbers that say it. A `RailEntry` object would do the
+  // same job, but the list rebuilds those whenever a slide is measured, and a card that cannot tell
+  // an unchanged slide from a re-measured one re-runs the deck on every turn.
+  slide: number
+  sub: number
+  pageCount: number
   entryIndex: number
   cacheKey: string
   source: string
@@ -154,11 +161,15 @@ interface SlideRailItemProps {
   posinset: number
 }
 
-function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef, setsize, posinset }: SlideRailItemProps) {
+// Memoized because a turn changes one card and a measurement lands on one slide, while the list that
+// holds them both re-renders: without this, every card of a long deck re-runs its own viewport watch,
+// markup read and page slice for work that belongs to two of them.
+const SlideRailItem = memo(function SlideRailItem({ slide, sub, pageCount, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef, setsize, posinset }: SlideRailItemProps) {
+  const entry = { slide, sub, pageCount }
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
   const cached = useCachedSlideHtml(cacheKey)
-  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
+  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub, view })
   const heading = useMemo(() => extractSlideHeading(source), [source])
 
   return (
@@ -170,11 +181,11 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
       aria-setsize={setsize}
       aria-posinset={posinset}
       data-entry-index={entryIndex}
-      data-slide-index={entry.slide}
-      data-slide-page={entry.sub}
+      data-slide-index={slide}
+      data-slide-page={sub}
       aria-label={pageLabel(entry, deckLength)}
       tabIndex={active ? 0 : -1}
-      onClick={() => onSelectPage(entry.slide, entry.sub)}
+      onClick={() => onSelectPage(slide, sub)}
       className={cn(
         'flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] p-[var(--sp-1)] text-left',
         'transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]',
@@ -194,4 +205,4 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
       </div>
     </button>
   )
-}
+})

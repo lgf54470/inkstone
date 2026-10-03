@@ -2,10 +2,10 @@
 // so a presenter can jump to the section they are talking about instead of stepping there.
 // It is a layer inside the dialog rather than a dialog of its own — the browser only paints the
 // fullscreen element's subtree, and the show is fullscreen.
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { t } from '../../lib/i18n'
-import { entryIndexOf, overviewMove, railEntries, type RailEntry } from './presentation-state'
+import { entryIndexOf, overviewMove, railEntries } from './presentation-state'
 import { presentationCommand } from './presentation-keys'
 import type { SlidePlan } from './slide-pagination'
 import { extractSlideHeading, pageLabel, SlideThumb, ThumbRootContext, useCachedSlideHtml, useNearViewport, usePageHtml, useThumbView, type ThumbView } from './slide-thumb'
@@ -54,7 +54,9 @@ export function SlideOverviewGrid({ deck, cacheKeys, plans, index, sub, designWi
           {entries.map((entry, item) => (
             <OverviewCard
               key={`${entry.slide}-${entry.sub}`}
-              entry={entry}
+              slide={entry.slide}
+              sub={entry.sub}
+              pageCount={entry.pageCount}
               item={item}
               cacheKey={cacheKeys[entry.slide] ?? ''}
               source={deck[entry.slide] ?? ''}
@@ -141,7 +143,11 @@ function useGridKeyboard(rootRef: RefObject<HTMLElement | null>, count: number, 
 }
 
 interface OverviewCardProps {
-  entry: RailEntry
+  // See `SlideRailItemProps`: the numbers of the page, not an entry object the grid rebuilds
+  // whenever any slide is measured.
+  slide: number
+  sub: number
+  pageCount: number
   item: number
   cacheKey: string
   source: string
@@ -154,24 +160,28 @@ interface OverviewCardProps {
   onClose: () => void
 }
 
-function OverviewCard({ entry, item, cacheKey, source, plan, deckLength, presenting, focused, view, onSelectPage, onClose }: OverviewCardProps) {
+// Memoized for the same reason as the rail's card, and with a heavier one on top: the grid holds the
+// whole deck at once, so a card that cannot tell an unchanged slide from a re-measured one pays for
+// the deck on every keystroke of the arrow keys that roam it.
+const OverviewCard = memo(function OverviewCard({ slide, sub, pageCount, item, cacheKey, source, plan, deckLength, presenting, focused, view, onSelectPage, onClose }: OverviewCardProps) {
+  const entry = { slide, sub, pageCount }
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
   const cached = useCachedSlideHtml(cacheKey)
-  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
+  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub, view })
   const heading = useMemo(() => extractSlideHeading(source), [source])
 
   return (
     <button
       type='button'
       data-overview-index={item}
-      data-slide-index={entry.slide}
-      data-slide-page={entry.sub}
+      data-slide-index={slide}
+      data-slide-page={sub}
       aria-current={presenting ? 'true' : undefined}
       aria-label={pageLabel(entry, deckLength)}
       tabIndex={focused ? 0 : -1}
       onClick={() => {
-        onSelectPage(entry.slide, entry.sub)
+        onSelectPage(slide, sub)
         onClose()
       }}
       className='flex w-full flex-col items-center gap-[var(--sp-2)] rounded-[var(--r-md)] p-[var(--sp-2)] text-left transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)]'
@@ -185,4 +195,4 @@ function OverviewCard({ entry, item, cacheKey, source, plan, deckLength, present
       </span>
     </button>
   )
-}
+})
