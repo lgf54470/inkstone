@@ -222,3 +222,42 @@ describe('SlideCanvas — the prepared markup landing after the first paint', ()
     view.unmount()
   })
 })
+
+// N-31: a stepped slide is the same measured page with one more axis — how far into it the projector
+// has walked. Hiding stays on `visibility` for the same reason off-page blocks do: a chart.js diagram
+// that was only hidden keeps its canvas, so revealing the next block never re-renders the last one.
+describe('applySlidePage — the blocks a step has not reached yet', () => {
+  const block = () => {
+    const node = document.createElement('p')
+    node.textContent = 'block'
+    return node
+  }
+  const plan = (steps?: boolean) => ({ pages: [{ from: 0, to: 3, top: 0 }], scales: [1, 1, 1], steps })
+
+  // The step counts reveals, so step 0 shows the block the page opens on and nothing after it.
+  it('holds back every block past the step the show is on', () => {
+    const children = [block(), block(), block()]
+    applySlidePage(children, plan(true), 0, 1168, 632, 0)
+    expect(children.map((child) => child.style.visibility)).toEqual(['', 'hidden', 'hidden'])
+    applySlidePage(children, plan(true), 0, 1168, 632, 1)
+    expect(children.map((child) => child.style.visibility)).toEqual(['', '', 'hidden'])
+  })
+
+  it('shows the whole page once the last step is reached', () => {
+    const children = [block(), block(), block()]
+    applySlidePage(children, plan(true), 0, 1168, 632, 2)
+    expect(children.every((child) => child.style.visibility === '')).toBe(true)
+  })
+
+  it('leaves an unstepped slide showing everything on its page', () => {
+    const children = [block(), block(), block()]
+    applySlidePage(children, plan(), 0, 1168, 632, 0)
+    expect(children.every((child) => child.style.visibility === '')).toBe(true)
+  })
+
+  it('still hides what belongs to another page, step or no step', () => {
+    const children = [block(), block(), block()]
+    applySlidePage(children, { pages: [{ from: 0, to: 2, top: 0 }, { from: 2, to: 3, top: 200 }], scales: [1, 1, 1], steps: true }, 1, 1168, 632, 0)
+    expect(children.map((child) => child.style.visibility)).toEqual(['hidden', 'hidden', ''])
+  })
+})

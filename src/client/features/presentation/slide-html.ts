@@ -1,6 +1,6 @@
 import { renderMarkdown, type RenderResult } from '../../lib/markdown/renderer'
 import type { FenceBodies } from '../../lib/markdown/fence-bodies'
-import { takeLayoutDirective, type SlideLayout } from './slides'
+import { takeLayoutDirective, takeStepDirective, type SlideLayout } from './slides'
 import { resolvePageIndex, type SlidePage, type SlidePlan } from './slide-pagination'
 
 /**
@@ -16,6 +16,8 @@ export interface SlideMarkup {
   fences: FenceBodies
   /** The layout the slide's own source asked for, taken out of the markup before it was rendered. */
   layout?: SlideLayout
+  /** Whether the slide's source asked to reveal its blocks one step at a time (N-31). */
+  steps?: boolean
   /**
    * Set when the markup has been through the enhancement chain — or was captured from a page that
    * has. A plain render is what the cache holds *while* a page is being prepared, so a reader that
@@ -33,9 +35,10 @@ export interface SlideMarkup {
   failed?: boolean
 }
 
-/** A slide rendered for a surface, with the layout its source switched on. */
+/** A slide rendered for a surface, with the layout and the stepping its source switched on. */
 export interface SlideRender extends RenderResult {
   layout?: SlideLayout
+  steps?: boolean
 }
 
 // Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
@@ -136,7 +139,7 @@ export function readSlideHtml(key: string): SlideMarkup | undefined {
 
 /** The entry a plain render makes, for a slide whose prepared markup never landed in the cache. */
 export function slideMarkup(rendered: SlideRender): SlideMarkup {
-  return { html: rendered.html, fences: rendered.fences, layout: rendered.layout }
+  return { html: rendered.html, fences: rendered.fences, layout: rendered.layout, steps: rendered.steps }
 }
 
 /**
@@ -280,9 +283,12 @@ export function dropSlideControls(html: string): string {
 }
 
 export function renderSlideSource(source: string, externalImages: boolean): SlideRender {
-  const { body, layout } = takeLayoutDirective(source)
+  // Both switches are the author's, and both are lifted out before the slide is rendered: a comment
+  // left in the text would paint as a stray node on the projector (N-31).
+  const { body: stepped, steps } = takeStepDirective(source)
+  const { body, layout } = takeLayoutDirective(stepped)
   const rendered = renderMarkdown(body, { externalImages, hideFrontMatter: true })
-  return { ...rendered, html: dropSlideControls(rendered.html), layout }
+  return { ...rendered, html: dropSlideControls(rendered.html), layout, steps }
 }
 
 // One page of a measured slide, as markup. The canvas shows a page by translating

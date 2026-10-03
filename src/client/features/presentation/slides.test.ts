@@ -472,4 +472,3 @@ describe('takeLayoutDirective', () => {
     expect(takeLayoutDirective('# A\n\npoint')).toEqual({ body: '# A\n\npoint', layout: undefined })
   })
 })
-

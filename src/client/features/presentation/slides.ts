@@ -29,6 +29,7 @@ type DeclaredSlideLevel = 1 | 2 | typeof SLIDE_LEVEL_NONE
 const NOTE_OPEN = /^ {0,3}<!--[ \t]*(?:note|speaker):[ \t]*/i
 const NOTE_END = '-->'
 const LAYOUT_LINE = /^ {0,3}<!--[ \t]*layout[ \t]*:[ \t]*([a-z][a-z0-9_-]*)[ \t]*-->$/i
+const STEP_LINE = /^ {0,3}<!--[ \t]*steps[ \t]*-->$/i
 
 /** How a slide is laid out on the projector, as its source asks for it. */
 export type SlideLayout = 'cover' | 'split'
@@ -380,6 +381,29 @@ function readLayoutLine(text: string): SlideLayout | undefined {
  * renders that slide — the canvas, the slide list, the overview grid, the printed deck — then
  * draws the same layout without one of them being told about it.
  */
+
+/**
+ * The slide's other switch: `<!-- steps -->` reveals the page's blocks one at a time instead of
+ * arriving whole. Like the layout switch it takes its own line (and the blank above it) out of the
+ * body, because a comment left in the text would paint as a stray node on the projector, and like it
+ * a switch demoed inside a fenced block is prose, not an instruction.
+ */
+export function takeStepDirective(source: string): { body: string; steps: boolean } {
+  const lines = readLines(source)
+  let fence: FenceMarker | null = null
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]!
+    const inside = fence !== null
+    fence = nextFence(line.text, fence)
+    if (inside || fence) continue
+    if (!STEP_LINE.test(line.text)) continue
+    const blank = index > 0 && lines[index - 1]!.text.trim() === '' ? index - 1 : -1
+    const kept = lines.filter((_, at) => at !== index && at !== blank).map((item) => item.text)
+    return { body: trimBlankEdges(kept.join('\n')), steps: true }
+  }
+  return { body: source, steps: false }
+}
+
 export function takeLayoutDirective(source: string): { body: string; layout: SlideLayout | undefined } {
   const lines = readLines(source)
   let fence: FenceMarker | null = null

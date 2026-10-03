@@ -51,17 +51,25 @@ export interface SlidePlan {
    * the projector never used.
    */
   layout?: SlideLayout
+  /**
+   * Whether the author asked for this slide's blocks to be revealed one step at a time. It rides on the
+   * plan rather than on the markup because every surface that reads the plan then agrees on what the
+   * projector walked through — and a thumbnail that draws the last state is still the same page.
+   */
+  steps?: boolean
 }
 
-export function planSlidePages(blocks: SlideBlock[], contentHeight: number, layout?: SlideLayout): SlidePlan {
+export function planSlidePages(blocks: SlideBlock[], contentHeight: number, layout?: SlideLayout, steps?: boolean): SlidePlan {
   const limit = Math.max(contentHeight, 1)
   const scales = blocks.map(() => 1)
-  if (blocks.length === 0) return { pages: [{ from: 0, to: 0, top: 0 }], scales, layout }
+  if (blocks.length === 0) return { pages: [{ from: 0, to: 0, top: 0 }], scales, layout, steps }
   // Two columns fit a slide by balancing its blocks across both, so its blocks no longer form the
   // single vertical flow the walk below reads — each column starts at the top again, and a page
   // picked out of those tops would hide blocks that are beside each other. The whole slide stays on
   // one page, which is only sound for a slide the caller has already measured as fitting the page.
-  if (layout === 'split') return { pages: [{ from: 0, to: blocks.length, top: 0 }], scales, layout }
+  // Two columns are revealed as one field of view: a page cut out of those tops would hide blocks
+  // that sit beside each other, so the slide stays whole and its steps arrive together.
+  if (layout === 'split') return { pages: [{ from: 0, to: blocks.length, top: 0 }], scales, layout, steps }
   const pages: SlidePage[] = []
   let from = 0
   while (from < blocks.length) {
@@ -84,7 +92,22 @@ export function planSlidePages(blocks: SlideBlock[], contentHeight: number, layo
     }
     from = to
   }
-  return { pages, scales, layout }
+  return { pages, scales, layout, steps }
+}
+
+/**
+ * How many further reveals this page is worth: one for every block after the first, and none at all
+ * for a slide whose author never asked. The first block stays on screen because a page that opened on
+ * nothing would read as a blank slide rather than as a talk in progress.
+ */
+export function pageSteps(plan: SlidePlan, page: SlidePage): number {
+  return plan.steps ? Math.max(page.to - page.from - 1, 0) : 0
+}
+
+/** The steps this page holds, read by index the way every other surface reads a page. */
+export function planPageSteps(plan: SlidePlan, index: number): number {
+  const page = plan.pages[resolvePageIndex(plan, index)]
+  return page ? pageSteps(plan, page) : 0
 }
 
 // The bands a block continues over, as offsets from its own top, or `null` when it keeps shrinking:
@@ -139,7 +162,7 @@ export function resolvePageIndex(plan: SlidePlan, subPage: number): number {
 // continued block is cut, because that is what every surface paints.
 export function samePlan(a: SlidePlan | undefined, b: SlidePlan): boolean {
   if (!a || a.pages.length !== b.pages.length || a.scales.length !== b.scales.length) return false
-  if (a.layout !== b.layout) return false
+  if (a.layout !== b.layout || a.steps !== b.steps) return false
   const pages = a.pages.every((page, index) => {
     const other = b.pages[index]
     return Boolean(other) && page.from === other.from && page.to === other.to && page.top === other.top && sameClip(page.clip, other.clip)

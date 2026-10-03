@@ -193,3 +193,21 @@ export function entryIndexOf(entries: RailEntry[], slide: number, sub: number): 
   const nearest = entries.findIndex((entry) => entry.slide === slide)
   return nearest
 }
+
+// N-31: what one press of the turn does on a slide that reveals itself step by step. The order is the
+// feature: steps inside the page first, then the page, then the slide — and back again in the same
+// order reversed, so a presenter who overshoots one press comes back to the block they just hid.
+export type PageMove = 'step' | 'page' | 'slide'
+
+/** How far the current page is revealed: `step` is what is on screen now, `steps` what it is worth. */
+export function forwardMove({ step, steps, sub, pageCount }: { step: number; steps: number; sub: number; pageCount: number }): PageMove {
+  if (step < steps) return 'step'
+  return sub < pageCount - 1 ? 'page' : 'slide'
+}
+
+/** Backward needs no step count: which step the page before this one is entered at is the caller's
+ * measurement to make, and this rule only decides that a page is what the press moves to. */
+export function backwardMove({ step, sub }: { step: number; sub: number }): PageMove {
+  if (step > 0) return 'step'
+  return sub > 0 ? 'page' : 'slide'
+}

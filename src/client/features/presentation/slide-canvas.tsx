@@ -19,6 +19,12 @@ export interface SlideCanvasProps {
   cacheKey: string
   source: string
   subPage: number
+  /**
+   * How far into this page the show has walked (N-31). Absent means the whole page is on screen,
+   * which is what every surface except the projector draws: a thumbnail, a printed page and the
+   * overview grid all show the slide as finished, not as paused mid-sentence.
+   */
+  step?: number
   contentWidth: number
   contentHeight: number
   /**
@@ -43,7 +49,7 @@ export function prefersReducedMotion(): boolean {
 
 // The design canvas is laid out at its design size and scaled, so the slide image
 // matches the stage box exactly and the browser does the scaling on the compositor.
-export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan, instantCharts }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
+export function SlideViewport({ metrics, cacheKey, source, subPage, step, onPlan, instantCharts }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
   return (
     <div
       data-slide-canvas
@@ -54,6 +60,7 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan, inst
         cacheKey={cacheKey}
         source={source}
         subPage={subPage}
+        step={step}
         contentWidth={metrics.contentWidth}
         contentHeight={metrics.contentHeight}
         onPlan={onPlan}
@@ -63,7 +70,7 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan, inst
   )
 }
 
-export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHeight, onPlan, instantCharts = false }: SlideCanvasProps) {
+export function SlideCanvas({ cacheKey, source, subPage, step, contentWidth, contentHeight, onPlan, instantCharts = false }: SlideCanvasProps) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
@@ -79,7 +86,7 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const requestedLayout = shown.layout
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
-  const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, subPage, contentWidth, contentHeight, renderVersion)
+  const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, shown.steps, subPage, step, contentWidth, contentHeight, renderVersion)
   const prefersMotion = prefersReducedMotion()
   const effectiveInstantCharts = instantCharts || prefersMotion
   useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts)
@@ -129,21 +136,23 @@ export function useSlideLinkInterceptor() {
 // must never survive a re-measure that produced the same plan: the ResizeObserver
 // re-runs after every style write, and a plan-diffed effect would skip restoring
 // the shrink the reset step just cleared.
-function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, requestedLayout: SlideLayout | undefined, subPage: number, contentWidth: number, contentHeight: number, renderVersion: number): { plan: SlidePlan; measured: boolean } {
+function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, requestedLayout: SlideLayout | undefined, steps: boolean | undefined, subPage: number, step: number | undefined, contentWidth: number, contentHeight: number, renderVersion: number): { plan: SlidePlan; measured: boolean } {
   // The plan is stored next to the markup it was measured from, so a plan that
   // describes a slide the canvas no longer shows is never handed out as current.
   const [captured, setCaptured] = useState<{ html: string; plan: SlidePlan } | null>(null)
   const placeholder = useMemo(() => planSlidePages([], contentHeight, requestedLayout), [contentHeight, requestedLayout])
   const subPageRef = useRef(subPage)
   subPageRef.current = subPage
+  const stepRef = useRef(step)
+  stepRef.current = step
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
     let frame = 0
     const measure = () => {
       const { children, blocks, columnHeight } = readSlideGeometries(host)
-      const next = planSlidePages(blocks, contentHeight, slideLayoutForFit(requestedLayout, columnHeight, contentHeight))
-      applySlidePage(children, next, subPageRef.current, contentWidth, contentHeight)
+      const next = planSlidePages(blocks, contentHeight, slideLayoutForFit(requestedLayout, columnHeight, contentHeight), steps)
+      applySlidePage(children, next, subPageRef.current, contentWidth, contentHeight, stepRef.current)
       if (next.layout) host.classList.add(LAYOUT_CLASS[next.layout])
       setCaptured((current) => (current?.html === html && samePlan(current.plan, next) ? current : { html, plan: next }))
     }
@@ -158,12 +167,12 @@ function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string,
       window.cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [hostRef, html, requestedLayout, contentWidth, contentHeight, renderVersion])
+  }, [hostRef, html, requestedLayout, steps, contentWidth, contentHeight, renderVersion])
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
-    applySlidePage([...host.children] as HTMLElement[], captured?.html === html ? captured.plan : placeholder, subPage, contentWidth, contentHeight)
-  }, [hostRef, captured, html, placeholder, subPage, contentWidth, contentHeight])
+    applySlidePage([...host.children] as HTMLElement[], captured?.html === html ? captured.plan : placeholder, subPage, contentWidth, contentHeight, step)
+  }, [hostRef, captured, html, placeholder, subPage, step, contentWidth, contentHeight])
   const current = captured?.html === html
   return { plan: current ? captured.plan : placeholder, measured: current }
 }
@@ -242,11 +251,15 @@ function resetBlockFit(children: HTMLElement[]): void {
 // re-measures a diagram when the page changes; an oversized block is scaled down
 // so its whole content stays visible instead of being clipped or scrolled, and a
 // block that continues over several pages is cut to the band this page owns.
-export function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number): void {
+export function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number, step?: number): void {
   const page = plan.pages[resolvePageIndex(plan, subPage)]
   children.forEach((child, index) => {
     const onPage = Boolean(page) && index >= page!.from && index < page!.to
-    child.style.visibility = !onPage ? 'hidden' : ''
+    // A stepped page holds its later blocks back until the show reaches them (N-31). Same mechanism as
+    // an off-page block — `visibility`, not `display` — because a diagram that was only hidden keeps
+    // the canvas it drew, so revealing the next block never re-renders the one before it.
+    const revealed = step === undefined || !plan.steps || index - (page?.from ?? 0) <= step
+    child.style.visibility = !onPage || !revealed ? 'hidden' : ''
     // The canvas clips at its own design box, which is a slide's padding taller than a page, so the
     // band a continued block shows on this page has to be cut by the plan rather than left to
     // overflow: the rows below it belong to the next page and would be drawn twice.

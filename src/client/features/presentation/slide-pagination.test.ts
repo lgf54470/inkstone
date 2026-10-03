@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
+import { pageSteps, planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
 
 function stack(entries: [number, boolean?][]): SlideBlock[] {
   let top = 0
@@ -328,5 +328,46 @@ describe('resolvePageIndex', () => {
     expect(resolvePageIndex(plan, 5)).toBe(1)
     expect(resolvePageIndex(plan, -3)).toBe(0)
     expect(resolvePageIndex(plan, 1)).toBe(1)
+  })
+})
+
+// N-31: how many reveals a page is worth, and whether the slide asked for any at all, are properties of
+// the measured plan — the same reason the layout lives there: every surface has to agree on what the
+// projector walked through, and a thumbnail that draws the last step must not change what the page
+// count says.
+const STEP_BLOCKS: SlideBlock[] = [
+  { top: 0, height: 100, heading: true },
+  { top: 100, height: 100, heading: false },
+  { top: 200, height: 100, heading: false },
+  { top: 300, height: 100, heading: false },
+]
+
+describe('the step count a plan carries', () => {
+  it('counts one step for every block after the first on the page', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220, undefined, true)
+    expect(plan.steps).toBe(true)
+    expect(plan.pages.length).toBe(2)
+    expect(plan.pages.map((page) => pageSteps(plan, page))).toEqual([1, 1])
+  })
+
+  it('asks nothing of a slide that did not switch steps on', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220)
+    expect(plan.steps).toBeUndefined()
+    expect(pageSteps(plan, plan.pages[0]!)).toBe(0)
+  })
+
+  // A page with one block on it has nothing left to reveal, even when the slide asked for steps.
+  it('counts no step for a page that holds a single block', () => {
+    const tall: SlideBlock[] = [{ top: 0, height: 100, heading: true }, { top: 100, height: 300, heading: false }]
+    const plan = planSlidePages(tall, 220, undefined, true)
+    expect(plan.pages.length).toBe(2)
+    expect(plan.pages.map((page) => pageSteps(plan, page))).toEqual([0, 0])
+  })
+
+  it('is part of the value of a plan, so a slide that gained its switch republishes', () => {
+    const plain = planSlidePages(STEP_BLOCKS, 220)
+    const stepped = planSlidePages(STEP_BLOCKS, 220, undefined, true)
+    expect(samePlan(plain, stepped)).toBe(false)
+    expect(samePlan(stepped, planSlidePages(STEP_BLOCKS, 220, undefined, true))).toBe(true)
   })
 })

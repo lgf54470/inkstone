@@ -261,7 +261,9 @@ function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKey
   // The capture is markup the same blocks were drawn into, so it keeps the bodies those blocks
   // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
   const markup = key === undefined ? undefined : readSlideHtml(key)
-  if (html && key && markup) rememberSlideHtml(key, { html, fences: markup.fences, layout: markup.layout, prepared: true })
+  if (html && key && markup) // The capture keeps every field of the entry it rewrites: a switch lifted out of the source (layout,
+  // the step ask) travels with it, and naming each one here is how the last was dropped.
+  rememberSlideHtml(key, { ...markup, html, prepared: true })
   rememberSlidePlan(hashes[slide] ?? '', plan)
   onPlan(slide, plan)
 }

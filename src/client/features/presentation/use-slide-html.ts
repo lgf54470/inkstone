@@ -46,7 +46,7 @@ async function prepareStagedSlide(source: {
     mindmapBox: { width: contentWidth, height: contentHeight },
   })
   if (!isCurrent()) return
-  rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences, layout: rendered.layout, prepared: true })
+  rememberSlideHtml(key, { ...slideMarkup(rendered), html: staging.innerHTML, prepared: true })
 }
 
 // Renders the enhanced markup for one slide off-DOM and caches it, so the canvas and

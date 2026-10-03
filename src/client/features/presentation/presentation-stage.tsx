@@ -13,6 +13,8 @@ export interface PresentationStageProps {
   cacheKey: string
   source: string
   subPage: number
+  /** How far into this page the show has walked (N-31); the projector is the only surface that has one. */
+  step: number
   pageCount?: number
   index: number
   count: number
@@ -29,6 +31,7 @@ export interface StageSessionSource {
   deck: string[]
   index: number
   sub: number
+  step: number
   pageCount: number
   handlePlan: (plan: SlidePlan) => void
   goPrev: () => void
@@ -43,6 +46,7 @@ export function stageProps(stageRef: RefObject<HTMLDivElement | null>, session: 
     cacheKey: session.cacheKeys[session.index] ?? '',
     source: session.deck[session.index] ?? '',
     subPage: session.sub,
+    step: session.step,
     pageCount: session.pageCount,
     index: session.index,
     count: session.deck.length,
@@ -97,7 +101,7 @@ function useStageGestures({
 }
 
 export function PresentationStage(props: PresentationStageProps) {
-  const { stageRef, metrics, cacheKey, source, subPage, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
+  const { stageRef, metrics, cacheKey, source, subPage, step, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
   const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext, occluded })
 
   return (
@@ -109,7 +113,7 @@ export function PresentationStage(props: PresentationStageProps) {
       inert={occluded ? true : undefined}
       className='relative flex min-h-0 min-w-0 flex-1 select-none items-center justify-center overflow-hidden'
     >
-      <SlideViewport metrics={metrics} cacheKey={cacheKey} source={source} subPage={subPage} onPlan={onPlan} />
+      <SlideViewport metrics={metrics} cacheKey={cacheKey} source={source} subPage={subPage} step={step} onPlan={onPlan} />
       {count > 0 && (
         // This chip used to fade itself to 35% opacity, which composites its text to 1.67:1 against the
         // slide — the axe `color-contrast` violation L-1 has been carrying. AA is the floor, so it now

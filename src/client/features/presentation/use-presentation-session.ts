@@ -7,12 +7,12 @@ import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import { type DeckHandoutPayload, type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
-import { deckProgress, railOpenFor } from './presentation-state'
+import { backwardMove, deckProgress, forwardMove, railOpenFor } from './presentation-state'
 import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { buildIncrementalSlidePlans, rememberSlidePlan } from './slide-html'
-import { samePlan, type SlidePlan } from './slide-pagination'
+import { planPageSteps, samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
 import { useShowDeck, useSlideCacheKeys } from './use-show-deck'
@@ -102,6 +102,8 @@ export interface PresentationSession {
   overview: boolean
   clearOverview: () => void
   toggleOverview: () => void
+  /** How far into the page on screen the show has walked (N-31). */
+  step: number
   /** Whether the show's own key card is lying over the projector. */
   keyGuide: boolean
   clearKeyGuide: () => void
@@ -304,47 +306,82 @@ export function usePresentationNav(deck: string[], hashes: string[], initialSlid
   const currentPlan = plans[index]
   const pageCount = currentPlan?.pages.length ?? 1
   const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
+  const [stepState, setStep] = useState(0)
+  // How far the page on screen is revealed. A plan that shrank mid-talk can leave the step past the
+  // last block it has, so the position reads the clamp rather than the state (N-31).
+  const step = Math.min(stepState, currentPlan ? planPageSteps(currentPlan, sub) : 0)
   const handlePlan = useCallback((plan: SlidePlan) => reportPlan(index, plan), [index, reportPlan])
   // Where the show stands, read when a control is used rather than written into the closure that
   // built it. The slide list holds these callbacks on every card of a long deck, and a fresh
   // identity on each turn would re-render the whole list to move one card.
-  const position = useRef({ index, sub, pageCount, deckLength })
-  position.current = { index, sub, pageCount, deckLength }
-  const goNext = useCallback(() => {
-    const at = position.current
-    if (at.sub < at.pageCount - 1) setSubPage(at.sub + 1)
-    else if (at.index < at.deckLength - 1) {
-      carryPage(0)
-      goTo(at.index + 1)
-    }
-  }, [goTo, carryPage, setSubPage])
-  const goPrev = useCallback(() => {
-    const at = position.current
-    if (at.sub > 0) setSubPage(at.sub - 1)
-    else if (at.index > 0) {
-      carryPage(0)
-      goTo(at.index - 1)
-    }
-  }, [goTo, carryPage, setSubPage])
+  const position = useRef({ index, sub, step, pageCount, deckLength, plan: currentPlan })
+  position.current = { index, sub, step, pageCount, deckLength, plan: currentPlan }
+  const { goNext, goPrev } = usePageTurn(position, { goTo, carryPage, setSubPage, setStep })
   const jumpTo = useCallback((slide: number) => {
     carryPage(0)
     goTo(slide)
+    setStep(0)
   }, [goTo, carryPage])
   // The slide list lists pages, so a click lands on the exact page it shows rather
   // than the top of the slide that contains it.
   const jumpToPage = useCallback((slide: number, page: number) => {
+    const at = position.current
     const target = Math.max(page, 0)
-    if (slide === position.current.index) setSubPage(target)
+    if (slide === at.index) {
+      setSubPage(target)
+      // A page the presenter clicked is the page they want to look at, whole — the same reading the
+      // thumbnail and the overview card already give it (N-31).
+      setStep(at.plan ? planPageSteps(at.plan, target) : 0)
+    }
     else {
       carryPage(target)
       goTo(slide)
+      setStep(0)
     }
   }, [goTo, carryPage, setSubPage])
-  return { index, sub, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
+  return { index, sub, step, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
 }
 
 // Page plans live in one map because the show and the slide list both read them: the
 // canvas measures the slide it renders and the list turns those measurements into pages.
+// The two presses that move the show forward and back. They read the position out of a ref rather
+// than closing over it — the slide list holds these callbacks on every card of a long deck, and a new
+// identity on each turn would re-render the whole list to move one card.
+function usePageTurn(position: RefObject<{ index: number; sub: number; step: number; pageCount: number; deckLength: number; plan: SlidePlan | undefined }>, actions: { goTo: (slide: number) => void; carryPage: (page: number) => void; setSubPage: (page: number) => void; setStep: (step: number) => void }) {
+  const { goTo, carryPage, setSubPage, setStep } = actions
+  const goNext = useCallback(() => {
+    const at = position.current
+    const move = forwardMove({ step: at.step, steps: at.plan ? planPageSteps(at.plan, at.sub) : 0, sub: at.sub, pageCount: at.pageCount })
+    if (move === 'step') setStep(at.step + 1)
+    else if (move === 'page') {
+      setSubPage(at.sub + 1)
+      setStep(0)
+    }
+    else if (at.index < at.deckLength - 1) {
+      carryPage(0)
+      goTo(at.index + 1)
+      setStep(0)
+    }
+  }, [goTo, carryPage, setSubPage])
+  const goPrev = useCallback(() => {
+    const at = position.current
+    const move = backwardMove({ step: at.step, sub: at.sub })
+    if (move === 'step') setStep(Math.max(at.step - 1, 0))
+    else if (move === 'page') {
+      setSubPage(at.sub - 1)
+      // Back onto the previous page means back to where it ended: the presenter sees what they had
+      // seen, not a page with its blocks hidden again.
+      setStep(at.plan ? planPageSteps(at.plan, at.sub - 1) : 0)
+    }
+    else if (at.index > 0) {
+      carryPage(0)
+      goTo(at.index - 1)
+      setStep(0)
+    }
+  }, [goTo, carryPage, setSubPage])
+  return { goNext, goPrev }
+}
+
 export function useSlidePlans(hashes: string[]) {
   const [plans, setPlans] = useState<Record<number, SlidePlan>>(() => buildIncrementalSlidePlans(hashes))
   // Edited content re-splits the deck, so plans measured for the previous text would
@@ -382,4 +419,3 @@ function useSubPage(index: number, pageCount: number, known: boolean) {
   }, [])
   return { sub: Math.min(Math.max(subPage, 0), pageCount - 1), setSubPage, carryPage }
 }
-

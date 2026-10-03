@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { deckProgress, entryIndexOf, escapeAction, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { backwardMove, deckProgress, entryIndexOf, escapeAction, forwardMove, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -346,3 +346,24 @@ describe('isBlockedSlideLinkHref', () => {
   })
 })
 
+// N-31: the order the projector walks a stepped slide — step, then page, then slide — is the whole
+// feature's contract with a presenter's thumb, so it is named and tested apart from the state machine
+// that reads it.
+describe('forwardMove and backwardMove', () => {
+  it('walks the steps of the page before turning it', () => {
+    expect(forwardMove({ step: 0, steps: 2, sub: 0, pageCount: 3 })).toBe('step')
+    expect(forwardMove({ step: 1, steps: 2, sub: 0, pageCount: 3 })).toBe('step')
+  })
+
+  it('turns the page once its last step is on screen, and the slide once its pages are spent', () => {
+    expect(forwardMove({ step: 2, steps: 2, sub: 0, pageCount: 3 })).toBe('page')
+    expect(forwardMove({ step: 2, steps: 2, sub: 2, pageCount: 3 })).toBe('slide')
+    expect(forwardMove({ step: 0, steps: 0, sub: 0, pageCount: 1 })).toBe('slide')
+  })
+
+  it('lifts the last step back off the page before leaving the page', () => {
+    expect(backwardMove({ step: 2, sub: 0 })).toBe('step')
+    expect(backwardMove({ step: 0, sub: 1 })).toBe('page')
+    expect(backwardMove({ step: 0, sub: 0 })).toBe('slide')
+  })
+})
