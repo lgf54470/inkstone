@@ -6893,6 +6893,11 @@ const allowed = new Map([
   ]],
   ['src/client/features/presentation/deck-export.test.ts', [
     '/**\n * Which export a press asks for, and what the show therefore holds.\n *\n * Both exports read the same pages, so the kind has to be part of what is held: holding the pages alone\n * would mount the printed deck and the handout at the same time and print two sheets for one press.\n * The handout adds the second half of that contract — a sheet the speaker reads has to carry the\n * notes, and the notes are indexed by slide, not by printed page (N-32).\n */',
+    '// One spy for the whole module: a `getState()` that handed back a fresh `vi.fn()` each call would',
+    '// record the press somewhere the assertions never look.',
+    '/**\n * The pass that measures the deck runs on idle time, and a presenter who exports the moment the show\n * opens asks for pages of slides nobody has measured yet. Those print as the one page they are known\n * to have, which is fewer than the show will walk — a mismatch the speaker has to be told about\n * rather than discover in the handout (N-38).\n */',
+    '// Read by both describes below: the plans a deck has when the pass is halfway, and what the export',
+    '// said out loud.',
   ]],
   ['src/client/features/presentation/deck-export.ts', [
     '// Exporting a deck is the same pages read out two ways: printed, and rasterized to images. Both',
@@ -6910,6 +6915,10 @@ const allowed = new Map([
     '// for one press.',
     '// The count starts at zero pages rather than staying absent until the first PNG lands: a deck that',
     '// takes a beat to begin drawing would otherwise give no sign that the press was heard at all.',
+    '// A slide the idle pass has not measured yet is only known to have the one page it at least',
+    '// has, which is fewer than the show will walk. The export still goes out — waiting on the pass',
+    '// would hand the presenter nothing at all — but the gap is said, not left to be discovered on',
+    '// paper (N-38).',
   ]],
   ['src/client/features/presentation/deck-image.test.ts', [
     '/**\n * What the deck adds to the shared pixel layer: the box a page is drawn in.\n *\n * The box is the part that broke. The export sheet declares its page width and height on itself\n * (`[data-deck-print] { --deck-page-width: … }`), and the layer serializes *one page* — an element\n * whose size came from an ancestor that is not in the picture. The page then had no box, its\n * `overflow: hidden` clipped it to nothing, and every exported PNG came out empty (N-24, measured).\n */',

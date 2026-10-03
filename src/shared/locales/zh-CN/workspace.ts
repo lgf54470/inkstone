@@ -92,6 +92,7 @@ export const messages = {
 'workspace.presentation_export': '导出幻灯片为 PDF',
 'workspace.presentation_export_images': '导出幻灯片为图片序列',
 'workspace.presentation_export_handout': '导出讲稿版（每页配图与演讲备注）',
+'workspace.presentation_export_unmeasured': '页面仍在量测中：{value0} 张幻灯片可能各只印成一页',
 'workspace.presentation_images_saved': '已导出 {value0} 张幻灯片图片',
 'workspace.presentation_exporting_images': '正在导出幻灯片图片 ({value0}/{value1})...',
 'workspace.presentation_images_failed': '幻灯片图片导出失败',

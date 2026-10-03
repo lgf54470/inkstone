@@ -7,8 +7,9 @@
  * notes, and the notes are indexed by slide, not by printed page (N-32).
  */
 import { act, createElement } from 'react'
-import { describe, expect, it, vi } from 'vitest'
-import { renderElement } from '../../lib/test-render'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { initI18n, t } from '../../lib/i18n'
+import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import { useDeckExport, type DeckExportOptions } from './deck-export'
 import { clearSlideHtmlCache, rememberSlideHtml, slideCacheKey } from './slide-html'
@@ -21,7 +22,19 @@ vi.mock('./deck-image', () => ({
   zipDeckImages: vi.fn(async () => new Blob(['fake-zip'], { type: 'application/zip' })),
   saveDeckImages: vi.fn(),
 }))
-vi.mock('../../store/ui', () => ({ useUi: { getState: () => ({ toast: vi.fn() }) } }))
+// One spy for the whole module: a `getState()` that handed back a fresh `vi.fn()` each call would
+// record the press somewhere the assertions never look.
+const toast = vi.hoisted(() => vi.fn())
+vi.mock('../../store/ui', () => ({ useUi: { getState: () => ({ toast }) } }))
+
+beforeAll(async () => {
+  installTestGlobals()
+  await initI18n()
+})
+
+beforeEach(() => {
+  toast.mockClear()
+})
 
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const DECK = ['One page of talk.', 'Another page of talk.']
@@ -57,6 +70,70 @@ function mountExports(overrides: Partial<DeckExportOptions> = {}) {
     unmount: () => view.unmount(),
   }
 }
+
+/**
+ * The pass that measures the deck runs on idle time, and a presenter who exports the moment the show
+ * opens asks for pages of slides nobody has measured yet. Those print as the one page they are known
+ * to have, which is fewer than the show will walk — a mismatch the speaker has to be told about
+ * rather than discover in the handout (N-38).
+ */
+// Read by both describes below: the plans a deck has when the pass is halfway, and what the export
+// said out loud.
+const measured = [
+  { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] },
+  { pages: [{ from: 0, to: 1, top: 0 }], scales: [1] },
+]
+
+function toasts() {
+  return toast.mock.calls.map(([call]) => call?.title ?? '')
+}
+
+describe('useDeckExport — an export taken mid-measurement says so', () => {
+  it('names how many slides are still unmeasured when one press asks for the deck', () => {
+    clearSlideHtmlCache()
+    DECK.forEach((_, index) => rememberSlideHtml(KEYS[index], { html: `<p>${index}</p>`, fences: createFenceBodies() }))
+    const show = mountExports({ plans: { 0: measured[0] } as never })
+    try {
+      act(() => {
+        show.exports.exportDeck()
+      })
+      expect(toasts()).toEqual([t('workspace.presentation_export_unmeasured', { value0: 1 })])
+    } finally {
+      show.unmount()
+    }
+  })
+
+})
+
+describe('useDeckExport — the notice keeps its bounds', () => {
+  it('stays quiet once every slide of the deck has a plan', () => {
+    clearSlideHtmlCache()
+    DECK.forEach((_, index) => rememberSlideHtml(KEYS[index], { html: `<p>${index}</p>`, fences: createFenceBodies() }))
+    const show = mountExports({ plans: { 0: measured[0], 1: measured[1] } as never })
+    try {
+      act(() => {
+        show.exports.exportHandout()
+      })
+      expect(toasts()).toEqual([])
+    } finally {
+      show.unmount()
+    }
+  })
+
+  it('says it once per press, whichever export was asked for', () => {
+    clearSlideHtmlCache()
+    DECK.forEach((_, index) => rememberSlideHtml(KEYS[index], { html: `<p>${index}</p>`, fences: createFenceBodies() }))
+    const show = mountExports({ plans: {} })
+    try {
+      act(() => {
+        show.exports.exportImages()
+      })
+      expect(toasts().length).toBe(1)
+    } finally {
+      show.unmount()
+    }
+  })
+})
 
 describe('useDeckExport — one press holds one sheet', () => {
   it('holds the handout with the notes the speaker wrote, and no other sheet', () => {

@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react'
+import { t } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 import { buildDeckPages, type DeckExportProgress, type DeckPrintPage } from './deck-print'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
@@ -57,6 +59,13 @@ export function useDeckExport(options: DeckExportOptions): DeckExports {
   // takes a beat to begin drawing would otherwise give no sign that the press was heard at all.
   const build = useCallback(
     (kind: 'print' | 'images' | 'handout') => {
+      // A slide the idle pass has not measured yet is only known to have the one page it at least
+      // has, which is fewer than the show will walk. The export still goes out — waiting on the pass
+      // would hand the presenter nothing at all — but the gap is said, not left to be discovered on
+      // paper (N-38).
+      const unmeasured = deck.reduce((count, _, index) => (plans[index] ? count : count + 1), 0)
+      if (unmeasured > 0)
+        useUi.getState().toast({ title: t('workspace.presentation_export_unmeasured', { value0: unmeasured }), tone: 'warning' })
       const pages = buildDeckPages(deck, cacheKeys, plans, metrics, externalImages)
       setImageProgress(kind === 'images' ? { current: 0, total: pages.length } : null)
       setRequest({ kind, pages })
