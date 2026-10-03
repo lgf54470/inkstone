@@ -1,0 +1,181 @@
+.ink-prose .markdown-align {
+  margin: 0.9em 0;
+}
+.ink-prose .markdown-align > :first-child {
+  margin-top: 0;
+}
+.ink-prose .markdown-align > :last-child {
+  margin-bottom: 0;
+}
+.ink-prose .markdown-align[data-align='left'] {
+  text-align: left;
+}
+.ink-prose .markdown-align[data-align='center'] {
+  text-align: center;
+}
+.ink-prose .markdown-align[data-align='right'] {
+  text-align: right;
+}
+.ink-prose .markdown-align[data-align='justify'] {
+  text-align: justify;
+}
+.ink-prose .markdown-align[data-align='justify'] :is(p, li) {
+  text-wrap: wrap;
+}
+
+.ink-prose .markdown-cols {
+  margin: 0.95em 0;
+  display: grid;
+  align-items: start;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr);
+  container-type: inline-size;
+}
+.ink-prose .markdown-cols[data-cols='2'] {
+  grid-template-columns: var(--panel-cols-tracks, repeat(2, minmax(0, 1fr)));
+}
+.ink-prose .markdown-cols[data-cols='3'] {
+  grid-template-columns: var(--panel-cols-tracks, repeat(3, minmax(0, 1fr)));
+}
+.ink-prose .markdown-cols[data-cols='4'] {
+  grid-template-columns: var(--panel-cols-tracks, repeat(4, minmax(0, 1fr)));
+}
+.ink-prose .markdown-cols[data-cols='5'] {
+  grid-template-columns: var(--panel-cols-tracks, repeat(5, minmax(0, 1fr)));
+}
+.ink-prose .markdown-cols[data-cols='6'] {
+  grid-template-columns: var(--panel-cols-tracks, repeat(6, minmax(0, 1fr)));
+}
+.ink-prose .markdown-cols[data-cols='1'] {
+  grid-template-columns: var(--panel-cols-tracks, minmax(0, 1fr));
+}
+.ink-prose .markdown-cols[data-cols-gap='narrow'] {
+  gap: var(--sp-2);
+}
+.ink-prose .markdown-cols[data-cols-gap='wide'] {
+  gap: var(--sp-7);
+}
+.ink-prose .markdown-col {
+  min-width: 0;
+}
+.ink-prose .markdown-col > :first-child {
+  margin-top: 0;
+}
+.ink-prose .markdown-col > :last-child {
+  margin-bottom: 0;
+}
+.ink-prose .markdown-cols[data-cols-divider] > .markdown-col + .markdown-col {
+  border-inline-start: 1px solid var(--border-subtle);
+  padding-inline-start: calc(var(--sp-4) / 2);
+  margin-inline-start: calc(var(--sp-4) / -2);
+}
+.ink-prose .markdown-cols[data-cols-align='left'] .markdown-col {
+  text-align: left;
+}
+.ink-prose .markdown-cols[data-cols-align='center'] .markdown-col {
+  text-align: center;
+}
+.ink-prose .markdown-cols[data-cols-align='right'] .markdown-col {
+  text-align: right;
+}
+.ink-prose .markdown-cols[data-cols-align='justify'] .markdown-col {
+  text-align: justify;
+}
+.ink-prose .markdown-cols[data-cols-align='justify'] .markdown-col :is(p, li) {
+  text-wrap: wrap;
+}
+
+@container (max-width: 560px) {
+  .ink-prose .markdown-col {
+    grid-column: 1 / -1;
+  }
+  .ink-prose .markdown-cols[data-cols-divider] > .markdown-col + .markdown-col {
+    border-inline-start: 0;
+    border-top: 1px solid var(--border-subtle);
+    margin-inline-start: 0;
+    padding-inline-start: 0;
+    padding-top: calc(var(--sp-4) / 2);
+  }
+}
+
+.ink-prose .markdown-timeline {
+  margin: 1em 0;
+  padding: 0;
+  list-style: none;
+}
+.ink-prose .markdown-timeline-item {
+  position: relative;
+  padding: 0 0 var(--sp-4) var(--sp-6);
+  border-inline-start: 1px solid var(--border-subtle);
+}
+.ink-prose .markdown-timeline-item:last-child {
+  padding-bottom: 0;
+  border-inline-start-color: transparent;
+}
+.ink-prose .markdown-timeline-node {
+  position: absolute;
+  inset-block-start: 0.34em;
+  inset-inline-start: calc(var(--sp-2) / -2 - 1px);
+  width: var(--sp-2);
+  height: var(--sp-2);
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+}
+.ink-prose .markdown-timeline-item[data-status='done'] .markdown-timeline-node {
+  background: var(--success);
+  border-color: var(--success);
+}
+.ink-prose .markdown-timeline-item[data-status='doing'] .markdown-timeline-node {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+.ink-prose .markdown-timeline-item[data-status='error'] .markdown-timeline-node {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.ink-prose .markdown-timeline-item[data-status='milestone'] .markdown-timeline-node {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: rotate(45deg);
+  border-radius: var(--r-1);
+}
+.ink-prose .markdown-timeline-body > :last-child {
+  margin-bottom: 0;
+}
+.ink-prose .markdown-timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-0\.5) var(--sp-2);
+}
+.ink-prose .markdown-timeline-time {
+  font-size: var(--text-12);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.ink-prose .markdown-timeline-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.ink-prose .markdown-timeline-status {
+  font-size: var(--text-11);
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  padding-inline: var(--sp-1\.5);
+}
+.ink-prose .panel-block:last-child > .markdown-align,
+.ink-prose .panel-block:last-child > .markdown-cols {
+  margin-bottom: 0;
+}
+.ink-prose .panel-block > .block-head,
+.ink-prose .panel-block > .block-settings {
+  margin-bottom: 0;
+}
+.ink-prose .block-settings-value {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}

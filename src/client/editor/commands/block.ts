@@ -171,7 +171,7 @@ export const insertHorizontalRule: StateCommand = (target) => insertPrefixedBloc
 
 
 
-function insertWrappedBlock(open: string, close: string, fallback: string, emptyCursorOffset?: number): StateCommand {
+export function insertWrappedBlock(open: string, close: string, fallback: string, emptyCursorOffset?: number): StateCommand {
   return ({ state, dispatch }) => {
     const range = state.selection.main
     const selected = state.sliceDoc(range.from, range.to)

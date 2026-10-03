@@ -2,6 +2,7 @@ import { codeBlockToolbar } from './code-block-toolbar'
 import { detailsBlockToolbar } from './details-toolbar'
 import { exampleToolbar } from './example-layout'
 import { graphBlockToolbar } from './graph-block-toolbar'
+import { panelBlockToolbar } from './panel-toolbar'
 import { tableBlockToolbar } from './table-toolbar'
 import type { BlockActionContext, BlockToolbarModule } from './block-overlay'
 
@@ -12,7 +13,7 @@ import type { BlockActionContext, BlockToolbarModule } from './block-overlay'
  * Each family owns its markup, its action vocabulary and its overlays; the shared part — which panel
  * is open, Escape, closing on a click elsewhere — lives in `block-overlay`.
  */
-const MODULES: BlockToolbarModule[] = [exampleToolbar, codeBlockToolbar, graphBlockToolbar, tableBlockToolbar, detailsBlockToolbar]
+const MODULES: BlockToolbarModule[] = [exampleToolbar, codeBlockToolbar, graphBlockToolbar, tableBlockToolbar, detailsBlockToolbar, panelBlockToolbar]
 
 export function enhanceBlockToolbars(root: HTMLElement): void {
   MODULES.forEach((module) => module.enhance(root))

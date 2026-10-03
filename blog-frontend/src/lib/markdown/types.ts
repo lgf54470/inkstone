@@ -1,3 +1,5 @@
+import type { BlogLocale } from '../i18n'
+
 export interface TocHeading {
   level: number
   text: string
@@ -15,11 +17,15 @@ export interface RenderEnv {
   headings: TocHeading[]
   /** md-example 嵌套渲染深度（顶层为 0），超过上限后不再递归 */
   mdDepth: number
+  /** The UI language this render writes for: server-side labels (the timeline status words) read it. */
+  locale: BlogLocale
 }
 
 export interface RenderOptions {
   /** 本次渲染的嵌套深度，仅供 md-example 递归调用内部使用 */
   depth?: number
+  /** The language of the copy the server renders into post bodies; defaults to the site locale. */
+  locale?: BlogLocale
 }
 
 export type CodeTheme = 'auto' | 'light' | 'dark'

@@ -1,5 +1,6 @@
 import { escapeHtml } from '@shared/escape'
 import { EXPORT_PALETTE } from './export-palette'
+import { PANEL_EXPORT_CSS } from './export-panels'
 import { renderMarkdown, type RenderResult } from './markdown/renderer'
 import { useSession } from '../store/session'
 import { resolveNoteEmbeds } from './markdown/embeds'
@@ -305,6 +306,7 @@ blockquote > :last-child { margin-bottom: 0; }
 .callout-title { font-weight: 600; margin-bottom: 0.35em; color: ${EXPORT_PALETTE.ink900}; }
 .callout-content > :first-child { margin-top: 0; }
 .callout-content > :last-child { margin-bottom: 0; }
+${PANEL_EXPORT_CSS}
 
 ul, ol { padding-left: 1.6em; margin: 0.6em 0; }
 li { margin: 0.25em 0; }

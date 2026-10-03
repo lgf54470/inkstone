@@ -347,4 +347,11 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'music.forward': '快進 10 秒',
   'music.rate': '播放速度 {value}',
   'music.play_all': '播放全部',
+
+  // Markdown panels rendered on the server
+  'markdown.timeline_todo': '待辦',
+  'markdown.timeline_doing': '進行中',
+  'markdown.timeline_done': '已完成',
+  'markdown.timeline_milestone': '里程碑',
+  'markdown.timeline_error': '失敗',
 }

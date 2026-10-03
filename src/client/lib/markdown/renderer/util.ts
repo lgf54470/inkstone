@@ -14,7 +14,12 @@ function plainInline(token: Token): string {
     .join('')
     .trim()
 }
-export 
-function escapeAttr(text: string): string {
+export function escapeAttr(text: string): string {
   return escapeHtml(text).replace(/'/g, '&#39;').replace(/\n/g, '&#10;')
+}
+
+/** A title written in `[brackets]`, which is how a container header keeps its brackets out of the label. */
+export function stripBracketTitle(value: string): string {
+  const trimmed = value.trim()
+  return /^\[[\s\S]*\]$/.test(trimmed) ? trimmed.slice(1, -1).trim() : trimmed
 }

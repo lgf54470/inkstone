@@ -178,6 +178,27 @@ This is the second tab panel.
 ::::
 ~~~~
 
+~~~~md-example title="Layout blocks"
+::: center
+Any block, centred — text, a heading, or an image.
+:::
+
+::: cols
+Two columns
+::
+each holding ordinary Markdown
+:::
+
+::: timeline
+:: [done] 2024-01-15 Kickoff
+:: [doing] 2024-02-01 First release
+:::
+
+::: tip Written with a fence
+The same callout \`> [!tip]\` draws.
+:::
+~~~~
+
 ~~~~md-example title="Code block with a title, line numbers, and highlighting"
 \`\`\`ts title="hello.ts" line-numbers {2}
 const name = 'Inkstone'

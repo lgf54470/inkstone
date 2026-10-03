@@ -90,13 +90,16 @@
   "src/client/features/preview/preview-state.test.ts": {
     "longFns": 1
   },
+  "src/client/features/preview/tabs-colon-source.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/tabs-interactive.test.ts": {
     "lines": 578,
     "longFns": 3
   },
   "src/client/features/preview/tabs-source.ts": {
     "longFns": 2,
-    "deepFns": 2
+    "deepFns": 1
   },
   "src/client/features/workspace/context-menu-detect.test.ts": {
     "longFns": 3
@@ -140,6 +143,9 @@
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-view-tabs-selection.test.ts": {
+    "longFns": 1
+  },
+  "src/client/lib/markdown/renderer-panels.test.ts": {
     "longFns": 1
   },
   "src/client/lib/markdown/renderer/code-options.ts": {
@@ -202,13 +208,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 625
+    "lines": 637
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 625
+    "lines": 637
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908

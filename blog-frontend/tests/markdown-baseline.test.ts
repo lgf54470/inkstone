@@ -27,6 +27,14 @@ const FIXTURES: Record<string, string> = {
   toc: '[TOC]\n\n# 标题一\n\n## 子标题',
   footnote: '引用[^1]\n\n[^1]: 注释内容',
   obsidianComment: '正文 %%隐藏%% 保留',
+  // The `:::` panel family, pinned here the same way the cross-tree parity test compares it.
+  panelAlign: '::: center\n正文内容\n:::',
+  panelCols: '::: cols 1fr 2fr gap=wide divider center\n一\n::\n二\n:::',
+  panelTabsColon: '::: tabs\n:: 甲\n内容A\n:: 乙\n内容B\n:::',
+  panelTimeline: '::: timeline\n:: [done] 2024-01-15 发布\n细节\n:: [milestone] v1.0 里程碑\n:::',
+  panelCallout: '::: tip 标题\n内容\n:::',
+  panelCalloutFold: '::: warning- 折叠\n内容\n:::',
+  panelUnclaimed: '::: whatever\n正文\n:::',
 }
 
 function hashMarkdown(md: string): string {

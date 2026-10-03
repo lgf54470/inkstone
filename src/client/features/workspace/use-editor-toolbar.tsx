@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { BENTO_SLIDES_TEMPLATES, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertBlockId, insertCallout, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
+import { BENTO_SLIDES_TEMPLATES, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertAlign, insertBlockId, insertCallout, insertColumns, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTimeline, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
 import type { DiagramTemplate } from '../../editor/diagram-templates'
 import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
@@ -14,6 +14,7 @@ const KANBAN_MENU_WIDTH = 180
 const EXCALIDRAW_MENU_WIDTH = 180
 const SLIDES_MENU_WIDTH = 180
 const TASK_MENU_WIDTH = 180
+const ALIGN_MENU_WIDTH = 170
 
 type MenuName = 'heading' | 'inline' | 'note' | 'block' | 'emoji'
 type Run = (command: (target: EditorView) => boolean) => () => void
@@ -128,6 +129,24 @@ function blockMenuItems(run: Run): MenuItem[] {
     { id: 'callout', label: t('workspace.callout'), onSelect: run(insertCallout) },
     { id: 'details', label: t('workspace.details_block'), onSelect: run(insertDetails) },
     { id: 'tabs', label: t('common.tabs'), onSelect: run(insertTabs) },
+    { id: 'columns', label: t('workspace.columns'), onSelect: run(insertColumns) },
+    { id: 'timeline', label: t('workspace.timeline'), onSelect: run(insertTimeline) },
+    {
+      id: 'alignment',
+      label: t('workspace.alignment'),
+      submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+        <SubmenuList
+          closeMenu={closeMenu}
+          width={ALIGN_MENU_WIDTH}
+          items={[
+            { id: 'align-left', label: t('workspace.align_left'), onSelect: run(insertAlign('left')) },
+            { id: 'align-center', label: t('workspace.align_center'), onSelect: run(insertAlign('center')) },
+            { id: 'align-right', label: t('workspace.align_right'), onSelect: run(insertAlign('right')) },
+            { id: 'align-justify', label: t('workspace.align_justify'), onSelect: run(insertAlign('justify')) },
+          ]}
+        />
+      ),
+    },
     { id: 'toc', label: t('common.table_of_contents'), onSelect: run(insertTableOfContents) },
     { id: 'deflist', label: t('workspace.definition_list'), onSelect: run(insertDefinitionList) },
     { id: 'abbr', label: t('workspace.abbreviation'), onSelect: run(insertAbbreviation) },

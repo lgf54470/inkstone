@@ -11,6 +11,7 @@ import deflist from 'markdown-it-deflist'
 import abbr from 'markdown-it-abbr'
 import ruby from 'markdown-it-ruby'
 import type { Token } from 'markdown-it'
+import { DEFAULT_LOCALE } from '../i18n'
 import { highlightCode } from '../prism.ts'
 import { escapeAttr, escapeHtml } from './escape.ts'
 import { slugify } from './slugify.ts'
@@ -84,8 +85,9 @@ function exampleSplitAttrs(family: ExampleFamily, info: string): string {
   return ` data-example-layout="${escapeAttr(split.layout)}" data-example-ratio="${escapeAttr(exampleRatioLabel(split.ratio))}"`
 }
 
-function renderMarkdownExampleFence(code: string, info: FenceInfo, rawInfo: string, depth: number): string {
-  const previewHtml = renderMarkdown(code, { depth }).html
+function renderMarkdownExampleFence(code: string, info: FenceInfo, rawInfo: string, parent: RenderEnv): string {
+  const depth = parent.mdDepth + 1
+  const previewHtml = renderMarkdown(code, { depth, locale: parent.locale }).html
   const title = info.title || 'Markdown 演示'
   return [
     `<section class="markdown-example" data-example-family="md" aria-label="${escapeAttr(title)}">`,
@@ -191,11 +193,10 @@ function renderFence(tokens: Token[], idx: number, env: RenderEnv): string {
 
   // 3. md-example comparison block（递归渲染，深度超限时降级为普通代码块防栈溢出 DoS）
   if (lang === 'md-example' || lang === 'markdown-example') {
-    const nextDepth = env.mdDepth + 1
-    if (nextDepth > MAX_MD_EXAMPLE_DEPTH) {
+    if (env.mdDepth + 1 > MAX_MD_EXAMPLE_DEPTH) {
       return renderCodeFence({ ...info, language: 'markdown', title: info.title || 'Markdown 演示' }, code)
     }
-    return renderMarkdownExampleFence(code, info, token.info, nextDepth)
+    return renderMarkdownExampleFence(code, info, token.info, env)
   }
 
   // 4. javascript-example runnable block
@@ -232,6 +233,7 @@ export function renderMarkdown(rawMarkdown: string, options?: RenderOptions): Re
   const env: RenderEnv = {
     headings: [],
     mdDepth: options?.depth ?? 0,
+    locale: options?.locale ?? DEFAULT_LOCALE,
   }
 
   // 4. Render and sanitize（md-example 嵌套预览在各自递归层已净化，外层再净化一次保持幂等）

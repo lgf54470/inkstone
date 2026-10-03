@@ -1,6 +1,15 @@
 import { parseTabsOptions } from '../../lib/markdown/renderer'
 import type { TabsOptions } from '../../lib/markdown/renderer'
 import { t } from '../../lib/i18n'
+import { COLON_CLOSE, COLON_OPEN, deindent, findColonClose, fenceAfter, lineIndent, type OpenFence } from './colon-lines'
+
+// No word boundary after the active prefix: "+" and ":" are non-word chars, so a boundary never meets
+// the following space.
+const AT_TAB = /^@tab(?:(?::active|\+))?[ \t]+(.+?)[ \t]*$/
+const DIRECTIVE_TAB = /^(:{3,})(?:\{tab-item\}|[ \t]+tab-item)(?:[ \t]+(.*?))?[ \t]*$/
+// The `::` marker spelling. The lookahead keeps a `:::` fence out of it: this scanner tests the
+// markers before it tracks nesting, where the renderer reads them in the other order.
+const COLON_TAB = /^::(?!:)[ \t]*(.*)$/
 
 const MANAGED_OPTION_KEYS = ['style', 'orientation', 'variant', 'align', 'position', 'placement', 'sync', 'group']
 const MANAGED_FLAGS = [
@@ -41,7 +50,7 @@ export function updateTabsSourceHeader(
   const rawLine = lines[sourceLine]!
   const indent = lineIndent(rawLine)
   const line = rawLine.slice(indent.length)
-  const legacyMatch = /^(:{3,})[ \t]+(tabs)\b(.*)$/i.exec(line)
+  const legacyMatch = /^(:{3,})[ \t]+(tabs|t)\b(.*)$/i.exec(line)
   const directiveMatch = /^(:{3,})[ \t]*\{(tab-set)\}[ \t]*(.*)$/i.exec(line)
   if (!legacyMatch && !directiveMatch) return null
 
@@ -83,13 +92,14 @@ export function updateTabsSourceHeader(
   }
 
   const allParts = [...unmanagedTokens, ...managedParts]
-  const prefix = kind === 'tabs' ? `${marker} tabs` : `${marker} {${kind}}`
+  // The `t` abbreviation is the author's own spelling; only the option tokens get rewritten.
+  const prefix = legacyMatch ? `${marker} ${kind}` : `${marker} {${kind}}`
   lines[sourceLine] = `${indent}${allParts.length ? `${prefix} ${allParts.join(' ')}` : prefix}`
   return lines.join('\n')
 }
 
 interface LocatedTab {
-  kind: 'at' | 'directive'
+  kind: 'at' | 'directive' | 'colon'
   markerLine: number
   /** Exclusive end of the segment inside the container (@tab form). */
   endLine: number
@@ -102,48 +112,8 @@ interface TabsStructure {
   tabs: LocatedTab[]
 }
 
-// markdown-it strips up to three leading spaces from a block start (a fourth makes indented
-// code), so colon fences nested in shallow lists render; the source edits match the same shape.
-function lineIndent(line: string): string {
-  return /^ {0,3}/.exec(line)![0]
-}
 
-function deindent(line: string): string {
-  return line.slice(lineIndent(line).length)
-}
 
-const FENCE_LINE = /^(`{3,}|~{3,})/
-// No word boundary after the active prefix: "+" and ":" are non-word chars, so a boundary never meets the following space.
-const AT_TAB = /^@tab(?:(?::active|\+))?[ \t]+(.+?)[ \t]*$/
-const DIRECTIVE_TAB = /^(:{3,})(?:\{tab-item\}|[ \t]+tab-item)(?:[ \t]+(.*?))?[ \t]*$/
-const COLON_OPEN = /^(:{3,})(?:\s+\S|\{\S+\})/
-const COLON_CLOSE = /^:{3,}\s*$/
-
-function findColonClose(lines: string[], start: number, end: number, markerLength: number): number {
-  let depth = 1
-  let fence: { char: string; length: number } | null = null
-  for (let i = start; i < end; i++) {
-    const text = deindent(lines[i]!)
-    const fenceMatch = FENCE_LINE.exec(text)
-    if (fenceMatch) {
-      if (!fence) {
-        fence = { char: fenceMatch[1]![0]!, length: fenceMatch[1]!.length }
-      } else if (fenceMatch[1]![0] === fence.char && fenceMatch[1]!.length >= fence.length) {
-        fence = null
-      }
-      continue
-    }
-    if (fence) continue
-    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
-      depth++
-      continue
-    }
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
-      return i
-    }
-  }
-  return -1
-}
 
 // Walks the container body honoring code fences (colon markers inside them are text) and colon
 // nesting, so @tab markers inside nested containers are never read as segment starts.
@@ -157,21 +127,15 @@ function locateTabsStructure(source: string, sourceLine: number): TabsStructure 
   if (closeLine < 0) return null
 
   const tabs: LocatedTab[] = []
+  const colonTabs: LocatedTab[] = []
   let colonDepth = 0
-  let fence: { char: string; length: number } | null = null
+  let fence: OpenFence = null
   let directiveCount = 0
   for (let line = sourceLine + 1; line < closeLine; line++) {
     const text = deindent(lines[line]!)
-    const fenceMatch = FENCE_LINE.exec(text)
-    if (fenceMatch) {
-      if (!fence) {
-        fence = { char: fenceMatch[1]![0]!, length: fenceMatch[1]!.length }
-      } else if (fenceMatch[1]![0] === fence.char && fenceMatch[1]!.length >= fence.length) {
-        fence = null
-      }
-      continue
-    }
-    if (fence) continue
+    const fenced = fenceAfter(text, fence)
+    fence = fenced.fence
+    if (fenced.skipped) continue
     if (colonDepth === 0) {
       const directive = DIRECTIVE_TAB.exec(text)
       if (directive) {
@@ -191,6 +155,15 @@ function locateTabsStructure(source: string, sourceLine: number): TabsStructure 
       if (atTab && directiveCount === 0) {
         tabs.push({ kind: 'at', markerLine: line, endLine: closeLine, title: atTab[1]! })
       }
+      const colonTab = COLON_TAB.exec(text)
+      if (colonTab && directiveCount === 0) {
+        colonTabs.push({
+          kind: 'colon',
+          markerLine: line,
+          endLine: closeLine,
+          title: colonTab[1]!.trim() || t('common.tabs'),
+        })
+      }
     }
     if (COLON_OPEN.test(text)) {
       colonDepth++
@@ -204,12 +177,14 @@ function locateTabsStructure(source: string, sourceLine: number): TabsStructure 
   if (directiveCount > 0) {
     return { markerLength, closeLine, tabs }
   }
-  // @tab form: each segment ends where the next one starts.
-  const atTabs = tabs.map((tab, index) => ({
-    ...tab,
-    endLine: tabs[index + 1]?.markerLine ?? closeLine,
-  }))
-  return { markerLength, closeLine, tabs: atTabs }
+  // The renderer reads `@tab` before it reads `::`, so a note that uses both keeps its @tab segments
+  // and the stray `::` lines stay content. Each segment ends where the next one starts.
+  const markers = tabs.length ? tabs : colonTabs
+  return {
+    markerLength,
+    closeLine,
+    tabs: markers.map((tab, index) => ({ ...tab, endLine: markers[index + 1]?.markerLine ?? closeLine })),
+  }
 }
 
 export function getTabsTabCount(source: string, sourceLine: number): number | null {
@@ -234,6 +209,9 @@ export function renameTabInSource(
   if (target.kind === 'directive') {
     const colons = /^(:{3,})/.exec(deindent(markerRaw))![1]
     lines[target.markerLine] = `${indent}${colons} tab-item ${title}`
+  } else if (target.kind === 'colon') {
+    const marker = /^:{3,}/.exec(deindent(markerRaw)) ? ':::' : '::'
+    lines[target.markerLine] = `${indent}${marker} ${title}`
   } else {
     lines[target.markerLine] = `${indent}${deindent(markerRaw).replace(
       /^(@tab(?:(?::active|\+))?)([ \t]+).*$/,
@@ -281,6 +259,7 @@ export function addTabToSource(
 
   const innerSlice = lines.slice(sourceLine, closeLine).map(deindent).join('\n')
   const isDirective = /:::+\s*tab-item|\{tab-item\}/.test(innerSlice)
+  const isColonMarked = !isDirective && /^::(?!:)[ \t]/m.test(innerSlice)
 
   let resolvedTitle = tabTitle
   if (!resolvedTitle) {
@@ -290,7 +269,9 @@ export function addTabToSource(
 
   const insertContent = isDirective
     ? [`${indent}::: tab-item ${resolvedTitle}`, `${indent}`, `${indent}:::`]
-    : [`${indent}@tab ${resolvedTitle}`, indent]
+    : isColonMarked
+      ? [`${indent}:: ${resolvedTitle}`, indent]
+      : [`${indent}@tab ${resolvedTitle}`, indent]
 
   lines.splice(closeLine, 0, ...insertContent)
   return lines.join('\n')

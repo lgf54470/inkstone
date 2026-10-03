@@ -27,6 +27,20 @@ const FIXTURES: Record<string, string> = {
   toc: '[TOC]\n\n# 标题一\n\n## 子标题',
   footnote: '引用[^1]\n\n[^1]: 注释内容',
   obsidianComment: '正文 %%隐藏%% 保留',
+  // The `:::` panel family: alignment, columns, tabs written with `::`, the timeline, and a callout
+  // fence that must reach the same markup as the blockquote spelling above.
+  panelAlign: '::: center\n正文内容\n:::',
+  panelCols: '::: cols 1fr 2fr gap=wide divider center\n一\n::\n二\n:::',
+  panelTabsColon: '::: tabs\n:: 甲\n内容A\n:: 乙\n内容B\n:::',
+  panelTabsT: '::: t pills\n:: 甲\nA\n:::',
+  panelTimeline: '::: timeline\n:: [done] 2024-01-15 发布\n细节\n:: [milestone] v1.0 里程碑\n:::',
+  panelCallout: '::: tip 标题\n内容\n:::',
+  panelCalloutFold: '::: warning- 折叠\n内容\n:::',
+  panelUnclaimed: '::: whatever\n正文\n:::',
+  // `::` marks must stay inert inside a code fence and inside a nested `:::` container, so this
+  // fixture proves the line walker on both trees at once — and inherits the fence divergence below.
+  panelColsFence: '::: cols\n一\n::\n```\na :: b\n::: not a close\n```\n:::',
+  panelColsNested: '::: cols\n外\n::\n::: tabs\n:: 内\n面板\n:::\n:::',
 }
 
 // Structural parity baseline: root and blog renderers keep (and must not silently
@@ -48,6 +62,9 @@ const KNOWN_DIVERGENCE: Record<string, string> = {
   // Composed fixture: root renders a frontmatter properties card (blog strips it)
   // plus the fence/tag/embed/math differences above.
   showcase: 'frontmatter-card-plus-composed-diffs',
+  // A `:::` cols block whose body holds a code fence: the panel skeleton matches, so the only
+  // difference left is the one `fence` above already records.
+  panelColsFence: 'ssr-prism-vs-client-highlight',
 }
 
 // Skeleton compares tag names and class tokens only (attribute order insensitive),

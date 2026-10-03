@@ -341,3 +341,10 @@ export type MessageKey =
   | 'music.forward'
   | 'music.rate'
 
+  // Markdown panels rendered on the server
+  | 'markdown.timeline_todo'
+  | 'markdown.timeline_doing'
+  | 'markdown.timeline_done'
+  | 'markdown.timeline_milestone'
+  | 'markdown.timeline_error'
+

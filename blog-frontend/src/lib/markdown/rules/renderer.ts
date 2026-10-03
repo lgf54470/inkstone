@@ -3,6 +3,7 @@ import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import type { RenderEnv } from '../types.ts'
 import { TABLE_OPTION_DEFAULTS, type TableOptions } from '../table-options.ts'
+import { registerPanels } from '../panels.ts'
 
 function registerDetailsRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   md.renderer.rules.details_open = (tokens, index) => {
@@ -152,6 +153,7 @@ function registerTocRendererRule(md: InstanceType<typeof MarkdownIt>): void {
 export function registerRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   registerContainerRendererRules(md)
   registerCalloutRendererRules(md)
+  registerPanels(md)
   registerMathRendererRules(md)
   registerTableRendererRules(md)
   registerTocRendererRule(md)

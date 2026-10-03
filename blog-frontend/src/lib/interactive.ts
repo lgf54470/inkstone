@@ -16,6 +16,7 @@ export function initInteractiveContent() {
   interactiveInitialized = true
   // 分栏比例是运行时数值，先落 CSS 变量，避免首帧按样式表回退比例绘制
   applyExampleSplits()
+  applyPanelColumnTracks()
   enhanceGraphBlockToolbars()
   configureCodeBlockCollapsing()
   initTabs()
@@ -28,6 +29,24 @@ export function initInteractiveContent() {
   initDiagramLazyRender()
   initMindmapSnapshots()
   initThemeObserver()
+}
+
+// Column tracks are the one thing a panel header states that a stylesheet cannot read out of an
+// attribute (`attr()` does not work for grid tracks), and the prose sanitizer only lets the KaTeX
+// elements carry a `style` (see markdown/sanitize.ts). So the server emits `data-cols-tracks` and this
+// hands it to the stylesheet as a custom property — the same route `applyExampleSplits` takes for the
+// example grid ratio. The value is re-checked here instead of trusted from the renderer, because this
+// is the one place it becomes a CSS declaration; without it the grid keeps equal tracks.
+const PANEL_TRACK_PATTERN = /^\d{1,2}(?:\.\d{1,2})?(?:fr|%)$/
+const PANEL_MAX_TRACKS = 6
+
+function applyPanelColumnTracks(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('.markdown-cols[data-cols-tracks]').forEach((grid) => {
+    const tracks = (grid.dataset.colsTracks ?? '').trim().split(/\s+/)
+    if (tracks.length < 2 || tracks.length > PANEL_MAX_TRACKS) return
+    if (!tracks.every((track) => PANEL_TRACK_PATTERN.test(track))) return
+    grid.style.setProperty('--panel-cols-tracks', tracks.join(' '))
+  })
 }
 
 /** 文章页分享按钮：复制成功后在按钮内显示“已复制”，代替 alert 弹窗 */

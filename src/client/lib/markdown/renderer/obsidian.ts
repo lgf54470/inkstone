@@ -15,7 +15,7 @@ function matchingClose(tokens: Token[], start: number, openType: string, closeTy
   return -1
 }
 
-function normalizeCalloutType(value: string): string {
+export function normalizeCalloutType(value: string): string {
   const type = value.toLowerCase()
   const aliases: Record<string, string> = {
     summary: 'abstract',
@@ -37,7 +37,7 @@ function normalizeCalloutType(value: string): string {
   return (aliases[type] ?? type.replace(/[^a-z0-9_-]/g, '')) || 'note'
 }
 
-function calloutDefaultTitle(type: string): string {
+export function calloutDefaultTitle(type: string): string {
   const names: Record<string, string> = {
     note: t('markdown.note'),
     abstract: t('markdown.abstract'),

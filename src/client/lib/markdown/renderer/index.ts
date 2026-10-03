@@ -20,6 +20,7 @@ import { emptyEnvironment, materializeTrustedTasks } from './env'
 import { stripObsidianComments } from './parse'
 import { registerFrontMatter } from './frontmatter'
 import { registerContainers } from './containers'
+import { registerPanels } from './panels'
 import { registerMath } from './math'
 import { registerToc } from './toc'
 import { registerWiki } from './wiki'
@@ -61,6 +62,7 @@ md.use(taskLists, { enabled: true, label: false })
 })
 registerFrontMatter(md)
 registerContainers(md)
+registerPanels(md)
 registerMath(md)
 registerToc(md)
 registerWiki(md)
@@ -143,5 +145,24 @@ export {
   parseDetailsOptions,
 } from './details-options'
 export type { DetailsOptions, DetailsVariant } from './details-options'
+export {
+  COLS_OPTION_DEFAULTS,
+  MAX_PANEL_COLUMNS,
+  formatColsHeader,
+  formatColsOptions,
+  formatTimelineItem,
+  matchPanelHeader,
+  parseTimelineItem,
+} from './panel-options'
+export type {
+  AlignValue,
+  CalloutHeader,
+  ColsGap,
+  ColsOptions,
+  PanelHeader,
+  PanelHeaderMatch,
+  TimelineItem,
+  TimelineStatus,
+} from './panel-options'
 export { infoFlag, infoOption, infoTokens } from './info-string'
 export { escapeAttr } from './util'

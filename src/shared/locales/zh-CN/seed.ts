@@ -178,6 +178,27 @@ flowchart LR
 ::::
 ~~~~
 
+~~~~md-example title="排版块"
+::: center
+任何内容都能居中——文字、标题或图片。
+:::
+
+::: cols
+两栏并排
+::
+每一栏都是普通的 Markdown
+:::
+
+::: timeline
+:: [done] 2024-01-15 项目立项
+:: [doing] 2024-02-01 首次发布
+:::
+
+::: tip 用围栏书写
+和 \`> [!tip]\` 画出的是同一个提示块。
+:::
+~~~~
+
 ~~~~md-example title="带标题、行号和高亮的代码块"
 \`\`\`ts title="hello.ts" line-numbers {2}
 const name = 'Inkstone'

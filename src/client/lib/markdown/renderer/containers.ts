@@ -6,7 +6,11 @@ import { renderEnv } from './env'
 import { parseTableOptions, TABLE_OPTION_DEFAULTS } from './table-options'
 import { detailsTitle, parseDetailsOptions } from './details-options'
 import type { TableOptions } from './table-options'
-import { escapeAttr } from './util'
+import { escapeAttr, stripBracketTitle } from './util'
+import { findColonTabSegments, renderPanelContainer } from './panels'
+import { matchPanelHeader } from './panel-options'
+import { blockLine, findColonFenceEnd, walkNonFenceLines } from './block-lines'
+import type { BlockLineState } from './block-lines'
 export 
 function renderFrontMatterValue(value: unknown): string {
   if (value == null)
@@ -24,72 +28,8 @@ function formatScalar(value: unknown): string {
     return value.toISOString()
   return String(value)
 }
-export 
-function blockLine(state: {
-  src: string
-  bMarks: number[]
-  tShift: number[]
-  eMarks: number[]
-}, line: number): string {
-  const from = state.bMarks[line]! + state.tShift[line]!
-  return state.src.slice(from, state.eMarks[line]!)
-}
-type Fence = {
-  char: string
-  length: number
-}
 
-type BlockState = {
-  src: string
-  bMarks: number[]
-  tShift: number[]
-  eMarks: number[]
-}
-
-function advanceFence(fence: Fence | null, marker: string): Fence | null {
-  if (!fence)
-    return { char: marker[0]!, length: marker.length }
-  if (marker[0] === fence.char && marker.length >= fence.length)
-    return null
-  return fence
-}
-
-function walkNonFenceLines(state: BlockState, start: number, end: number, visit: (line: number, text: string) => boolean): number {
-  let fence: Fence | null = null
-  for (let line = start; line < end; line++) {
-    const text = blockLine(state, line)
-    const fenceMatch = /^(`{3,}|~{3,})/.exec(text)
-    if (fenceMatch) {
-      fence = advanceFence(fence, fenceMatch[1]!)
-      continue
-    }
-    if (fence)
-      continue
-    if (visit(line, text))
-      return line
-  }
-  return -1
-}
-
-
-function findContainerEnd(state: BlockState, startLine: number, endLine: number, markerLength: number): number {
-  let depth = 1
-  let result = -1
-  walkNonFenceLines(state, startLine + 1, endLine, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
-      depth++
-      return false
-    }
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
-      result = line
-      return true
-    }
-    return false
-  })
-  return result
-}
-
-function findTabSegments(state: BlockState, start: number, end: number): Array<{
+function findTabSegments(state: BlockLineState, start: number, end: number): Array<{
   title: string
   start: number
   end: number
@@ -121,6 +61,8 @@ function findTabSegments(state: BlockState, start: number, end: number): Array<{
     }
     return false
   })
+  if (!markers.length)
+    return findColonTabSegments(state, start, end)
   return markers.map((marker, index) => ({
     title: marker.title,
     start: marker.line + 1,
@@ -129,12 +71,7 @@ function findTabSegments(state: BlockState, start: number, end: number): Array<{
   }))
 }
 
-function findDirectiveTabSegments(state: {
-  src: string
-  bMarks: number[]
-  tShift: number[]
-  eMarks: number[]
-}, start: number, end: number): Array<{
+function findDirectiveTabSegments(state: BlockLineState, start: number, end: number): Array<{
   title: string
   start: number
   end: number
@@ -171,23 +108,6 @@ function findDirectiveTabSegments(state: {
     line = close + 1
   }
   return tabs
-}
-
-function findColonFenceEnd(state: BlockState, start: number, end: number, markerLength: number): number {
-  let depth = 1
-  let result = -1
-  walkNonFenceLines(state, start, end, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
-      depth++
-      return false
-    }
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
-      result = line
-      return true
-    }
-    return false
-  })
-  return result
 }
 
 export type TabsPosition = 'top' | 'bottom' | 'left' | 'right'
@@ -321,17 +241,24 @@ function renderModernContainer(
   const source = blockLine(state, startLine)
   const legacyMatch = /^(:{3,})[ \t]+(details|tabs|table)\b(?:[ \t]+(.*))?$/.exec(source)
   const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source)
-  if (!legacyMatch && !directiveMatch)
+  const panel = legacyMatch || directiveMatch ? null : matchPanelHeader(source)
+  if (!legacyMatch && !directiveMatch && !panel)
     return false
-  const markerLength = (legacyMatch?.[1] ?? directiveMatch![1]!).length
-  const end = findContainerEnd(state, startLine, endLine, markerLength)
+  const markerLength = legacyMatch?.[1].length ?? directiveMatch?.[1].length ?? panel!.markerLength
+  const end = findColonFenceEnd(state, startLine + 1, endLine, markerLength)
   if (end < 0)
     return false
   if (silent)
     return true
-  const kind = legacyMatch?.[2] ?? directiveMatch![2]!
+  const kind = legacyMatch?.[2] ?? directiveMatch?.[2]
   const rawInfo = (legacyMatch?.[3] ?? directiveMatch?.[3] ?? '').trim()
-  if (kind === 'details') {
+  if (panel) {
+    if (panel.header.kind === 'tabs')
+      renderTabsContainer(state, startLine, end, panel.info)
+    else
+      renderPanelContainer(state, startLine, end, panel)
+  }
+  else if (kind === 'details') {
     renderDetailsContainer(state, startLine, end, legacyMatch)
   }
   else if (kind === 'table') {
@@ -396,11 +323,6 @@ function renderTabsContainer(state: StateBlock, startLine: number, end: number, 
   state.push('tabs_close', 'div', -1).block = true
 }
 
-
-function stripBracketTitle(value: string): string {
-  const trimmed = value.trim()
-  return /^\[[\s\S]*\]$/.test(trimmed) ? trimmed.slice(1, -1).trim() : trimmed
-}
 
 export function registerContainers(md: MarkdownIt): void {
 

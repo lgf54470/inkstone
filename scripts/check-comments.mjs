@@ -2956,6 +2956,9 @@ const allowed = new Map([
     '/**\n * Builds a mind map from the note\'s outline: the selection when there is one,\n * otherwise the whole note. All of it is one transaction, so one undo takes the\n * fence back — the same contract every other insertion here has.\n *\n * Returns false when the text holds no headings and no lists, which is not an\n * error the command can report on its own: the caller toasts.\n */',
     '/** The menu-level action: says so when there was no outline to draw, instead of looking like a dead item. */',
   ]],
+  ['src/client/editor/commands/panel.ts', [
+    '/**\n * The insertion skeletons for the `:::` panel family.\n *\n * Each one writes a block a reader can finish by hand: the header shows the kind, and the body shows\n * the separator or marker that kind uses. Columns therefore arrive as two of them rather than one, so\n * the `::` is visible without having to look it up.\n */',
+  ]],
   ['src/client/editor/diagram-templates.ts', [
     '/**\n * Whiteboard starter scenes. The body is the standard `.excalidraw` scene, so the shape\n * of an element here is the library\'s own (see lib/markdown/excalidraw/body.ts); a blank\n * board is a scene with no elements, which the reader turns into an empty canvas.\n */',
   ]],
@@ -7883,6 +7886,14 @@ const allowed = new Map([
     '/** The panel, pre-filled from what the block drew with; every value here also names its own default. */',
     '/** This block family\'s toolbar, in the shape the shared click route and enhancer dispatch over. */',
   ]],
+  ['src/client/features/preview/colon-lines.ts', [
+    '/**\n * Reading `:::` fences out of a note\'s raw text.\n *\n * The renderer does the same job over markdown-it\'s line index, but a settings toolbar edits the source\n * string itself and cannot go through the parser without re-rendering first. Both halves have to agree\n * on what counts as a fence, so the indent rule and the nesting walk live here and the tabs and panel\n * source editors share them instead of each keeping a private copy that can drift.\n */',
+    '// markdown-it strips up to three leading spaces from a block start (a fourth makes indented',
+    '// code), so colon fences nested in shallow lists render; the source edits match the same shape.',
+    '/**\n * Whether a line is fenced out of the container syntax, and what fence state it leaves behind. A fence\n * marker line is never a colon marker, and neither is anything between an opening and a closing run.\n */',
+    '/** The line that closes a colon fence opened at `start`, tracking nesting and code fences. */',
+    '/**\n * The lines in `[start, close)` that a bare `::` separator could sit on — outside a code fence and\n * outside any container nested in the body, where such a line belongs to that inner block.\n */',
+  ]],
   ['src/client/features/preview/details-toolbar.ts', [
     '/**\n * The settings toolbar for a `::: details` block: whether it starts open and which chrome it draws\n * with. The block is wrapped rather than given a header of its own — anything prepended inside a\n * `<details>` is content, and content is exactly what the block hides.\n */',
     '/**\n * The block is the wrapper rather than the `<details>` itself: the toolbar sits above the fold, and\n * a `<details>` hides everything prepended inside it, so its header has to be a sibling.\n */',
@@ -8085,6 +8096,16 @@ const allowed = new Map([
     '// The menu is what says the button is expanded, and the markup it sits on is re-rendered',
     '// from the note, so the state is asserted here rather than left to the renderer.',
   ]],
+  ['src/client/features/preview/panel-source.ts', [
+    '/**\n * The source edits behind a panel block\'s settings toolbar.\n *\n * A panel keeps its whole configuration on one header line, so most edits are a rewrite of that line\n * with the content below left byte-identical. Changing the column count is the one edit that also has\n * to touch the body: the number of columns a note says it has is the number of `::` separators it\n * carries, and a header that disagrees with its own body is a block the reader cannot fix by looking\n * at it.\n */',
+    '/** Rewrites an alignment block to the given alignment. */',
+    '/** How many columns the body currently says it holds, which is one per separator plus the first. */',
+    '/**\n * Sets the count in both places that state it. Dropping the explicit tracks is deliberate: choosing a\n * count means equal columns, and carrying `1fr 2fr` along would leave the header describing a grid the\n * body no longer has.\n */',
+  ]],
+  ['src/client/features/preview/panel-toolbar.ts', [
+    '/**\n * The settings toolbar for the `:::` layout blocks: an alignment block and a column block.\n *\n * Both are wrapped rather than given a header of their own, because the block\'s own markup is what the\n * prose stylesheet draws and inserting chrome into it would be drawn too. Every edit rewrites the note\'s\n * header line — the block\'s whole state — so the change survives a reload, a share and an export.\n */',
+    '/** Commits one header rewrite, or tells the reader the block moved out from under the toolbar. */',
+  ]],
   ['src/client/features/preview/preview-interactions.test.ts', [
     '/**\n * The click handler reads `event.target` to pick a branch and cancels the\n * browser\'s own handling once one takes it, so the rest of the surface is\n * stubbed.\n */',
     '// The library builds its toolbar once the block is mounted; the markup above',
@@ -8172,17 +8193,20 @@ const allowed = new Map([
     '// popover never lingers over the block while the edit commits.',
   ]],
   ['src/client/features/preview/tabs-source.ts', [
+    '// No word boundary after the active prefix: "+" and ":" are non-word chars, so a boundary never meets',
+    '// the following space.',
+    '// The `::` marker spelling. The lookahead keeps a `:::` fence out of it: this scanner tests the',
+    '// markers before it tracks nesting, where the renderer reads them in the other order.',
     '// Preserve any unmanaged user tokens (e.g. custom classes, directive arguments)',
     '// Position is the single layout knob: once an edge is set it fully determines the orientation,',
     '// so a legacy style token is dropped rather than carried along as a redundant, possibly',
     '// contradictory setting.',
+    '// The `t` abbreviation is the author\'s own spelling; only the option tokens get rewritten.',
     '/** Exclusive end of the segment inside the container (@tab form). */',
-    '// markdown-it strips up to three leading spaces from a block start (a fourth makes indented',
-    '// code), so colon fences nested in shallow lists render; the source edits match the same shape.',
-    '// No word boundary after the active prefix: "+" and ":" are non-word chars, so a boundary never meets the following space.',
     '// Walks the container body honoring code fences (colon markers inside them are text) and colon',
     '// nesting, so @tab markers inside nested containers are never read as segment starts.',
-    '// @tab form: each segment ends where the next one starts.',
+    '// The renderer reads `@tab` before it reads `::`, so a note that uses both keeps its @tab segments',
+    '// and the stray `::` lines stay content. Each segment ends where the next one starts.',
     '// Swallow one blank line left at the join so the edit never piles up empty lines.',
   ]],
   ['src/client/features/preview/use-bento-slides-blocks.ts', [
@@ -9379,6 +9403,9 @@ const allowed = new Map([
     '// note carried fully transparent chart pictures — measured on a four-bar chart, 0 of the 69246 pixels',
     '// a finished chart paints were on the canvas when the export read it, and the exported file held the',
     '// same nothing; asking for the instant draw is what makes the read land on a drawn canvas.',
+    '// The exported document is standalone: a block family that only had app stylesheets would print as',
+    '// unstyled boxes, so both halves have to land in the file — the markup from the renderer, and the',
+    '// rules that draw it.',
   ]],
   ['src/client/lib/export-note.ts', [
     '// Respect the user\'s external-images choice: when blocked, exported HTML',
@@ -9402,6 +9429,9 @@ const allowed = new Map([
     '// value in this one table (instead of raw hex inside the CSS template) gives',
     '// the export palette a single source of truth, and export-palette.test.ts',
     '// fails on any hex that is not in this table or any entry left unused.',
+  ]],
+  ['src/client/lib/export-panels.ts', [
+    '/**\n * The `:::` panel family in the self-contained HTML/PDF export.\n *\n * These rules sit apart from `EXPORT_CSS` because that template is already at the file-size ceiling the\n * repository enforces, and because the family is a closed set of blocks: everything it needs to print\n * is here, and nothing else reaches into it. The exported document is standalone, so it cannot read the\n * app\'s design tokens and every colour comes from `EXPORT_PALETTE`.\n */',
   ]],
   ['src/client/lib/folder-prefs.ts', [
     '// quota or private mode',
@@ -9619,6 +9649,9 @@ const allowed = new Map([
     '// Renders one pending block; throws (possibly MERMAID_CANCELLED) on failure.',
     '// Returns false when the whole batch must stop (detached node or cancelled),',
     '// true when the loop should keep going (possibly skipping this node).',
+  ]],
+  ['src/client/lib/markdown/enhance/panel-cols.ts', [
+    '/**\n * Column track sizes are the one thing a panel header states that CSS cannot read out of an attribute:\n * `attr()` does not work for grid tracks, and the prose whitelist strips inline styles from rendered\n * markup. So the header writes a `data-cols-tracks` value and this runs after sanitization to hand it\n * to the stylesheet as a custom property — the same route the example split takes for its ratio.\n *\n * The value is re-checked here rather than trusted from the renderer, because this is the one place it\n * becomes a CSS declaration.\n */',
   ]],
   ['src/client/lib/markdown/excalidraw/body.ts', [
     '/**\n * The note-facing half of a ```excalidraw fence: the scene a body holds, and the\n * rewrite that puts a changed scene back.\n *\n * DOM-free and vendor-free on purpose — the whole file is pure text work, so it is\n * unit-testable and usable from the renderer, the preview, the full screen view and\n * the editor without pulling Excalidraw into any of their chunks.\n */',
@@ -12456,6 +12489,12 @@ const allowed = new Map([
     '// Measured on this fixture: 382 bytes of attributes for a 12,884-byte board. The same board paid',
     '// ~17 KB for one `data-kanban` attribute before, and paid it again on every render.',
   ]],
+  ['src/client/lib/markdown/renderer/block-lines.ts', [
+    '/**\n * Reading a block rule\'s source lines, and walking them without tripping over the code fences that\n * sit inside a container.\n *\n * Every `:::` family — details, tabs, columns, timeline — has to find its own end and split its own\n * body, and all of them fail the same way if they scan naively: a line inside a ```` ``` ```` fence is\n * text, not syntax, so `::: there` in a code sample must neither close a block nor start one. This is\n * the one place that rule lives.\n */',
+    '/** The line\'s text with its leading indentation removed, which is how a block rule reads its markers. */',
+    '/**\n * Visits each line in `[start, end)` that is not inside a code fence, stopping at the first line the\n * visitor claims. Returns that line, or -1 when the whole range was walked.\n */',
+    '/**\n * The line that closes a `:::`-style block: the first run of colons at least as long as the opener\n * that carries nothing after it, tracking nesting so a container inside this one closes itself first.\n */',
+  ]],
   ['src/client/lib/markdown/renderer/code-options.ts', [
     '/**\n * What a standard code block lets the note say about itself: its title, whether the gutter numbers\n * the lines and from where, which lines are highlighted, whether long lines wrap, whether the block\n * starts folded and which palette it draws with.\n *\n * The first four already reached the renderer before this module; the last three are what the\n * settings toolbar adds. They live in the fence\'s info string, so the block carries its own\n * configuration and every toolbar edit is an ordinary source edit.\n */',
     '/** Fold beyond this many lines; null follows the preview setting, 0 never folds. */',
@@ -12524,6 +12563,33 @@ const allowed = new Map([
     '// The title goes through the inline rules so a `[[wiki link]]` in it is a link',
     '// like any other; the whole render is sanitized afterwards either way.',
   ]],
+  ['src/client/lib/markdown/renderer/panel-options.ts', [
+    '/**\n * The header vocabulary shared by the `:::` panel family.\n *\n * A panel states everything about itself on its header line — the kind, then a few keywords — because\n * the header is the one line a settings toolbar can rewrite without touching the block\'s content. So\n * reading and writing it live here as a pair, and the block rule only splits bodies.\n *\n * The keyword set is deliberately closed: an unrecognised `::: whatever` is not claimed, so it keeps\n * rendering as the plain text it always did rather than silently becoming a container.\n */',
+    '// The fence accepts the same callout vocabulary as `> [!…]`, plus the single-letter spellings the',
+    '// panel syntax has historically used. `primary` is the plain, uncoloured variant of `note`.',
+    '// A column track is a plain fraction or percentage. Anything else is left alone, so a typo can never',
+    '// reach the stylesheet as a CSS value — the enhancer that writes the custom property re-checks it.',
+    '/** Explicit track sizes, already validated; `null` lets the column count pick equal tracks. */',
+    '/** A stated column count, which pads or merges the `::` separators to match. */',
+    '/** How many colons opened the block, which is how many must close it. */',
+    '/** The header\'s remainder, which is where a tabs block reads its own options. */',
+    '/**\n * The kind word with an attached fold marker (`tip-`), which is how the callout family has always\n * spelled "starts collapsed". The marker is part of the word, not a separate token.\n */',
+    '/**\n * The header line\'s colon count, kind and options — or null when the word is not one this family\n * claims, which leaves the line rendering as the plain text it always did.\n */',
+    '/** The tokens after the kind word, in the order the settings panel offers them; defaults are dropped. */',
+    '/** The header line for a column block, given the separator count it currently holds. */',
+    '/** The leading date-ish word, kept as written; empty when the node has none. */',
+    '/**\n * One node\'s first line: `[status] time title`. The time only counts as one when it starts with a\n * digit or a version prefix, so `:: 2024-01-15 Kickoff` splits but `:: Chapter one recap` keeps the\n * whole line as its title.\n */',
+    '/** The node line a toolbar writes back, keeping the status marker only when it says something. */',
+  ]],
+  ['src/client/lib/markdown/renderer/panels.ts', [
+    '/**\n * The `:::` panel family: a block whose header says what kind of block it is, and whose body is\n * ordinary markdown.\n *\n * Three of the five kinds split their body on a `::` line — columns on a bare `::`, tabs and the\n * timeline on a `::` that carries the tab title or the node\'s first line on the same row. The fourth\n * splitting rule the family needs is already in `containers.ts`, so a tabs block written with `@tab`\n * keeps working untouched and this module only supplies the `::` spelling.\n */',
+    '/**\n * The `::` marks in a container body, ignoring the ones inside a nested `::: … :::` — a column block\n * that holds a callout must not read the callout\'s own separators as its own.\n */',
+    '/**\n * The line ranges one column holds. A separator line is punctuation, so it belongs to no column: each\n * range stops at the mark and the next starts past it. A stated count then pads with empty columns and\n * folds the overflow into the last one, so `::: cols 2` keeps two tracks however many `::` the note\n * happens to carry.\n */',
+    '/** A `::: tip` draws the same `<aside class="callout">` as `> [!tip]`, so the two spellings cannot drift. */',
+    '/**\n * Draws one panel block. The caller routes the `tabs` kind to `containers.ts`, which already owns its\n * options and its segment spellings, so no branch here reads it.\n */',
+    '/** The `:: Title` spelling of a tabs block, which reads the same panels as `@tab` does. */',
+    '/**\n * The node\'s date, machine-readable in `data-datetime` when the word really is one. A `<time>` element\n * would be the semantic choice, but it is not on the prose whitelist, so the span is what survives.\n */',
+  ]],
   ['src/client/lib/markdown/renderer/split.ts', [
     '/**\n * Split-layout options for the two-panel example fences (```md-example and\n * ```javascript-example): which edge each panel takes and how the free space is divided\n * between them.\n *\n * The options live in the opening fence\'s info string (`~~~md-example layout=rl ratio="3:7"`),\n * so a block carries its own layout and the settings toolbar edits the note like any other\n * write — there is no per-block state to keep in sync.\n */',
     '/** Panel share in parts, e.g. `[3, 7]`; the grid turns them into `3fr 7fr`. */',
@@ -12541,6 +12607,9 @@ const allowed = new Map([
     '/**\n   * The fence bodies this markup was built from, in document order. They do not ride in the markup\n   * (see `../fence-bodies`); whoever inserts the markup registers these so the blocks can read back.\n   */',
     '/**\n   * Where each rich block leaves its fence body, and the block number it gets for it: the position\n   * in this set is exactly what `data-<family>-index` says, so nested renders share the outer set\n   * instead of restarting the count.\n   */',
     '/** `true` when the caller opted into loading external https images (preview.externalImages). */',
+  ]],
+  ['src/client/lib/markdown/renderer/util.ts', [
+    '/** A title written in `[brackets]`, which is how a container header keeps its brackets out of the label. */',
   ]],
   ['src/client/lib/markdown/sanitize.ts', [
     '/**\n * Single sanitization entry point for every HTML string the markdown pipeline\n * writes into the DOM. The main render pass (markdown-it output) and the\n * async enhancers (Prism token HTML, KaTeX output) must each go through one of\n * these helpers so no producer can bypass the whitelist by inserting DOM after\n * the initial DOMPurify pass.\n */',
@@ -16364,6 +16433,10 @@ const allowed = new Map([
     '/**\n * Offline audio is private content the service worker caches on this device\n * (features/music plan FEAT-10). It must not outlive the account that saved\n * it, so the logout flow has to clear that cache — and it has to happen after\n * the local database wipe, never inside a branch that logout can return from\n * early. logoutImpl itself is tangled in settings flushing, session caching\n * and location.reload, none of which is cheap to mount; this source-order\n * guard keeps the privacy invariant pinned the same way the fullscreen policy\n * test pins its ownership rule.\n */',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
+    '// The `:::` panel family: alignment, columns, tabs written with `::`, the timeline, and a callout',
+    '// fence that must reach the same markup as the blockquote spelling above.',
+    '// `::` marks must stay inert inside a code fence and inside a nested `:::` container, so this',
+    '// fixture proves the line walker on both trees at once — and inherits the fence divergence below.',
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
     '// change) these tag/class skeleton differences. Any baseline item that converges',
     '// or any unregistered divergence fails the test, forcing an explicit sync.',
@@ -16375,6 +16448,8 @@ const allowed = new Map([
     '// blog: line-number switch wrapped in label.js-example-switch-wrap; root: bare button.',
     '// Composed fixture: root renders a frontmatter properties card (blog strips it)',
     '// plus the fence/tag/embed/math differences above.',
+    '// A `:::` cols block whose body holds a code fence: the panel skeleton matches, so the only',
+    '// difference left is the one `fence` above already records.',
     '// Skeleton compares tag names and class tokens only (attribute order insensitive),',
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',

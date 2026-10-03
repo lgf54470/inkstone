@@ -118,3 +118,42 @@ describe('export-note html export', () => {
     })
   })
 })
+// The exported document is standalone: a block family that only had app stylesheets would print as
+// unstyled boxes, so both halves have to land in the file — the markup from the renderer, and the
+// rules that draw it.
+describe('export-note panel blocks', () => {
+  const PANEL_NOTE = [
+    '::: center',
+    'centered',
+    ':::',
+    '',
+    '::: cols 1fr 2fr',
+    'left col',
+    '::',
+    'right col',
+    ':::',
+    '',
+    '::: timeline',
+    ':: [done] 2024-01-15 Shipped',
+    ':::',
+  ].join('\n')
+
+  it('carries the panel markup into the exported document', async () => {
+    await withCanvasMock(async () => {
+      const html = await renderNoteToExportHtml({ title: 'Panels', content: PANEL_NOTE }, 'en-US')
+      expect(html).toContain('class="markdown-align"')
+      expect(html).toContain('data-cols-tracks="1fr 2fr"')
+      expect(html).toContain('class="markdown-timeline"')
+    })
+  })
+
+  it('ships the stylesheet that draws them, tracks included', async () => {
+    await withCanvasMock(async () => {
+      const html = await renderNoteToExportHtml({ title: 'Panels', content: PANEL_NOTE }, 'en-US')
+      expect(html).toContain('.markdown-align[data-align="center"]')
+      expect(html).toContain('.markdown-cols[data-cols="2"]')
+      expect(html).toContain('.markdown-timeline-node')
+      expect(html).toContain('--panel-cols-tracks: 1fr 2fr')
+    })
+  })
+})

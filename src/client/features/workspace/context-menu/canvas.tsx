@@ -27,13 +27,16 @@ import {
   Quote,
   Sigma,
   Smile,
+  AlignCenter,
+  Columns3,
+  GitCommitVertical,
   Sparkles,
   Table as TableIcon,
 } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
-import { insertAdvancedCodeBlock, insertCallout, insertCodeBlock, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
+import { insertAdvancedCodeBlock, insertAlign, insertCallout, insertCodeBlock, insertColumns, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTimeline, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
 import type { MenuCtx } from './types'
 import { SubmenuList } from '../../../components/overlay'
 
@@ -106,6 +109,9 @@ function tailInsertItems(ctx: MenuCtx): MenuItem[] {
     { id: 'divider', label: t('workspace.divider'), icon: <Minus size={13} />, onSelect: () => runStateCommand(insertHorizontalRule) },
     { id: 'details', label: t('workspace.details_block'), icon: <ChevronDown size={13} />, onSelect: () => runStateCommand(insertDetails) },
     { id: 'tabs', label: t('common.tabs'), icon: <Columns2 size={13} />, onSelect: () => runStateCommand(insertTabs) },
+    { id: 'columns', label: t('workspace.columns'), icon: <Columns3 size={13} />, onSelect: () => runStateCommand(insertColumns) },
+    { id: 'timeline', label: t('workspace.timeline'), icon: <GitCommitVertical size={13} />, onSelect: () => runStateCommand(insertTimeline) },
+    { id: 'alignment', label: t('workspace.alignment'), icon: <AlignCenter size={13} />, onSelect: () => runStateCommand(insertAlign('center')) },
     { id: 'toc', label: t('common.table_of_contents'), icon: <ListTree size={13} />, onSelect: () => runStateCommand(insertTableOfContents) },
     { id: 'deflist', label: t('workspace.definition_list'), icon: <BookOpen size={13} />, onSelect: () => runStateCommand(insertDefinitionList) },
     { id: 'abbr', label: t('workspace.abbreviation'), icon: <HelpCircle size={13} />, onSelect: () => runStateCommand(insertAbbreviation) },

@@ -347,4 +347,11 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'music.forward': 'Forward 10 seconds',
   'music.rate': 'Playback speed {value}',
   'music.play_all': 'Play all',
+
+  // Markdown panels rendered on the server
+  'markdown.timeline_todo': 'Todo',
+  'markdown.timeline_doing': 'Doing',
+  'markdown.timeline_done': 'Done',
+  'markdown.timeline_milestone': 'Milestone',
+  'markdown.timeline_error': 'Failed',
 }

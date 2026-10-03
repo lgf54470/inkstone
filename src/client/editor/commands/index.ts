@@ -3,6 +3,7 @@ export { toggleWrap, toggleLinePrefix, toggleBold, toggleItalic, toggleInlineCod
 export { setHeading, clearHeading, insertLink, insertImage, insertText, insertPrefix, insertTag, insertBlockId, insertFootnote, insertTableOfContents, insertRuby, insertDefinitionList, insertAbbreviation, insertEmoji, insertTaskWithStatus, COMMON_EMOJIS } from './format'
 export { insertMermaid, insertChartJs, insertMindmap, insertExcalidraw } from './diagram'
 export { insertKanban, KANBAN_TEMPLATES, insertKanbanFromOutline, generateKanbanFromOutline } from './kanban'
+export { insertColumns, insertTimeline, insertAlign } from './panel'
 export { insertCallout, insertDetails, insertTabs, insertNoteTemplate, insertFrontMatter, insertTable, insertCodeBlock, insertAdvancedCodeBlock, insertRunnableJsBlock, insertHorizontalRule } from './block'
 export { completeCodeFenceOnEnter, smartEnter, tableTab, toggleTaskDone, setTaskAtLine, updateTaskAtSourceLine } from './enter'
 export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from './diagram'

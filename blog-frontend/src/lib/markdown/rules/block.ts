@@ -2,82 +2,10 @@ import MarkdownIt from 'markdown-it'
 import type { StateBlock } from 'markdown-it'
 import { parseDetailsOptions } from '../details-options.ts'
 import { parseTableOptions } from '../table-options.ts'
-
-function blockLine(state: StateBlock, line: number): string {
-  const pos = state.bMarks[line] + state.tShift[line]
-  const max = state.eMarks[line]
-  return state.src.slice(pos, max)
-}
-
-type Fence = {
-  char: string
-  length: number
-}
-
-function advanceFence(fence: Fence | null, marker: string): Fence | null {
-  if (!fence) return { char: marker[0]!, length: marker.length }
-  if (marker[0] === fence.char && marker.length >= fence.length) return null
-  return fence
-}
-
-function walkNonFenceLines(
-  state: StateBlock,
-  start: number,
-  end: number,
-  visit: (line: number, text: string) => boolean
-): number {
-  let fence: Fence | null = null
-  for (let line = start; line < end; line++) {
-    const text = blockLine(state, line)
-    const fenceMatch = /^(`{3,}|~{3,})/.exec(text)
-    if (fenceMatch) {
-      fence = advanceFence(fence, fenceMatch[1]!)
-      continue
-    }
-    if (fence) continue
-    if (visit(line, text)) return line
-  }
-  return -1
-}
-
-function findContainerEnd(state: StateBlock, startLine: number, endLine: number, markerLength: number): number {
-  let depth = 1
-  let result = -1
-  walkNonFenceLines(state, startLine + 1, endLine, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
-      depth++
-      return false
-    }
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
-      result = line
-      return true
-    }
-    return false
-  })
-  return result
-}
-
-function findColonFenceEnd(state: StateBlock, start: number, end: number, markerLength: number): number {
-  let depth = 1
-  let result = -1
-  walkNonFenceLines(state, start, end, (line, text) => {
-    if (new RegExp(`^:{${markerLength},}(?:\\s+\\S|\\{\\S+\\})`).test(text)) {
-      depth++
-      return false
-    }
-    if (new RegExp(`^:{${markerLength},}\\s*$`).test(text) && --depth === 0) {
-      result = line
-      return true
-    }
-    return false
-  })
-  return result
-}
-
-function stripBracketTitle(value: string): string {
-  const trimmed = value.trim()
-  return /^\[[\s\S]*\]$/.test(trimmed) ? trimmed.slice(1, -1).trim() : trimmed
-}
+import { blockLine, findColonFenceEnd, walkNonFenceLines } from '../block-lines.ts'
+import { matchPanelHeader, stripBracketTitle } from '../panel-options.ts'
+import type { PanelHeaderMatch } from '../panel-options.ts'
+import { DEFAULT_TAB_TITLE, findColonTabSegments, renderPanelContainer } from '../panels.ts'
 
 function parseDirectiveOptions(
   state: StateBlock,
@@ -108,7 +36,7 @@ function findDirectiveTabSegments(state: StateBlock, start: number, end: number)
     if (close < 0) return []
     const { contentStart, isSelected } = parseDirectiveOptions(state, line + 1, close)
     tabs.push({
-      title: stripBracketTitle(match[2] ?? '') || '标签页',
+      title: stripBracketTitle(match[2] ?? '') || DEFAULT_TAB_TITLE,
       start: contentStart,
       end: close,
       selected: isSelected,
@@ -137,10 +65,13 @@ function findTabSegments(state: StateBlock, start: number, end: number) {
     const tab = /^@tab(?:(?::active|\+))?[ \t]+(.+?)[ \t]*$/.exec(text)
     if (tab) {
       const selected = /^@tab(?::active|\+)(?=[ \t])/.test(text)
-      markers.push({ line, title: stripBracketTitle(tab[1]!) || '标签页', selected })
+      markers.push({ line, title: stripBracketTitle(tab[1]!) || DEFAULT_TAB_TITLE, selected })
     }
     return false
   })
+  // A post that already marks its panels with `@tab` keeps that spelling; the `::` spelling is the
+  // fallback, so the two never fight over the same block.
+  if (!markers.length) return findColonTabSegments(state, start, end)
   return markers.map((marker, index) => ({
     title: marker.title,
     start: marker.line + 1,
@@ -299,6 +230,51 @@ function registerTocRule(md: InstanceType<typeof MarkdownIt>): void {
   })
 }
 
+function renderDetailsContainer(state: StateBlock, startLine: number, end: number, rawInfo: string): void {
+  const options = parseDetailsOptions(rawInfo)
+  const openToken = state.push('details_open', 'details', 1)
+  openToken.block = true
+  openToken.map = [startLine, end + 1]
+  openToken.meta = { open: options.open, variant: options.variant, title: options.title || '详细内容' }
+  const summary = state.push('details_summary', 'summary', 0)
+  summary.content = options.title || '详细内容'
+  state.md.block.tokenize(state, startLine + 1, end)
+  state.push('details_close', 'details', -1).block = true
+}
+
+function renderTableContainer(state: StateBlock, startLine: number, end: number, rawInfo: string): void {
+  const openToken = state.push('table_wrap_open', 'div', 1)
+  openToken.block = true
+  openToken.map = [startLine, end + 1]
+  openToken.meta = { options: parseTableOptions(rawInfo) }
+  state.md.block.tokenize(state, startLine + 1, end)
+  state.push('table_wrap_close', 'div', -1).block = true
+}
+
+/** A tabs block that marks no panel at all draws nothing, exactly as it always did. */
+function renderTabsContainer(state: StateBlock, startLine: number, end: number, rawInfo: string): void {
+  const tabs = findTabSegments(state, startLine + 1, end)
+  if (!tabs.length) return
+  const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.selected))
+  const options = parseTabsOptions(rawInfo)
+  const openToken = state.push('tabs_open', 'div', 1)
+  openToken.block = true
+  openToken.meta = { titles: tabs.map((tab) => tab.title), selectedIndex, options }
+  tabs.forEach((tab, tabIndex) => {
+    const panelOpen = state.push('tab_panel_open', 'section', 1)
+    panelOpen.block = true
+    panelOpen.meta = { tabIndex, selected: tabIndex === selectedIndex }
+    state.md.block.tokenize(state, tab.start, tab.end)
+    state.push('tab_panel_close', 'section', -1).block = true
+  })
+  state.push('tabs_close', 'div', -1).block = true
+}
+
+/**
+ * The one `:::` entry point: the legacy `details` / `tabs` / `table` headers, the `{tab-set}`
+ * directive and the panel family all resolve here, so a header none of them claims keeps rendering as
+ * the plain text it always did.
+ */
 function renderModernContainer(
   state: StateBlock,
   startLine: number,
@@ -308,57 +284,29 @@ function renderModernContainer(
   const source = blockLine(state, startLine)
   const legacyMatch = /^(:{3,})[ \t]+(details|tabs|table)\b(?:[ \t]+(.*))?$/.exec(source)
   const directiveMatch = /^(:{3,})\{(tab-set)\}[ \t]*(.*)$/.exec(source)
-  if (!legacyMatch && !directiveMatch) return false
-  const markerLength = (legacyMatch?.[1] ?? directiveMatch![1]!).length
-  const end = findContainerEnd(state, startLine, endLine, markerLength)
+  const panel: PanelHeaderMatch | null = legacyMatch || directiveMatch ? null : matchPanelHeader(source)
+  if (!legacyMatch && !directiveMatch && !panel) return false
+  const markerLength = legacyMatch?.[1].length ?? directiveMatch?.[1].length ?? panel!.markerLength
+  const end = findColonFenceEnd(state, startLine + 1, endLine, markerLength)
   if (end < 0) return false
   if (silent) return true
 
-  const kind = legacyMatch?.[2] ?? directiveMatch![2]!
-  const rawInfo = (legacyMatch?.[3] ?? directiveMatch?.[3] ?? '').trim()
-  if (kind === 'details') {
-    const options = parseDetailsOptions(rawInfo)
-    const openToken = state.push('details_open', 'details', 1)
-    openToken.block = true
-    openToken.map = [startLine, end + 1]
-    openToken.meta = { open: options.open, variant: options.variant, title: options.title || '详细内容' }
-    const summary = state.push('details_summary', 'summary', 0)
-    summary.content = options.title || '详细内容'
-    state.md.block.tokenize(state, startLine + 1, end)
-    state.push('details_close', 'details', -1).block = true
-  } else if (kind === 'table') {
-    const openToken = state.push('table_wrap_open', 'div', 1)
-    openToken.block = true
-    openToken.map = [startLine, end + 1]
-    openToken.meta = { options: parseTableOptions(rawInfo) }
-    state.md.block.tokenize(state, startLine + 1, end)
-    state.push('table_wrap_close', 'div', -1).block = true
-  } else {
-    const tabs = findTabSegments(state, startLine + 1, end)
-    if (!tabs.length) {
-      state.line = end + 1
-      return true
-    }
-    const selectedIndex = Math.max(0, tabs.findIndex((t) => t.selected))
-    const options = parseTabsOptions(rawInfo)
-    const openToken = state.push('tabs_open', 'div', 1)
-    openToken.block = true
-    openToken.meta = { titles: tabs.map((t) => t.title), selectedIndex, options }
-    tabs.forEach((tab, tabIndex) => {
-      const panelOpen = state.push('tab_panel_open', 'section', 1)
-      panelOpen.block = true
-      panelOpen.meta = { tabIndex, selected: tabIndex === selectedIndex }
-      state.md.block.tokenize(state, tab.start, tab.end)
-      state.push('tab_panel_close', 'section', -1).block = true
-    })
-    state.push('tabs_close', 'div', -1).block = true
-  }
+  // `::: t` is the panel spelling of the same tabs block, so it joins the tabs branch with its own
+  // option remainder rather than becoming a sixth container kind.
+  const panelTabs = panel?.header.kind === 'tabs'
+  const kind = legacyMatch?.[2] ?? directiveMatch?.[2] ?? (panelTabs ? 'tabs' : '')
+  const rawInfo = (legacyMatch?.[3] ?? directiveMatch?.[3] ?? panel?.info ?? '').trim()
+  if (panel && !panelTabs) renderPanelContainer(state, startLine, end, panel)
+  else if (kind === 'details') renderDetailsContainer(state, startLine, end, rawInfo)
+  else if (kind === 'table') renderTableContainer(state, startLine, end, rawInfo)
+  else renderTabsContainer(state, startLine, end, rawInfo)
   state.line = end + 1
   return true
 }
 
 function registerModernContainerRule(md: InstanceType<typeof MarkdownIt>): void {
-  // Containers: ::: details, ::: table and ::: tabs
+  // Containers: ::: details, ::: table, ::: tabs and the ::: panel family (alignment, columns,
+  // timeline, callouts). One rule so an unclaimed header keeps rendering as plain text.
   md.block.ruler.before(
     'fence',
     'modern_container',
