@@ -476,10 +476,13 @@
   - 采样再累加（R2-4 收尾 + R2-5 收尾两轮）：**R2-4 批次收尾（`771 / 8`，第 8 份）绿**——8 条红的名单里没有 `alt+arrow`（当时只写在批次段，这里补记）；**R2-5 批次收尾（`772 / 7`，第 9 份）仍绿**。累计 9 份**红 1 绿 8**，间歇性质进一步坐实。本批与导图提交链零交集（六条都在缓存、hash、memo、节流、导出侧），测法（换成 `waitForNoteBody` 轮询再连采三轮）仍未执行，本条保持 `[需实测]` 与 open。
   - 关闭依据：按 prescribed 测法执行——把按键后的定长 `sleep(1_200)` 换成与邻位同款的 `orderOf()` 轮询（读的就是已提交栅栏体，上限 15 s），连采三轮皆**绿**。这条从未是写入丢失：重排一直在同一条 debounce 链上落地，只是 1.2 s 不是它的保证。与 L-3 一并做掉（两条同族，本条原文即建议「可并做一次」）。
   - 代价：低（大概率是断言的等待方式）
-- [ ] **L-12** N-22 顺手发现：`useDeckIndex` 的索引夹取没有直接用例（`低` · 测试面）
+- [x] **L-12** N-22 顺手发现：`useDeckIndex` 的索引夹取没有直接用例（`低` · 测试面）— 已关闭（`5a87bd5d`）：夹取提成 `clampSlideIndex` 纯函数，并在纯函数与 hook 两层各拿到具名用例
   - 实测在案：放映的位置有三层夹取，各有去处——子页夹取有 `slide-pagination.test.ts > clamps a sub-page into the current plan instead of rendering off-plan`，切片页索引有 `slide-slice.test.ts > clamps a page index past the end instead of dropping the page`，而**幻灯片级的 `useDeckIndex`**（开场 `initialSlideIndex` 夹进 deck、deck 变短把位置拉回末页、`goTo` 不越两端）只有间接经过：`presentation-keys.test.ts` / `use-presentation-keys.test.ts` 用 `slideCount` 走一遍按键，从不构造「deck 在放映中变短」这一步。
   - 为什么值得补：N-19 之后「跟随」会让 deck 在放映中随时因外部写入重切，「讲到第 8 张时另一台设备删掉了后半部分」正是这条夹取存在的理由，而现在它红不红没人知道。测法：在会话那一层用 `rerender` 把 deck 从 5 页缩到 2 页，断位置落在末页而不是停在第 5 页；若能把夹取像 `deckProgress` 那样表达成 `presentation-state.ts` 里的纯函数，用例就不必挂载整个放映。
   - 归属：不在 N-22 内补（`铁律 14`，那条只改注释）。
+  - 关闭方式与实际落点（2026-10-04）：按本条 prescribed 的第一案做——夹取表达成 `presentation-state.ts` 的纯函数 `clampSlideIndex(index, deckLength)`，`useDeckIndex` 三处改调它；纯函数三条用例（记忆位置 / 两端 / 空 deck）+ hook 层三条（开场 7 对 3 页、放映中五页缩两页再缩空、`jumpTo` 两端）。**顺带修掉一处真缺陷**：旧的「变短夹取」只写上界 `Math.min(current, deckLength - 1)`，deck 变空时给的是 `-1`——一个既不在首也不在末、却被拿去索引 deck 的值；现在空 deck 答 `0`。
+  - 一层方法账：构造期的那次夹取（`useState(() => clamp(...))`）**只有渲染期的读数能证明**——变异 M5（开场不夹）首跑 SURVIVED，因为挂载后的 effect 会把它补上；把「首次渲染那一刻的 index」记进数组再断言，M5 才由 `opens on the last slide when the remembered one is gone` 具名杀死。以后凡是「防的是第一帧」的守卫，测法都要先问一句：我的读法看得见第一帧吗。
+  - 证据：变异 5/5（M1 去下界 / M2 无上界 / M3 不跟变短 / M4 跳转不夹 / M5 开场不夹）；全量单测 656 文件 / 6396 通过 + 1 跳过；13 项静态门禁与 `typecheck` rc=0。无行为变更（除上面那条 `-1` → `0`），故不动浏览器门禁。
   - 代价：低
 - [ ] **L-13** N-29 浏览器实测副产物：headless shell 里放映会**自发掉出**浏览器全屏（`低` · 门禁面）
   - 实测在案（:7712、headless shell）：在 `page.evaluate` 里 `.click()` 放映自己的全屏按钮，应用侧按钮文案翻成「退出全屏」（即 `document.fullscreenElement === panelRef.current` 曾真成立），约 1.2 s 后同一处再读却是 `fullscreenElement === null`；此时 `useChromeAutoHide(open && isFullscreen)` 已回到未启动态，**淡出断言量的是一条根本没挂监听的路径**。补一次真实按键（`page.keyboard.press('f')`）后 `fullscreenElement` 又为真。
@@ -822,3 +825,9 @@
   - 采样（同一字节连采三轮，`INKSTONE_EPHEMERAL_DEV=1` 的 :7722）：`856 passed, 4 failed` ×3，两条目标断言三份全绿，且每轮剩下的四条**逐字同名**于 L-1 的缩略图族。按 prescribed 的判据「三轮全绿即取数面问题」——**L-3 与 L-11 关闭**，写入链没有被证明有问题，也不需要动产品代码。
   - 顺手把间歇红的账并回来：L-4（两条 `cover:`）与 L-8（看板焦点归还）在这三份里同样全绿，采样累加进各自条目；视觉总断言数从上一轮的 860 变为 **860（856 + 4）**，未增断言、只改判据与等待方式。
   - 下一条按台账顺序：仍是 **L-1** 的下一阶段（把 `prepared` 收敛成「画完了」——`SlideMarkup` 加待绘态、量测趟把它当未定、`thumbDrawOf` 多报一态；写回不能作为修法，理由记在条目里）。
+
+- 2026-10-04 · 收尾 / L-12 关闭（`5a87bd5d`）：放映位置的第三层夹取第一次有自己的用例。
+  - 三层夹取的现状是：子页有 `slide-pagination.test.ts` 的越界回归、切片页有 `slide-slice.test.ts` 的末页回归，**幻灯片级只被按键测试间接经过**——「讲到第 8 张时另一台设备删掉了后半部分」这件事从来没有一条断言钉过。本条把它提成 `clampSlideIndex` 纯函数并在两层建用例。
+  - 顺带修掉的 `-1`：旧的变短夹取只写上界，deck 被清空时位置变成 `-1`，而每个读它的人都在拿它索引（`deck[-1]` 是 undefined，`hasForwardMove` 于是认为还能往前走）。改后空 deck 答 `0`。这条不是「顺手美化」——它是本条 prescribed 的那一步（把夹取表达成可测的纯函数）直接暴露出来的。
+  - 证据：变异 5/5，其中 **M5（开场不夹）首跑 SURVIVED**，因为挂载后的 effect 会补夹；加了一条「渲染期记录 index」的读法后由 `opens on the last slide when the remembered one is gone` 具名杀死——记进方法账：**防第一帧的守卫必须用渲染期的读数来证明**（与本批次「断言要证明驱动真的发生了」同族）。全量单测 656 文件 / 6396 通过 + 1 跳过；13 项静态门禁与 `typecheck` rc=0。
+  - 下一条按台账顺序：**L-13 / L-14 / L-15 与 L-4 … L-10 各自挂着「需实测 / 需第二标签页 / 需行为决定」**，其中能独立做完的是 **L-12 之后**的 **L-5**（`preview.mermaid` 关掉后放映与演讲者仍画图——设置名存实亡，需先判定这是 bug 还是有意取舍）与 **L-6**（演讲者窗在放映结束后仍走表——要先在「停表 / 停在最后值 / 归零」里选一个并配文案）；L-1 的下一阶段（`prepared` 语义合一）是最大的的一块，需要动 `SlideMarkup` 与量测趟两处并连采视觉。
