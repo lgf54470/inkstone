@@ -3,7 +3,7 @@ import { cn } from '../lib/cn'
 import { dateKey, type WeekStartDay } from '../lib/time'
 
 
-interface MonthGridCell {
+export interface MonthGridCell {
   key: string
   day: number
   inMonth: boolean
@@ -52,7 +52,7 @@ export function MonthGrid({ year, month, weekStart = 1, weekdayLabels, todayKey,
 }
 
 
-interface YearGridMonth {
+export interface YearGridMonth {
   month: number
   cells: MonthGridCell[]
 }

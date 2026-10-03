@@ -19,6 +19,42 @@ const DEFAULT_WEEKS = 16
 
 
 
+export interface YearHeatMeta {
+  totals: number[]
+  yearMax: number
+}
+
+
+
+/** Per-month note totals and the busiest month, which is the scale the yearly grid divides by. */
+export function buildYearHeatMeta(counts: ReadonlyMap<string, number>, year: number): YearHeatMeta {
+  const totals: number[] = []
+  let yearMax = 0
+  for (let month = 0; month < 12; month++) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    let total = 0
+    for (let day = 1; day <= daysInMonth; day++)
+      total += counts.get(dateKey(new Date(year, month, day))) ?? 0
+    totals.push(total)
+    if (total > yearMax)
+      yearMax = total
+  }
+  return { totals, yearMax }
+}
+
+
+
+/**
+ * A day is scaled by the busiest month's total rather than by the busiest day, so a month of steady
+ * daily writing stays on the lightest level while one day holding a whole month's output goes dark.
+ */
+export function yearHeatLevel(counts: ReadonlyMap<string, number>, yearMax: number, key: string): number {
+  const count = counts.get(key) ?? 0
+  return count === 0 ? 0 : Math.max(1, Math.round((4 * count) / Math.max(1, yearMax)))
+}
+
+
+
 export interface CalendarDayNote {
   id: string
   title: string

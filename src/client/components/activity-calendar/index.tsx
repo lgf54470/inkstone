@@ -7,9 +7,10 @@ import { YearView } from './year-view'
 import { WeeksView } from './weeks-view'
 import { HeatLegend } from './legend'
 export { latestEditOutsideWindow } from '../../features/list'
-export { buildStripWeeks } from './strip'
+export { buildStripWeeks, buildYearHeatMeta, yearHeatLevel, HEAT_PERCENTS } from './strip'
+export { heatCell } from './heat-cell'
 export { monthRangeToKeys } from './range'
-export type { BuildStripWeeksOptions, CalendarDayNote, WeekCell } from './strip'
+export type { BuildStripWeeksOptions, CalendarDayNote, WeekCell, YearHeatMeta } from './strip'
 
 // The calendar's inputs (counts, notesByDay, diary lookup) now keep their
 // identity whenever a notes-map commit touches none of the read fields, so a

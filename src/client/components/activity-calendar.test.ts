@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { act, createElement, useState } from 'react'
-import { buildStripWeeks, monthRangeToKeys, ActivityCalendar } from './activity-calendar'
+import { buildStripWeeks, buildYearHeatMeta, HEAT_PERCENTS, monthRangeToKeys, yearHeatLevel, ActivityCalendar } from './activity-calendar'
 import type { ActivityCalendarProps } from './activity-calendar/props'
 import { renderElement } from '../lib/test-render'
 
@@ -94,6 +94,22 @@ describe('buildStripWeeks notes, selection and month ranges', () => {
   })
 })
 
+describe('buildYearHeatMeta and yearHeatLevel', () => {
+  it('scales a day by the busiest month total, shared by the year view and the settings preview', () => {
+    const burst = new Map([['2026-09-03', 12]])
+    const burstMeta = buildYearHeatMeta(burst, 2026)
+    expect(burstMeta.totals[8]).toBe(12)
+    expect(burstMeta.yearMax).toBe(12)
+    expect(yearHeatLevel(burst, burstMeta.yearMax, '2026-09-03')).toBe(4)
+    // The same month total spread over thirty days keeps every one of them on the lightest level.
+    const steady = new Map(Array.from({ length: 30 }, (_, day) => [`2026-09-${String(day + 1).padStart(2, '0')}`, 1]))
+    const steadyMeta = buildYearHeatMeta(steady, 2026)
+    expect(steadyMeta.yearMax).toBe(30)
+    expect([...new Set([...steady.keys()].map((key) => yearHeatLevel(steady, steadyMeta.yearMax, key)))].sort()).toEqual([1])
+    expect(yearHeatLevel(steady, steadyMeta.yearMax, '2026-01-01')).toBe(0)
+  })
+})
+
 // jsdom has no layout engine, so these guards assert the anti-wrap CSS contract
 // (whitespace-nowrap + truncate) instead of pixel measurement.
 function calendarProps(overrides: Partial<ActivityCalendarProps> = {}): ActivityCalendarProps {
@@ -172,6 +188,27 @@ describe('view toggle wrapping contract', () => {
     expect(document.activeElement?.getAttribute('data-month')).toBe('11')
     act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); })
     expect(document.activeElement?.getAttribute('data-month')).toBe('8')
+    unmount()
+  })
+})
+
+describe('year view heat tiles', () => {
+  it('tints only the days that have notes and draws every other day of the month as bare paper', () => {
+    const { container, unmount } = renderElement(createElement(ActivityCalendar, calendarProps({
+      view: 'year',
+      counts: new Map([['2026-09-03', 1]]),
+    })))
+    const tiles = [...container.querySelectorAll<HTMLElement>('[data-month="8"] > span')]
+    const tinted = tiles.filter((tile) => tile.style.backgroundColor.startsWith('color-mix'))
+    const quiet = tiles.filter((tile) => tile.style.backgroundColor === 'var(--bg-surface)')
+    // One note is the whole year's busiest day, so it lands on the darkest level AA allows, and it
+    // mixes into the same paper the quiet tiles show, so the ramp is one object at four saturations.
+    expect(tinted).toHaveLength(1)
+    expect(tinted[0]!.style.backgroundColor).toBe(`color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[4]}%, var(--bg-surface))`)
+    expect(quiet.length + tinted.length).toBe(new Date(2026, 9, 0).getDate())
+    // Neighbouring months' days draw nothing at all, so the paper run is what carries the month's shape.
+    expect(tiles.length).toBeGreaterThan(quiet.length + tinted.length)
+    for (const tile of tiles.filter((t) => !tinted.includes(t) && !quiet.includes(t))) expect(tile.style.backgroundColor).toBe('transparent')
     unmount()
   })
 })

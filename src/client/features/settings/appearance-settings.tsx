@@ -1,13 +1,15 @@
 import { useCallback, useMemo } from 'react'
 import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, ThemePref, UiDensity } from '@shared/types'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
-import { YearGrid } from '../../components/calendar-grids'
+import { YearGrid, type YearGridMonth } from '../../components/calendar-grids'
+import { buildYearHeatMeta, heatCell, yearHeatLevel } from '../../components/activity-calendar'
 import { cn } from '../../lib/cn'
 import { weekStartFor } from '../../lib/time'
 import { Input, Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
 import { useUi } from '../../store/ui'
+import { useNotes } from '../../store/notes'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
-import { resolveTodoTag } from '../../lib/calendar-tree'
+import { buildActivityProjectionCached, resolveTodoTag } from '../../lib/calendar-tree'
 import { setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../lib/year-grid-prefs'
 import { setUndoToastFocus, useUndoToastFocus } from '../../lib/undo-focus-pref'
 import { Tooltip } from '../../components/overlay'
@@ -267,50 +269,59 @@ function TypographySection({ appearance, setters, options }: { appearance: Appea
   )
 }
 
+function PreviewMonthCard({ month, label, counts, yearMax, onJump }: {
+  month: YearGridMonth
+  label: string
+  counts: ReadonlyMap<string, number>
+  yearMax: number
+  onJump: (month: number) => void
+}) {
+  return (
+    <button
+      type='button'
+      aria-label={t('settings.year_grid_columns_jump_value0', { value0: label })}
+      onClick={() => { onJump(month.month); }}
+      className='flex min-w-0 flex-col items-center gap-0.5 rounded-[var(--r-3)] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
+    >
+      <span className='text-[length:var(--text-12)] font-medium text-[var(--text-quaternary)]'>{label}</span>
+      <span aria-hidden='true' className='grid w-full grid-cols-7 gap-px'>
+        {month.cells.map((cell) => (
+          <span
+            key={cell.key}
+            className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')}
+            style={heatCell(cell.inMonth ? yearHeatLevel(counts, yearMax, cell.key) : null)}
+          />
+        ))}
+      </span>
+    </button>
+  )
+}
+
 function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; locale: string }) {
+  const notes = useNotes((s) => s.notes)
   const monthLabels = useMemo(() => {
     const formatter = new Intl.DateTimeFormat(locale, { month: 'short' })
     return Array.from({ length: 12 }, (_, month) => formatter.format(new Date(2026, month, 1)))
   }, [locale])
-  const previewHeat = [16, 34, 54] as const
   const previewYear = new Date().getFullYear()
+  const weekStart = weekStartFor(locale)
+  const { counts } = useMemo(() => buildActivityProjectionCached(notes), [notes])
+  const { yearMax } = useMemo(() => buildYearHeatMeta(counts, previewYear), [counts, previewYear])
   const jumpToMonth = (month: number) => {
     useUi.getState().requestCalendarJump(previewYear, month)
     useUi.getState().closePanel()
   }
   return (
-    <div className='mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-2'>
+    <div className='mt-1 mb-3 max-w-75 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2'>
       <div className='mb-1 flex items-center justify-between gap-2'>
         <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview')}</span>
         <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview_tip')}</span>
       </div>
       <YearGrid
         year={previewYear}
-        weekStart={weekStartFor(locale)}
+        weekStart={weekStart}
         columns={columns === '4' ? 4 : 3}
-        renderMonth={(month) => (
-          <button
-            key={month.month}
-            type='button'
-            aria-label={t('settings.year_grid_columns_jump_value0', { value0: monthLabels[month.month] ?? '' })}
-            onClick={() => jumpToMonth(month.month)}
-            className='flex min-w-0 flex-col items-center gap-0.5 rounded-[var(--r-3)] p-px transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
-          >
-            <span className='text-[length:var(--text-7)] font-medium text-[var(--text-quaternary)]'>{monthLabels[month.month]}</span>
-            <span aria-hidden='true' className='grid w-full grid-cols-7 gap-px'>
-              {month.cells.map((cell, index) => {
-                const level = cell.inMonth ? ((index + month.month) % 4) : 0
-                return (
-                  <span
-                    key={index}
-                    className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')}
-                    style={{ backgroundColor: !cell.inMonth ? 'transparent' : level === 0 ? 'var(--bg-base)' : `color-mix(in oklab, var(--accent) ${previewHeat[level - 1]}%, transparent)` }}
-                  />
-                )
-              })}
-            </span>
-          </button>
-        )}
+        renderMonth={(month) => (<PreviewMonthCard key={month.month} month={month} label={monthLabels[month.month] ?? ''} counts={counts} yearMax={yearMax} onJump={jumpToMonth}/>)}
       />
     </div>
   )

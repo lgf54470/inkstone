@@ -4,7 +4,8 @@ import { ChevronDown, FileText } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { Tooltip } from '../overlay'
-import { HEAT_PERCENTS, type WeekCell } from './strip'
+import { type WeekCell } from './strip'
+import { heatCell } from './heat-cell'
 
 interface WeeksStripProps {
   stripWeeks: WeekCell[][]
@@ -88,11 +89,7 @@ function WeekHeatColumn({
               cell.selected && !cell.today && 'ring-1 ring-inset ring-[var(--accent)]/70',
               isLatestOutside(cell.key) && 'border border-dashed border-[var(--accent)]/80',
             )}
-            style={
-              cell.level > 0
-                ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[cell.level]}%, transparent)` }
-                : { backgroundColor: 'var(--bg-inset)' }
-            }
+            style={heatCell(cell.level)}
           />
         </Tooltip>
       ))}

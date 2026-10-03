@@ -2490,10 +2490,17 @@ const allowed = new Map([
     '/**\n * One-off regeneration of the comment allowlist inside check-comments.mjs.\n * Reads the comments through the same scanner the checker uses\n * (`scripts/lib/comment-scan.mjs`), so the allowlist stays an exact inventory of\n * every comment in the scanned files. Run: node scripts/sync-comments-allowlist.mjs\n */',
   ]],
   ['src/client/components/activity-calendar.test.ts', [
+    '// The same month total spread over thirty days keeps every one of them on the lightest level.',
     '// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract',
     '// (whitespace-nowrap + truncate) instead of pixel measurement.',
     '// One seven-column row of clickable weekday labels above the heat cells.',
+    '// One note is the whole year\'s busiest day, so it lands on the darkest level AA allows, and it',
+    '// mixes into the same paper the quiet tiles show, so the ramp is one object at four saturations.',
+    '// Neighbouring months\' days draw nothing at all, so the paper run is what carries the month\'s shape.',
     '// 2026-09 has the first Monday on the 7th: column 0 (Mon) filters 09-07..09-13.',
+  ]],
+  ['src/client/components/activity-calendar/heat-cell.ts', [
+    '/**\n * One day tile of a heat surface. `null` is not a day of this month at all, so it draws nothing.\n *\n * The whole ramp sits on paper rather than on the surface behind it: level 0 is the bare tile and\n * levels 1-4 mix the accent into that same white, so a quiet day and a busy day are the same object\n * at different saturation. Mixing over `transparent` made the quiet tiles read as shaded days,\n * because their fill was only a few points off the sunken sidebar behind them.\n */',
   ]],
   ['src/client/components/activity-calendar/index.tsx', [
     '// The calendar\'s inputs (counts, notesByDay, diary lookup) now keep their',
@@ -2514,6 +2521,8 @@ const allowed = new Map([
     '// themes — at 70% the darkest cells read 3.58:1 under indigo (dark) and 3.90:1 under graphite',
     '// (light), where AA needs 4.5. 50% is the highest level all fourteen measure above it',
     '// (scripts/check-contrast.mjs re-measures the cells for each accent and theme).',
+    '/** Per-month note totals and the busiest month, which is the scale the yearly grid divides by. */',
+    '/**\n * A day is scaled by the busiest month\'s total rather than by the busiest day, so a month of steady\n * daily writing stays on the lightest level while one day holding a whole month\'s output goes dark.\n */',
   ]],
   ['src/client/components/activity-calendar/types.ts', [
     '// Shared hook state shapes for the activity calendar. Kept in their own module',

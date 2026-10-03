@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { YearGrid } from '../calendar-grids'
-import { HEAT_PERCENTS } from './strip'
+import { heatCell } from './heat-cell'
 import type { YearViewBundle } from './use-activity-calendar'
 
 
@@ -30,9 +30,7 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
             </button>))}
           </span>
           <button type='button' data-month={month.month} tabIndex={month.month === focusMonth ? 0 : -1} aria-label={t('sidebar.calendar_year_month_value0', { value0: monthLabels[month.month] ?? '', value1: yearMeta.totals[month.month] ?? 0 })} onClick={(event) => onMonthClick(event, month.month)} className='grid w-full grid-cols-7 gap-px rounded-[var(--r-2)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'>
-            {month.cells.map((cell, index) => (<span key={index} aria-hidden='true' className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')} style={!cell.inMonth
-              ? { backgroundColor: 'transparent' }
-              : (yearLevel(cell.key) > 0 ? { backgroundColor: `color-mix(in oklab, var(--accent) ${HEAT_PERCENTS[yearLevel(cell.key)]}%, transparent)` } : { backgroundColor: 'var(--bg-inset)' })}/>))}
+            {month.cells.map((cell, index) => (<span key={index} aria-hidden='true' className={cn('aspect-square w-full rounded-[var(--r-1)]', cell.today && 'ring-1 ring-inset ring-[var(--accent)]')} style={heatCell(cell.inMonth ? yearLevel(cell.key) : null)}/>))}
           </button>
         </div>)
       }}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DateRangeFilter } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { dateKey, narrowWeekdayLabels, type WeekStartDay } from '../../lib/time'
-import { buildStripWeeks, type WeekCell } from './strip'
+import { buildStripWeeks, buildYearHeatMeta, yearHeatLevel, type WeekCell } from './strip'
 import { latestEditOutsideWindow } from '../../features/list'
 import { YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns } from '../calendar-grids'
 import type { ActivityCalendarProps } from './props'
@@ -117,24 +117,8 @@ interface YearState {
 }
 
 function useCalendarYear(props: ActivityCalendarProps, state: CalendarState): YearState {
-  const yearMeta = useMemo(() => {
-    const totals: number[] = []
-    let yearMax = 0
-    for (let month = 0; month < 12; month++) {
-      const daysInMonth = new Date(props.cursor.year, month + 1, 0).getDate()
-      let total = 0
-      for (let day = 1; day <= daysInMonth; day++)
-        total += props.counts.get(dateKey(new Date(props.cursor.year, month, day))) ?? 0
-      totals.push(total)
-      if (total > yearMax)
-        yearMax = total
-    }
-    return { totals, yearMax }
-  }, [props.counts, props.cursor.year])
-  const yearLevel = (key: string) => {
-    const count = props.counts.get(key) ?? 0
-    return count === 0 ? 0 : Math.max(1, Math.round((4 * count) / Math.max(1, yearMeta.yearMax)))
-  }
+  const yearMeta = useMemo(() => buildYearHeatMeta(props.counts, props.cursor.year), [props.counts, props.cursor.year])
+  const yearLevel = (key: string) => yearHeatLevel(props.counts, yearMeta.yearMax, key)
   useEffect(() => {
     state.setYearRangeAnchor(null)
     state.setYearRangeHover(null)
