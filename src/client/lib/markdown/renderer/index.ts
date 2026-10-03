@@ -144,4 +144,18 @@ export {
 } from './details-options'
 export type { DetailsOptions, DetailsVariant } from './details-options'
 export { infoFlag, infoOption, infoTokens } from './info-string'
+export {
+  IMAGE_WIDTH_SNAP_STEPS,
+  formatImageAttrs,
+  hasImageAttrs,
+  imageAttrMarkup,
+  isImageAlign,
+  isImageWidthPercent,
+  mergeImageAttrs,
+  parseCherryImageFlags,
+  parseImageAttrGroup,
+  parseImageAttrTokens,
+  serializeImageAttrTokens,
+} from './image-attrs'
+export type { ImageAlign, ImageAttrs } from './image-attrs'
 export { escapeAttr } from './util'
