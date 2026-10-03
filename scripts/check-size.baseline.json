@@ -88,7 +88,7 @@
     "longFns": 1
   },
   "src/client/features/preview/preview-interactions.ts": {
-    "lines": 503
+    "lines": 505
   },
   "src/client/features/preview/preview-state.test.ts": {
     "longFns": 1
@@ -217,13 +217,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 642
+    "lines": 656
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 642
+    "lines": 656
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908
