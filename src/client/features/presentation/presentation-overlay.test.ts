@@ -1,7 +1,7 @@
 import { act, createElement } from 'react'
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../lib/i18n'
-import { renderElement } from '../../lib/test-render'
+import { renderElement, stubBreakpoint, stubWideShow } from '../../lib/test-render'
 import { noteSummary } from '../../store/notes-test-utils'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
@@ -34,11 +34,16 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   act(() => {
     usePresentation.setState({ open: false, noteId: null, snapshot: '' })
   })
   document.body.innerHTML = ''
 })
+
+// The bar these cases read is the one a wide room gets: jsdom reads every query as false — the phone
+// layout, one door and no controls — which would sit under assertions written for the pill.
+beforeEach(stubWideShow)
 
 function fireContextMenu(target: EventTarget, clientX = 200, clientY = 300): MouseEvent {
   const event = new MouseEvent('contextmenu', {
@@ -372,6 +377,37 @@ describe('PresentationOverlay — reaching the key card', () => {
     if (!row) throw new Error('the menu offers no row for the key card')
     fireClick(row)
     expect(keyCard()).toBeTruthy()
+    view.unmount()
+  })
+})
+
+// N-18 + N-35: measured at 390×844 the wide bar is 453px and its × control lands off-screen, so the
+// show folds the middle of it behind one door. This is the wiring case: the session's room is what
+// moves the controls, not a prop some caller forgot to pass.
+describe('PresentationOverlay — the show in a phone window', () => {
+  it('keeps the turn and the way out in the bar and puts the rest behind one door', () => {
+    stubBreakpoint(false)
+    const view = renderElement(createElement(PresentationOverlay))
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    expect(chrome?.querySelector('[data-presentation-overflow]')).toBeTruthy()
+    expect(chrome?.querySelector(`[aria-label="${t('workspace.presentation_prev')}"]`)).toBeTruthy()
+    expect(chrome?.querySelector(`[aria-label="${t('workspace.presentation_exit')}"]`)).toBeTruthy()
+    expect(chrome?.querySelector(`[aria-label="${t('workspace.presentation_show_overview')}"]`)).toBeNull()
+    view.unmount()
+  })
+
+  it('hands the door the four tools a touch screen has no other way to reach', () => {
+    stubBreakpoint(false)
+    const view = renderElement(createElement(PresentationOverlay))
+    act(() => {
+      document.querySelector<HTMLElement>('[data-presentation-overflow]')?.click()
+    })
+    const rows = [...document.querySelectorAll('[role="menu"] button')].map((row) => row.textContent?.trim() ?? '')
+    for (const label of [t('workspace.presentation_laser'), t('workspace.presentation_spotlight'), t('workspace.presentation_blackout'), t('workspace.presentation_whiteout')]) {
+      expect(rows.some((row) => row.includes(label)), label).toBe(true)
+    }
+    // The list belongs to the projector it opened from: painted beside the dialog it would sit under it.
+    expect(document.querySelector('[role="dialog"] [role="menu"]')).toBeTruthy()
     view.unmount()
   })
 })

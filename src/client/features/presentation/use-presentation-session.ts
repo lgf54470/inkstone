@@ -108,6 +108,8 @@ export interface PresentationSession {
   toggleKeyGuide: () => void
   /** Whether the layers under the grid are out of reach: focus, clicks and Tab all stop at it. */
   occluded: boolean
+  /** A phone window: the capsule has no room for eleven controls, so the bar offers one door instead. */
+  compact: boolean
   openPresenter: () => void
   /** The console hosted inside the show, for the speaker whose browser blocked the presenter window. */
   presenterPanel: PresenterSlideState | null
@@ -181,7 +183,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const nav = usePresentationNav(deck, hashes, initialSlideIndex)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
-  const { railOpen, toggleRail } = useSlideList(open)
+  const { railOpen, toggleRail, compact } = useShowRoom(open)
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
@@ -192,14 +194,14 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight, keyGuideOn: mode.keyGuide, clearKeyGuide: mode.clearKeyGuide })
   const slideUnprepared = useSlideHtml({ open, deck, hashes, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
-  // The session is the union of the pieces above, so each of them is spread rather than unpacked
-  // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the
-  // controls ask for. What stays explicit is what only the session decides.
+  // The session is the union of the pieces above, spread rather than unpacked key by key: `nav` is the
+  // position, `mode` what the keys own, `exports` what the controls ask for; explicit is what only it decides.
   return {
     deck,
     notes,
     cacheKeys,
     railOpen,
+    compact,
     ...deckProgress({ deckLength: deck.length, plans: nav.plans, index: nav.index, sub: nav.sub }),
     following,
     followLost,
@@ -262,10 +264,12 @@ function useShowSettings() {
   return { dark, externalImages, proseFont }
 }
 
-// The overlay outlives a single show now that the shell hosts it, so the list follows
-// the viewport instead of a value frozen at app start: it is open on screens with room
-// for it, and an explicit toggle during the show wins until the next show opens.
-function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => void } {
+// What the room the show sits in allows, read once: a window with room for the list opens it by
+// default (an explicit toggle during the show wins until the next show opens), and a window too
+// narrow for eleven controls gets the bar that fits it. Both are the same measurement, so both come
+// from the same call — the overlay outlives a single show now that the shell hosts it, which is why
+// the room is followed live rather than frozen at app start.
+function useShowRoom(open: boolean): { railOpen: boolean; toggleRail: () => void; compact: boolean } {
   const [choice, setChoice] = useState<boolean | null>(null)
   const fitsViewport = useBreakpoint() !== 'mobile'
   useLayoutEffect(() => {
@@ -273,7 +277,7 @@ function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => voi
   }, [open])
   const railOpen = railOpenFor(choice, fitsViewport)
   const toggleRail = useCallback(() => setChoice(!railOpen), [railOpen])
-  return { railOpen, toggleRail }
+  return { railOpen, toggleRail, compact: !fitsViewport }
 }
 
 // Which slide the show is on, kept inside the deck at both ends: the opening index is clamped in case

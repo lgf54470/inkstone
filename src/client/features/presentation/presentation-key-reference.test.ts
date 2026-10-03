@@ -4,7 +4,7 @@
 // from the card, fails here rather than in front of a talk.
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../lib/i18n'
-import { buildPresentationMenuItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
+import { buildPresentationMenuItems, buildPresentationOverflowItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
 import { presentationKeyCombo, presentationKeyReference } from './presentation-keys'
 
 beforeAll(async () => {
@@ -71,5 +71,32 @@ describe('the right-click menu and the key reference', () => {
     expect(row?.checked).toBe(true)
     row?.onSelect?.()
     expect(onToggleKeyGuide).toHaveBeenCalledTimes(1)
+  })
+})
+
+// N-18 + N-35: the narrow bar gets one door instead of eleven controls, and the door has to hold the
+// same rows the right-click menu holds — otherwise the phone gets a second, quieter map to learn.
+describe('the narrow-screen door and the key reference', () => {
+  it('holds every view, tool and session row, and none of the turns or the exit the bar keeps', () => {
+    expect(buildPresentationOverflowItems(menuOptions()).map((item) => item.id)).toEqual([
+      'overview',
+      'rail',
+      'presenter',
+      'laser',
+      'spotlight',
+      'blackout',
+      'whiteout',
+      'follow',
+      'fullscreen',
+      'key-guide',
+    ])
+  })
+
+  it('spells every row of the door with the key the card prints beside those words', () => {
+    for (const item of buildPresentationOverflowItems(menuOptions())) {
+      const row = presentationKeyReference().find((entry) => entry.description === item.label)
+      expect(row, item.id).toBeTruthy()
+      expect(item.combo, item.id).toBe(presentationKeyCombo(row!.command))
+    }
   })
 })

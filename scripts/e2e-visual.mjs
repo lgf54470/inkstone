@@ -1496,6 +1496,109 @@ async function assertPresentationKeyGuide(page) {
   await openDeckNote(page)
 }
 
+// N-18 + N-35: measured at 390×844 the wide bar is 453px — it hangs off both edges, and its × control
+// lands at x=385..417, outside the screen with nothing to scroll it into view. A touch phone has no
+// right-click and no letters either, so the four tools were unreachable twice over. The gate puts the
+// show in a phone window and asks what a thumb actually needs: can I leave, does the door open, is the
+// list it opens painted on the projector rather than under it, and does that list hand me the tools.
+async function assertPresentationOnTouch(page) {
+  const labels = {
+    exit: localeLabel('workspace.presentation_exit'),
+    overview: localeLabel('workspace.presentation_show_overview', 'workspace.presentation_hide_overview'),
+    laser: localeLabel('workspace.presentation_laser'),
+    blackout: localeLabel('workspace.presentation_blackout'),
+  }
+  const readBar = () => page.evaluate((names) => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    if (!chrome) return null
+    const box = chrome.getBoundingClientRect()
+    const buttons = [...chrome.querySelectorAll('button')]
+    const exit = buttons.find((b) => names.exit.includes(b.getAttribute('aria-label')))
+    const exitBox = exit?.getBoundingClientRect()
+    const under = exitBox ? document.elementFromPoint(exitBox.x + exitBox.width / 2, exitBox.y + exitBox.height / 2) : null
+    return {
+      viewport: window.innerWidth,
+      left: Math.round(box.x),
+      right: Math.round(box.right),
+      fits: box.x >= 0 && box.right <= window.innerWidth,
+      exitFound: Boolean(exit),
+      exitInside: Boolean(exitBox) && exitBox.x >= 0 && exitBox.right <= window.innerWidth,
+      exitHittable: Boolean(under && exit && (under === exit || exit.contains(under))),
+      door: Boolean(chrome.querySelector('[data-presentation-overflow]')),
+      inlineOverview: buttons.some((b) => names.overview.includes(b.getAttribute('aria-label'))),
+    }
+  }, labels)
+  const doorBox = () => page.evaluate(() => {
+    const box = document.querySelector('[data-presentation-overflow]')?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  })
+  const readDoor = () => page.evaluate((names) => {
+    const menu = document.querySelector('[role="dialog"] [role="menu"]')
+    if (!menu) return null
+    const rows = [...menu.querySelectorAll('button')]
+    const rowTexts = rows.map((row) => row.textContent?.trim() ?? '')
+    const laser = rows.find((row) => names.laser.some((label) => row.textContent?.includes(label)))
+    const box = laser?.getBoundingClientRect()
+    const under = box ? document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) : null
+    return {
+      rows: rowTexts,
+      laserOnTop: Boolean(under && laser && (under === laser || laser.contains(under))),
+    }
+  }, labels)
+
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openDeckNote(page)
+  await page.setViewport(MOBILE_VIEWPORT)
+  await sleep(900)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+
+  const bar = await readBar()
+  check('touch: the bar fits the phone window it is drawn in', Boolean(bar?.fits) && bar.exitFound && !bar.inlineOverview, JSON.stringify(bar))
+  check('touch: the way out is on the screen and answers the press', Boolean(bar?.exitInside && bar?.exitHittable), JSON.stringify({ viewport: bar?.viewport, right: bar?.right, exitHittable: bar?.exitHittable }))
+  check('touch: what no longer fits went behind one door', Boolean(bar?.door), JSON.stringify({ door: bar?.door }))
+
+  const press = await doorBox()
+  if (press) await page.mouse.click(press.x, press.y)
+  await sleep(700)
+  const door = await readDoor()
+  check('touch: the door opens a list painted on the projector', Boolean(door) && door.laserOnTop, JSON.stringify({ opened: Boolean(door), laserOnTop: door?.laserOnTop }))
+  const tools = door?.rows ?? []
+  const wants = [localeLabel('workspace.presentation_laser'), localeLabel('workspace.presentation_spotlight'), localeLabel('workspace.presentation_blackout'), localeLabel('workspace.presentation_whiteout')]
+  check('touch: the list hands over the four tools no key on this screen reaches', wants.every((pair) => tools.some((row) => row.includes(pair[0]) || row.includes(pair[1]))), JSON.stringify(tools))
+
+  const laserRow = await page.evaluate((pair) => {
+    const row = [...document.querySelectorAll('[role="dialog"] [role="menu"] button')].find((item) => item.textContent?.includes(pair[0]) || item.textContent?.includes(pair[1]))
+    const box = row?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  }, localeLabel('workspace.presentation_laser'))
+  if (laserRow) await page.mouse.click(laserRow.x, laserRow.y)
+  await sleep(700)
+  check('touch: pressing the laser row draws the dot', await page.evaluate(() => Boolean(document.querySelector('[data-laser-pointer] .laser-dot'))))
+
+  const pressAgain = await doorBox()
+  if (pressAgain) await page.mouse.click(pressAgain.x, pressAgain.y)
+  await sleep(600)
+  const coverRow = await page.evaluate((pair) => {
+    const row = [...document.querySelectorAll('[role="dialog"] [role="menu"] button')].find((item) => item.textContent?.includes(pair[0]) || item.textContent?.includes(pair[1]))
+    const box = row?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  }, localeLabel('workspace.presentation_blackout'))
+  if (coverRow) await page.mouse.click(coverRow.x, coverRow.y)
+  await sleep(700)
+  check('touch: pressing the blackout row covers the screen', await page.evaluate(() => document.querySelector('[data-screen-cover]')?.getAttribute('data-screen-cover') === 'black'))
+
+  await page.evaluate(() => document.querySelector('[data-screen-cover]')?.click())
+  await sleep(500)
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  // Hand the run back the deck on the desk the scenarios below read, at the width they expect it.
+  await openDeckNote(page)
+}
+
 // The image export is the same deck through a different renderer, so what it has to prove is that a
 // file came out of it: every page rasterized (the sheet reports that itself, and it only reports it
 // after the archive was handed to the browser) and the browser then wrote the archive somewhere.
@@ -9482,6 +9585,7 @@ async function main() {
     await assertSlideCarriesNoControls(page)
     await assertDeckHandout(page)
     await assertPresentationKeyGuide(page)
+    await assertPresentationOnTouch(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
     await assertPresenterConsole(browser, page)

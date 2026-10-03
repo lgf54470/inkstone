@@ -1,7 +1,7 @@
 import { act, createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../lib/i18n'
-import { renderElement, type RenderedElement } from '../../lib/test-render'
+import { renderElement, stubWideShow, type RenderedElement } from '../../lib/test-render'
 import { noteSummary } from '../../store/notes-test-utils'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
@@ -13,9 +13,12 @@ beforeEach(async () => {
   // The one entry precondition `startPresentationFromNote` enforces: the show is started from a note
   // the store has. Without a summary here the overlay would read the show as one whose note has gone.
   useNotes.setState({ notes: { [SHOW.noteId]: noteSummary(SHOW.noteId, { title: SHOW.title }) }, contents: {} })
+  // The console this case reaches is the wide bar's button; on a phone it lives behind the door.
+  stubWideShow()
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
   view?.unmount()
   view = null

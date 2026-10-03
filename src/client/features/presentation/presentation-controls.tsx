@@ -1,8 +1,10 @@
-import { ChevronLeft, ChevronRight, Download, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Download, EllipsisVertical, FileText, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton, Spinner } from '../../components/primitives'
-import { Tooltip } from '../../components/overlay'
+import { Menu, Tooltip, type MenuItem } from '../../components/overlay'
+import { Z_INDEX } from '../../lib/z-index'
 import { presentationKeyCombo } from './presentation-keys'
 import type { DeckExportProgress } from './deck-print'
 import { describeDeckPosition, formatDeckPosition } from './deck-position'
@@ -21,6 +23,10 @@ export interface PresentationControlsProps {
   chromeHidden: boolean
   /** The pill is under the overview grid, so it cannot be reached from behind it. */
   occluded: boolean
+  /** A phone window: the bar keeps the two turns, one door, and the way out — see `ViewDoor`. */
+  compact: boolean
+  /** The rows behind the door. The session builds them from the same list the right-click menu reads. */
+  overflowItems: MenuItem[]
   onPrev: () => void
   onNext: () => void
   onToggleRail: () => void
@@ -36,7 +42,7 @@ export interface PresentationControlsProps {
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -49,9 +55,13 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
-      <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} />
+      {compact
+        ? <ViewDoor items={[...overflowItems, ...exportMenuItems({ onExport, onExportImages, onExportHandout })]} exporting={exporting} />
+        : <>
+          <ViewControls railOpen={railOpen} overview={overview} following={following} followLost={followLost} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
+          <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+          <ExportControls exporting={exporting} onExport={onExport} onExportImages={onExportImages} onExportHandout={onExportHandout} />
+        </>}
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Tooltip label={t('workspace.presentation_exit')} combo={presentationKeyCombo('exit')} side='top'>
         <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
@@ -142,6 +152,42 @@ function ExportControls({ exporting, onExport, onExportImages, onExportHandout }
       </Tooltip>
     </>
   )
+}
+
+// The door the narrow bar opens: every control that no longer fits in 390px, on the list the
+// right-click menu already builds. It is a `Menu` from the component library — a portal with its own
+// focus, Escape and dismissed-by-outside-click behaviour, which an inline panel inside the bar would
+// not have (and an inline panel would grow the bar and move the button the thumb just pressed).
+const DOOR_WIDTH = 244
+
+function ViewDoor({ items, exporting }: { items: MenuItem[]; exporting: boolean }) {
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  // The list belongs to the projector it was opened from. A portal left on the body would sit under the
+  // dialog that fills the screen — the paint-stack mistake this module has now made three times — and
+  // reading it off the trigger keeps the door honest wherever the bar happens to live.
+  const container = buttonRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null
+  const rows = items.map((item) => (item.id === 'export-images' && exporting ? { ...item, icon: <span data-export-spinner aria-hidden='true'><Spinner size={14} /></span> } : item))
+  return (
+    <>
+      <Tooltip label={t('common.more_actions')} side='top'>
+        <IconButton ref={buttonRef} label={t('common.more_actions')} size='sm' active={open} data-presentation-overflow='true' onClick={() => setOpen((on) => !on)}>
+          <EllipsisVertical size={14} />
+        </IconButton>
+      </Tooltip>
+      <Menu anchor={buttonRef} open={open} onClose={() => setOpen(false)} items={rows} align='end' width={DOOR_WIDTH} container={container} zIndex={Z_INDEX.menu + 1} label={t('common.more_actions')} />
+    </>
+  )
+}
+
+// The exports the wide bar draws as buttons; on a phone they walk through the door with the rest, and
+// the one that is working still says so on its own row.
+function exportMenuItems({ onExport, onExportImages, onExportHandout }: { onExport: () => void; onExportImages: () => void; onExportHandout: () => void }): MenuItem[] {
+  return [
+    { id: 'export', label: t('workspace.presentation_export'), icon: <Download size={14} />, onSelect: onExport, separatorBefore: true },
+    { id: 'export-handout', label: t('workspace.presentation_export_handout'), icon: <FileText size={14} />, onSelect: onExportHandout },
+    { id: 'export-images', label: t('workspace.presentation_export_images'), icon: <Images size={14} />, onSelect: onExportImages },
+  ]
 }
 
 // What the image export is doing, painted by the show itself. The sheet it counts is laid out

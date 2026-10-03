@@ -168,7 +168,9 @@ function buildToolItems(options: PresentationMenuItemsOptions): MenuItem[] {
   ]
 }
 
-function buildSessionAndExitItems(options: PresentationMenuItemsOptions): MenuItem[] {
+// The rows about the show itself, shared by both doors: the follow lamp, the screen, and the card
+// that says what every other row's key is.
+function buildSessionItems(options: PresentationMenuItemsOptions): MenuItem[] {
   return [
     {
       id: 'follow',
@@ -199,16 +201,21 @@ function buildSessionAndExitItems(options: PresentationMenuItemsOptions): MenuIt
       checked: options.keyGuide,
       onSelect: options.onToggleKeyGuide,
     },
-    {
-      id: 'exit',
-      label: t('workspace.presentation_exit'),
-      combo: presentationKeyCombo('exit'),
-      icon: <X size={14} />,
-      tone: 'danger',
-      onSelect: options.onExit,
-      separatorBefore: true,
-    },
   ]
+}
+
+// Only the right-click menu needs a way out on the list: the capsule keeps its own button where the
+// thumb already is, and at phone width that button is one of the three the bar still draws.
+function buildExitItem(options: PresentationMenuItemsOptions): MenuItem {
+  return {
+    id: 'exit',
+    label: t('workspace.presentation_exit'),
+    combo: presentationKeyCombo('exit'),
+    icon: <X size={14} />,
+    tone: 'danger',
+    onSelect: options.onExit,
+    separatorBefore: true,
+  }
 }
 
 export function buildPresentationMenuItems(options: PresentationMenuItemsOptions): MenuItem[] {
@@ -217,7 +224,21 @@ export function buildPresentationMenuItems(options: PresentationMenuItemsOptions
     ...buildNavigationItems(options),
     ...buildViewItems(options),
     ...buildToolItems(options),
-    ...buildSessionAndExitItems(options),
+    ...buildSessionItems(options),
+    buildExitItem(options),
+  ]
+}
+
+/**
+ * The rows behind the capsule's door at phone width. The bar cannot hold eleven controls in 390px and
+ * a touch screen gets no right-click, so everything that is not a turn or the way out walks through
+ * here — the same builders the context menu uses, which is what keeps one list rather than two.
+ */
+export function buildPresentationOverflowItems(options: PresentationMenuItemsOptions): MenuItem[] {
+  return [
+    ...buildViewItems(options),
+    ...buildToolItems(options),
+    ...buildSessionItems(options),
   ]
 }
 

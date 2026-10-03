@@ -12,7 +12,7 @@ import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
 import { PresenterPanel } from './presenter-view/presenter-panel'
-import { extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps } from './presentation-context-menu'
+import { buildPresentationOverflowItems, extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps, type PresentationMenuItemsOptions } from './presentation-context-menu'
 import { type PresentationSession, usePresentationSession } from './use-presentation-session'
 
 // The show reads its own store, which the shell hosts: that is what keeps a talk
@@ -145,6 +145,8 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
     followLost: session.followLost,
     chromeHidden: session.chromeHidden,
     occluded: session.occluded,
+    compact: session.compact,
+    overflowItems: buildPresentationOverflowItems(menuItemsProps(session, onClose)),
     exporting: Boolean(session.images),
     onPrev: session.goPrev,
     onNext: session.goNext,
@@ -160,13 +162,13 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
   }
 }
 
-function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: PresentationSession, onClose: () => void): PresentationContextMenuProps {
+/**
+ * The show's rows, built once: the right-click menu and the capsule's narrow-screen door read the same
+ * list, so a phone does not get a quieter second map of the same screen.
+ */
+function menuItemsProps(session: PresentationSession, onClose: () => void): PresentationMenuItemsOptions {
   return {
-    point: session.contextPoint,
-    linkUrl: session.contextLink,
-    onClose: session.closeContextMenu,
-    onReopen: (point, linkUrl) => session.openContextMenu(point, linkUrl),
-    container: panelRef.current,
+    linkUrl: null,
     slideIndex: session.index,
     slideCount: session.deck.length,
     subPage: session.sub,
@@ -193,6 +195,19 @@ function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: P
     onToggleBlackout: session.toggleBlackout,
     onToggleWhiteout: session.toggleWhiteout,
     onExit: onClose,
+  }
+}
+
+function contextMenuProps(panelRef: RefObject<HTMLDivElement | null>, session: PresentationSession, onClose: () => void): PresentationContextMenuProps {
+  return {
+    ...menuItemsProps(session, onClose),
+    // The menu's own wiring wins over the shared rows: the link under the pointer is what this list is
+    // about, and where it opened is where the panel lands.
+    linkUrl: session.contextLink,
+    point: session.contextPoint,
+    onClose: session.closeContextMenu,
+    onReopen: (point, linkUrl) => session.openContextMenu(point, linkUrl),
+    container: panelRef.current,
   }
 }
 

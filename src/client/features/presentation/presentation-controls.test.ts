@@ -3,6 +3,7 @@ import { initI18n, t, type MessageKey } from '../../lib/i18n'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
+import { buildPresentationOverflowItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
 
 installTestGlobals()
 
@@ -41,6 +42,8 @@ describe('PresentationControls', () => {
     onExportImages: vi.fn(),
     onExportHandout: vi.fn(),
     onClose: vi.fn(),
+    compact: false,
+    overflowItems: [],
   }
 
   it('renders presenter console button and triggers onOpenPresenter when clicked', () => {
@@ -158,6 +161,8 @@ function chromeProps(overrides: Partial<PresentationControlsProps> = {}): Presen
     onExportImages: vi.fn(),
     onExportHandout: vi.fn(),
     onClose: vi.fn(),
+    compact: false,
+    overflowItems: [],
     ...overrides,
   }
 }
@@ -322,4 +327,144 @@ describe('PresentationControls — the key a control answers to', () => {
     const { container } = renderElement(createElement(PresentationControls, chromeProps()))
     expect(await hintKeyOf(container, t('workspace.presentation_export'))).toBeUndefined()
   })
+})
+
+// N-18 + N-35: measured at 390×844 the bar is 453px wide, so it hangs off both edges and its × control
+// lands at x=385..417 — outside the screen, with nothing to scroll it into view. A thumb that cannot
+// reach the way out cannot reach the four tools either, because they only live on letters and on a
+// right-click this surface never gets. So the narrow bar keeps three things and the rest goes through
+// one door: the same rows the right-click menu already builds.
+// Rows are `menuitem` or `menuitemcheckbox` depending on whether the row carries a mark, so the door is
+// read by what it holds rather than by which of the two roles a row happens to claim.
+const door = () => document.querySelector<HTMLElement>('[data-presentation-overflow]')
+const rows = () => [...document.querySelectorAll('[role="menu"] button')].map((row) => row.textContent?.trim() ?? '')
+
+describe('PresentationControls at phone width', () => {
+  it('keeps the turn and the way out, and folds the rest behind one door', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()) })))
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_prev')}"]`)).toBeTruthy()
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_exit')}"]`)).toBeTruthy()
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_show_overview')}"]`)).toBeNull()
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_export')}"]`)).toBeNull()
+    expect(container.querySelectorAll('[data-presentation-overflow]').length).toBe(1)
+  })
+
+  it('draws no door on a wide screen, where every control already fits', () => {
+    const { container } = renderElement(createElement(PresentationControls, chromeProps()))
+    expect(container.querySelector('[data-presentation-overflow]')).toBeNull()
+    expect(container.querySelector(`[aria-label="${t('workspace.presentation_show_overview')}"]`)).toBeTruthy()
+  })
+
+  it('hands a thumb the four tools no key on this screen can reach', () => {
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()) })))
+    act(() => {
+      door()?.click()
+    })
+    for (const label of [t('workspace.presentation_laser'), t('workspace.presentation_spotlight'), t('workspace.presentation_blackout'), t('workspace.presentation_whiteout')]) {
+      expect(rows().some((row) => row.includes(label)), label).toBe(true)
+    }
+  })
+
+})
+
+describe('PresentationControls — what the door hands over', () => {
+  it('runs the row a press names, and closes the door on it', () => {
+    const onToggleLaser = vi.fn()
+    const items = buildPresentationOverflowItems({ ...menuOptions(), onToggleLaser })
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: items })))
+    act(() => {
+      door()?.click()
+    })
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_laser')))
+    if (!row) throw new Error('the door has no laser row to press')
+    act(() => {
+      row.click()
+    })
+    expect(onToggleLaser).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[role="menu"]')).toBeNull()
+  })
+
+  it('carries the exports through the door too, since they no longer fit beside it', () => {
+    const onExportHandout = vi.fn()
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()), onExportHandout })))
+    act(() => {
+      door()?.click()
+    })
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_export_handout')))
+    if (!row) throw new Error('the door has no handout row')
+    act(() => {
+      row.click()
+    })
+    expect(onExportHandout).toHaveBeenCalledTimes(1)
+  })
+
+})
+
+describe('PresentationControls — the door and the exports', () => {
+  it('runs the export row a press names, not just the one it was written for', () => {
+    const onExportImages = vi.fn()
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()), onExportImages })))
+    act(() => {
+      door()?.click()
+    })
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_export_images')))
+    if (!row) throw new Error('the door has no image-export row')
+    act(() => {
+      row.click()
+    })
+    expect(onExportImages).toHaveBeenCalledTimes(1)
+  })
+
+  it('lets an export that is still running say so behind the door too', () => {
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, exporting: true, overflowItems: buildPresentationOverflowItems(menuOptions()) })))
+    act(() => {
+      door()?.click()
+    })
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menu"] button')].find((item) => item.textContent?.includes(t('workspace.presentation_export_images')))
+    expect(row?.querySelector('[data-export-spinner]'), 'the row that is working shows nothing').toBeTruthy()
+  })
+
+  it('paints the door inside the projector it belongs to, not beside it', () => {
+    renderElement(createElement('div', { role: 'dialog' }, createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()) }))))
+    act(() => {
+      door()?.click()
+    })
+    const projector = document.querySelector('[role="dialog"]')
+    expect(projector?.querySelector('[role="menu"]')).toBeTruthy()
+  })
+
+  it('leaves the tab order out of the door while it is shut', () => {
+    renderElement(createElement(PresentationControls, chromeProps({ compact: true, overflowItems: buildPresentationOverflowItems(menuOptions()) })))
+    expect(document.querySelector('[role="menu"]')).toBeNull()
+  })
+})
+
+const menuOptions = (): PresentationMenuItemsOptions => ({
+  linkUrl: null,
+  slideIndex: 1,
+  slideCount: 5,
+  subPage: 0,
+  pageCount: 1,
+  railOpen: false,
+  overview: false,
+  following: false,
+  followLost: false,
+  isFullscreen: false,
+  laser: false,
+  spotlight: false,
+  screenCover: null,
+  keyGuide: false,
+  onPrev: vi.fn(),
+  onNext: vi.fn(),
+  onToggleRail: vi.fn(),
+  onToggleOverview: vi.fn(),
+  onToggleFollowing: vi.fn(),
+  onToggleFullscreen: vi.fn(),
+  onToggleKeyGuide: vi.fn(),
+  onOpenPresenter: vi.fn(),
+  onToggleLaser: vi.fn(),
+  onToggleSpotlight: vi.fn(),
+  onToggleBlackout: vi.fn(),
+  onToggleWhiteout: vi.fn(),
+  onExit: vi.fn(),
 })
