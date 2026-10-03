@@ -67,7 +67,8 @@ export function planSlidePages(blocks: SlideBlock[], contentHeight: number, layo
   // single vertical flow the walk below reads — each column starts at the top again, and a page
   // picked out of those tops would hide blocks that are beside each other. The whole slide stays on
   // one page, which is only sound for a slide the caller has already measured as fitting the page.
-  // Two columns are revealed as one field of view: a page cut out of those tops would hide blocks
+  // Two columns are revealed block by block like any other page, but never *paginated*: a page cut out of
+  // those tops would hide blocks
   // that sit beside each other, so the slide stays whole and its steps arrive together.
   if (layout === 'split') return { pages: [{ from: 0, to: blocks.length, top: 0 }], scales, layout, steps }
   const pages: SlidePage[] = []

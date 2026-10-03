@@ -356,6 +356,14 @@ describe('the step count a plan carries', () => {
     expect(pageSteps(plan, plan.pages[0]!)).toBe(0)
   })
 
+  // Two columns are one page either way, and the blocks in them still arrive one after another: the
+  // reason a column slide is not walked page by page is geometry, not a reason to stop revealing it.
+  it('reveals a two-column slide block by block as well', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220, 'split', true)
+    expect(plan.pages.length).toBe(1)
+    expect(pageSteps(plan, plan.pages[0]!)).toBe(STEP_BLOCKS.length - 1)
+  })
+
   // A page with one block on it has nothing left to reveal, even when the slide asked for steps.
   it('counts no step for a page that holds a single block', () => {
     const tall: SlideBlock[] = [{ top: 0, height: 100, heading: true }, { top: 100, height: 300, heading: false }]
