@@ -220,3 +220,18 @@ describe('panel header grammar', () => {
     expect(matchPanelHeader(':::: center')?.markerLength).toBe(4)
   })
 })
+
+describe('the lines a timeline node holds', () => {
+  it('keeps the paragraphs the node itself holds apart', () => {
+    const root = doc('::: timeline\n:: [done] Ship\nfocus mode\nimage preview\n:::')
+    const para = root.querySelector('.markdown-timeline-body p')
+    expect(para?.querySelectorAll('br')).toHaveLength(1)
+    expect(para?.textContent).toBe('focus mode\nimage preview')
+  })
+
+  it('leaves a list inside the node on the same line rules as everywhere else', () => {
+    const root = doc('::: timeline\n:: [done] Ship\n- alpha\n- beta\n:::')
+    expect(root.querySelectorAll('.markdown-timeline-body ul li')).toHaveLength(2)
+    expect(root.querySelector('.markdown-timeline-body ul br')).toBeNull()
+  })
+})

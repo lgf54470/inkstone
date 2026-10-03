@@ -209,6 +209,22 @@ describe('::: timeline containers', () => {
     expect(root.querySelectorAll('ol.markdown-timeline > li.markdown-timeline-item')).toHaveLength(2)
   })
 
+  it('keeps the lines the node itself holds apart', () => {
+    const para = first(fragment('::: timeline\n:: [done] 2024-01-01 Ship\nfocus mode\nimage preview\n:::'), '.markdown-timeline-body p')
+    expect(para?.querySelectorAll('br')).toHaveLength(1)
+    expect(para?.textContent).toBe('focus mode\nimage preview')
+  })
+
+  it('leaves a list or a quote inside the node on the app-wide line rules', () => {
+    const listed = fragment('::: timeline\n:: [done] Ship\n- alpha\n- beta\n:::')
+    expect(listed.querySelectorAll('.markdown-timeline-body ul li')).toHaveLength(2)
+    expect(listed.querySelector('.markdown-timeline-body ul br')).toBeNull()
+
+    const quoted = first(fragment('::: timeline\n:: [done] Ship\n> quoted one\n> quoted two\n:::'), 'blockquote p')
+    expect(quoted?.textContent).toBe('quoted one\nquoted two')
+    expect(quoted?.querySelector('br')).toBeNull()
+  })
+
   it('keeps the title the header carries instead of dropping it', () => {
     const root = fragment('::: timeline The long history\n:: [done] 2024-01-01 first\n:::')
     expect(first(root, '.markdown-timeline-caption')?.textContent).toBe('The long history')

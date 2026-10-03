@@ -1,5 +1,5 @@
 import MarkdownIt from 'markdown-it'
-import type { StateBlock } from 'markdown-it'
+import type { StateBlock, Token } from 'markdown-it'
 import { DEFAULT_LOCALE, t } from '../i18n'
 import type { BlogLocale, MessageKey } from '../i18n'
 import { escapeAttr, escapeHtml } from './escape.ts'
@@ -140,6 +140,24 @@ function timelineNodes(state: StateBlock, start: number, end: number) {
   }))
 }
 
+/**
+ * Turns the soft breaks of the node's own paragraphs into hard breaks.
+ *
+ * A timeline node is written as a stack of short lines and they are meant to read as separate lines;
+ * markdown-it would join them into one flowing paragraph. Only paragraphs sitting directly in the node
+ * are touched, so a list, quote or table inside the node keeps the same line rules as everywhere else.
+ */
+function hardBreakOwnParagraphs(tokens: Token[], from: number, to: number): void {
+  let depth = 0
+  for (let index = from; index < to; index++) {
+    const token = tokens[index]!
+    if (token.nesting === 1) depth++
+    if (depth === 1 && token.type === 'inline' && token.content.includes('\n'))
+      token.content = token.content.replace(/\n/g, '\\\n')
+    if (token.nesting === -1) depth--
+  }
+}
+
 function renderTimelineContainer(state: StateBlock, startLine: number, end: number, title: string): void {
   const nodes = timelineNodes(state, startLine + 1, end)
   const open = state.push('panel_timeline_open', 'div', 1)
@@ -149,7 +167,9 @@ function renderTimelineContainer(state: StateBlock, startLine: number, end: numb
     const item = state.push('timeline_item_open', 'li', 1)
     item.block = true
     item.meta = { item: node.item }
+    const bodyFrom = state.tokens.length
     state.md.block.tokenize(state, node.start, node.end)
+    hardBreakOwnParagraphs(state.tokens, bodyFrom, state.tokens.length)
     state.push('timeline_item_close', 'li', -1).block = true
   })
   state.push('panel_timeline_close', 'div', -1).block = true

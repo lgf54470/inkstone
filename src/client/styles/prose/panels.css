@@ -114,7 +114,7 @@
 .ink-prose .markdown-timeline-item {
   position: relative;
   padding: 0 0 var(--sp-4) var(--sp-6);
-  border-inline-start: 1px solid var(--border-subtle);
+  border-inline-start: 1px solid var(--border-strong);
 }
 .ink-prose .markdown-timeline-item:last-child {
   padding-bottom: 0;

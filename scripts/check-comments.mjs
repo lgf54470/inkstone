@@ -12588,6 +12588,7 @@ const allowed = new Map([
     '/** A `::: tip` draws the same `<aside class="callout">` as `> [!tip]`, so the two spellings cannot drift. */',
     '/**\n * Draws one panel block. The caller routes the `tabs` kind to `containers.ts`, which already owns its\n * options and its segment spellings, so no branch here reads it.\n */',
     '/** The `:: Title` spelling of a tabs block, which reads the same panels as `@tab` does. */',
+    '/**\n * Turns the soft breaks of the node\'s own paragraphs into hard breaks.\n *\n * A timeline node is written as a stack of short lines — a date, a step, another step — and the whole\n * point is that they read as separate lines. markdown-it would join them into one flowing paragraph,\n * which is right for prose and wrong here. Only paragraphs that sit directly in the node are touched:\n * a list, quote or table the author put in the node keeps the app-wide line rules, so this does not\n * quietly redefine line breaks for everything a node can contain.\n */',
     '/**\n * The node\'s date, machine-readable in `data-datetime` when the word really is one. A `<time>` element\n * would be the semantic choice, but it is not on the prose whitelist, so the span is what survives.\n */',
   ]],
   ['src/client/lib/markdown/renderer/split.ts', [

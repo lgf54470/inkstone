@@ -1,5 +1,6 @@
 import type MarkdownIt from 'markdown-it'
 import type StateBlock from 'markdown-it/lib/rules_block/state_block.mjs'
+import type Token from 'markdown-it/lib/token.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
 import type { MessageKey } from '../../i18n'
@@ -135,7 +136,9 @@ function renderTimelineContainer(state: StateBlock, startLine: number, end: numb
     const item = state.push('timeline_item_open', 'li', 1)
     item.block = true
     item.meta = { item: node.item, sourceLine: node.line }
+    const bodyFrom = state.tokens.length
     state.md.block.tokenize(state, node.start, node.end)
+    hardBreakOwnParagraphs(state.tokens, bodyFrom, state.tokens.length)
     state.push('timeline_item_close', 'li', -1).block = true
   })
   state.push('panel_timeline_close', 'div', -1).block = true
@@ -183,6 +186,26 @@ const TIMELINE_STATUS_KEYS: Record<TimelineStatus, MessageKey> = {
   done: 'markdown.timeline_done',
   milestone: 'markdown.timeline_milestone',
   error: 'markdown.timeline_error',
+}
+
+/**
+ * Turns the soft breaks of the node's own paragraphs into hard breaks.
+ *
+ * A timeline node is written as a stack of short lines — a date, a step, another step — and the whole
+ * point is that they read as separate lines. markdown-it would join them into one flowing paragraph,
+ * which is right for prose and wrong here. Only paragraphs that sit directly in the node are touched:
+ * a list, quote or table the author put in the node keeps the app-wide line rules, so this does not
+ * quietly redefine line breaks for everything a node can contain.
+ */
+function hardBreakOwnParagraphs(tokens: Token[], from: number, to: number): void {
+  let depth = 0
+  for (let index = from; index < to; index++) {
+    const token = tokens[index]!
+    if (token.nesting === 1) depth++
+    if (depth === 1 && token.type === 'inline' && token.content.includes('\n'))
+      token.content = token.content.replace(/\n/g, '\\\n')
+    if (token.nesting === -1) depth--
+  }
 }
 
 /**
