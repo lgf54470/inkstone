@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { useBreakpoint } from '../../lib/hooks'
 import { secureRandomId } from '../../lib/id'
@@ -11,11 +11,11 @@ import { deckProgress, railOpenFor } from './presentation-state'
 import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
-import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, reserveSlideCache, slideCacheKey } from './slide-html'
+import { buildIncrementalSlidePlans, rememberSlidePlan } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
-import { splitIntoSlidesWithNotes } from './slides'
+import { useShowDeck, useSlideCacheKeys } from './use-show-deck'
 import { openPresenterWindow, usePresenterBroadcaster, usePresenterSlideState, type PresenterSlideState, type PresenterStateSource } from './presenter-view/use-presenter-channel'
 import { usePresentedNote } from './use-presented-note'
 import { usePresentationKeys } from './use-presentation-keys'
@@ -170,22 +170,22 @@ function useSessionPresenter(options: {
 export function usePresentationSession(options: PresentationSessionOptions): PresentationSession {
   const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0, startedAt } = options
   const { content: presentedContent, title: liveTitle, followLost, toggleFollowing } = usePresentedNote({ open, noteId, snapshot, following })
-  const { deck, notes, fingerprint } = useShowDeck(presentedContent)
+  const { deck, notes, hashes, fingerprint } = useShowDeck(presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
-  const nav = usePresentationNav(deck, initialSlideIndex)
+  const nav = usePresentationNav(deck, hashes, initialSlideIndex)
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
   const { railOpen, toggleRail } = useSlideList(open)
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const noteTitle = liveTitle ?? storedTitle
-  const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
+  const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const contextMenu = usePresentationContextMenu(open)
   const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter: presenter.openPresenter, isMenuOpen: Boolean(contextMenu.contextPoint) })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview, spotlightOn: mode.spotlight, clearSpotlight: mode.clearSpotlight })
-  const slideUnprepared = useSlideHtml({ open, deck, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
+  const slideUnprepared = useSlideHtml({ open, deck, hashes, index: nav.index, content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
   // key by key: `nav` is the position, `mode` is what the keys own, `exports` is what the
   // controls ask for. What stays explicit is what only the session decides.
@@ -214,7 +214,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     ...mode,
     ...exports,
     ...contextMenu,
-    preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
+    preflight: { deck, hashes, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
   }
 }
 
@@ -236,13 +236,6 @@ function usePresentationContextMenu(open: boolean) {
     }
   }, [open])
   return { contextPoint: point, contextLink: linkUrl, openContextMenu, closeContextMenu }
-}
-
-function useSlideCacheKeys(deck: string[], dark: boolean, metrics: StageMetrics): string[] {
-  return useMemo(
-    () => deck.map((slide, item) => slideCacheKey({ fingerprint: hashContent(slide), dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
-    [deck, dark, metrics.contentWidth, metrics.contentHeight],
-  )
 }
 
 // How far the idle pass has got in listing the deck. It is state rather than a guess about whether
@@ -277,20 +270,6 @@ function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => voi
   return { railOpen, toggleRail }
 }
 
-// The deck is exactly what the show presents: while following, every debounced edit
-// re-splits it; a frozen snapshot is a plain string that cannot move under the
-// presenter.
-function useShowDeck(presentedContent: string) {
-  const { slides: deck, notes } = useMemo(() => splitIntoSlidesWithNotes(presentedContent), [presentedContent])
-  const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
-  // Before the pass starts preparing pages: a cap under the deck's page count makes it evict the
-  // pages it has already prepared, and the rail then re-renders what was just thrown away.
-  useEffect(() => {
-    reserveSlideCache(deck.length)
-  }, [deck.length])
-  return { deck, notes, fingerprint }
-}
-
 // Which slide the show is on, kept inside the deck at both ends: the opening index is clamped in case
 // the note it was resumed from has since lost slides, a deck that shrinks mid-talk pulls the position
 // back onto a slide that exists, and `goTo` cannot walk past either end. The page *within* a slide is
@@ -308,10 +287,10 @@ function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
 // blocks overflow the canvas reports its page plan, and next/prev walk through its
 // sub-pages before moving to the neighboring slide. The plans also drive the slide
 // list, which is why the show keeps them instead of only the current page count.
-function usePresentationNav(deck: string[], initialSlideIndex: number = 0) {
+function usePresentationNav(deck: string[], hashes: string[], initialSlideIndex: number = 0) {
   const deckLength = deck.length
   const { index, goTo } = useDeckIndex(deckLength, initialSlideIndex)
-  const { plans, reportPlan } = useSlidePlans(deck)
+  const { plans, reportPlan } = useSlidePlans(hashes)
   const currentPlan = plans[index]
   const pageCount = currentPlan?.pages.length ?? 1
   const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
@@ -349,18 +328,17 @@ function usePresentationNav(deck: string[], initialSlideIndex: number = 0) {
 
 // Page plans live in one map because the show and the slide list both read them: the
 // canvas measures the slide it renders and the list turns those measurements into pages.
-export function useSlidePlans(deck: string[]) {
-  const [plans, setPlans] = useState<Record<number, SlidePlan>>(() => buildIncrementalSlidePlans(deck))
+export function useSlidePlans(hashes: string[]) {
+  const [plans, setPlans] = useState<Record<number, SlidePlan>>(() => buildIncrementalSlidePlans(hashes))
   // Edited content re-splits the deck, so plans measured for the previous text would
   // describe pages that no longer exist.
   useEffect(() => {
-    setPlans((current) => buildIncrementalSlidePlans(deck, current))
-  }, [deck])
+    setPlans((current) => buildIncrementalSlidePlans(hashes, current))
+  }, [hashes])
   const reportPlan = useCallback((slide: number, plan: SlidePlan) => {
-    const content = deck[slide] ?? ''
-    rememberSlidePlan(hashContent(content), plan)
+    rememberSlidePlan(hashes[slide] ?? '', plan)
     setPlans((current) => (samePlan(current[slide], plan) ? current : { ...current, [slide]: plan }))
-  }, [deck])
+  }, [hashes])
   return { plans, reportPlan }
 }
 

@@ -43,6 +43,7 @@ function Host({ index, deck = DECK, content = NOTE }: { index: number; deck?: st
   const failed = useSlideHtml({
     open: true,
     deck,
+    hashes: deck.map(hashContent),
     index,
     content,
     noteTitle: 'Talk',

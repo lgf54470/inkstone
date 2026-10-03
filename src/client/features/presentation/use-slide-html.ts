@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../../store/session'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
-import { markSlideFailed, readSlideHtml, rememberSlideHtml, renderSlideSource, hashContent, slideCacheKey, slideMarkup, type SlideRender } from './slide-html'
+import { markSlideFailed, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup, type SlideRender } from './slide-html'
 import type { StageMetrics } from './slide-stage'
 
 // One staged page, put through the enhancement chain and written back to the cache. The channels are
@@ -55,20 +55,23 @@ async function prepareStagedSlide(source: {
 export function useSlideHtml(options: {
   open: boolean
   deck: string[]
+  hashes: string[]
   index: number
   content: string
   noteTitle: string
   dark: boolean
   metrics: StageMetrics
 }): boolean {
-  const { open, deck, index, content, noteTitle, dark, metrics } = options
+  const { open, deck, hashes, index, content, noteTitle, dark, metrics } = options
   const preview = useSession((s) => s.settings.preview)
   const [, setTick] = useState(0)
   const contentWidth = metrics.contentWidth
   const contentHeight = metrics.contentHeight
   // Hoisted out of the effect because the caller asks the same question the preparer answers with its
   // failure: did this page's enhancement land, or did it throw and leave the plain markup behind.
-  const key = slideCacheKey({ fingerprint: hashContent(deck[index] ?? ''), dark, index, contentWidth, contentHeight })
+  // The identity of the slide comes from the deck, which identified it once when it split (`useShowDeck`)
+  // — hashing this page's text again here would be a second answer to a question already answered.
+  const key = slideCacheKey({ fingerprint: hashes[index] ?? '', dark, index, contentWidth, contentHeight })
   useEffect(() => {
     if (!open) return
     // The plain render is not a finished page (see `SlideMarkup.prepared`), so an interrupted run

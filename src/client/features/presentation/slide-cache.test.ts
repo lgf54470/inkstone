@@ -5,7 +5,7 @@ import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { renderElement } from '../../lib/test-render'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
-import { clearSlideHtmlCache, clearSlidePlanCache, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan, reserveSlideCache, subscribeSlideHtmlKey } from './slide-html'
+import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan, reserveSlideCache, subscribeSlideHtmlKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { useSlidePlans } from './use-presentation-session'
 import { PresentationOverlay } from './presentation-overlay'
@@ -32,8 +32,8 @@ describe('useSlidePlans incremental caching', () => {
     let latestPlans: Record<number, SlidePlan> = {}
     let reportPlanFn: (slide: number, plan: SlidePlan) => void = () => {}
 
-    function TestHarness({ deck }: { deck: string[] }) {
-      const { plans, reportPlan } = useSlidePlans(deck)
+    function TestHarness({ hashes }: { hashes: string[] }) {
+      const { plans, reportPlan } = useSlidePlans(hashes)
       latestPlans = plans
       reportPlanFn = reportPlan
       return null
@@ -42,7 +42,8 @@ describe('useSlidePlans incremental caching', () => {
     const planA: SlidePlan = { pages: [{ from: 0, to: 1, top: 0 }], scales: [1] }
     const planB: SlidePlan = { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] }
 
-    const rendered = renderElement(createElement(TestHarness, { deck: ['Slide A', 'Slide B'] }))
+    const deck = ['Slide A', 'Slide B']
+    const rendered = renderElement(createElement(TestHarness, { hashes: deck.map((slide) => hashContent(slide)) }))
     act(() => {
       reportPlanFn(0, planA)
       reportPlanFn(1, planB)
@@ -51,7 +52,8 @@ describe('useSlidePlans incremental caching', () => {
     expect(latestPlans[0]).toBe(planA)
     expect(latestPlans[1]).toBe(planB)
 
-    rendered.rerender(createElement(TestHarness, { deck: ['Slide A modified', 'Slide B'] }))
+    const modified = ['Slide A modified', 'Slide B']
+    rendered.rerender(createElement(TestHarness, { hashes: modified.map((slide) => hashContent(slide)) }))
 
     expect(latestPlans[0]).toBeUndefined()
     expect(latestPlans[1]).toBe(planB)

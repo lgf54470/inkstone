@@ -90,11 +90,17 @@ export function clearSlidePlanCache(): void {
   slidePlanCache.clear()
 }
 
-export function buildIncrementalSlidePlans(deck: string[], current: Record<number, SlidePlan> = {}): Record<number, SlidePlan> {
+/**
+ * The plans the show holds, re-keyed onto a deck that may have changed. It is handed the deck's own
+ * slide hashes rather than the deck because the caller already carries them: taking the text and
+ * hashing it again here would be a second walk over the whole deck to answer a question the deck has
+ * already answered.
+ */
+export function buildIncrementalSlidePlans(hashes: string[], current: Record<number, SlidePlan> = {}): Record<number, SlidePlan> {
   const next: Record<number, SlidePlan> = {}
   let changed = false
-  for (let i = 0; i < deck.length; i++) {
-    const hash = hashContent(deck[i] ?? '')
+  for (let i = 0; i < hashes.length; i++) {
+    const hash = hashes[i] ?? ''
     const cached = readSlidePlan(hash)
     if (cached) {
       next[i] = cached
