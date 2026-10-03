@@ -35,7 +35,8 @@ export function usePresenterSlideMedia(options: {
         mermaid: preview.mermaid,
         mindmap: 'snapshot',
         excalidraw: 'snapshot',
-        kanban: 'snapshot',
+        // The presenter reads the same page the room reads, board layout included (N-36).
+        kanban: 'board',
         fences,
         dark,
         codeBlockCollapseLines: 0,

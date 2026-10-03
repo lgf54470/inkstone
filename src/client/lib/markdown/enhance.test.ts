@@ -330,6 +330,19 @@ describe('kanban blocks — what each surface gets', () => {
     expect(node.getAttribute('aria-busy')).toBe('false')
     expect(node.querySelector('[data-kanban-fullscreen]')).toBeNull()
   })
+
+  // Written after the channel it pins (the board shape itself is asserted in `kanban/static.test.ts`);
+  // its job is the routing, which no other file reads: a surface that asks for a board and is handed
+  // the fence, or the list, would still pass every test beside this one.
+  it('lays the cards out as the board when the surface is read from a distance', async () => {
+    const { root, fences } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'board', fences })
+
+    const node = boardNode(root)
+    expect(node.querySelector('.kanban-board-column')?.textContent).toContain('Write the changelog')
+    expect(node.querySelector('.kanban-snapshot-board'), 'a board channel that drew a list').not.toBeNull()
+    expect(node.getAttribute('aria-busy')).toBe('false')
+  })
 })
 
 describe('kanban blocks — a set that never arrived', () => {

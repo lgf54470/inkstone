@@ -62,7 +62,7 @@ function fenceSourceOf(file: string, call: string): 'option' | 'registered' | 'n
 describe('kanban render channels', () => {
   it('names a kanban channel at every enhancement call site', () => {
     const offenders = enhancementCalls()
-      .filter(({ call }) => !/kanban:\s*['"](live|snapshot)['"]/.test(call))
+      .filter(({ call }) => !/kanban:\s*['"](live|snapshot|board)['"]/.test(call))
       .map(({ file }) => file)
     expect(offenders).toEqual([])
   })
@@ -71,9 +71,9 @@ describe('kanban render channels', () => {
     const channels = new Map(enhancementCalls().map(({ file, call }) => [file, /kanban:\s*'(\w+)'/.exec(call)?.[1]]))
     expect(Object.fromEntries([...channels].sort())).toEqual({
       [path.join('editor', 'live-preview.ts')]: 'snapshot',
-      [path.join('features', 'presentation', 'deck-print.tsx')]: 'snapshot',
-      [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'snapshot',
-      [path.join('features', 'presentation', 'use-slide-html.ts')]: 'snapshot',
+      [path.join('features', 'presentation', 'deck-print.tsx')]: 'board',
+      [path.join('features', 'presentation', 'presenter-view', 'use-presenter-slide-media.ts')]: 'board',
+      [path.join('features', 'presentation', 'use-slide-html.ts')]: 'board',
       [path.join('features', 'preview', 'card-content.ts')]: 'snapshot',
       [path.join('features', 'preview', 'preview-stage.ts')]: 'live',
       [path.join('features', 'share', 'share-page', 'use-share-page.ts')]: 'snapshot',

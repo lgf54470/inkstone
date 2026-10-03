@@ -140,6 +140,7 @@ const LABELS = {
   slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
   slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
+  kanbanPriorityHigh: localeLabel('preview.kanban_priority_high'),
   presentOverview: localeLabel('workspace.presentation_show_overview', 'workspace.presentation_hide_overview'),
   overviewGrid: localeLabel('workspace.presentation_overview'),
   presentFreeze: localeLabel('workspace.presentation_freeze'),
@@ -704,6 +705,141 @@ async function assertPresentationPages(page) {
   await sleep(600)
   // Hand the run back on the light palette the later scenarios measure on.
   await setAppTheme(page, 'light')
+}
+
+// The board a projector has to carry (N-36). A still of a board used to be its cards in a bulleted
+// list, which is fine for a hover card and useless three metres from a screen: what the board says is
+// which column each card sits in, and what the card itself carries. This is the board from the two
+// screenshots that opened the review — three columns, one card with tags, a priority, subtasks and a
+// cover — read back off the real projector, in the pixels it paints.
+const KANBAN_PROJECTOR_BOARD = {
+  title: 'Release plan',
+  activeViewId: 'view-board',
+  columns: [
+    { id: 'title', name: 'Title', type: 'title' },
+    {
+      id: 'status',
+      name: 'Status',
+      type: 'select',
+      options: [
+        { id: 'todo', label: 'To Do', color: 'gray' },
+        { id: 'doing', label: 'In Progress', color: 'blue' },
+        { id: 'done', label: 'Done', color: 'green' },
+      ],
+    },
+    { id: 'priority', name: 'Priority', type: 'select', options: [{ id: 'high', label: 'High', color: 'red' }] },
+    { id: 'tags', name: 'Tags', type: 'multi-select', options: [{ id: 'design', label: 'Design', color: 'purple' }] },
+    { id: 'estimate', name: 'Estimate', type: 'text' },
+  ],
+  views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status', cardFields: ['estimate'] }],
+  items: [
+    {
+      id: 'i1',
+      title: 'Draw the board',
+      cover: '/pwa-192x192.png',
+      properties: { status: 'todo', priority: 'high', tags: ['design'], estimate: '3d' },
+      subtasks: [
+        { id: 's1', title: 'Columns', completed: true },
+        { id: 's2', title: 'Tints', completed: true },
+        { id: 's3', title: 'Cards', completed: false },
+      ],
+    },
+    { id: 'i2', title: 'Tag the build', properties: { status: 'doing' } },
+    { id: 'i3', title: 'Ship the deck', properties: { status: 'done' } },
+  ],
+}
+
+const KANBAN_PROJECTOR_DECK = `# The board on the projector\n\n\`\`\`kanban\n${JSON.stringify(KANBAN_PROJECTOR_BOARD, null, 2)}\n\`\`\`\n`
+
+async function openKanbanDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${KANBAN_PROJECTOR_DECK}\n`, 'presentation kanban')
+  await sleep(1_500)
+}
+
+async function readProjectedBoard(page) {
+  return page.evaluate(() => {
+    const surface = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const board = surface?.querySelector('.kanban-snapshot-board')
+    const columns = [...(board?.querySelectorAll('.kanban-board-column') ?? [])]
+    const boxOf = (node) => {
+      const rect = node?.getBoundingClientRect()
+      return rect ? { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) } : null
+    }
+    const cards = columns.map((column) => [...column.querySelectorAll(':scope .kanban-snapshot-cards > .kanban-snapshot-card')].map((card) => ({
+      title: card.querySelector('.kanban-snapshot-card-title')?.textContent?.trim() ?? '',
+      tags: [...card.querySelectorAll('.kanban-snapshot-card-tags li')].map((chip) => chip.textContent?.trim() ?? ''),
+      tagColour: (() => {
+        const chip = card.querySelector('.kanban-snapshot-card-tags li')
+        return chip ? getComputedStyle(chip).backgroundColor : ''
+      })(),
+      priority: card.querySelector('.kanban-snapshot-card-priority')?.textContent?.trim() ?? '',
+      subtasks: card.querySelector('.kanban-snapshot-card-subtasks')?.textContent?.trim() ?? '',
+      fields: card.querySelector('[data-kanban-card-fields]')?.textContent?.trim() ?? '',
+      cover: card.querySelector('img.kanban-cover')?.getAttribute('src') ?? '',
+      coverDecoded: card.querySelector('img.kanban-cover')?.naturalWidth ?? 0,
+    })))
+    const title = board?.querySelector('.kanban-snapshot-card-title')
+    // The page is a design-sized box the stage scales down to fit the window, so a CSS font-size of
+    // 14 px is not 14 px on the screen. Read the scale the browser actually applied and report the
+    // painted size with it; the judgment below is on geometry, which the scale cannot fool.
+    const scale = surface && surface.offsetWidth ? surface.getBoundingClientRect().width / surface.offsetWidth : 1
+    return {
+      drawn: Boolean(board),
+      isList: Boolean(surface?.querySelector('.kanban-snapshot-groups:not(.kanban-board-columns)')),
+      columns: columns.length,
+      boxes: columns.map(boxOf),
+      headColours: columns.map((column) => {
+        const head = column.querySelector('.kanban-snapshot-group')
+        return head ? getComputedStyle(head).backgroundColor : ''
+      }),
+      headText: columns.map((column) => column.querySelector('.kanban-snapshot-group')?.textContent?.trim() ?? ''),
+      cards,
+      titlePx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
+      titlePaintedPx: title ? Number.parseFloat((Number.parseFloat(getComputedStyle(title).fontSize) * scale).toFixed(1)) : 0,
+      pageBox: boxOf(surface),
+    }
+  })
+}
+
+async function assertKanbanOnProjector(page) {
+  await openKanbanDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // The board is drawn by the same off-DOM enhancement the rest of the page travels through, so the
+  // projector can open on the list-shaped fallback and catch up a beat later.
+  let board = await readProjectedBoard(page)
+  for (let attempt = 0; attempt < 30 && !board.drawn; attempt += 1) {
+    await sleep(500)
+    board = await readProjectedBoard(page)
+  }
+
+  check('presentation kanban: the projector draws the board, not a bulleted list', board.drawn && !board.isList, JSON.stringify({ drawn: board.drawn, isList: board.isList }))
+  check('presentation kanban: every column the board has is drawn beside the others', board.columns === 3 && board.boxes.every((box) => box !== null && box.width > 0) && board.boxes[0].left < board.boxes[1].left && board.boxes[1].left < board.boxes[2].left, JSON.stringify(board.boxes))
+  check('presentation kanban: the columns hold only their own cards', JSON.stringify(board.cards.map((cards) => cards.map((card) => card.title))) === JSON.stringify([['Draw the board'], ['Tag the build'], ['Ship the deck']]), JSON.stringify(board.cards.map((cards) => cards.map((card) => card.title))))
+  check('presentation kanban: each column is painted with its own colour', new Set(board.headColours).size === 3 && board.headColours.every((colour) => colour !== '' && !colour.endsWith(', 0)')), JSON.stringify({ colours: board.headColours, heads: board.headText }))
+  // The tag id the fence wrote stays the fence's own text; the priority is a built-in option, so it
+  // arrives in whatever language the account reads in — the same pair of spellings the gate looks its
+  // controls up by.
+  check('presentation kanban: a card says what the live board says about it', board.cards[0][0].tags.join() === 'Design' && LABELS.kanbanPriorityHigh.includes(board.cards[0][0].priority) && board.cards[0][0].subtasks === '2/3' && board.cards[0][0].fields.includes('3d'), JSON.stringify(board.cards[0][0]))
+  check('presentation kanban: the tag chip wears the colour the board gave that tag', board.cards[0][0].tagColour !== '' && board.cards[0][0].tagColour !== board.headColours[0], JSON.stringify({ tag: board.cards[0][0].tagColour, heads: board.headColours }))
+  check('presentation kanban: the card keeps its cover picture, and the browser decodes it', board.cards[0][0].cover === '/pwa-192x192.png' && board.cards[0][0].coverDecoded > 0, JSON.stringify({ src: board.cards[0][0].cover, decoded: board.cards[0][0].coverDecoded }))
+  // Three columns only read as a board if each keeps its own third of the page: a squeezed column
+  // still reports its colour and its cards, and a bullet list would report none of the geometry. The
+  // painted size is carried in the detail so the next reader sees what the window bought.
+  const narrowest = Math.min(...board.boxes.map((box) => box.width))
+  check('presentation kanban: each column keeps its share of the projected page', narrowest >= board.pageBox.width * 0.18, JSON.stringify({ narrowest, page: board.pageBox.width, titlePaintedPx: board.titlePaintedPx }))
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read: they walk the slide list, print the deck and
+  // export it as images, all of which measure a deck that paginates. Leaving this one-slide board open
+  // makes the next reader report `sheet=1 rail=1` and call it a regression.
+  await openDeckNote(page)
 }
 
 // The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
@@ -9014,6 +9150,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertKanbanOnProjector(page)
     await assertPresentationAccessibility(page)
     await assertPresentationLaser(page)
     await assertPresentationScreenCover(page)
