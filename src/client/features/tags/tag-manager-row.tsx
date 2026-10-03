@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, ExternalLink, GitMerge, Hash, Pencil, Pin, Trash2, X } from 'lucide-react'
 import type { Tag } from '@shared/types'
-import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { ORGANIZER_COLORS, organizerColorLabel } from '@shared/organizer-colors'
 import { Modal, Tooltip } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
@@ -174,10 +174,10 @@ function TagColorPalette({ tag, onPick }: { tag: Tag; onPick: (color: string | n
         </button>
       </Tooltip>
       {ORGANIZER_COLORS.map((color) => (
-        <Tooltip key={color} label={color}>
+        <Tooltip key={color} label={organizerColorLabel(color, t)}>
           <button
             type='button'
-            aria-label={color}
+            aria-label={organizerColorLabel(color, t)}
             aria-pressed={color === tag.color}
             onClick={() => onPick(color)}
             className={cn(

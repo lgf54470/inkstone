@@ -1,6 +1,6 @@
 import { act, createElement, type ReactNode } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { ORGANIZER_COLORS, ORGANIZER_COLOR_MESSAGE_KEYS } from '@shared/organizer-colors'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences } from '../../../lib/graph-settings'
 import { initI18n, t } from '../../../lib/i18n'
 import { renderElement, type RenderedElement } from '../../../lib/test-render'
@@ -75,6 +75,13 @@ function addButton(container: HTMLElement): HTMLButtonElement {
     .find((button) => button.textContent?.includes(t('graph.add_color_rule'))) as HTMLButtonElement
 }
 
+const swatchFor = (container: HTMLElement, color: string): HTMLButtonElement => {
+  const name = t(ORGANIZER_COLOR_MESSAGE_KEYS[color as keyof typeof ORGANIZER_COLOR_MESSAGE_KEYS])
+  const swatch = container.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)
+  if (!swatch) throw new Error(`no swatch named ${name}`)
+  return swatch
+}
+
 describe('graph color rule settings', () => {
   it('adds a rule to the preferences with a fresh id and a palette colour', () => {
     const onChange = vi.fn()
@@ -100,16 +107,17 @@ describe('graph color rule settings', () => {
   it('marks the selected swatch and writes the palette colour it pressed', () => {
     const onChange = vi.fn()
     const container = open([rule], onChange)
-    const pressed = container.querySelector<HTMLButtonElement>('button[aria-label="#059669"]')!
-    expect(pressed.getAttribute('aria-pressed')).toBe('false')
-    expect(container.querySelector<HTMLButtonElement>('button[aria-label="#dc2626"]')!.getAttribute('aria-pressed')).toBe('true')
+    const pressed = swatchFor(container, '#059669')
+    // A swatch is named by the colour's word, not by the value the app stores it as (G-46).
+    expect(pressed.getAttribute('aria-label')).toBe(t('color.emerald'))
+    expect(swatchFor(container, '#dc2626').getAttribute('aria-pressed')).toBe('true')
     press(pressed)
     expect(colorGroupWrites(onChange)[0]).toEqual([{ ...rule, color: '#059669' }])
   })
 
   it('aims at the app-wide 24px target rather than a 20px dot (G-26)', () => {
     const container = open([rule], vi.fn())
-    const swatch = container.querySelector<HTMLButtonElement>('button[aria-label="#059669"]')!
+    const swatch = swatchFor(container, '#059669')
 
     // jsdom paints nothing, so the target is read off the class the app sizes its swatches with
     // everywhere else: the tag and folder pickers are `size-6` too.

@@ -1,5 +1,5 @@
 import { Check, Plus, X } from 'lucide-react'
-import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { ORGANIZER_COLORS, organizerColorLabel } from '@shared/organizer-colors'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup } from '../../../lib/graph-settings'
 import { Button, IconButton } from '../../../components/primitives'
 import { Input } from '../../../components/form'
@@ -72,11 +72,12 @@ function GraphColorRuleRow({ group, onChange, onRemove }: {
       <div className='mt-1.5 flex flex-wrap items-center gap-1.5'>
         {ORGANIZER_COLORS.map((color) => {
           const isSelected = group.color === color
+          const colorName = organizerColorLabel(color, t)
           return (
-            <Tooltip key={color} label={color}>
+            <Tooltip key={color} label={colorName}>
               <button
                 type='button'
-                aria-label={color}
+                aria-label={colorName}
                 aria-pressed={isSelected}
                 onClick={() => onChange({ color })}
                 className={cn(

@@ -41,6 +41,7 @@ import { messages as messages39 } from './templates'
 import { messages as messages40 } from './seed'
 import { messages as messages41 } from './music'
 import { messages as messages42 } from './slides'
+import { messages as messages43 } from './colors'
 
 export const ZH_CN_MESSAGES = {
   ...messages1,
@@ -85,4 +86,5 @@ export const ZH_CN_MESSAGES = {
   ...messages40,
   ...messages41,
   ...messages42,
+  ...messages43,
 } as const satisfies Record<MessageKey, string>

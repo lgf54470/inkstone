@@ -3838,6 +3838,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/settings-color-rules.test.ts', [
     '/**\n * The colour rules live in the persisted preferences, so a panel that renders them without writing\n * them back would be decoration. These cases press the controls a reader would press and read the\n * preference key and value each press writes, including the rule id the panel generated.\n */',
+    '// A swatch is named by the colour\'s word, not by the value the app stores it as (G-46).',
     '// jsdom paints nothing, so the target is read off the class the app sizes its swatches with',
     '// everywhere else: the tag and folder pickers are `size-6` too.',
   ]],
@@ -13263,6 +13264,10 @@ const allowed = new Map([
     '/**\n * Portable format for exporting/importing a user\'s template library. Only\n * user-created templates and categories are exported; built-ins are re-seeded\n * by the app itself and stay out of the file.\n */',
     '/**\n * Parses and validates an exported template library. Returns null when the\n * payload is not a well-formed export; malformed entries are dropped\n * individually so a partially broken file can still be imported.\n */',
   ]],
+  ['src/shared/organizer-colors.ts', [
+    '/** How each palette colour is *said*, so a swatch can name itself to a reader who never sees it (G-46). */',
+    '/**\n * What a swatch says about itself. A colour stored outside the palette — one a reader typed into an older\n * record, say — has no name to lose, so it keeps its value rather than going unnamed.\n */',
+  ]],
   ['src/shared/share-channel.test.ts', [
     '/**\n * ADR-0004: the marker is a bounded, lowercase token and nothing else. These are the boundaries\n * the privacy argument rests on — everything the character set refuses is something that could\n * have carried a person\'s text into the visits table.\n */',
     '/* a non-Latin marker: the charset is ASCII only */',
@@ -15740,6 +15745,12 @@ const allowed = new Map([
     '// travel with the audio and are served from the same cache when the network is gone.',
     '// The senders are ours, so an extra that names another track — or a path that is not a track',
     '// medium at all — is a bug; dropping it keeps the cache and the audio intact.',
+  ]],
+  ['tests/organizer-color-names.test.ts', [
+    '/**\n * A colour swatch whose accessible name is `#dc2626` tells a screen-reader reader nothing: hex is how the\n * app stores a colour, not how anyone names it, and the same five rows of swatches are repeated across the\n * tag, folder and graph surfaces (G-46). The names live in the locale resources so both languages carry\n * them, and no call site is allowed to fall back to the raw value.\n */',
+    '// Five surfaces draw these swatches today: the graph\'s colour rules, the tag row, the tag and folder',
+    '// submenus, and the folder manager. A sixth that forgot to name itself, or one that stopped, is the bug.',
+    '// The idiom was `aria-label={color}` / `<Tooltip label={color}>` where `color` is the palette entry.',
   ]],
   ['tests/radiogroup-names.test.ts', [
     '/**\n * SH-40 named every `Segmented` inside the share feature; SH-46 lifted the scan to\n * the whole client tree, because the same defect kept appearing in other modules\'\n * toolbars. A `Segmented` renders a `role=\'radiogroup\'`, and the component only\n * names it through `label` (an `aria-label`) or `aria-labelledby`.\n *\n * One site may stay attribute-free: a `Segmented` that is the single child of a\n * `Field`, because `Field` clones `aria-labelledby` onto its control. That\n * exemption is proved behaviourally in src/client/components/form-segmented.test.ts\n * rather than trusted from here.\n */',

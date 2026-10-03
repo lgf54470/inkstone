@@ -1,5 +1,5 @@
 import { Check, Hash, Settings2 } from 'lucide-react'
-import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { ORGANIZER_COLORS, organizerColorLabel } from '@shared/organizer-colors'
 import type { Tag } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -25,11 +25,12 @@ function ClearColorButton({ active, onClear }: { active: boolean; onClear: () =>
 }
 
 function ColorSwatchButton({ color, active, onSelect }: { color: string; active: boolean; onSelect: (color: string) => void }) {
+  const colorName = organizerColorLabel(color, t)
   return (
     <button
       type='button'
-      aria-label={color}
-      title={color}
+      aria-label={colorName}
+      title={colorName}
       aria-pressed={active}
       onClick={() => onSelect(color)}
       className={cn(
