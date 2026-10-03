@@ -10,7 +10,7 @@ import { verifyPassword } from '../../lib/password'
 import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, sanitizeVisitReferrer } from '../../lib/share-analytics'
 import { userSettingsBooleanSql } from '../../lib/maintenance'
 import { storedChannelValue } from '@shared/share-channel'
-import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
+import { createShareAssetSession, shareAccessCookieName, shareAssetCookieName } from '../../lib/share-asset-session'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
 import { shareAccessSchema } from './schemas'
 import { ShareRow } from './shares'
@@ -323,11 +323,15 @@ async function issueShareAssetCookie(c: Context<AppBindings>, share: ShareRow, s
     Date.now() + 12 * 60 * 60 * 1000,
   )
   const token = await createShareAssetSession(c.env.DB, slug, share.password_hash, expiresAt)
-  setCookie(c, shareAssetCookieName(slug), token, {
-    path: '/api/files/',
+  const attributes = {
     httpOnly: true,
-    sameSite: 'Strict',
+    sameSite: 'Strict' as const,
     maxAge: Math.max(1, Math.floor((expiresAt - Date.now()) / 1000)),
     secure: new URL(c.req.url).protocol === 'https:',
-  })
+  }
+  // One capability, two scopes: the attachments it was minted for, and the public API a viewer of a
+  // running show has to prove itself at (ADR-0006). Widening either path would hand the proof to
+  // endpoints that have no use for it.
+  setCookie(c, shareAssetCookieName(slug), token, { ...attributes, path: '/api/files/' })
+  setCookie(c, shareAccessCookieName(slug), token, { ...attributes, path: '/api/public/' })
 }

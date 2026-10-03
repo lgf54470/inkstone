@@ -14889,6 +14889,9 @@ const allowed = new Map([
     '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
     '// fill the same array; missing indexes stay zero-filled.',
   ]],
+  ['src/worker/lib/share-asset-session.ts', [
+    '/**\n * The same proof, scoped to the public API instead of to the attachment routes.\n *\n * A passcode buys one thing: the note behind the link. Every reader of that note has to show the proof,\n * including the audience\'s heartbeat (ADR-0006), and a cookie whose path stops at `/api/files/` is not\n * sent anywhere else. Two names rather than one widened path, so no request that does not need the\n * capability is handed it.\n */',
+  ]],
   ['src/worker/lib/share-audit.ts', [
     '/** One changed field: `from`/`to` as stored, except the passcode, which is only ever "was set". */',
     '/**\n * The fields two share snapshots disagree on, in a stable order. The passcode is compared by\n * presence only — a hash is a secret-shaped value even in a log — and the tag list compares as a\n * serialized array, which is what the row stores. Nothing here reads the visitor\'s side: this is\n * the owner\'s edit history.\n */',
@@ -16128,6 +16131,8 @@ const allowed = new Map([
     '/**\n * The audience-side show position (ADR-0006): the presenter writes where the talk is, a viewer on their\n * own device reads it and turns its own page.\n *\n * Two halves live here because they are one contract seen from both ends. The owner half is a normal\n * authenticated share route; the public half is the one that has to be careful — it is reachable by a\n * stranger, so it answers with a capability token rather than a session, and it never writes a visitor\n * row: the position is not a view, and counting every heartbeat would turn "how many people opened\n * this link" into "how many seconds they sat there".\n */',
     '/** A row of `share_presence`, shaped the way D1 hands it back. */',
     '/** The share a show needs: a live link, the note it points at, and the note\'s own title for the viewer. */',
+    '/** A live link, the note it points at, and whether that note is behind a passcode. */',
+    '/**\n * Whether this browser has passed the share\'s passcode, asked the same way the attachment routes ask it:\n * the gate mints one capability and leaves it in two narrowly scoped cookies, and a reader proves itself\n * by carrying either. A missing or foreign cookie is not a separate answer — it is the same 404.\n */',
     '/**\n * Starting a show mints the capability the audience URL will carry. It is returned exactly once: the\n * row keeps a hash, so a database read cannot hand out a working link, and a speaker who loses the\n * link starts a new show rather than recovering an old one.\n */',
     '/**\n * Writing the position refreshes the lease: a talk that runs long is not cut off, while a show that\n * was simply left open expires on its own. There is no INSERT here on purpose — a position can only\n * be written into a show that was started, so a stale client cannot resurrect a revoked token.\n */',
     '/** Stopping is idempotent: the presenter presses it once and the browser may press it again on unload. */',
@@ -16136,6 +16141,9 @@ const allowed = new Map([
     '// over": the existence of a presentation is the owner\'s information, not the caller\'s to learn.',
     '// The share was revoked or expired while the row was still inside its lease. Take the row with',
     '// it, so the next heartbeat answers the same way the first one did rather than waiting out the TTL.',
+    '// A passcode protects the note, and the note\'s title and progress are part of the note. The token',
+    '// says "the speaker sent you this link"; the proof the gate left in the jar says "this browser has',
+    '// read it", and both are needed. Answered the same way as every other refusal.',
     '// A viewer polls on a beat, and most beats nothing has changed. The validator is taken over the',
     '// answer\'s own numbers, which is what makes a hit cheap: 304 carries no row, no title and no work.',
     '/**\n * The read budget is its own keys (`share-present:view:*`), deliberately not the page-view budget: a\n * viewer who opens the shared page and a viewer whose client is polling are different kinds of traffic,\n * and sharing a bucket would let one heartbeat starve the other\'s page load.\n *\n * The numbers are the ADR\'s: 2 s over a 10-minute window is 300 reads a head, which is above the budget\n * on purpose — the 304 path is what makes an idle viewer cheap, and if the budget has to be raised, the\n * poll interval has to be measured first (ADR-0006 section 4).\n */',
@@ -16167,6 +16175,9 @@ const allowed = new Map([
     '// should do — nothing to match on, so every visit is its own row, and the surfaces that show',
     '// unique visitors say why they cannot count any (see `visitorFp` in the site info).',
     '/* An unparseable referer header simply means "no external referrer". */',
+    '// One capability, two scopes: the attachments it was minted for, and the public API a viewer of a',
+    '// running show has to prove itself at (ADR-0006). Widening either path would hand the proof to',
+    '// endpoints that have no use for it.',
   ]],
   ['src/worker/routes/share/read-budget.ts', [
     '/**\n * The read side of the share center is not free: an unbounded analytics range is\n * summarized in eight passes over the account\'s whole visit history, measured at ~1.25 s\n * of CPU over 200k rows (see the SH-74 note in the ledger). A session stuck in a retry\n * loop — or a stolen session — can therefore burn the account\'s own quota without ever\n * writing anything, which the write-side budget on public visits never sees.\n *\n * The window is deliberately wide: opening the hub, switching ranges, paging the log and\n * toggling filters are all one request each, so a person cannot reach 120 in five minutes,\n * while a runaway loop reaches it in seconds. Expiry follows the primitive it borrows:\n * crossing the budget locks the key for a minute and answers 429 with a retry hint.\n */',

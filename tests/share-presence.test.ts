@@ -10,6 +10,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
 import { SHARE_PRESENCE_TTL_MS } from '../src/shared/share-presence'
+import { hashPassword } from '../src/worker/lib/password'
+import { shareAccessCookieName } from '../src/worker/lib/share-asset-session'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
@@ -21,6 +23,7 @@ import { createD1Database, queryFirst, runSql, type D1Shim } from './d1-harness'
 const H = vi.hoisted(() => ({ counter: 0 }))
 const USER = 'user-1'
 const OTHER = 'user-2'
+const PASSCODE = 'board minutes 2026'
 const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext
 
 function env(db: D1Database): AppBindings['Bindings'] {
@@ -69,12 +72,12 @@ async function seedNote(db: D1Shim, userId: string, title: string): Promise<stri
   return id
 }
 
-async function seedShare(db: D1Shim, fields: { note_id: string, slug: string, user_id?: string, is_enabled?: number, expires_at?: number | null }): Promise<void> {
+async function seedShare(db: D1Shim, fields: { note_id: string, slug: string, user_id?: string, is_enabled?: number, expires_at?: number | null, password_hash?: string | null }): Promise<void> {
   await runSql(
     db,
     `INSERT INTO shares (slug, note_id, user_id, folder_id, tags, password_hash, expires_at, views, is_enabled, created_at, last_viewed_at)
-     VALUES (?2, ?1, ?3, NULL, '[]', NULL, ?4, 0, ?5, ?6, NULL)`,
-    fields.note_id, fields.slug, fields.user_id ?? USER, fields.expires_at ?? null, fields.is_enabled ?? 1, Date.now(),
+     VALUES (?2, ?1, ?3, NULL, '[]', ?7, ?4, 0, ?5, ?6, NULL)`,
+    fields.note_id, fields.slug, fields.user_id ?? USER, fields.expires_at ?? null, fields.is_enabled ?? 1, Date.now(), fields.password_hash ?? null,
   )
 }
 
@@ -372,6 +375,60 @@ describe('share presence — the schema says one show per link', () => {
     expect(rows!.n).toBe(1)
     const duplicate = await runSql(db, `INSERT INTO share_presence (slug, user_id, note_id, token_hash, slide, page, step, updated_at, expires_at) VALUES ('live-1', 'user-1', 'x', 'y', 1, 1, 1, 1, 9e14)`).then(() => 'written').catch(() => 'refused')
     expect(duplicate, 'the slug is the primary key: a share has one show').toBe('refused')
+  })
+})
+
+describe('share presence — a passcode share keeps its show behind the passcode', () => {
+  it('refuses a heartbeat that holds the token but never passed the gate', async () => {
+    const db = await freshDb()
+    await seedUser(db, USER)
+    const noteId = await seedNote(db, USER, 'Board Minutes')
+    await seedShare(db, { note_id: noteId, slug: 'locked-1', password_hash: await hashPassword(PASSCODE) })
+    const app = makeApp()
+    const { token } = await startShow(app, db, noteId)
+
+    const refused = await post(app, db, '/api/public/locked-1/present', { token })
+    const stranger = await post(app, db, '/api/public/never-was/present', { token })
+    const refusedText = await refused.text()
+    expect(refused.status, 'a token is not a passcode').toBe(404)
+    expect(refusedText, 'and it says the same thing a link that never existed says').toBe(await stranger.text())
+  })
+
+  it('answers once the visitor holds the proof the gate handed out, and keeps that proof scoped', async () => {
+    const db = await freshDb()
+    await seedUser(db, USER)
+    const noteId = await seedNote(db, USER, 'Board Minutes')
+    await seedShare(db, { note_id: noteId, slug: 'locked-1', password_hash: await hashPassword(PASSCODE) })
+    const app = makeApp()
+    const { token } = await startShow(app, db, noteId)
+
+    const gate = await post(app, db, '/api/public/locked-1', { password: PASSCODE })
+    expect(gate.status).toBe(200)
+    const line = gate.headers.getSetCookie().find((entry) => entry.startsWith(`${shareAccessCookieName('locked-1')}=`))
+    expect(line, 'the gate has to leave a proof the heartbeat can carry').toBeTruthy()
+    expect(line).toContain('Path=/api/public/')
+    expect(line).toContain('HttpOnly')
+
+    const beat = await post(app, db, '/api/public/locked-1/present', { token }, { cookie: line!.split(';')[0] })
+    expect(beat.status).toBe(200)
+    expect(await beat.json()).toMatchObject({ slide: 0, page: 0, step: 0, title: 'Board Minutes' })
+  })
+
+  it('will not take one share of one account as another share’s', async () => {
+    const db = await freshDb()
+    await seedUser(db, USER)
+    const first = await seedNote(db, USER, 'Board Minutes')
+    const second = await seedNote(db, USER, 'Private Roadmap')
+    await seedShare(db, { note_id: first, slug: 'locked-1', password_hash: await hashPassword(PASSCODE) })
+    await seedShare(db, { note_id: second, slug: 'locked-2', password_hash: await hashPassword(PASSCODE) })
+    const app = makeApp()
+    const show = await startShow(app, db, second)
+
+    const gate = await post(app, db, '/api/public/locked-1', { password: PASSCODE })
+    const proof = gate.headers.getSetCookie().find((entry) => entry.includes('locked-1'))?.split(';')[0]
+    expect(proof).toBeTruthy()
+    const beat = await post(app, db, '/api/public/locked-2/present', { token: show.token }, { cookie: proof! })
+    expect(beat.status, 'the proof names the link it was minted for').toBe(404)
   })
 })
 

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
+import { getCookie } from 'hono/cookie'
 import type { D1Database } from '@cloudflare/workers-types'
 import { LIMITS } from '@shared/constants'
 import { SHARE_PRESENCE_TTL_MS, type PublicSharePresence, type SharePresencePosition, type SharePresenceSession } from '@shared/share-presence'
@@ -8,6 +9,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { hashToken, newSessionToken } from '../../lib/session-store'
+import { shareAccessCookieName, verifyShareAssetSession } from '../../lib/share-asset-session'
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { sharePresenceAccessSchema, sharePresenceWriteSchema } from './schemas'
 
@@ -42,6 +44,22 @@ interface PresentableShare {
   user_id: string
   expires_at: number | null
   title: string
+}
+
+/** A live link, the note it points at, and whether that note is behind a passcode. */
+interface LiveShare {
+  slug: string
+  title: string
+  password_hash: string | null
+}
+
+/**
+ * Whether this browser has passed the share's passcode, asked the same way the attachment routes ask it:
+ * the gate mints one capability and leaves it in two narrowly scoped cookies, and a reader proves itself
+ * by carrying either. A missing or foreign cookie is not a separate answer — it is the same 404.
+ */
+async function shareAccessPassed(c: Context<AppBindings>, slug: string, passwordHash: string): Promise<boolean> {
+  return await verifyShareAssetSession(c.env.DB, getCookie(c, shareAccessCookieName(slug)), slug, passwordHash)
 }
 
 export function registerSharePresenceRoutes(shareManageRoutes: Hono<AppBindings>): void {
@@ -135,6 +153,10 @@ export function registerSharePublicPresenceRoutes(shareRoutes: Hono<AppBindings>
       await c.env.DB.prepare(`DELETE FROM share_presence WHERE slug = ?1`).bind(slug).run()
       throw shareNotFound()
     }
+    // A passcode protects the note, and the note's title and progress are part of the note. The token
+    // says "the speaker sent you this link"; the proof the gate left in the jar says "this browser has
+    // read it", and both are needed. Answered the same way as every other refusal.
+    if (share.password_hash && !(await shareAccessPassed(c, slug, share.password_hash))) throw shareNotFound()
     const presence: PublicSharePresence = { slide: row.slide, page: row.page, step: row.step, updatedAt: row.updated_at, title: share.title }
     // A viewer polls on a beat, and most beats nothing has changed. The validator is taken over the
     // answer's own numbers, which is what makes a hit cheap: 304 carries no row, no title and no work.
@@ -204,14 +226,14 @@ async function loadPresentableShare(db: D1Database, userId: string, noteId: stri
   return { slug: share.slug, note_id: share.note_id, user_id: share.user_id, expires_at: share.expires_at, title: share.title }
 }
 
-async function loadLiveShareBySlug(db: D1Database, slug: string): Promise<PresentableShare | null> {
+async function loadLiveShareBySlug(db: D1Database, slug: string): Promise<LiveShare | null> {
   const share = await db.prepare(
-    `SELECT s.slug, s.note_id, s.user_id, s.expires_at, n.title
+    `SELECT s.slug, s.note_id, s.user_id, s.expires_at, s.password_hash, n.title
        FROM shares s JOIN notes n ON n.id = s.note_id
       WHERE s.slug = ?1 AND s.is_enabled = 1`,
   )
     .bind(slug)
-    .first<PresentableShare & { expires_at: number | null }>()
+    .first<LiveShare & { expires_at: number | null }>()
   if (!share || (share.expires_at && share.expires_at < Date.now())) return null
   return share
 }
