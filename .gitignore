@@ -69,7 +69,8 @@ Thumbs.db
 .codebuddy/
 .vscode-server/
 .idea/
-.trae/
+.trae/*
+!.trae/skills/
 .trae-cn/
 
 
