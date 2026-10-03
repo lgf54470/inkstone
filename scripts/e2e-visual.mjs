@@ -2928,12 +2928,16 @@ async function assertMindmapBlock(page) {
   await page.click('.mindmap-fullscreen-canvas me-tpc')
   await page.keyboard.press('Tab')
   await page.keyboard.press('Enter')
-  const written = await page.waitForFunction(
-    (names) => names.some((name) => (document.querySelector('.cm-content')?.textContent ?? '').includes(name)),
-    { timeout: 15_000 },
-    ['New node', '新节点'],
-  ).then(() => true, () => false)
-  check('mindmap: a node added from the keyboard reaches the note source', written)
+  // Read on either surface the note can answer with: the editor holds only the lines inside its
+  // viewport, so a fence line scrolled off it reads as "the note never got it" — the shape L-3 has been
+  // reddening in. `fenceAnswered` is kept for the detail, which says which of the two said it.
+  const names = ['New node', '新节点']
+  let written = { editor: false, fence: false }
+  for (let beat = 0; beat < 75 && !(written.editor || written.fence); beat++) {
+    written = await mapWriteAny(page, '.ink-prose', names)
+    if (!(written.editor || written.fence)) await sleep(200)
+  }
+  check('mindmap: a node added from the keyboard reaches the note source', written.editor || written.fence, JSON.stringify(written))
   const nodes = await page.evaluate(() => document.querySelectorAll('.mindmap-fullscreen-canvas me-tpc').length)
   check('mindmap: the added node is on the map too', nodes === full.nodes + 1, `before=${full.nodes} after=${nodes}`)
 
@@ -2959,7 +2963,9 @@ async function assertMindmapBlock(page) {
   const afterSibling = await page.evaluate(() => ({
     full: Boolean(document.querySelector('.mindmap-fullscreen')),
     hosted: Boolean(document.querySelector('.mindmap-fullscreen-canvas .mindmap-canvas')),
-    written: (document.querySelector('.cm-content')?.textContent ?? '').includes('Keyboard sibling'),
+    // Two surfaces answer for one write: the editor holds only the lines inside its viewport, so a
+    // fence line scrolled off it reads as "the note never got it" (L-3's shape).
+    written: ['Keyboard sibling', '键盘同级节点'].some((name) => [...document.querySelectorAll('.cm-content')].map((node) => node.textContent ?? '').join(' ').includes(name)),
   }))
   check('mindmap: the sibling reaches the note with full screen still open', afterSibling.full && afterSibling.hosted && afterSibling.written, JSON.stringify(afterSibling))
 
@@ -3102,6 +3108,31 @@ async function readNoteBody(page, scope) {
   return page.evaluate(readBlockBody, { scope, block: '.mindmap-block[data-mindmap]', family: 'mindmap', indexAttribute: 'data-mindmap-index' })
 }
 
+/**
+ * The two places a map edit can be read back from, asked at once.
+ *
+ * The editor only renders the lines inside its viewport (L-3's red shape: the node was on the map and
+ * in the note, but the fence line was scrolled out of what `.cm-content` holds), while the committed
+ * fence body is not there at all while full screen owns the instance. Neither surface alone is a safe
+ * read, so the pair is read together and both halves go into the detail — which also says, on any run,
+ * which of the two answered.
+ */
+async function mapWriteAny(page, scope, names) {
+  return page.evaluate(({ scope: where, wanted }) => {
+    const node = document.querySelector(`${where} .mindmap-block[data-mindmap]`)
+    let fence = ''
+    for (let current = node; node && current !== null; current = current.parentElement) {
+      const bodies = current.inkstoneFenceBodies
+      if (bodies) {
+        fence = bodies.mindmap?.[Number(node.getAttribute('data-mindmap-index'))] ?? ''
+        break
+      }
+    }
+    const editor = [...document.querySelectorAll('.cm-content')].map((item) => item.textContent ?? '').join(' ')
+    return { editor: wanted.some((name) => editor.includes(name)), fence: wanted.some((name) => fence.includes(name)) }
+  }, { scope, wanted: names })
+}
+
 // The write is debounced and the preview re-renders after it, so an assertion on the frame right
 // after a keypress would race both — this polls the committed body from here, where the predicate
 // stays readable, until it says what it should or the deadline passes.
@@ -3198,8 +3229,13 @@ async function assertMindmapSplitEditing(page) {
   await page.keyboard.down('Alt')
   await page.keyboard.press('ArrowUp')
   await page.keyboard.up('Alt')
-  await sleep(1_200)
-  const afterMove = await orderOf()
+  // Polled like every other mind-map write in this file: the reorder travels through the same
+  // debounce, and a fixed wait reads whichever frame happened to land first (L-11's shape).
+  let afterMove = await orderOf()
+  for (let beat = 0; beat < 75 && afterMove.join(' > ') === beforeMove.join(' > '); beat++) {
+    await sleep(200)
+    afterMove = await orderOf()
+  }
   const reordered = await page.evaluate(() => ({
     nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
     same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
