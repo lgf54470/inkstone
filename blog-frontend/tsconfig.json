@@ -5,5 +5,13 @@
     "noUnusedParameters": true
   },
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "exclude": [
+    "dist",
+    // Wrangler 生成的运行时类型（已 gitignore）：整文件是全局脚本，会把 workerd 版
+    // HTMLRewriter `interface Element` 合并进 DOM 的 Element，其 append(Stream|Response)
+    // 签名遮蔽 ParentNode.append(Node)，导致浏览器侧/ jsdom 测试全部 .append() 报错。
+    // 本项目服务端只用到 HTMLRewriter，最小声明见 src/types/shims.d.ts；需要其它绑定
+    // 类型时在服务端专用 d.ts 里 `/// <reference path="./worker-configuration.d.ts" />`。
+    "worker-configuration.d.ts"
+  ]
 }
