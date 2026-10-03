@@ -3262,7 +3262,7 @@ async function assertKanbanPanelAnchoring(page, scope, where) {
  * What is measured is the tab's own background against the colour already behind it (the first
  * ancestor that paints one, which is the header): a tab that repeats it is the old defect, whatever
  * token it names. `check-contrast.mjs` covers the other half in the same session — the accent pair
- * the selection now wears is calibrated for all seven accents there, in both themes.
+ * the selection now wears is calibrated for every declared accent there, in both themes.
  *
  * The scroll half is what the strip owes a board with more views than fit: the selected tab has to be
  * inside the strip's own box, or the reader is looking at a row that does not contain the tab the

@@ -411,6 +411,30 @@
 :root[data-accent='graphite'][data-theme='dark'] { --accent: oklch(80% 0.025 250); --accent-hover: oklch(86% 0.02 250); }
 :root[data-accent='graphite'][data-theme='light'] { --accent: oklch(38% 0.03 250); --accent-hover: oklch(30% 0.025 250); }
 
+:root[data-accent='monokai'][data-theme='dark'] { --accent: oklch(74.2% 0.144 7.5); --accent-hover: oklch(79.2% 0.125 7.5); }
+:root[data-accent='monokai'][data-theme='light'] { --accent: oklch(50.2% 0.168 7.5); --accent-hover: oklch(45.2% 0.168 7.5); }
+
+:root[data-accent='gruvbox'][data-theme='dark'] { --accent: oklch(73.6% 0.173 51.7); --accent-hover: oklch(78.6% 0.14 51.7); }
+:root[data-accent='gruvbox'][data-theme='light'] { --accent: oklch(49.6% 0.127 51.7); --accent-hover: oklch(44.6% 0.115 51.7); }
+
+:root[data-accent='onedark'][data-theme='dark'] { --accent: oklch(76.8% 0.11 133); --accent-hover: oklch(81.8% 0.11 133); }
+:root[data-accent='onedark'][data-theme='light'] { --accent: oklch(47.3% 0.11 133); --accent-hover: oklch(42.3% 0.11 133); }
+
+:root[data-accent='material'][data-theme='dark'] { --accent: oklch(71% 0.107 183.4); --accent-hover: oklch(76% 0.107 183.4); }
+:root[data-accent='material'][data-theme='light'] { --accent: oklch(47.5% 0.075 183.4); --accent-hover: oklch(42.5% 0.075 183.4); }
+
+:root[data-accent='nord'][data-theme='dark'] { --accent: oklch(77.5% 0.062 217.5); --accent-hover: oklch(82.5% 0.062 217.5); }
+:root[data-accent='nord'][data-theme='light'] { --accent: oklch(48% 0.062 217.5); --accent-hover: oklch(43% 0.062 217.5); }
+
+:root[data-accent='solarized'][data-theme='dark'] { --accent: oklch(73.2% 0.126 279.1); --accent-hover: oklch(78.2% 0.113 279.1); }
+:root[data-accent='solarized'][data-theme='light'] { --accent: oklch(49.2% 0.126 279.1); --accent-hover: oklch(44.2% 0.126 279.1); }
+
+:root[data-accent='dracula'][data-theme='dark'] { --accent: oklch(74.2% 0.149 301.9); --accent-hover: oklch(79.2% 0.127 301.9); }
+:root[data-accent='dracula'][data-theme='light'] { --accent: oklch(50.2% 0.149 301.9); --accent-hover: oklch(45.2% 0.149 301.9); }
+
+:root[data-accent='catppuccin'][data-theme='dark'] { --accent: oklch(80% 0.075 336.3); --accent-hover: oklch(85% 0.075 336.3); }
+:root[data-accent='catppuccin'][data-theme='light'] { --accent: oklch(49.5% 0.075 336.3); --accent-hover: oklch(44.5% 0.075 336.3); }
+
 
 :root {
   --accent: oklch(49% 0.15 30);

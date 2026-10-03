@@ -2,7 +2,22 @@ export type ThemePref = 'light' | 'dark' | 'system'
 
 export type AppLocale = 'zh-CN' | 'en-US'
 
-export type AccentName = 'cinnabar' | 'indigo' | 'celadon' | 'amber' | 'terracotta' | 'wisteria' | 'graphite'
+export type AccentName =
+  | 'cinnabar'
+  | 'indigo'
+  | 'celadon'
+  | 'amber'
+  | 'terracotta'
+  | 'wisteria'
+  | 'graphite'
+  | 'monokai'
+  | 'gruvbox'
+  | 'onedark'
+  | 'material'
+  | 'nord'
+  | 'solarized'
+  | 'dracula'
+  | 'catppuccin'
 
 export type BackgroundName = 'paper' | 'white'
 

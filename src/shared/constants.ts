@@ -186,6 +186,14 @@ export const ACCENTS: { name: AccentName; swatch: string; foreground: string }[]
   { name: 'terracotta', swatch: 'oklch(68% 0.1 205)', foreground: 'oklch(16% 0.008 265)' },
   { name: 'wisteria', swatch: 'oklch(62% 0.16 300)', foreground: 'white' },
   { name: 'graphite', swatch: 'oklch(55% 0.035 250)', foreground: 'white' },
+  { name: 'monokai', swatch: 'oklch(64.2% 0.24 7.5)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'gruvbox', swatch: 'oklch(73.1% 0.182 51.7)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'onedark', swatch: 'oklch(76.8% 0.11 133)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'material', swatch: 'oklch(60.5% 0.107 183.4)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'nord', swatch: 'oklch(77.5% 0.062 217.5)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'solarized', swatch: 'oklch(58.2% 0.126 279.1)', foreground: 'white' },
+  { name: 'dracula', swatch: 'oklch(74.2% 0.149 301.9)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'catppuccin', swatch: 'oklch(87% 0.075 336.3)', foreground: 'oklch(16% 0.008 265)' },
 ]
 
 

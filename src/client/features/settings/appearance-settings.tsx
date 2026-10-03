@@ -23,6 +23,14 @@ const ACCENT_MESSAGE_KEYS: Record<AccentName, MessageKey> = {
   terracotta: 'settings.accent.terracotta',
   wisteria: 'settings.accent.wisteria',
   graphite: 'settings.accent.graphite',
+  monokai: 'settings.accent.monokai',
+  gruvbox: 'settings.accent.gruvbox',
+  onedark: 'settings.accent.onedark',
+  material: 'settings.accent.material',
+  nord: 'settings.accent.nord',
+  solarized: 'settings.accent.solarized',
+  dracula: 'settings.accent.dracula',
+  catppuccin: 'settings.accent.catppuccin',
 }
 
 export function AppearanceSettings({
@@ -127,7 +135,7 @@ function ColorSection({ appearance, accents, setters }: { appearance: Appearance
 function AccentSwatches({ appearance, accents, setters }: { appearance: AppearanceSettingsState; accents: { name: AccentName; swatch: string; foreground: string }[]; setters: Setters }) {
   return (
     <SettingRow title={t('settings.accent_color')}>
-      <div role='group' aria-label={t('settings.accent_color')} className='flex items-center gap-1.5'>
+      <div role='group' aria-label={t('settings.accent_color')} className='flex flex-wrap items-center gap-x-1.5 gap-y-2'>
         {accents.map((accent) => (
           <Tooltip key={accent.name} label={t(ACCENT_MESSAGE_KEYS[accent.name])}>
             <button
