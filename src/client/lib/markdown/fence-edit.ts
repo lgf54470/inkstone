@@ -21,7 +21,7 @@ export interface FencePatch {
   info?: string
 }
 
-interface SplitContent {
+export interface SplitContent {
   lines: string[]
   eol: string
   trailingNewline: boolean
@@ -48,7 +48,7 @@ export interface FenceRange {
   end: number
 }
 
-function splitLines(content: string): SplitContent {
+export function splitLines(content: string): SplitContent {
   const eol = content.includes('\r\n') ? '\r\n' : '\n'
   const trailingNewline = /\r?\n$/.test(content)
   const lines = content.split(/\r?\n/)
@@ -56,7 +56,7 @@ function splitLines(content: string): SplitContent {
   return { lines, eol, trailingNewline }
 }
 
-function joinLines(lines: string[], eol: string, trailingNewline: boolean): string {
+export function joinLines(lines: string[], eol: string, trailingNewline: boolean): string {
   return `${lines.join(eol)}${trailingNewline && lines.length > 0 ? eol : ''}`
 }
 

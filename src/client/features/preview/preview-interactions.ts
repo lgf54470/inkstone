@@ -11,6 +11,7 @@ import { updateTaskAtSourceLine } from '../../editor/commands'
 import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
 import { findNoteByTitle } from '../../store/notes'
+import { selectImageFromClick } from './image-editor'
 import { executeTableFloatingAction, handleTableCellSelection } from './table-interactive'
 import { dismissTabsOverlays, executeTabsAction } from './tabs-interactive'
 import { handleBlockToolbarClick } from './block-actions'
@@ -475,6 +476,7 @@ async function handleImage(event: ReactMouseEvent, target: HTMLElement, ctx: Pre
   const image = trigger?.querySelector<HTMLImageElement>('img') ?? target.closest<HTMLImageElement>('img')
   if (!image?.src) return false
   event.preventDefault()
+  if (selectImageFromClick(image)) return true
   ctx.api.setLightbox({ src: image.src, alt: image.alt })
   return true
 }

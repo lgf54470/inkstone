@@ -83,6 +83,8 @@ const MINDMAP_FENCE = ['', '```mindmap', '- Contrast Probe', '  - Keyboard refer
 const KANBAN_FULLSCREEN = '.kanban-fullscreen'
 /** The block's own full screen control, in both languages — the same one the behaviour gate presses. */
 const KANBAN_FULLSCREEN_LABELS = ['全屏', 'Full screen']
+const IMAGE_ADJUST_LABELS = ['调整这张图片', 'Adjust this image']
+const IMAGE_PROBE_MARKDOWN = ['', '![Contrast probe](/inkstone-logo.svg){width=50% align=center border shadow}', ''].join('\n')
 
 /**
  * The mind map's full screen view, opened with its keyboard reference card up.
@@ -194,6 +196,39 @@ async function openMindmapFullscreen(page, colors) {
   })
   if (!toggled) throw new Error('mind map surface: the overlay has no keyboard reference toggle')
   await page.waitForSelector('.mindmap-shortcuts', { timeout: SETTLE_TIMEOUT })
+  await sleep(SETTLE_MS)
+}
+
+/**
+ * The controls a selected picture reveals. It is the one surface in the note whose text is painted
+ * on `--bg-raised` rather than on the editor or the shell, and its pressed buttons are the accent on
+ * its own soft tint — the pairing the matrix recomputes for every accent, read here on the surface
+ * the note actually draws.
+ */
+async function openImageControls(page) {
+  const drawn = await page.evaluate(() => Boolean(document.querySelector('.ink-prose img[data-image-line]')))
+  if (!drawn) {
+    if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('image surface: the editor pane never became visible')
+    const typed = await page.evaluate((markdown) => {
+      const content = document.querySelector('.cm-content')
+      if (!content) return false
+      content.focus()
+      const selection = window.getSelection()
+      selection.selectAllChildren(content)
+      selection.collapseToEnd()
+      return document.execCommand('insertText', false, markdown)
+    }, IMAGE_PROBE_MARKDOWN)
+    if (!typed) throw new Error('image surface: the editor is not mounted to type the picture into')
+    await sleep(1_200)
+  }
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('image surface: the preview pane never became visible')
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.ink-prose img[data-image-line]')
+    return Boolean(image && image.complete && image.naturalWidth > 0)
+  }, { timeout: 30_000 })
+  const pressed = await pressSurfaceControl(page, IMAGE_ADJUST_LABELS, '.ink-prose')
+  if (!pressed) throw new Error('image surface: the picture offers no control to press')
+  await page.waitForSelector('.image-editor', { timeout: SETTLE_TIMEOUT })
   await sleep(SETTLE_MS)
 }
 
@@ -564,6 +599,18 @@ const SURFACES = [
     // rule, its evidence and why it cannot widen are in `lib/axe-review.mjs` next to the classifier
     // that applies it (and `tests/axe-review.test.ts` pins all three parts of it).
     unjudgeable: [MINDMAP_NODE_TEXT_RULE],
+  },
+  {
+    // The picture's own toolbar: a text tier on --bg-raised and the accent on its soft tint, both
+    // painted by the note rather than by the shell, and read in both themes by the loop below.
+    name: 'image controls',
+    axeRoot: '.image-editor',
+    open: openImageControls,
+    close: async (page) => {
+      await page.keyboard.press('Escape')
+      await sleep(SETTLE_MS)
+    },
+    painted: ['text', 'accent'],
   },
   {
     // The board is one of the two surfaces whose colours are not an appearance token. It is here for
