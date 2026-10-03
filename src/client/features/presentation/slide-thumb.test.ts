@@ -8,11 +8,14 @@ import {
   pageLabel,
   resetSharedThumbObserverForTesting,
   sharedThumbObserverMetrics,
+  SlideThumb,
+  thumbDrawOf,
   thumbMetrics,
   ThumbRootContext,
   useNearViewport,
 } from './slide-thumb'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
+import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import type { RailEntry } from './presentation-state'
 
 class MockIntersectionObserver {
@@ -344,5 +347,35 @@ describe('pageLabel', () => {
   it('formats multi-subpage slide label', () => {
     const entry: RailEntry = { slide: 3, sub: 1, pageCount: 3 }
     expect(pageLabel(entry, 10)).toBe('Slide 4 of 10, page 2 of 3')
+  })
+})
+
+// A thumbnail that shows a slide's placeholders looks exactly like a slide whose diagrams failed to
+// draw. The four states below are the four answers to "where did this markup come from", which is the
+// only thing that tells those two cases apart (L-1).
+describe('thumbDrawOf — what a card says about its own source', () => {
+  it('names a page the cache holds as prepared, and one it holds only half as uncaptured', () => {
+    const body = { html: '<p>page</p>', fences: createFenceBodies() }
+    expect(thumbDrawOf({ ...body, prepared: true } as never)).toBe('prepared')
+    expect(thumbDrawOf(body as never), 'a plain render parked in the cache mid-preparation is not the finished page').toBe('uncaptured')
+  })
+
+  it('names a page that could not be enhanced, and one nobody ever prepared', () => {
+    expect(thumbDrawOf({ html: '<p>page</p>', fences: createFenceBodies(), failed: true } as never)).toBe('failed')
+    expect(thumbDrawOf(undefined), 'a card with no entry renders the source itself').toBe('plain')
+  })
+
+  it('carries the answer on the card a reader can query', () => {
+    const view = { thumb: thumbMetrics(160, 1280, 720), designWidth: 1280, designHeight: 720, externalImages: false, proseFont: 'serif' as never }
+    const ref = { current: null as HTMLSpanElement | null }
+    const { container } = renderElement(createElement(SlideThumb, { thumbRef: ref, near: true, html: '<p>page</p>', layout: undefined, drawn: 'uncaptured', active: false, view }))
+    expect(container.querySelector('[data-slide-thumb-draw]')?.getAttribute('data-slide-thumb-draw')).toBe('uncaptured')
+  })
+
+  it('says nothing about a card that drew nothing', () => {
+    const view = { thumb: thumbMetrics(160, 1280, 720), designWidth: 1280, designHeight: 720, externalImages: false, proseFont: 'serif' as never }
+    const ref = { current: null as HTMLSpanElement | null }
+    const { container } = renderElement(createElement(SlideThumb, { thumbRef: ref, near: false, html: '', layout: undefined, drawn: 'plain', active: false, view }))
+    expect(container.querySelector('[data-slide-thumb-draw]'), 'a far-off card has no markup to account for').toBeNull()
   })
 })

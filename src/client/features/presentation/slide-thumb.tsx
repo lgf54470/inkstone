@@ -95,6 +95,22 @@ export function extractSlideHeading(source: string): string {
 // Thumbnails render from the same cached markup the canvas measured, so a page's image matches
 // what the projector shows for it; the slice keeps one page's blocks per entry instead of
 // mounting the whole slide once per page.
+/**
+ * Which markup a card actually drew, stated out loud.
+ *
+ * A thumbnail that shows a slide's placeholders reads exactly like a slide whose diagrams failed to
+ * draw, and the only difference is where its markup came from. So the card names its own source: the
+ * four states are the four things a reader could otherwise only guess at, and a red that carries them
+ * says which one to go looking for.
+ */
+export type ThumbDraw = 'prepared' | 'uncaptured' | 'failed' | 'plain'
+
+export function thumbDrawOf(cached: SlideMarkup | undefined): ThumbDraw {
+  if (!cached) return 'plain'
+  if (cached.failed) return 'failed'
+  return cached.prepared ? 'prepared' : 'uncaptured'
+}
+
 export function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }: {
   near: boolean
   cacheKey: string
@@ -103,16 +119,19 @@ export function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }:
   plan: SlidePlan | undefined
   sub: number
   view: ThumbView
-}): { html: string; layout: SlideLayout | undefined } {
+}): { html: string; layout: SlideLayout | undefined; drawn: ThumbDraw } {
   return useMemo(() => {
-    if (!near) return { html: '', layout: undefined }
+    // `drawn` describes where the markup comes from, whether or not this card is close enough to
+    // paint: a far-off card still holds the entry it would draw from.
+    const drawn = thumbDrawOf(cached)
+    if (!near) return { html: '', layout: undefined, drawn }
     const markup = cached ?? slideMarkup(renderSlideSource(source, view.externalImages))
     const html = plan ? slicePageHtml(markup.html, plan, sub, view.thumb.contentWidth, view.thumb.contentHeight) : markup.html
     // The card draws the layout the canvas measured the page in, not the one the author asked for:
     // a column slide the projector refused to keep as columns would slice its pages out of a
     // geometry the projector never used. A measured plan answers even when it says nothing — only a
     // slide nobody has measured yet is drawn on its author's word.
-    return { html, layout: plan ? plan.layout : markup.layout }
+    return { html, layout: plan ? plan.layout : markup.layout, drawn }
   }, [near, cacheKey, cached, source, plan, sub, view])
 }
 
@@ -124,11 +143,12 @@ export function useCachedSlideHtml(cacheKey: string): SlideMarkup | undefined {
   return useSyncExternalStore(subscribe, () => readSlideHtml(cacheKey), () => undefined)
 }
 
-export function SlideThumb({ thumbRef, near, html, layout, active, view, className }: {
+export function SlideThumb({ thumbRef, near, html, layout, drawn, active, view, className }: {
   thumbRef: RefObject<HTMLSpanElement | null>
   near: boolean
   html: string
   layout: SlideLayout | undefined
+  drawn: ThumbDraw
   active: boolean
   view: ThumbView
   className?: string
@@ -140,6 +160,7 @@ export function SlideThumb({ thumbRef, near, html, layout, active, view, classNa
       // The preview is decorative: `inert` keeps the slide's own links and copy buttons out of
       // the tab order and out of the wrapping card's hit area.
       inert
+      data-slide-thumb-draw={near ? drawn : undefined}
       className={cn('ink-slide-thumb relative block shrink-0 overflow-hidden rounded-[var(--r-sm)] border bg-[var(--bg-editor)]', active ? 'border-[var(--accent)]' : 'border-[var(--border-subtle)]', className)}
       style={{ width: view.thumb.width, height: view.thumb.height }}
     >

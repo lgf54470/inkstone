@@ -442,6 +442,9 @@ async function assertPresentation(page) {
     const visible = [...host.children].filter((el) => el.style.visibility !== 'hidden')
     return {
       fills: box.width >= stage.width - 1 && box.height >= stage.height - 1,
+      // The two numbers this comparison is made of, printed when it fails: a `fills` red without them
+      // cannot tell a canvas that did not scale from a stage that was never measured.
+      size: { stage: `${Math.round(stage.width)}x${Math.round(stage.height)}`, canvas: `${Math.round(box.width)}x${Math.round(box.height)}` },
       contentFills: host.getBoundingClientRect().width > box.width * 0.85,
       fontSize: Number.parseFloat(getComputedStyle(host).fontSize),
       slides: document.querySelectorAll('[data-presentation-rail] [data-slide-index]').length,
@@ -452,7 +455,7 @@ async function assertPresentation(page) {
     }
   })
 
-  check('presentation: canvas fills the stage', deck.fills)
+  check('presentation: canvas fills the stage', deck.fills, JSON.stringify(deck.size))
   check('presentation: prose column fills the canvas', deck.contentFills)
   check('presentation: type is enlarged for the projector', deck.fontSize >= 24, `fontSize=${deck.fontSize}px`)
   check('presentation: slide list lists the deck', deck.slides >= 2, `slides=${deck.slides}`)
@@ -535,7 +538,7 @@ async function assertPresentationSession(page) {
   await sleep(1_500)
   const desktop = await presentationSession(page)
   check('presentation session: the show survives switching back', desktop.open && desktop.position === resumed.position, `position=${desktop.position}`)
-  check('presentation session: the canvas refills the stage', desktop.filled)
+  check('presentation session: the canvas refills the stage', desktop.filled, JSON.stringify(desktop.size))
 
   // A press in the slide list moves the ring there, and the list walks its column with the vertical
   // keys only: the sideways turn has to stay with the show at that point too, or the keyboard dies
@@ -671,17 +674,17 @@ async function assertPresentationPages(page) {
   // for the list to catch up instead of asserting on the frame right after the flip.
   await jumpToFirstPage(page)
   const prepared = await waitForRenderedMarkup(page)
-  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
+  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `drawn=${prepared.drawn} stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
   check('presentation pages: the projector draws the chart on its own canvas', prepared.stage.live && prepared.stage.painted > 0, describeArtifacts(prepared.stage))
-  check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, describeArtifacts(prepared.thumb))
+  check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, `drawn=${prepared.drawn} ${describeArtifacts(prepared.thumb)}`)
   const stillPixels = await readStillPixels(page)
-  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels}`)
+  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels} drawn=${prepared.drawn}`)
 
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
   await sleep(400)
   check('presentation pages: the system theme flip reaches the show', (await readRenderedMarkup(page)).theme === 'dark')
   const flipped = await waitForRenderedMarkup(page)
-  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
+  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `drawn=${flipped.drawn} stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
   await page.emulateMediaFeatures([])
 
   // The slide canvas is scaled with a CSS transform, so a chart must not measure through it: the
@@ -3240,9 +3243,13 @@ async function readRenderedMarkup(page) {
     })
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
-    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-selected="true"] .ink-slide-thumb .ink-prose')
+    const card = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-selected="true"]')
+    const active = card?.querySelector('.ink-slide-thumb .ink-prose')
     return {
       theme: document.documentElement.dataset.theme ?? '',
+      // Where the card's markup came from: the only reading that tells "the cache never held this
+      // page" from "the cache holds it un-prepared" from "that page genuinely failed to enhance".
+      drawn: card?.querySelector('[data-slide-thumb-draw]')?.dataset.slideThumbDraw ?? 'absent',
       stage: artifacts(stage),
       thumb: artifacts(active),
     }
@@ -3507,6 +3514,9 @@ async function presentationSession(page) {
       followLabel: follow?.getAttribute('aria-label') ?? '',
       inDialog: Boolean(document.activeElement?.closest?.('[role="dialog"]')),
       filled: Boolean(box && stage) && box.height >= stage.height - 1 && box.width >= stage.width - 1,
+      // The same two numbers as the opening check: a breakpoint round trip that leaves the canvas at
+      // the old size shows up here as a pair of measurements, not as a bare `false`.
+      size: { stage: `${Math.round(stage?.width ?? -1)}x${Math.round(stage?.height ?? -1)}`, canvas: `${Math.round(box?.width ?? -1)}x${Math.round(box?.height ?? -1)}` },
     }
   }, names)
 }

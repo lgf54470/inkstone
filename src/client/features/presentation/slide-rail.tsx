@@ -169,7 +169,7 @@ const SlideRailItem = memo(function SlideRailItem({ slide, sub, pageCount, entry
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
   const cached = useCachedSlideHtml(cacheKey)
-  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub, view })
+  const { html, layout, drawn } = usePageHtml({ near, cacheKey, cached, source, plan, sub, view })
   const heading = useMemo(() => extractSlideHeading(source), [source])
 
   return (
@@ -196,7 +196,7 @@ const SlideRailItem = memo(function SlideRailItem({ slide, sub, pageCount, entry
         {entryIndex + 1}
       </span>
       <div className='flex min-w-0 flex-1 flex-col gap-[var(--sp-1)]'>
-        <SlideThumb thumbRef={thumbRef} near={near} html={html} layout={layout} active={active} view={view} />
+        <SlideThumb thumbRef={thumbRef} near={near} html={html} layout={layout} drawn={drawn} active={active} view={view} />
         {heading && (
           <span className='truncate text-[length:var(--text-11)] text-[var(--text-secondary)]'>
             {heading}
