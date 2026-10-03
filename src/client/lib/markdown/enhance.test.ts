@@ -508,6 +508,32 @@ describe('echarts blocks', () => {
     }
   })
 
+  it('draws a chart from a table body', async () => {
+    const root = echartsRoot(['| :bar:{\"title\": \"Tally\"} | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'].join('\n'))
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(true)
+      expect(blockOf(root).querySelector('svg')?.textContent).toContain('Tally')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('refuses a map whose outlines come from off the allowlist', async () => {
+    const root = echartsRoot(['| :map:{"mapDataSource": "https://evil.example.com/geo.json"} | v |', '| --- | --- |', '| 北京 | 1 |'].join('\n'))
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      expect(drawn(root)).toBe(false)
+      expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('allowed https source')
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
   it('shows the source to a surface that names no echarts mode', async () => {
     const root = echartsRoot(ECHARTS_OPTION)
     showEchartsSource(root)

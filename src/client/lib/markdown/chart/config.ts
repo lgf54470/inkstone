@@ -6,6 +6,7 @@
  * {@link chartConfigToTable} refuses rather than approximating — a toggle that quietly dropped a
  * second axis would leave the note drawing a different chart than it did before the press.
  */
+import { resolveScatterColumns } from './columns'
 import { cellNumber, type ChartTable } from './table'
 
 /** The kinds a chart.js fence draws from a table. `scatter` becomes `bubble` when a size column is read. */
@@ -29,27 +30,6 @@ export type ChartTableConversion = { ok: true; table: ChartTable } | { ok: false
 
 const AXIS_KINDS: readonly string[] = ['line', 'bar', 'radar']
 const SLICE_KINDS: readonly string[] = ['pie', 'doughnut', 'polarArea']
-/**
- * The header words Cherry documents for a scatter's columns. These are matched against a note's own
- * cells and never rendered, so they are input vocabulary of the syntax rather than UI copy — the
- * i18n gate lets this one constant carry them (see scripts/check-i18n.mjs).
- */
-const SCATTER_HEADER_WORDS = {
-  x: ['x', '横坐标'],
-  y: ['y', '纵坐标'],
-  size: ['size', '大小'],
-  series: ['series', 'group', '系列', '分组'],
-}
-
-interface ScatterColumns {
-  x: number
-  y: number
-  /** -1 when no column carries a size, which is what keeps the picture a scatter and not a bubble. */
-  size: number
-  /** -1 when every point lands in one series. */
-  series: number
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -70,37 +50,6 @@ function keywordOptions(table: ChartTable): Record<string, unknown> {
   return options
 }
 
-/** A cell written `{"cherry:mapping": {"x": "X"}}` names its columns by header text, not by order. */
-function mappedColumns(table: ChartTable, mapping: Record<string, unknown>): ScatterColumns {
-  const header = table.header.map((cell) => cell.trim().toLowerCase())
-  const at = (key: string) => header.indexOf(String(mapping[key] ?? '').trim().toLowerCase())
-  const x = at('x')
-  const y = at('y')
-  if (x < 0 || y < 0) throw new ChartConfigError('bad-mapping', table.kind)
-  return { x, y, size: at('size'), series: Math.max(at('series'), at('group')) }
-}
-
-/**
- * The documented column order — name, x, y, size, series — with the header words Cherry also accepts.
- * A name-only column is where the point labels live, so the search starts at the second cell.
- */
-function positionalColumns(table: ChartTable): ScatterColumns {
-  const header = table.header.map((cell) => cell.trim().toLowerCase())
-  const byWord = (words: string[]) => header.findIndex((cell, index) => index > 0 && words.includes(cell))
-  const series = byWord(SCATTER_HEADER_WORDS.series)
-  return {
-    x: byWord(SCATTER_HEADER_WORDS.x) || 1,
-    y: byWord(SCATTER_HEADER_WORDS.y) || 2,
-    size: byWord(SCATTER_HEADER_WORDS.size),
-    series: series >= 0 || header.length < 5 ? series : header.length - 1,
-  }
-}
-
-function scatterColumns(table: ChartTable): ScatterColumns {
-  const mapping = table.options['cherry:mapping']
-  return isRecord(mapping) ? mappedColumns(table, mapping) : positionalColumns(table)
-}
-
 function axisSeries(table: ChartTable): Record<string, unknown>[] {
   if (table.header.length < 2) throw new ChartConfigError('too-narrow', table.kind)
   if (table.rows.length === 0) throw new ChartConfigError('empty-table', table.kind)
@@ -114,7 +63,9 @@ function sliceSeries(table: ChartTable): Record<string, unknown>[] {
 }
 
 function scatterSeries(table: ChartTable): { type: string; datasets: Record<string, unknown>[] } {
-  const { x, y, size, series } = scatterColumns(table)
+  const columns = resolveScatterColumns(table)
+  if (!columns) throw new ChartConfigError('bad-mapping', table.kind)
+  const { x, y, size, series } = columns
   const groups = new Map<string, Record<string, unknown>[]>()
   for (const row of table.rows) {
     const point: Record<string, unknown> = { x: cellNumber(row[x]), y: cellNumber(row[y]) }

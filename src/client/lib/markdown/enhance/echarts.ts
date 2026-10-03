@@ -2,7 +2,15 @@ import { escapeHtml } from '@shared/escape'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
 import { fenceBody } from '../fence-bodies'
-import { EchartsOptionError, loadEcharts, parseEchartsOption, type EchartsChart } from '../echarts'
+import {
+  EchartsOptionError,
+  EchartsTableError,
+  MAP_SERIES_NAME,
+  loadEcharts,
+  loadMapGeometry,
+  readEchartsBody,
+  type EchartsChart,
+} from '../echarts'
 import { shortHash, withTimeout } from './util'
 
 /**
@@ -27,9 +35,19 @@ const OPTION_MESSAGES: Record<EchartsOptionError['reason'], MessageKey> = {
   script: 'markdown.echarts_script_failed',
 }
 
-function optionMessage(err: EchartsOptionError): string {
-  if (err.reason === 'script') return t('markdown.echarts_script_needed')
-  return t(OPTION_MESSAGES[err.reason])
+const TABLE_MESSAGES: Record<EchartsTableError['reason'], MessageKey> = {
+  'needs-chart': 'markdown.echarts_kind_needs_chart',
+  'unknown-kind': 'markdown.chart_kind_unknown',
+  'empty-table': 'markdown.chart_table_empty',
+  'too-narrow': 'markdown.chart_table_narrow',
+  'bad-mapping': 'markdown.chart_mapping_column',
+  'map-refused': 'markdown.echarts_map_refused',
+}
+
+function blockMessage(err: unknown): string {
+  if (err instanceof EchartsTableError) return t(TABLE_MESSAGES[err.reason])
+  if (err instanceof EchartsOptionError) return t(OPTION_MESSAGES[err.reason])
+  return errorMessage(err)
 }
 
 function destroyEchartsInstance(node: EchartsNode): void {
@@ -104,19 +122,26 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, raw: stri
   const signature = `${draw.themeKey}:${raw.length}:${shortHash(raw)}:${allowScript ? 's' : 'j'}`
   if (node.dataset.rendered === signature && node.__echartsChart) return
   let option: unknown
+  let mapSource: string | null = null
   try {
-    option = parseEchartsOption(raw, { allowScript })
+    const body = readEchartsBody(raw, { allowScript })
+    option = body.option
+    mapSource = body.mapSource
   }
   catch (err) {
-    markEchartsError(node, err instanceof EchartsOptionError ? optionMessage(err) : errorMessage(err), raw, signature)
+    markEchartsError(node, blockMessage(err), raw, signature)
     return
   }
   try {
+    if (mapSource) {
+      const { registerEchartsMap } = await loadEcharts()
+      registerEchartsMap(MAP_SERIES_NAME, await loadMapGeometry(mapSource))
+    }
     await drawInto(root, node, withDrawMode(option, draw.instant), signature)
   }
   catch (err) {
     if (!root.contains(node)) return
-    markEchartsError(node, errorMessage(err), raw, signature)
+    markEchartsError(node, mapSource ? `${t('markdown.echarts_map_failed')}: ${errorMessage(err)}` : errorMessage(err), raw, signature)
   }
 }
 

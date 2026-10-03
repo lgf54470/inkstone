@@ -2,7 +2,8 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { fenceBody } from '../../lib/markdown/fence-bodies'
 import { escapeAttr } from '../../lib/markdown/renderer'
-import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure, type ChartMode } from '../../lib/markdown/chart'
+import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure } from '../../lib/markdown/chart'
+import { applyEchartsFencePatch, convertEchartsBody, detectEchartsMode, echartsFenceAt, type EchartsConvertFailure } from '../../lib/markdown/echarts'
 import { downloadBlob } from '../../lib/export-note'
 import { t, type MessageKey } from '../../lib/i18n'
 import { blockActionSource } from './block-overlay'
@@ -70,18 +71,39 @@ const ICONS = {
   export: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
 }
 
+/** What a body is written as. `json` and `option` are the one non-table format's two names. */
+type FormatName = 'json' | 'option' | 'table'
+
+const FORMAT_LABELS: Record<FormatName, MessageKey> = {
+  json: 'preview.graph_format_json',
+  option: 'preview.graph_format_option',
+  table: 'preview.graph_format_table',
+}
+
+const CONVERT_LABELS: Record<FormatName, MessageKey> = {
+  json: 'preview.graph_convert_to_json',
+  option: 'preview.graph_convert_to_option',
+  table: 'preview.graph_convert_to_table',
+}
+
 /**
  * The format control. It states the format it switches *to*, so the press is never a mystery, and a
  * chart whose config holds something a table cannot carry still gets it: the refusal explains itself
  * on press rather than leaving a button that quietly never appears.
  */
-function convertButton(mode: ChartMode): string {
-  const target = mode === 'table' ? 'json' : 'table'
-  const label = t(target === 'json' ? 'preview.graph_convert_to_json' : 'preview.graph_convert_to_table')
-  return toolButton('convert-format', label, escapeHtml(t(target === 'json' ? 'preview.graph_format_json' : 'preview.graph_format_table')))
+function convertButton(current: FormatName, other: Exclude<FormatName, 'table'>): string {
+  const target: FormatName = current === 'table' ? other : 'table'
+  return toolButton('convert-format', t(CONVERT_LABELS[target]), escapeHtml(t(FORMAT_LABELS[target])))
 }
 
-function renderHeadHtml(kind: GraphKind, mode: ChartMode): string {
+/** Which format a block's body is in, read from the body itself rather than from a mark on the node. */
+function formatOf(block: HTMLElement, kind: GraphKind): FormatName {
+  if (kind === 'mermaid') return 'json'
+  const source = decodedSource(block, kind)
+  return kind === 'chart' ? detectChartMode(source) : detectEchartsMode(source)
+}
+
+function renderHeadHtml(kind: GraphKind, format: FormatName): string {
   const zoomable = kind === 'mermaid'
   const titleKey = kind === 'mermaid' ? 'preview.graph_mermaid' : kind === 'chart' ? 'preview.graph_chart' : 'preview.graph_echarts'
   const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
@@ -92,7 +114,7 @@ function renderHeadHtml(kind: GraphKind, mode: ChartMode): string {
     zoomable ? toolButton('zoom-in', t('preview.graph_zoom_in'), ICONS.zoomIn) : '',
     zoomable ? toolButton('zoom-out', t('preview.graph_zoom_out'), ICONS.zoomOut) : '',
     zoomable ? toolButton('fit', t('preview.graph_fit'), ICONS.fit) : '',
-    kind === 'chart' ? convertButton(mode) : '',
+    kind === 'mermaid' ? '' : convertButton(format, kind === 'echarts' ? 'option' : 'json'),
     badge,
     toolButton('export-image', t('preview.graph_export'), ICONS.export),
     `</span>`,
@@ -117,8 +139,8 @@ function wrapGraphBlock(block: HTMLElement, kind: GraphKind): HTMLElement {
   wrapper.dataset.graphBlock = kind
   block.replaceWith(wrapper)
   wrapper.append(block)
-  const mode = kind === 'chart' ? detectChartMode(decodedSource(block, kind)) : 'json'
-  wrapper.insertAdjacentHTML('afterbegin', renderHeadHtml(kind, mode))
+  const format = formatOf(block, kind)
+  wrapper.insertAdjacentHTML('afterbegin', renderHeadHtml(kind, format))
   wrapper.insertBefore(renderSourcePanel(block, kind), block)
   return wrapper
 }
@@ -191,6 +213,42 @@ function exportPng(block: HTMLElement, toast: BlockToast): void {
   }, 'image/png')
 }
 
+/** Why a body will not write the other way, in the words the author needs to act on. */
+const ECHARTS_CONVERT_MESSAGES: Record<EchartsConvertFailure, MessageKey> = {
+  'invalid-option': 'markdown.echarts_option_invalid_json',
+  'table-syntax': 'markdown.chart_convert_table_syntax',
+  'not-generated': 'markdown.echarts_convert_not_table',
+  'map-refused': 'markdown.echarts_map_refused',
+  'unknown-kind': 'markdown.chart_kind_unknown',
+  'empty-table': 'markdown.chart_table_empty',
+  'too-narrow': 'markdown.chart_table_narrow',
+  'bad-mapping': 'markdown.chart_mapping_column',
+  'needs-chart': 'markdown.echarts_kind_needs_chart',
+}
+
+/**
+ * Rewrites an echarts fence as the other format. A conversion always lands on a body made of data, so
+ * the `js` marker goes with the option it was written for — leaving it would let a note keep claiming
+ * a permission its new body does not need.
+ */
+export function convertEchartsFormat(
+  block: HTMLElement,
+  content: string,
+  onEdit: (next: string) => void,
+  toast: BlockToast,
+): boolean {
+  const line = Number(block.dataset.line)
+  if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
+  const fence = echartsFenceAt(content, line)
+  if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const converted = convertEchartsBody(fence.body)
+  if (!converted.ok) return declined(toast, ECHARTS_CONVERT_MESSAGES[converted.reason])
+  const next = applyEchartsFencePatch(content, fence, { body: converted.body, script: converted.script })
+  if (next === null) return declined(toast, 'preview.graph_block_moved')
+  onEdit(next)
+  return true
+}
+
 /**
  * Rewrites the fence as the other format. The block was drawn from the body the renderer encoded, so
  * that is what the fence is looked up by: when the note no longer holds it, nothing is written, in
@@ -257,7 +315,10 @@ export const graphBlockToolbar: BlockToolbarModule = {
       const graph = graphOf(button)
       const editable = blockActionSource(ctx)
       if (!graph || !editable) return true
-      return convertChartFormat(graph.block, editable.source, (next) => ctx.api.editContent(editable.noteId, next), ctx.api.toast)
+      const onEdit = (next: string) => ctx.api.editContent(editable.noteId, next)
+      return graph.kind === 'echarts'
+        ? convertEchartsFormat(graph.block, editable.source, onEdit, ctx.api.toast)
+        : convertChartFormat(graph.block, editable.source, onEdit, ctx.api.toast)
     }
     return executeGraphBlockAction(action, button, ctx.api.toast)
   },

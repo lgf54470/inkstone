@@ -32,3 +32,8 @@ export function createEchartsChart(element: HTMLElement, option: unknown): Echar
   chart.setOption(option as EChartsCoreOption, true)
   return chart
 }
+
+/** The outline data a `map` series draws, registered under the name the option refers to. */
+export function registerEchartsMap(name: string, geometry: unknown): void {
+  echarts.registerMap(name, geometry as Parameters<typeof echarts.registerMap>[1])
+}

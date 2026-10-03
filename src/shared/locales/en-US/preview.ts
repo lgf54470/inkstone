@@ -629,6 +629,8 @@ export const messages = {
 'preview.graph_format_json': 'JSON',
 'preview.graph_convert_to_table': 'Write this chart as a table',
 'preview.graph_convert_to_json': 'Write this chart as JSON',
+'preview.graph_format_option': 'Option',
+'preview.graph_convert_to_option': 'Write this chart as an option',
 'preview.graph_block_moved': 'This block no longer sits where it was drawn; try again',
 'preview.table_settings': 'Table style',
 'preview.table_title': 'Table',

@@ -23,5 +23,6 @@ export {
   type ChartKeyword,
   type ChartTable,
 } from './table'
+export { resolveScatterColumns, symbolSize, type ScatterColumns } from './columns'
 export { parseChartJson } from './json'
 export { convertChartBody, readChartBody, type ChartConversion, type ChartConvertFailure } from './convert'

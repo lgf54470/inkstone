@@ -3,9 +3,12 @@ import { initI18n } from '../../lib/i18n'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import {
   convertChartFormat,
+  convertEchartsFormat,
   enhanceGraphBlockToolbarsInRoot,
   executeGraphBlockAction,
+  graphBlockToolbar,
 } from './graph-block-toolbar'
+import type { BlockActionContext } from './block-overlay'
 
 beforeAll(async () => {
   await initI18n()
@@ -158,6 +161,80 @@ describe('executeGraphBlockAction', () => {
     expect(edits).toEqual([])
     expect(toast).toHaveBeenCalledWith({ title: 'This block no longer sits where it was drawn; try again', tone: 'warning' })
   })
+
+  it('rewrites an echarts option fence as the table that means the same chart', () => {
+    const note = '```echarts\n{ title: { text: "T" }, xAxis: { type: "category", data: ["A"] }, yAxis: { type: "value" }, series: [{ name: "s", type: "bar", data: [1] }] }\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    expect(root.querySelectorAll('.block-tool-btn')).toHaveLength(3)
+    const edits: string[] = []
+    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), vi.fn())
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toContain('| :bar:{"title":"T"} | A |')
+    expect(edits[0]).toContain('| s | 1 |')
+  })
+
+  it('takes the js marker off a fence that converts to a table', () => {
+    const note = '```echarts js\n{ xAxis: { type: "category", data: ["A"] }, yAxis: {}, series: [{ name: "s", type: "bar", data: [1] }] }\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), toast)
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toContain('```echarts\n| :bar:')
+    expect(toast).not.toHaveBeenCalled()
+  })
+
+  it('declines to convert an echarts option a table cannot write', () => {
+    const note = '```echarts\n{ series: [{ type: "gauge", data: [1] }] }\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), toast)
+    expect(edits).toEqual([])
+    expect(toast).toHaveBeenCalledWith({ title: 'This option is not one a table can write back out', tone: 'warning' })
+  })
+
+/**
+ * The button reaches the converter through the shared click route, which picks the converter by what
+ * kind of block it is: an echarts block whose press runs the chart.js writer would look for a
+ * ` ```chart ` fence at that line and decline, so the control would read as broken.
+ */
+function context(note: string, editContent: (noteId: string, next: string) => void): BlockActionContext {
+  return { content: note, sourceNoteId: 'n1', committedSourceRef: { current: note }, api: { editContent, toast: vi.fn() } }
+}
+
+describe('the format button through the click route', () => {
+  it('rewrites an echarts block from the press on its own control', () => {
+    const note = '```echarts\n{ title: { text: "T" }, xAxis: { type: "category", data: ["A"] }, yAxis: { type: "value" }, series: [{ name: "s", type: "bar", data: [1] }] }\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const editContent = vi.fn()
+    const handled = graphBlockToolbar.handle(
+      { preventDefault: vi.fn() },
+      root.querySelector<HTMLElement>('[data-graph-action="convert-format"]')!,
+      context(note, editContent),
+    )
+    expect(handled).toBe(true)
+    expect(editContent).toHaveBeenCalledTimes(1)
+    expect(editContent.mock.calls[0][1]).toContain('| :bar:{"title":"T"} | A |')
+  })
+
+  it('rewrites a chart block from the press on its own control', () => {
+    const note = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1]}]}}\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const editContent = vi.fn()
+    graphBlockToolbar.handle(
+      { preventDefault: vi.fn() },
+      root.querySelector<HTMLElement>('[data-graph-action="convert-format"]')!,
+      context(note, editContent),
+    )
+    expect(editContent.mock.calls[0][1]).toContain('| :bar: | A |')
+  })
+})
 
   it('tells the reader there is nothing to export when the diagram never drew', () => {
     const root = mount(MERMAID)

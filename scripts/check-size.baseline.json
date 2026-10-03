@@ -148,8 +148,11 @@
   "src/client/lib/markdown/echarts/body.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/echarts/table-option.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/enhance.test.ts": {
-    "lines": 533,
+    "lines": 559,
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
@@ -230,13 +233,13 @@
     "lines": 557
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 657
+    "lines": 659
   },
   "src/shared/locales/zh-CN/music.ts": {
     "lines": 550
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 657
+    "lines": 659
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908

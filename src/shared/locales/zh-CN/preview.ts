@@ -629,6 +629,8 @@ export const messages = {
 'preview.graph_format_json': 'JSON',
 'preview.graph_convert_to_table': '把这张图改写成表格',
 'preview.graph_convert_to_json': '把这张图改写成 JSON',
+'preview.graph_format_option': '配置',
+'preview.graph_convert_to_option': '把这张图改写成配置',
 'preview.graph_block_moved': '这个块已经不在画出来时的位置了，请重试',
 'preview.table_settings': '表格样式',
 'preview.table_title': '表格',
