@@ -62,6 +62,11 @@ const localizedDataFragments = new Map([
     // Cover matching is proved against real Chinese library titles, which are data rather than UI copy.
     [path.resolve('src/shared/music-cover-match.test.ts'), ['\u8c2a\u4ed9 (DJ\u540d\u9f99 Mix)', '\u4f0a\u683c\u8d5b\u542c & Li Ye', '\u6a31\u82b1\u6811\u4e0b\u7684\u7ea6\u5b9a\uff08\u5b8c\u6574\u7248\uff09-\u65fa\u4ed4\u5c0f\u4e54', '\u6a31\u82b1\u6811\u4e0b\u7684\u7ea6\u5b9a', '\u5de6\u624b\u6307\u6708 (\u7247\u5c3e\u66f2)', '\u8428\u9876\u9876', '\u4f0a\u683c\u8d5b\u542c', '\u6211\u662f\u897f\u5355\u5973\u5b69', '\u897f\u5355\u5973\u5b69', '\u8c2a\u4ed9', '\u5de6\u624b\u6307\u6708', '\u539f\u70b9']],
     [path.resolve('tests/schema-migrations.test.ts'), ['\u66f2\u98ce/\u53e4\u98ce', '\u7f18\u8d77', '\u5468\u6df1', '\u6708\u5149', '\u80e1\u5f66\u658c', '\u591c\u542c']],
+    // The table-chart syntax's own input vocabulary and the Cherry demo data that exercises it:
+    // column words a note's header is matched against, and the labels a fixture table carries.
+    [path.resolve('src/client/lib/markdown/chart/config.ts'), ['\u6a2a\u5750\u6807', '\u7eb5\u5750\u6807', '\u5927\u5c0f', '\u7cfb\u5217', '\u5206\u7ec4']],
+    [path.resolve('src/client/lib/markdown/chart/table.test.ts'), ['\u6298\u7ebf\u56fe', '\u997c\u56fe', '\u6570\u503c', '\u82f9\u679c', '\u9999\u8549', '\u6a59\u5b50']],
+    [path.resolve('src/client/lib/markdown/chart/config.test.ts'), ['\u7968\u6570', '\u6570\u503c', '\u82f9\u679c', '\u9999\u8549', '\u4e00', '\u4e8c', '\u6a2a\u5750\u6807', '\u7eb5\u5750\u6807', '\u8d8b\u52bf']],
 ])
 const allowedHanFragments = new Map([
     [path.resolve('README.md'), ['<a href="./README_ZH.md">\u4e2d\u6587</a>']],
@@ -207,12 +212,22 @@ for (const file of walk(root)) {
         failures.push(`${path.relative(process.cwd(), file)}:${position.line + 1}:${position.character + 1} ${message}`)
     }
 }
-// Tag-name constants (note data, not UI copy) are allowed to carry the
-// localized tag literal they match against.
+// A constant that holds note data or a syntax's own input vocabulary, rather than UI copy rendered
+// by the i18n layer, may carry the localized literal it matches against. The names are written here
+// rather than in a Set above: this runs inside the scan, which starts before a later `const` is
+// initialized.
 function insideDataConstant(node) {
-    return ts.isVariableDeclaration(node.parent) &&
-        ts.isIdentifier(node.parent.name) &&
-        node.parent.name.text === 'DEFAULT_TODO_TAG'
+    const name = enclosingDataConstant(node)
+    return name === 'DEFAULT_TODO_TAG' || name === 'SCATTER_HEADER_WORDS'
+}
+// The literal is allowed wherever the named constant reaches it, not only when it is the initializer
+// itself: the scatter's header words sit in arrays inside one object.
+function enclosingDataConstant(node) {
+    for (let current = node.parent; current; current = current.parent) {
+        if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) return current.name.text
+        if (ts.isSourceFile(current)) return null
+    }
+    return null
 }
 if (failures.length) {
     console.error(`i18n validation failed (${failures.length}):`)

@@ -1,0 +1,140 @@
+import { describe, expect, it } from 'vitest'
+import { ChartConfigError, chartConfigToTable, tableToChartConfig } from './config'
+import { writeChartTable, type ChartTable } from './table'
+
+function table(kind: string, header: string[], rows: string[][], options: Record<string, unknown> = {}): ChartTable {
+  return { kind, options, header, rows }
+}
+
+const AXIS = table('bar', ['', 'A', 'B', 'C'], [['票数', '12', '19', '7']])
+const PIE = table('pie', ['', '数值'], [['苹果', '40'], ['香蕉', '30']])
+const SCATTER = table('scatter', ['', 'x', 'y', 'series'], [
+  ['A1', '10', '20', '一'],
+  ['A2', '15', '25', '一'],
+  ['B1', '12', '18', '二'],
+])
+
+describe('a chart table as a chart.js config', () => {
+  it('puts the categories in the header and one series per row', () => {
+    expect(tableToChartConfig(AXIS)).toEqual({
+      type: 'bar',
+      data: { labels: ['A', 'B', 'C'], datasets: [{ label: '票数', data: [12, 19, 7] }] },
+    })
+  })
+
+  it('reads a slice chart from its rows, not its header', () => {
+    expect(tableToChartConfig(PIE)).toEqual({
+      type: 'pie',
+      data: { labels: ['苹果', '香蕉'], datasets: [{ data: [40, 30] }] },
+    })
+  })
+
+  it('groups a scatter by its series column and leaves the categories out', () => {
+    expect(tableToChartConfig(SCATTER)).toEqual({
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: '一', data: [{ x: 10, y: 20, name: 'A1' }, { x: 15, y: 25, name: 'A2' }] },
+          { label: '二', data: [{ x: 12, y: 18, name: 'B1' }] },
+        ],
+      },
+    })
+  })
+
+  it('draws a bubble chart when a size column is read', () => {
+    const config = tableToChartConfig(table('scatter', ['', 'x', 'y', 'size'], [['a', '1', '2', '5']]))
+    expect(config.type).toBe('bubble')
+    expect((config.data as { datasets: { data: unknown[] }[] }).datasets[0].data[0]).toEqual({ x: 1, y: 2, name: 'a', r: 5 })
+  })
+
+  it('takes the Cherry column mapping over the column order', () => {
+    const mapped = table('scatter', ['', 'X', 'Y', 'Size', 'Series'], [['a', '1', '2', '5', 'g']], {
+      'cherry:mapping': { x: 'X', y: 'Y', size: 'Size', series: 'Series' },
+    })
+    expect(tableToChartConfig(mapped).type).toBe('bubble')
+    expect((tableToChartConfig(mapped).data as { datasets: { label: string }[] }).datasets[0].label).toBe('g')
+  })
+
+  it('refuses a mapping whose x or y column the header does not name', () => {
+    const mapped = table('scatter', ['', 'a', 'b'], [['r', '1', '2']], { 'cherry:mapping': { x: 'nope', y: 'b' } })
+    expect(() => tableToChartConfig(mapped)).toThrow(ChartConfigError)
+  })
+
+  it('treats the last of five unnamed columns as the series', () => {
+    const wide = table('scatter', ['', 'a', 'b', 'c', 'd'], [['n', '1', '2', '3', 'g1'], ['m', '4', '5', '6', 'g2']])
+    const datasets = (tableToChartConfig(wide).data as { datasets: { label: string }[] }).datasets
+    expect(datasets.map((set) => set.label)).toEqual(['g1', 'g2'])
+  })
+
+  it('recognizes the header words Cherry documents, in either language', () => {
+    const named = table('scatter', ['', '横坐标', '纵坐标'], [['a', '1', '2']])
+    expect(tableToChartConfig(named).data).toEqual({ datasets: [{ data: [{ x: 1, y: 2, name: 'a' }] }] })
+  })
+
+  it('carries the keyword title into the title plugin and passes anything else through', () => {
+    const config = tableToChartConfig(table('line', ['', 'A'], [['s', '1']], { title: '趋势', spanGaps: true }))
+    expect(config.options).toEqual({ spanGaps: true, plugins: { title: { display: true, text: '趋势' } } })
+  })
+
+  it('tells the author a kind only echarts draws belongs to the other fence', () => {
+    for (const kind of ['heatmap', 'sankey', 'map']) {
+      expect(() => tableToChartConfig(table(kind, ['', 'a'], [['r', '1']]))).toThrow(ChartConfigError)
+    }
+    expect(() => tableToChartConfig(table('nope', ['', 'a'], [['r', '1']]))).toThrow(/unknown-kind/)
+    expect(() => tableToChartConfig(table('bar', ['', 'a'], []))).toThrow(/empty-table/)
+  })
+})
+
+describe('a chart.js config as a chart table', () => {
+  it('keeps several series as several rows', () => {
+    const converted = chartConfigToTable({ type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }, { label: 't', data: [2] }] } })
+    expect(converted.ok && converted.table.rows).toEqual([['s', '1'], ['t', '2']])
+  })
+
+  it('writes back the table a bar config came from', () => {
+    const converted = chartConfigToTable(tableToChartConfig(AXIS))
+    expect(converted.ok && converted.table).toEqual(AXIS)
+  })
+
+  it('writes a slice chart with an unnamed value column', () => {
+    const converted = chartConfigToTable(tableToChartConfig(PIE))
+    expect(converted.ok && converted.table.header).toEqual(['', ''])
+    expect(converted.ok && converted.table.rows).toEqual([['苹果', '40'], ['香蕉', '30']])
+  })
+
+  it('keeps a scatter round trip whole', () => {
+    const converted = chartConfigToTable(tableToChartConfig(SCATTER))
+    expect(converted.ok && converted.table).toEqual(SCATTER)
+  })
+
+  it('declines a config a table cannot hold', () => {
+    const lossy = [
+      { type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] }, options: { responsive: false } },
+      { type: 'bar', data: { labels: [1], datasets: [{ label: 's', data: [1] }] } },
+      { type: 'bar', data: { labels: ['A', 'B'], datasets: [{ label: 's', data: [1] }] } },
+      { type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } },
+      { type: 'pie', data: { labels: ['A'], datasets: [{ label: 'x', data: [1] }] } },
+      { type: 'radialBar', data: { labels: [], datasets: [] } },
+      { type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] }, options: { plugins: { legend: {} } } },
+      'not an object',
+    ]
+    for (const config of lossy) {
+      expect(chartConfigToTable(config).ok).toBe(false)
+    }
+  })
+
+  it('names the reason a refusal needs the other fence for', () => {
+    expect(chartConfigToTable({ type: 'heatmap', data: { datasets: [{}] } })).toEqual({ ok: false, reason: 'needs-echarts' })
+    expect(chartConfigToTable({ type: 'radar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] } }).ok).toBe(true)
+  })
+
+  it('accepts a title and nothing else beside it', () => {
+    const converted = chartConfigToTable({
+      type: 'line',
+      data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] },
+      options: { plugins: { title: { display: true, text: '趋势' } } },
+    })
+    expect(converted.ok && converted.table.options).toEqual({ title: '趋势' })
+    expect(converted.ok && writeChartTable(converted.table)).toContain(':line:{"title":"趋势"}')
+  })
+})

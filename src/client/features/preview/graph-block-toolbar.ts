@@ -1,8 +1,10 @@
 import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { escapeAttr } from '../../lib/markdown/renderer'
+import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure, type ChartMode } from '../../lib/markdown/chart'
 import { downloadBlob } from '../../lib/export-note'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
+import { blockActionSource } from './block-overlay'
 import type { BlockToolbarModule, BlockToast } from './block-overlay'
 
 /**
@@ -27,6 +29,19 @@ function decodedSource(block: HTMLElement, kind: GraphKind): string {
   return raw === undefined ? '' : decodeDataValue(raw)
 }
 
+/** Why a body will not write the other way, in the words the author needs to act on. */
+const CONVERT_MESSAGES: Record<ChartConvertFailure, MessageKey> = {
+  'needs-echarts': 'markdown.chart_kind_needs_echarts',
+  'unknown-kind': 'markdown.chart_kind_unknown',
+  'empty-table': 'markdown.chart_table_empty',
+  'too-narrow': 'markdown.chart_table_narrow',
+  'bad-mapping': 'markdown.chart_mapping_column',
+  'invalid-json': 'markdown.chart_convert_invalid_json',
+  'table-syntax': 'markdown.chart_convert_table_syntax',
+  'not-a-config': 'markdown.chart_convert_not_config',
+  lossy: 'markdown.chart_convert_lossy',
+}
+
 function graphOf(element: HTMLElement): GraphBlock | null {
   const wrapper = element.closest<HTMLElement>(GRAPH_BLOCKS)
   const block = wrapper?.querySelector<HTMLElement>('[data-mermaid], [data-chart]') ?? null
@@ -47,7 +62,18 @@ const ICONS = {
   export: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
 }
 
-function renderHeadHtml(kind: GraphKind): string {
+/**
+ * The format control. It states the format it switches *to*, so the press is never a mystery, and a
+ * chart whose config holds something a table cannot carry still gets it: the refusal explains itself
+ * on press rather than leaving a button that quietly never appears.
+ */
+function convertButton(mode: ChartMode): string {
+  const target = mode === 'table' ? 'json' : 'table'
+  const label = t(target === 'json' ? 'preview.graph_convert_to_json' : 'preview.graph_convert_to_table')
+  return toolButton('convert-format', label, escapeHtml(t(target === 'json' ? 'preview.graph_format_json' : 'preview.graph_format_table')))
+}
+
+function renderHeadHtml(kind: GraphKind, mode: ChartMode): string {
   const zoomable = kind === 'mermaid'
   const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
   return [
@@ -57,6 +83,7 @@ function renderHeadHtml(kind: GraphKind): string {
     zoomable ? toolButton('zoom-in', t('preview.graph_zoom_in'), ICONS.zoomIn) : '',
     zoomable ? toolButton('zoom-out', t('preview.graph_zoom_out'), ICONS.zoomOut) : '',
     zoomable ? toolButton('fit', t('preview.graph_fit'), ICONS.fit) : '',
+    zoomable ? '' : convertButton(mode),
     badge,
     toolButton('export-image', t('preview.graph_export'), ICONS.export),
     `</span>`,
@@ -81,7 +108,8 @@ function wrapGraphBlock(block: HTMLElement, kind: GraphKind): HTMLElement {
   wrapper.dataset.graphBlock = kind
   block.replaceWith(wrapper)
   wrapper.append(block)
-  wrapper.insertAdjacentHTML('afterbegin', renderHeadHtml(kind))
+  const mode = kind === 'chart' ? detectChartMode(decodedSource(block, kind)) : 'json'
+  wrapper.insertAdjacentHTML('afterbegin', renderHeadHtml(kind, mode))
   wrapper.insertBefore(renderSourcePanel(block, kind), block)
   return wrapper
 }
@@ -143,6 +171,34 @@ function exportPng(block: HTMLElement, toast: BlockToast): void {
   }, 'image/png')
 }
 
+/**
+ * Rewrites the fence as the other format. The block was drawn from the body the renderer encoded, so
+ * that is what the fence is looked up by: when the note no longer holds it, nothing is written, in
+ * either direction of the mistake.
+ */
+export function convertChartFormat(
+  block: HTMLElement,
+  content: string,
+  onEdit: (next: string) => void,
+  toast: BlockToast,
+): boolean {
+  const line = Number(block.dataset.line)
+  if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
+  const fence = chartFenceAt(content, line)
+  if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const converted = convertChartBody(fence.body)
+  if (!converted.ok) return declined(toast, CONVERT_MESSAGES[converted.reason])
+  const next = applyChartBodyAtFence(content, fence, converted.body)
+  if (next === null) return declined(toast, 'preview.graph_block_moved')
+  onEdit(next)
+  return true
+}
+
+function declined(toast: BlockToast, messageKey: MessageKey): boolean {
+  toast({ title: t(messageKey), tone: 'warning' })
+  return true
+}
+
 function toggleSource(graph: GraphBlock): void {
   const panel = graph.wrapper.querySelector<HTMLElement>('[data-graph-source]')
   const trigger = graph.wrapper.querySelector<HTMLElement>('[data-graph-action="toggle-source"]')
@@ -175,6 +231,13 @@ export const graphBlockToolbar: BlockToolbarModule = {
     const button = target.closest<HTMLButtonElement>('[data-graph-action]')
     if (!button) return false
     event.preventDefault()
-    return executeGraphBlockAction(button.dataset.graphAction!, button, ctx.api.toast)
+    const action = button.dataset.graphAction!
+    if (action === 'convert-format') {
+      const graph = graphOf(button)
+      const editable = blockActionSource(ctx)
+      if (!graph || !editable) return true
+      return convertChartFormat(graph.block, editable.source, (next) => ctx.api.editContent(editable.noteId, next), ctx.api.toast)
+    }
+    return executeGraphBlockAction(action, button, ctx.api.toast)
   },
 }

@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { initI18n } from '../../lib/i18n'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import {
+  convertChartFormat,
   enhanceGraphBlockToolbarsInRoot,
   executeGraphBlockAction,
 } from './graph-block-toolbar'
+
+beforeAll(async () => {
+  await initI18n()
+})
 
 function mount(markdown: string): HTMLElement {
   const root = document.createElement('div')
@@ -36,8 +42,15 @@ describe('enhanceGraphBlockToolbarsInRoot', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const wrapper = root.querySelector<HTMLElement>('.graph-block')!
     expect(wrapper.dataset.graphBlock).toBe('chart')
-    expect(wrapper.querySelectorAll('.block-tool-btn')).toHaveLength(2)
+    expect(wrapper.querySelectorAll('.block-tool-btn')).toHaveLength(3)
     expect(root.querySelector('[data-graph-action="zoom-in"]')).toBeNull()
+    expect(root.querySelector('[data-graph-action="convert-format"]')).not.toBeNull()
+  })
+
+  it('offers no format control to a diagram, whose body is not a chart', () => {
+    const root = mount(MERMAID)
+    enhanceGraphBlockToolbarsInRoot(root)
+    expect(root.querySelector('[data-graph-action="convert-format"]')).toBeNull()
   })
 
   it('does not wrap a block twice', () => {
@@ -98,6 +111,52 @@ describe('executeGraphBlockAction', () => {
     expect(trigger.getAttribute('aria-pressed')).toBe('true')
     executeGraphBlockAction('toggle-source', trigger, vi.fn())
     expect(panel.hidden).toBe(true)
+  })
+
+  it('rewrites a JSON fence as the table that means the same chart', () => {
+    const note = '```chart\n{"type":"bar","data":{"labels":["A","B"],"datasets":[{"label":"s","data":[1,2]}]}}\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toBe('```chart\n| :bar: | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |\n```')
+  })
+
+  it('rewrites a table fence as the JSON that means the same chart', () => {
+    const note = '```chart\n| :bar:{"title": "t"} | A |\n| --- | --- |\n| s | 1 |\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
+    expect(edits).toHaveLength(1)
+    expect(JSON.parse(edits[0].replace('```chart\n', '').replace('\n```', ''))).toEqual({
+      type: 'bar',
+      data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] },
+      options: { plugins: { title: { display: true, text: 't' } } },
+    })
+  })
+
+  it('leaves the note alone and says why when a table cannot hold the chart', () => {
+    const note = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1]}]},"options":{"responsive":false}}\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), toast)
+    expect(edits).toEqual([])
+    expect(toast).toHaveBeenCalledWith({ title: 'This chart holds more than a table can carry', tone: 'warning' })
+  })
+
+  it('declines to write when the fence no longer sits where the block was drawn', () => {
+    const note = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1]}]}}\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertChartFormat(root.querySelector('[data-chart]')!, 'intro\n' + note + '\nmore', (next) => edits.push(next), toast)
+    expect(edits).toEqual([])
+    expect(toast).toHaveBeenCalledWith({ title: 'This block no longer sits where it was drawn; try again', tone: 'warning' })
   })
 
   it('tells the reader there is nothing to export when the diagram never drew', () => {

@@ -1,12 +1,22 @@
 import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../data-attr'
 import { errorMessage } from '../../errors'
-import { t } from '../../i18n'
+import { t, type MessageKey } from '../../i18n'
+import { ChartConfigError, readChartBody } from '../chart'
 import { shortHash, withTimeout } from './util'
 
 const CHARTJS_TEXT_COLORS = { dark: '#94a3b8', light: '#64748b' } as const
 let chartJsPromise: Promise<typeof import('chart.js/auto')> | null = null
 const CHART_LOAD_TIMEOUT_MS = 15000
+
+/** A table that means a kind only the echarts fence draws is a pointer, not a parse failure. */
+const CHART_CONFIG_MESSAGES: Record<ChartConfigError['reason'], MessageKey> = {
+  'needs-echarts': 'markdown.chart_kind_needs_echarts',
+  'unknown-kind': 'markdown.chart_kind_unknown',
+  'empty-table': 'markdown.chart_table_empty',
+  'too-narrow': 'markdown.chart_table_narrow',
+  'bad-mapping': 'markdown.chart_mapping_column',
+}
 
 async function getChartJs(): Promise<typeof import('chart.js/auto')> {
   if (!chartJsPromise) {
@@ -38,36 +48,16 @@ export function destroyChartInstances(root: HTMLElement | null): void {
   })
 }
 
-// Chart blocks carry tolerate formatting: comment/`**` markers stripped and
-// trailing commas allowed before the strict JSON.parse is attempted.
-function cleanChartConfig(raw: string): string {
-  return raw
-    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-    .replace(/,\s*([\]}])/g, '$1')
-    .replace(/\*\*/g, '')
-}
-
-function parseChartConfig(raw: string): Record<string, unknown> {
-  let initialErr: unknown = null
-  try {
-    return JSON.parse(raw)
-  }
-  catch (err) {
-    initialErr = err
-  }
-  try {
-    return JSON.parse(cleanChartConfig(raw))
-  }
-  catch {
-    throw initialErr
-  }
+function chartConfigMessage(err: unknown): string {
+  if (err instanceof ChartConfigError) return t(CHART_CONFIG_MESSAGES[err.reason])
+  return errorMessage(err)
 }
 
 function markChartError(node: HTMLElement, err: unknown, raw: string, signature: string): void {
   node.classList.remove('loading')
   node.classList.add('has-error', 'chart-error')
   node.removeAttribute('aria-busy')
-  const message = errorMessage(err)
+  const message = chartConfigMessage(err)
   node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t('markdown.chart_rendering_failed'))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`
   node.dataset.rendered = signature
 }
@@ -163,7 +153,7 @@ function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { r
 async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string, signature: string, dark: boolean, instant: boolean): Promise<void> {
   let config: Record<string, unknown>
   try {
-    config = parseChartConfig(raw)
+    config = readChartBody(raw)
   }
   catch (err: unknown) {
     markChartError(node, err, raw, signature)

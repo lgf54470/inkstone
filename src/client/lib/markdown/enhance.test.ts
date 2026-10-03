@@ -6,6 +6,7 @@ import { encodeDataValue } from './data-attr'
 import { createFenceBodies, type FenceBodies, takeFenceIndex } from './fence-bodies'
 import { installTestGlobals } from '../test-render'
 import { stubCanvasContext } from './enhance.test-helpers'
+import { renderMarkdown } from './renderer'
 
 beforeAll(async () => {
   await initI18n()
@@ -342,5 +343,49 @@ describe('kanban blocks — a set that never arrived', () => {
     const node = boardNode(root)
     expect(node.querySelector('[data-kanban-snapshot]')?.textContent).not.toContain('Write the changelog')
     expect(node.getAttribute('aria-busy')).toBe('false')
+  })
+})
+
+// A table body reaches the same mount a JSON one does: only how the note says the chart differs, so
+// these blocks are built from rendered markup rather than a hand-made attribute.
+describe('chart table bodies', () => {
+  const tableFence = (rows: string[]) => ['```chart', ...rows, '```'].join('\n')
+
+  it('draws a chart from a table body', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown(tableFence(['| :bar: | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'])).html
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      expect(root.querySelector('canvas.chartjs-canvas')).not.toBeNull()
+      const instance = (root.querySelector('[data-chart]') as unknown as { __chartInstance?: { config: { type?: string; data?: { labels?: unknown } } } }).__chartInstance
+      expect(instance?.config.type).toBe('bar')
+      expect(instance?.config.data?.labels).toEqual(['A', 'B'])
+      destroyChartInstances(root)
+    }
+    finally {
+      restoreCanvasContext()
+      root.remove()
+    }
+  })
+
+  it('points a table naming an echarts-only kind at the block that draws it', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown(tableFence(['| :heatmap: | a |', '| --- | --- |', '| r | 1 |'])).html
+    document.body.appendChild(root)
+    try {
+      await renderChartJs(root, false)
+      const block = root.querySelector<HTMLElement>('[data-chart]')!
+      expect(block.classList.contains('chart-error')).toBe(true)
+      expect(block.querySelector('.chart-error-text')?.textContent).toContain('an `echarts` block')
+      expect(block.textContent).toContain(':heatmap:')
+      expect(root.querySelector('canvas.chartjs-canvas')).toBeNull()
+    }
+    finally {
+      restoreCanvasContext()
+      root.remove()
+    }
   })
 })
