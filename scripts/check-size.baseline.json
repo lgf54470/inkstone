@@ -152,7 +152,7 @@
     "longFns": 1
   },
   "src/client/lib/markdown/enhance.test.ts": {
-    "lines": 559,
+    "lines": 591,
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
@@ -172,6 +172,9 @@
   },
   "src/client/lib/markdown/renderer-panels.test.ts": {
     "longFns": 2
+  },
+  "src/client/lib/markdown/renderer.test.ts": {
+    "longFns": 1
   },
   "src/client/lib/markdown/renderer/code-options.ts": {
     "deepFns": 1

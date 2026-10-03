@@ -470,6 +470,23 @@ describe('echarts fences', () => {
     expect(rendered.fences.echarts).toEqual(['{ a: 1 }\n', '{ a: 2 }\n'])
   })
 
+  it('draws a chart above a bare table whose first cell names one, and consumes that cell', () => {
+    const rendered = renderMarkdown(['| :bar:{"title": "T"} | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'].join('\n'))
+    const doc = new DOMParser().parseFromString(rendered.html, 'text/html')
+    const wrap = doc.querySelector('.table-wrap')
+    expect(wrap?.querySelector('[data-table-chart]')?.getAttribute('data-table-chart')).toBe('bar')
+    expect(wrap?.querySelector('table')).not.toBeNull()
+    expect(doc.querySelector('thead th')?.textContent).toBe('')
+    expect(rendered.html).not.toContain(':bar:')
+    expect(rendered.hasEcharts).toBe(true)
+  })
+
+  it('leaves an ordinary table alone', () => {
+    const rendered = renderMarkdown(['| A | B |', '| --- | --- |', '| 1 | 2 |'].join('\n'))
+    expect(rendered.html).not.toContain('data-table-chart')
+    expect(rendered.hasEcharts).toBe(false)
+  })
+
   it('leaves the script mark off a fence that did not ask', () => {
     const plain = new DOMParser().parseFromString(renderMarkdown('```echarts\n| :bar: | A |\n| --- | --- |\n| s | 1 |\n```').html, 'text/html')
     expect(plain.querySelector('[data-echarts-script]')).toBeNull()
