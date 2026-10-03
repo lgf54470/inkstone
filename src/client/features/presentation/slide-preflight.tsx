@@ -65,7 +65,14 @@ export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, 
   // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
   // and React would otherwise flush the mount and its layout measure into the same task, making
   // one long commit out of work the browser could have interleaved with a frame.
-  const ready = useDeferredMount(Boolean(key) && Boolean(readSlideHtml(key)), key)
+  //
+  // "Lands" means a page that has been through the enhancement chain, or one that tried and failed
+  // (L-1): an entry holding the plain render is the preparer's mid-flight write, and measuring that
+  // gives the list both its picture and its page count from placeholders — a chart's skeleton is not
+  // the height of the chart. A page still being drawn is waited for; a page that never finishes is
+  // skipped by the stall guard and measured by the projector when the presenter reaches it.
+  const staged = cursor === null ? undefined : readSlideHtml(key)
+  const ready = useDeferredMount(Boolean(staged?.prepared || staged?.failed), key)
   if (!ready) return null
 
   return (
@@ -261,9 +268,10 @@ function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKey
   // The capture is markup the same blocks were drawn into, so it keeps the bodies those blocks
   // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
   const markup = key === undefined ? undefined : readSlideHtml(key)
-  if (html && key && markup) // The capture keeps every field of the entry it rewrites: a switch lifted out of the source (layout,
-  // the step ask) travels with it, and naming each one here is how the last was dropped.
-  rememberSlideHtml(key, { ...markup, html, prepared: true })
+  // The entry keeps its own `prepared` / `failed`: the capture came from what that entry was drawn
+  // into, so it cannot promote a page that is still being drawn. `prepared: true` used to be stamped
+  // here whatever the entry said, and a page caught mid-preparation was then left alone forever.
+  if (html && key && (markup?.prepared || markup?.failed)) rememberSlideHtml(key, { ...markup, html })
   rememberSlidePlan(hashes[slide] ?? '', plan)
   onPlan(slide, plan)
 }

@@ -15,7 +15,10 @@ import { describe, expect, it } from 'vitest'
 const CLIENT_ROOT = path.resolve('src/client')
 const PLAIN = 'slideMarkup('
 const PREPARED = 'prepared: true'
-const INHERITED = '...staged'
+// A re-serialising writer inherits the state of the entry it read rather than naming one: the
+// preflight's capture may only carry `prepared` over, never claim it (L-1) — which is why both spread
+// forms are the named states and a bare `{ html }` write would not pass.
+const INHERITED = ['...staged', '...markup']
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -48,7 +51,7 @@ describe('slide markup cache writes', () => {
 
   it('names which of the two states each writer leaves under the key', () => {
     const silent = cacheWrites()
-      .filter((write) => !write.line.includes(PLAIN) && !write.line.includes(PREPARED) && !write.line.includes(INHERITED))
+      .filter((write) => !write.line.includes(PLAIN) && !write.line.includes(PREPARED) && !INHERITED.some((form) => write.line.includes(form)))
       .map((write) => `${write.file}: ${write.line}`)
     expect(silent).toEqual([])
   })
