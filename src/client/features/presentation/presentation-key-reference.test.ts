@@ -4,7 +4,8 @@
 // from the card, fails here rather than in front of a talk.
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../lib/i18n'
-import { buildPresentationMenuItems, buildPresentationOverflowItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
+import { buildPresentationMenuItems, buildPresentationOverflowItems } from './presentation-context-menu'
+import { menuOptions } from './presentation-menu-options.test-helpers'
 import { presentationKeyCombo, presentationKeyReference } from './presentation-keys'
 
 beforeAll(async () => {
@@ -13,36 +14,6 @@ beforeAll(async () => {
 
 afterEach(() => {
   document.body.innerHTML = ''
-})
-
-const menuOptions = (): PresentationMenuItemsOptions => ({
-  linkUrl: null,
-  slideIndex: 1,
-  slideCount: 5,
-  subPage: 0,
-  pageCount: 1,
-  railOpen: false,
-  overview: false,
-  following: false,
-  followLost: false,
-  isFullscreen: false,
-  laser: false,
-  spotlight: false,
-  screenCover: null,
-  keyGuide: false,
-  onPrev: vi.fn(),
-  onNext: vi.fn(),
-  onToggleRail: vi.fn(),
-  onToggleOverview: vi.fn(),
-  onToggleFollowing: vi.fn(),
-  onToggleFullscreen: vi.fn(),
-  onOpenPresenter: vi.fn(),
-  onToggleLaser: vi.fn(),
-  onToggleSpotlight: vi.fn(),
-  onToggleBlackout: vi.fn(),
-  onToggleWhiteout: vi.fn(),
-  onToggleKeyGuide: vi.fn(),
-  onExit: vi.fn(),
 })
 
 // Home and End have no row of their own: the menu offers no jump to the ends of the deck, so those two

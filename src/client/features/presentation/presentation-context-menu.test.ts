@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
+import { menuOptions } from './presentation-menu-options.test-helpers'
 import {
   buildPresentationMenuItems,
   extractAnchorHrefFromPoint,
@@ -11,43 +12,13 @@ import {
   type PresentationMenuItemsOptions,
 } from './presentation-context-menu'
 
-const baseOptions = (): PresentationMenuItemsOptions => ({
-  linkUrl: null,
-  slideIndex: 1,
-  slideCount: 5,
-  subPage: 0,
-  pageCount: 1,
-  railOpen: false,
-  overview: false,
-  following: false,
-  followLost: false,
-  isFullscreen: false,
-  laser: false,
-  spotlight: false,
-  screenCover: null,
-  keyGuide: false,
-  onPrev: vi.fn(),
-  onNext: vi.fn(),
-  onToggleRail: vi.fn(),
-  onToggleOverview: vi.fn(),
-  onToggleFollowing: vi.fn(),
-  onToggleFullscreen: vi.fn(),
-  onToggleKeyGuide: vi.fn(),
-  onOpenPresenter: vi.fn(),
-  onToggleLaser: vi.fn(),
-  onToggleSpotlight: vi.fn(),
-  onToggleBlackout: vi.fn(),
-  onToggleWhiteout: vi.fn(),
-  onExit: vi.fn(),
-})
-
 afterEach(() => {
   document.body.innerHTML = ''
 })
 
 describe('buildPresentationMenuItems — item composition', () => {
   it('builds standard presentation menu items when there is no link', () => {
-    const opts = baseOptions()
+    const opts = menuOptions()
     const items = buildPresentationMenuItems(opts)
     const ids = items.map((i) => i.id)
     expect(ids).toEqual([
@@ -69,7 +40,7 @@ describe('buildPresentationMenuItems — item composition', () => {
   })
 
   it('prepends link open and copy items when linkUrl is present', () => {
-    const opts = { ...baseOptions(), linkUrl: 'https://example.com/demo' }
+    const opts = { ...menuOptions(), linkUrl: 'https://example.com/demo' }
     const items = buildPresentationMenuItems(opts)
     const ids = items.map((i) => i.id)
     expect(ids[0]).toBe('link-open')
@@ -81,7 +52,7 @@ describe('buildPresentationMenuItems — item composition', () => {
 describe('buildPresentationMenuItems — link actions', () => {
   it('triggers window.open on selecting link-open', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const opts = { ...baseOptions(), linkUrl: 'https://example.com/demo' }
+    const opts = { ...menuOptions(), linkUrl: 'https://example.com/demo' }
     const items = buildPresentationMenuItems(opts)
     const linkOpen = items.find((i) => i.id === 'link-open')
     linkOpen?.onSelect?.()
@@ -92,7 +63,7 @@ describe('buildPresentationMenuItems — link actions', () => {
   it('triggers clipboard writeText on selecting link-copy', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    const opts = { ...baseOptions(), linkUrl: 'https://example.com/copy-me' }
+    const opts = { ...menuOptions(), linkUrl: 'https://example.com/copy-me' }
     const items = buildPresentationMenuItems(opts)
     const linkCopy = items.find((i) => i.id === 'link-copy')
     linkCopy?.onSelect?.()
@@ -126,7 +97,7 @@ describe('buildPresentationMenuItems — link protocol whitelist', () => {
   ]
 
   it.each(refused)('offers no link item for a %s href', (_label, href) => {
-    const items = buildPresentationMenuItems({ ...baseOptions(), linkUrl: href })
+    const items = buildPresentationMenuItems({ ...menuOptions(), linkUrl: href })
     const ids = items.map((item) => item.id)
     expect(ids).not.toContain('link-open')
     expect(ids).not.toContain('link-copy')
@@ -138,7 +109,7 @@ describe('buildPresentationMenuItems — link protocol whitelist', () => {
     ['HTTPS://Example.COM/Talk#Section', 'a scheme written in capitals'],
     ['mailto:speaker@example.com', 'a mailto:'],
   ])('offers the link items for %s — %s', (href) => {
-    const items = buildPresentationMenuItems({ ...baseOptions(), linkUrl: href })
+    const items = buildPresentationMenuItems({ ...menuOptions(), linkUrl: href })
     expect(items.map((item) => item.id).slice(0, 2)).toEqual(['link-open', 'link-copy'])
     expect(items.find((item) => item.id === 'prev')?.separatorBefore).toBe(true)
   })
@@ -233,31 +204,46 @@ describe('extractAnchorHrefFromPoint — what the projector hides', () => {
 
 describe('buildPresentationMenuItems — pagination bounds', () => {
   it('disables prev item when on the first slide and subpage', () => {
-    const opts = { ...baseOptions(), slideIndex: 0, subPage: 0 }
+    const opts = { ...menuOptions(), slideIndex: 0, subPage: 0 }
     const items = buildPresentationMenuItems(opts)
     expect(items.find((i) => i.id === 'prev')?.disabled).toBe(true)
     expect(items.find((i) => i.id === 'next')?.disabled).toBe(false)
   })
 
   it('disables next item when on the final slide and subpage', () => {
-    const opts = { ...baseOptions(), slideIndex: 4, slideCount: 5, subPage: 1, pageCount: 2 }
+    const opts = { ...menuOptions(), slideIndex: 4, slideCount: 5, subPage: 1, pageCount: 2 }
     const items = buildPresentationMenuItems(opts)
     expect(items.find((i) => i.id === 'prev')?.disabled).toBe(false)
     expect(items.find((i) => i.id === 'next')?.disabled).toBe(true)
   })
 
   it('enables both prev and next when in the middle of a deck', () => {
-    const opts = { ...baseOptions(), slideIndex: 2, slideCount: 5, subPage: 0, pageCount: 1 }
+    const opts = { ...menuOptions(), slideIndex: 2, slideCount: 5, subPage: 0, pageCount: 1 }
     const items = buildPresentationMenuItems(opts)
     expect(items.find((i) => i.id === 'prev')?.disabled).toBe(false)
     expect(items.find((i) => i.id === 'next')?.disabled).toBe(false)
+  })
+
+  // N-31: a page that is still arriving is never the start of the show, however early in the deck it is.
+  it('keeps both rows alive on the first slide while its page is arriving', () => {
+    const opts = { ...menuOptions(), slideIndex: 0, slideCount: 3, subPage: 0, pageCount: 1, step: 1, steps: 2 }
+    const items = buildPresentationMenuItems(opts)
+    expect(items.find((i) => i.id === 'prev')?.disabled).toBe(false)
+    expect(items.find((i) => i.id === 'next')?.disabled).toBe(false)
+  })
+
+  it('disables next once the last reveal of the last page of the last slide is on screen', () => {
+    const opts = { ...menuOptions(), slideIndex: 2, slideCount: 3, subPage: 0, pageCount: 1, step: 2, steps: 2 }
+    const items = buildPresentationMenuItems(opts)
+    expect(items.find((i) => i.id === 'prev')?.disabled).toBe(false)
+    expect(items.find((i) => i.id === 'next')?.disabled).toBe(true)
   })
 })
 
 describe('buildPresentationMenuItems — checked states', () => {
   it('reflects active checked state for toggles and covers', () => {
     const opts = {
-      ...baseOptions(),
+      ...menuOptions(),
       railOpen: true,
       overview: true,
       following: true,
@@ -280,7 +266,7 @@ describe('buildPresentationMenuItems — checked states', () => {
 
 describe('buildPresentationMenuItems — item selection callbacks', () => {
   it('invokes corresponding action callbacks when items are selected', () => {
-    const opts = baseOptions()
+    const opts = menuOptions()
     const items = buildPresentationMenuItems(opts)
     items.find((i) => i.id === 'prev')?.onSelect?.()
     items.find((i) => i.id === 'next')?.onSelect?.()
@@ -313,7 +299,7 @@ describe('buildPresentationMenuItems — item selection callbacks', () => {
 describe('PresentationContextMenu — component rendering', () => {
   it('renders nothing when point is null', () => {
     const props: PresentationContextMenuProps = {
-      ...baseOptions(),
+      ...menuOptions(),
       point: null,
       onClose: vi.fn(),
       onReopen: vi.fn(),
@@ -328,7 +314,7 @@ describe('PresentationContextMenu — component rendering', () => {
     const container = document.createElement('div')
     document.body.append(container)
     const props: PresentationContextMenuProps = {
-      ...baseOptions(),
+      ...menuOptions(),
       point: { x: 150, y: 220 },
       container,
       onClose: vi.fn(),
@@ -348,7 +334,7 @@ describe('PresentationContextMenu — backdrop interaction', () => {
   it('intercepts click on backdrop and closes without penetrating to underlying elements', () => {
     const onClose = vi.fn()
     const props: PresentationContextMenuProps = {
-      ...baseOptions(),
+      ...menuOptions(),
       point: { x: 100, y: 100 },
       onClose,
       onReopen: vi.fn(),
@@ -367,7 +353,7 @@ describe('PresentationContextMenu — backdrop interaction', () => {
   it('reopens menu at new coordinate when right clicking on backdrop', () => {
     const onReopen = vi.fn()
     const props: PresentationContextMenuProps = {
-      ...baseOptions(),
+      ...menuOptions(),
       point: { x: 100, y: 100 },
       onClose: vi.fn(),
       onReopen,
@@ -397,7 +383,7 @@ function renderOverPanel() {
   const panel = document.createElement('div')
   document.body.append(panel)
   const view = renderElement(createElement(PresentationContextMenu, {
-    ...baseOptions(),
+    ...menuOptions(),
     point: { x: 100, y: 100 },
     onClose: vi.fn(),
     onReopen,
@@ -435,7 +421,7 @@ describe('PresentationContextMenu — backdrop link and stacking', () => {
 
   it('sets backdrop z-index to Z_INDEX.menu to ensure it stacks above slide overlays and overview grid', () => {
     const props: PresentationContextMenuProps = {
-      ...baseOptions(),
+      ...menuOptions(),
       point: { x: 50, y: 50 },
       onClose: vi.fn(),
       onReopen: vi.fn(),
@@ -476,14 +462,14 @@ describe('buildPresentationMenuItems — a follow that cannot follow', () => {
   const followRow = (options: PresentationMenuItemsOptions) => buildPresentationMenuItems(options).find((item) => item.id === 'follow')
 
   it('disables the row and names the freeze once the note is gone', () => {
-    const row = followRow({ ...baseOptions(), following: true, followLost: true })
+    const row = followRow({ ...menuOptions(), following: true, followLost: true })
     expect(row?.label).toBe(t('workspace.presentation_follow_lost'))
     expect(row?.disabled).toBe(true)
     expect(row?.checked).toBe(false)
   })
 
   it('keeps the row live while the note is still there', () => {
-    const alive = followRow({ ...baseOptions(), following: true })
+    const alive = followRow({ ...menuOptions(), following: true })
     expect(alive?.label).toBe(t('workspace.presentation_follow'))
     expect(alive?.disabled).toBeFalsy()
     expect(alive?.checked).toBe(true)

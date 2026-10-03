@@ -6,6 +6,7 @@ import { IconButton, Spinner } from '../../components/primitives'
 import { Menu, Tooltip, type MenuItem } from '../../components/overlay'
 import { Z_INDEX } from '../../lib/z-index'
 import { presentationKeyCombo } from './presentation-keys'
+import { hasBackwardMove, hasForwardMove } from './presentation-state'
 import type { DeckExportProgress } from './deck-print'
 import { describeDeckPosition, formatDeckPosition } from './deck-position'
 
@@ -14,6 +15,10 @@ export interface PresentationControlsProps {
   slideCount: number
   subPage: number
   pageCount: number
+  /** How far the page on screen has been revealed, and how many reveals it holds (N-31). Both are the
+   * raw state, and `steps` is zero on a page that arrives all at once. */
+  step: number
+  steps: number
   isFullscreen: boolean
   railOpen: boolean
   overview: boolean
@@ -42,7 +47,7 @@ export interface PresentationControlsProps {
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, step, steps, isFullscreen, railOpen, overview, following, followLost, chromeHidden, occluded, compact, overflowItems, exporting, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onExportHandout, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -53,7 +58,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
         chromeHidden && 'pointer-events-none opacity-0 invisible',
       )}
     >
-      <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
+      <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} step={step} steps={steps} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       {compact
         ? <ViewDoor items={[...overflowItems, ...exportMenuItems({ onExport, onExportImages, onExportHandout })]} exporting={exporting} />
@@ -207,18 +212,25 @@ export function DeckExportProgress({ current, total }: DeckExportProgress) {
   )
 }
 
-// The deck position is one string with both numbers in it, printed left of the step buttons and read
-// out by one announcement beside it. The digits are hidden from the accessibility tree on purpose: a
-// screen reader hearing «3 / 14» and «2/4» as two live regions learns nothing about which is which.
-function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNext }: {
+// The deck position is one string holding everything the show is standing on: which slide, which page
+// of it, and how far that page has arrived. It is printed left of the step buttons and read out by one
+// announcement beside them. The digits are hidden from the accessibility tree on purpose: a screen
+// reader hearing «3 / 14 · 2/4 · 1/3» as a live region learns nothing about which is which.
+function SlideStepper({ slideIndex, slideCount, subPage, pageCount, step, steps, onPrev, onNext }: {
   slideIndex: number
   slideCount: number
   subPage: number
   pageCount: number
+  step: number
+  steps: number
   onPrev: () => void
   onNext: () => void
 }) {
-  const position = { index: slideIndex, count: slideCount, subPage, pageCount }
+  const position = { index: slideIndex, count: slideCount, subPage, pageCount, step, steps }
+  // The turn is out of reach only when nothing is left to walk: a page still arriving in stages has a
+  // press left in it even on the first slide of the deck (N-31).
+  const atStart = !hasBackwardMove({ index: slideIndex, sub: subPage, step })
+  const atEnd = !hasForwardMove({ index: slideIndex, count: slideCount, sub: subPage, pageCount, step, steps })
   return (
     <>
       <span
@@ -231,12 +243,12 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
       </span>
       <span className='sr-only' role='status' aria-live='polite'>{describeDeckPosition(position)}</span>
       <Tooltip label={t('workspace.presentation_prev')} combo={presentationKeyCombo('prev')} side='top'>
-        <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={onPrev} disabled={slideIndex === 0 && subPage === 0}>
+        <IconButton label={t('workspace.presentation_prev')} size='sm' onClick={onPrev} disabled={atStart}>
           <ChevronLeft size={15} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('workspace.presentation_next')} combo={presentationKeyCombo('next')} side='top'>
-        <IconButton label={t('workspace.presentation_next')} size='sm' onClick={onNext} disabled={slideIndex === slideCount - 1 && subPage === pageCount - 1}>
+        <IconButton label={t('workspace.presentation_next')} size='sm' onClick={onNext} disabled={atEnd}>
           <ChevronRight size={15} />
         </IconButton>
       </Tooltip>

@@ -92,6 +92,8 @@ export const messages = {
 'workspace.presentation_hide_overview': 'Hide slide overview',
 'workspace.presentation_slide_number': 'Slide {value0} of {value1}',
 'workspace.presentation_slide_page_number': 'Slide {value0} of {value1}, page {value2} of {value3}',
+'workspace.presentation_slide_step_number': 'Slide {value0} of {value1}, step {value2} of {value3}',
+'workspace.presentation_slide_page_step_number': 'Slide {value0} of {value1}, page {value2} of {value3}, step {value4} of {value5}',
 'workspace.presentation_export': 'Export deck as PDF',
 'workspace.presentation_export_images': 'Export deck as images',
 'workspace.presentation_export_handout': 'Export deck as a handout with speaker notes',

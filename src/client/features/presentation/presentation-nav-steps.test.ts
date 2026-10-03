@@ -103,3 +103,26 @@ describe('the turn when the show is told where to go', () => {
 function plainPlan(): SlidePlan {
   return planSlidePages(BLOCKS, 320)
 }
+
+describe('the page reports how far it can be revealed', () => {
+  it('reads the step total off the page on screen, and off the next page once that one is on screen', () => {
+    const navRef = { current: null } as RefObject<ReturnType<typeof usePresentationNav> | null>
+    const view = renderElement(createElement(Host, { navRef }))
+    press((nav) => nav.handlePlan(planSlidePages(BLOCKS, 320, undefined, true)), navRef)
+    // The first page holds three of the five blocks — two presses to reveal them — and its second page
+    // carries on one more block, so it has a single press left in it.
+    expect(navRef.current!.steps).toBe(2)
+    for (let turn = 0; turn < 3; turn++) press((nav) => nav.goNext(), navRef)
+    expect(navRef.current!.sub).toBe(1)
+    expect(navRef.current!.steps).toBe(1)
+    view.unmount()
+  })
+
+  it('reports nothing to reveal on a slide without the switch', () => {
+    const navRef = { current: null } as RefObject<ReturnType<typeof usePresentationNav> | null>
+    const view = renderElement(createElement(Host, { navRef }))
+    press((nav) => nav.handlePlan(plainPlan()), navRef)
+    expect(navRef.current!.steps).toBe(0)
+    view.unmount()
+  })
+})

@@ -211,3 +211,14 @@ export function backwardMove({ step, sub }: { step: number; sub: number }): Page
   if (step > 0) return 'step'
   return sub > 0 ? 'page' : 'slide'
 }
+
+/** Whether the turn has anywhere to go, read the same way the two moves above are: the surfaces that
+ * offer a press — the pill, the right-click rows, the presenter console — say so on themselves, and a
+ * page that is still arriving has a press left in it whatever slide it sits on (N-31). */
+export function hasBackwardMove({ index, sub, step }: { index: number; sub: number; step: number }): boolean {
+  return index > 0 || sub > 0 || step > 0
+}
+
+export function hasForwardMove({ index, count, sub, pageCount, step, steps }: { index: number; count: number; sub: number; pageCount: number; step: number; steps: number }): boolean {
+  return index < count - 1 || sub < pageCount - 1 || step < steps
+}

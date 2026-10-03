@@ -22,7 +22,7 @@ import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { presentationKeyCombo } from './presentation-keys'
-import { isSafeSlideLinkHref } from './presentation-state'
+import { hasBackwardMove, hasForwardMove, isSafeSlideLinkHref } from './presentation-state'
 
 export interface PresentationMenuItemsOptions {
   linkUrl: string | null
@@ -30,6 +30,9 @@ export interface PresentationMenuItemsOptions {
   slideCount: number
   subPage: number
   pageCount: number
+  /** How far the page on screen has been revealed, and how many reveals it holds (N-31). */
+  step: number
+  steps: number
   railOpen: boolean
   overview: boolean
   following: boolean
@@ -78,8 +81,8 @@ function buildLinkItems(linkUrl: string | null): MenuItem[] {
 }
 
 function buildNavigationItems(options: PresentationMenuItemsOptions): MenuItem[] {
-  const isFirst = options.slideIndex === 0 && options.subPage === 0
-  const isLast = options.slideIndex === options.slideCount - 1 && options.subPage === options.pageCount - 1
+  const isFirst = !hasBackwardMove({ index: options.slideIndex, sub: options.subPage, step: options.step })
+  const isLast = !hasForwardMove({ index: options.slideIndex, count: options.slideCount, sub: options.subPage, pageCount: options.pageCount, step: options.step, steps: options.steps })
   return [
     {
       id: 'prev',

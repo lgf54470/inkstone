@@ -15,6 +15,8 @@ export interface PresentationStageProps {
   subPage: number
   /** How far into this page the show has walked (N-31); the projector is the only surface that has one. */
   step: number
+  /** How many reveals this page holds — zero when it arrives all at once. */
+  steps: number
   pageCount?: number
   index: number
   count: number
@@ -32,6 +34,7 @@ export interface StageSessionSource {
   index: number
   sub: number
   step: number
+  steps: number
   pageCount: number
   handlePlan: (plan: SlidePlan) => void
   goPrev: () => void
@@ -47,6 +50,7 @@ export function stageProps(stageRef: RefObject<HTMLDivElement | null>, session: 
     source: session.deck[session.index] ?? '',
     subPage: session.sub,
     step: session.step,
+    steps: session.steps,
     pageCount: session.pageCount,
     index: session.index,
     count: session.deck.length,
@@ -101,7 +105,7 @@ function useStageGestures({
 }
 
 export function PresentationStage(props: PresentationStageProps) {
-  const { stageRef, metrics, cacheKey, source, subPage, step, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
+  const { stageRef, metrics, cacheKey, source, subPage, step, steps, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
   const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext, occluded })
 
   return (
@@ -123,7 +127,7 @@ export function PresentationStage(props: PresentationStageProps) {
           className='pointer-events-none absolute bottom-[var(--sp-4)] right-[var(--sp-4)] z-[var(--z-sticky)] select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] shadow-[var(--shadow-xs)]'
           aria-hidden='true'
         >
-          <span data-deck-position>{formatDeckPosition({ index, count, subPage, pageCount })}</span>
+          <span data-deck-position>{formatDeckPosition({ index, count, subPage, pageCount, step, steps })}</span>
         </div>
       )}
     </div>

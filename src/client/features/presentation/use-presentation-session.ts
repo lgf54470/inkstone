@@ -104,6 +104,8 @@ export interface PresentationSession {
   toggleOverview: () => void
   /** How far into the page on screen the show has walked (N-31). */
   step: number
+  /** How many reveals that page holds — zero when it has nothing to arrive in stages. */
+  steps: number
   /** Whether the show's own key card is lying over the projector. */
   keyGuide: boolean
   clearKeyGuide: () => void
@@ -307,15 +309,17 @@ export function usePresentationNav(deck: string[], hashes: string[], initialSlid
   const pageCount = currentPlan?.pages.length ?? 1
   const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
   const [stepState, setStep] = useState(0)
-  // How far the page on screen is revealed. A plan that shrank mid-talk can leave the step past the
-  // last block it has, so the position reads the clamp rather than the state (N-31).
-  const step = Math.min(stepState, currentPlan ? planPageSteps(currentPlan, sub) : 0)
+  // How many reveals the page on screen holds, and how far it has been walked. A plan that shrank
+  // mid-talk can leave the step past the last block it has, so the position reads the clamp rather
+  // than the state (N-31).
+  const steps = currentPlan ? planPageSteps(currentPlan, sub) : 0
+  const step = Math.min(stepState, steps)
   const handlePlan = useCallback((plan: SlidePlan) => reportPlan(index, plan), [index, reportPlan])
   // Where the show stands, read when a control is used rather than written into the closure that
   // built it. The slide list holds these callbacks on every card of a long deck, and a fresh
   // identity on each turn would re-render the whole list to move one card.
-  const position = useRef({ index, sub, step, pageCount, deckLength, plan: currentPlan })
-  position.current = { index, sub, step, pageCount, deckLength, plan: currentPlan }
+  const position = useRef({ index, sub, step, steps, pageCount, deckLength, plan: currentPlan })
+  position.current = { index, sub, step, steps, pageCount, deckLength, plan: currentPlan }
   const { goNext, goPrev } = usePageTurn(position, { goTo, carryPage, setSubPage, setStep })
   const jumpTo = useCallback((slide: number) => {
     carryPage(0)
@@ -339,7 +343,7 @@ export function usePresentationNav(deck: string[], hashes: string[], initialSlid
       setStep(0)
     }
   }, [goTo, carryPage, setSubPage])
-  return { index, sub, step, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
+  return { index, sub, step, steps, pageCount, plans, handlePlan, reportPlan, goNext, goPrev, jumpTo, jumpToPage }
 }
 
 // Page plans live in one map because the show and the slide list both read them: the
@@ -347,11 +351,11 @@ export function usePresentationNav(deck: string[], hashes: string[], initialSlid
 // The two presses that move the show forward and back. They read the position out of a ref rather
 // than closing over it — the slide list holds these callbacks on every card of a long deck, and a new
 // identity on each turn would re-render the whole list to move one card.
-function usePageTurn(position: RefObject<{ index: number; sub: number; step: number; pageCount: number; deckLength: number; plan: SlidePlan | undefined }>, actions: { goTo: (slide: number) => void; carryPage: (page: number) => void; setSubPage: (page: number) => void; setStep: (step: number) => void }) {
+function usePageTurn(position: RefObject<{ index: number; sub: number; step: number; steps: number; pageCount: number; deckLength: number; plan: SlidePlan | undefined }>, actions: { goTo: (slide: number) => void; carryPage: (page: number) => void; setSubPage: (page: number) => void; setStep: (step: number) => void }) {
   const { goTo, carryPage, setSubPage, setStep } = actions
   const goNext = useCallback(() => {
     const at = position.current
-    const move = forwardMove({ step: at.step, steps: at.plan ? planPageSteps(at.plan, at.sub) : 0, sub: at.sub, pageCount: at.pageCount })
+    const move = forwardMove({ step: at.step, steps: at.steps, sub: at.sub, pageCount: at.pageCount })
     if (move === 'step') setStep(at.step + 1)
     else if (move === 'page') {
       setSubPage(at.sub + 1)

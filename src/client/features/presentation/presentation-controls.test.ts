@@ -2,8 +2,9 @@ import { act, createElement } from 'react'
 import { initI18n, t, type MessageKey } from '../../lib/i18n'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
+import { menuOptions } from './presentation-menu-options.test-helpers'
 import { DeckExportProgress, PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { buildPresentationOverflowItems, type PresentationMenuItemsOptions } from './presentation-context-menu'
+import { buildPresentationOverflowItems } from './presentation-context-menu'
 
 installTestGlobals()
 
@@ -23,6 +24,8 @@ describe('PresentationControls', () => {
     slideCount: 5,
     subPage: 0,
     pageCount: 1,
+    step: 0,
+    steps: 0,
     isFullscreen: false,
     railOpen: false,
     overview: false,
@@ -143,6 +146,8 @@ function chromeProps(overrides: Partial<PresentationControlsProps> = {}): Presen
     slideCount: 5,
     subPage: 0,
     pageCount: 1,
+    step: 0,
+    steps: 0,
     isFullscreen: false,
     railOpen: false,
     overview: false,
@@ -439,32 +444,3 @@ describe('PresentationControls — the door and the exports', () => {
   })
 })
 
-const menuOptions = (): PresentationMenuItemsOptions => ({
-  linkUrl: null,
-  slideIndex: 1,
-  slideCount: 5,
-  subPage: 0,
-  pageCount: 1,
-  railOpen: false,
-  overview: false,
-  following: false,
-  followLost: false,
-  isFullscreen: false,
-  laser: false,
-  spotlight: false,
-  screenCover: null,
-  keyGuide: false,
-  onPrev: vi.fn(),
-  onNext: vi.fn(),
-  onToggleRail: vi.fn(),
-  onToggleOverview: vi.fn(),
-  onToggleFollowing: vi.fn(),
-  onToggleFullscreen: vi.fn(),
-  onToggleKeyGuide: vi.fn(),
-  onOpenPresenter: vi.fn(),
-  onToggleLaser: vi.fn(),
-  onToggleSpotlight: vi.fn(),
-  onToggleBlackout: vi.fn(),
-  onToggleWhiteout: vi.fn(),
-  onExit: vi.fn(),
-})

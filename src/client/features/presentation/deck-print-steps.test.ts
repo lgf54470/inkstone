@@ -41,9 +41,9 @@ describe('buildDeckPages — a stepped slide prints one page per step', () => {
     const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false)
     expect(STEPPED.pages).toHaveLength(1)
     expect(pages).toHaveLength(5)
-    expect(pages.slice(0, 4).map((page) => page.step)).toEqual([0, 1, 2, 3])
-    expect(pages.slice(0, 4).map((page) => page.stepCount)).toEqual([3, 3, 3, 3])
-    expect(pages[4]!.step, 'an unstepped slide has no step of its own').toBeUndefined()
+    expect(pages.slice(0, 4).map((page) => page.position.step)).toEqual([0, 1, 2, 3])
+    expect(pages.slice(0, 4).map((page) => page.position.steps)).toEqual([3, 3, 3, 3])
+    expect(pages[4]!.position.step, 'an unstepped slide has no step of its own').toBeUndefined()
   })
 
   it('reveals one more block on each printed state, and none on the last', () => {
@@ -51,9 +51,11 @@ describe('buildDeckPages — a stepped slide prints one page per step', () => {
     expect(pages.slice(0, 4).map((page) => hidden(page.html))).toEqual([3, 2, 1, 0])
   })
 
-  it('keeps the page number the room read on every state of that page', () => {
+  // The four states of one page used to carry one number, which asked whoever held the printout to work
+  // out which of them the room had actually ended on. Each sheet now says how far it had arrived.
+  it('numbers every state of a page by itself, inside the number the room read', () => {
     const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false)
-    expect(pages.slice(0, 4).map((page) => formatDeckPosition(page.position))).toEqual(['1 / 2', '1 / 2', '1 / 2', '1 / 2'])
+    expect(pages.slice(0, 4).map((page) => formatDeckPosition(page.position))).toEqual(['1 / 2 · 1/4', '1 / 2 · 2/4', '1 / 2 · 3/4', '1 / 2 · 4/4'])
   })
 
   it('hands the handout the page as its author finished it, once per page', () => {
@@ -66,6 +68,6 @@ describe('buildDeckPages — a stepped slide prints one page per step', () => {
   it('leaves a slide without the switch exactly one page per page', () => {
     const pages = buildDeckPages(deck, cacheKeys, { 0: planSlidePages(BLOCKS, 632) }, METRICS, false)
     expect(pages.filter((page) => page.position.index === 0)).toHaveLength(1)
-    expect(pages.every((page) => page.step === undefined)).toBe(true)
+    expect(pages.every((page) => page.position.step === undefined)).toBe(true)
   })
 })
