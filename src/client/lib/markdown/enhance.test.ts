@@ -534,6 +534,38 @@ describe('echarts blocks', () => {
     }
   })
 
+  // A bare table-chart reads its data back out of the table next to it, so the assertion is that the
+  // picture and the table agree rather than that some second copy was handed over.
+  it('draws a chart above a bare table-chart', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown([
+      '| :bar:{"title": "Tally"} | A | B |',
+      '| --- | --- | --- |',
+      '| s1 | 12 | 19 |',
+      '| s2 | 3 | 4 |',
+    ].join('\n')).html
+    document.body.append(root)
+    try {
+      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      const marker = root.querySelector<HTMLElement>('[data-table-chart]')!
+      expect(marker.querySelector('svg')).not.toBeNull()
+      expect(marker.querySelector('svg')?.textContent).toContain('Tally')
+      expect(root.querySelectorAll('tbody tr')).toHaveLength(2)
+    }
+    finally {
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
+  it('removes a bare table-chart from a surface that draws no charts, leaving the table', () => {
+    const root = document.createElement('div')
+    root.innerHTML = renderMarkdown(['| :bar: | A |', '| --- | --- |', '| s | 1 |'].join('\n')).html
+    showEchartsSource(root)
+    expect(root.querySelector('[data-table-chart]')).toBeNull()
+    expect(root.querySelector('table')).not.toBeNull()
+  })
+
   it('shows the source to a surface that names no echarts mode', async () => {
     const root = echartsRoot(ECHARTS_OPTION)
     showEchartsSource(root)

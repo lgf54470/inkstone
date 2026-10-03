@@ -53,7 +53,7 @@ export const messages = {
 'markdown.echarts_rendering': 'Rendering chart…',
 'markdown.echarts_kind_needs_chart': 'This chart type is drawn by a `chart` block, not by `echarts`',
 'markdown.echarts_map_refused': 'A map may only load its outlines from an allowed https source',
-'markdown.echarts_map_failed': 'Failed to load the map outlines',
+'markdown.echarts_map_failed': 'Failed to load the map outlines. A map reads them from a third-party host, so allow external images in settings and reload this page.',
 'markdown.echarts_convert_not_table': 'This option is not one a table can write back out',
 'markdown.success': 'Success',
 'markdown.show_more_code': 'Show {count} more lines',

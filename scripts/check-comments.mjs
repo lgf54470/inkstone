@@ -9690,6 +9690,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/chart/json.ts', [
     '/**\n * The JSON half of a ```chart body. Chart blocks carry tolerate formatting: comment and `**` markers\n * stripped and trailing commas allowed before the strict parse is retried, because a config typed\n * out of a documentation page arrives with both.\n */',
   ]],
+  ['src/client/lib/markdown/chart/table-from-dom.ts', [
+    '/**\n * Reading a chart table back out of the rendered DOM.\n *\n * A bare table-chart lives in the note as an ordinary table, so the cells a chart needs are already\n * on screen. Re-reading them from there beats carrying a second copy of the data through an attribute:\n * the two could only disagree, and the table is what the author edits.\n */',
+    '/** The header as written, with the directive cell left blank by the renderer standing in for `header[0]`. */',
+    '/**\n * A stable text of the table, for the signature that decides whether a drawn chart is still current.\n * It is the *cells*, not the markup: a re-render that moves an attribute must not redraw a chart that\n * did not change, and an edit to a value must.\n */',
+  ]],
   ['src/client/lib/markdown/chart/table.test.ts', [
     '/** The line-chart example, copied out of Cherry\'s own table-chart demo. */',
   ]],
@@ -9815,6 +9820,8 @@ const allowed = new Map([
     '/** A block as the renderer leaves it, with its option in the document\'s fence-body set. */',
     '// Two keys turn this lock: a surface that runs a note\'s JavaScript does not run one it was never',
     '// asked to, and a fence that asks does not get its way on a surface that never offers.',
+    '// A bare table-chart reads its data back out of the table next to it, so the assertion is that the',
+    '// picture and the table agree rather than that some second copy was handed over.',
   ]],
   ['src/client/lib/markdown/enhance/chart.ts', [
     '/** A table that means a kind only the echarts fence draws is a pointer, not a parse failure. */',
@@ -9857,11 +9864,14 @@ const allowed = new Map([
     '/** Whether this surface honours a fence\'s request to run JavaScript. */',
     '/** The resolved theme, carried in the cache key only: the colours themselves come from the tokens. */',
     '/** Whether to draw without the entrance animation, for the surface that reads the pixels. */',
+    '/**\n * Where a block\'s option comes from, and the text a drawn chart is current against. A fence carries\n * its body in the document\'s fence-body set; a bare table-chart reads it back out of the table next to\n * it, so the two differ only here and share every path after this.\n */',
+    '/** The text the draw signature is computed from: an edit to it must redraw, a re-render must not. */',
+    '/** The source\'s own request to run JavaScript, which a surface may still refuse. */',
+    '/**\n * A bare table-chart\'s own configuration travels on the marker, because the cell that held it is a\n * directive the renderer emptied. Everything else — the categories and the values — is the table.\n */',
     '/**\n * One block: read the option, then mount the chart. A body that cannot be read and a library that\n * cannot load both land on the same banner, with the source left underneath so the author can see\n * what the block was asked to draw.\n */',
-    '/** The option a block was rendered from, read back through the document\'s fence-body set. */',
     '/** Draws every echarts block under a root. `instant` is for the surfaces that read the pixels. */',
     '/**\n * Draws every block once for a surface that serializes or prints its markup. The chart is SVG, so the\n * drawing is the markup and nothing has to be converted; what differs from the live path is that the\n * entrance animation is off — a sheet handed to the print pipeline as soon as its fonts land cannot\n * wait for a chart to finish animating, and an animation caught mid-flight is a half-drawn picture.\n *\n * A snapshot never runs a note\'s JavaScript: the surface that takes one has no author watching, and\n * the fence\'s `js` marker is a request from the person writing the note.\n */',
-    '/**\n * A surface that knows nothing about echarts leaves the block showing its source, which is what a\n * reader of a page that never mounts a chart should see: the option, not a box that stays empty.\n */',
+    '/**\n * A surface that knows nothing about echarts leaves the block showing its source, which is what a\n * reader of a page that never mounts a chart should see: the option, not a box that stays empty. A\n * bare table-chart has no source of its own to show — the table beside it is the content — so its\n * empty marker simply goes away.\n */',
   ]],
   ['src/client/lib/markdown/enhance/example-split.ts', [
     '/**\n * The split ratio is a runtime number and the prose whitelist strips inline styles, so the grid\'s\n * tracks are handed to CSS as a custom property instead: one variable for the axis the layout uses\n * and none for the other, so a block that switched between a row split and a column split cannot\n * keep reading the stale one. Runs in every surface — a share page or an export draws the split\n * the note asked for, not the stylesheet\'s fallback.\n */',
@@ -12880,6 +12890,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/renderer/table-options.ts', [
     '/**\n * What a `::: table` container lets the note say about the table it wraps. A markdown table has no\n * info string of its own, so the container is where the settings live — and every toolbar edit is a\n * source edit of that one header line.\n */',
     '/** The canonical trailing tokens, in the order the settings panel offers them; defaults are dropped. */',
+  ]],
+  ['src/client/lib/markdown/renderer/tables.ts', [
+    '/**\n * A table whose first header cell is a chart keyword (`| :bar:{"title": "Tally"} | … |`) draws a chart\n * above itself as well as the table, which is the shape the reference syntax documents. The keyword\n * cell is a directive rather than data, so it is emptied here and the kind and configuration travel on\n * the marker instead — the table underneath keeps every value, and the enhancer reads them from it.\n */',
+    '// The table below carries the same data in accessible form, so the picture asks for nothing.',
   ]],
   ['src/client/lib/markdown/renderer/types.ts', [
     '/**\n   * The fence bodies this markup was built from, in document order. They do not ride in the markup\n   * (see `../fence-bodies`); whoever inserts the markup registers these so the blocks can read back.\n   */',

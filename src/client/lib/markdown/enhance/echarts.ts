@@ -2,6 +2,8 @@ import { escapeHtml } from '@shared/escape'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
 import { fenceBody } from '../fence-bodies'
+import { decodeDataValue } from '../data-attr'
+import { chartTableFromElement, chartTableText } from '../chart'
 import {
   EchartsOptionError,
   EchartsTableError,
@@ -9,7 +11,9 @@ import {
   loadEcharts,
   loadMapGeometry,
   readEchartsBody,
+  tableToEchartsOption,
   type EchartsChart,
+  type EchartsTableOption,
 } from '../echarts'
 import { shortHash, withTimeout } from './util'
 
@@ -19,7 +23,8 @@ import { shortHash, withTimeout } from './util'
  * from the tokens at draw time (see ../echarts/theme).
  */
 
-const ECHARTS_SELECTOR = '[data-echarts]'
+const ECHARTS_SELECTOR = '[data-echarts], [data-table-chart]'
+const FENCE_SELECTOR = '[data-echarts]'
 const ECHARTS_RENDER_TIMEOUT_MS = 20000
 
 interface EchartsNode extends HTMLElement {
@@ -113,23 +118,77 @@ async function drawInto(root: HTMLElement, node: EchartsNode, option: unknown, s
 }
 
 /**
+ * Where a block's option comes from, and the text a drawn chart is current against. A fence carries
+ * its body in the document's fence-body set; a bare table-chart reads it back out of the table next to
+ * it, so the two differ only here and share every path after this.
+ */
+interface EchartsSource {
+  /** The text the draw signature is computed from: an edit to it must redraw, a re-render must not. */
+  key: string
+  /** The source's own request to run JavaScript, which a surface may still refuse. */
+  asksForScript: boolean
+  read: (allowScript: boolean) => EchartsTableOption
+}
+
+function fenceSource(node: Element): EchartsSource {
+  const index = Number((node as HTMLElement).dataset.echartsIndex)
+  const raw = fenceBody(node, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
+  const asksForScript = (node as HTMLElement).dataset.echartsScript === 'true'
+  return { key: raw, asksForScript, read: (allowScript) => readEchartsBody(raw, { allowScript }) }
+}
+
+/**
+ * A bare table-chart's own configuration travels on the marker, because the cell that held it is a
+ * directive the renderer emptied. Everything else — the categories and the values — is the table.
+ */
+function tableChartSource(node: HTMLElement): EchartsSource | null {
+  const table = node.parentElement?.querySelector('table')
+  if (!table) return null
+  const kind = node.dataset.tableChart ?? ''
+  const options = decodeTableChartOptions(node)
+  return {
+    key: chartTableText(table),
+    asksForScript: false,
+    read: () => tableToEchartsOption(chartTableFromElement(table, kind, options)),
+  }
+}
+
+function decodeTableChartOptions(node: HTMLElement): Record<string, unknown> {
+  const raw = node.dataset.tableChartConfig
+  if (raw === undefined) return {}
+  try {
+    const parsed: unknown = JSON.parse(decodeDataValue(raw))
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
+  }
+  catch {
+    return {}
+  }
+}
+
+function sourceOf(node: EchartsNode): EchartsSource | null {
+  return node.matches(FENCE_SELECTOR) ? fenceSource(node) : tableChartSource(node)
+}
+
+/**
  * One block: read the option, then mount the chart. A body that cannot be read and a library that
  * cannot load both land on the same banner, with the source left underneath so the author can see
  * what the block was asked to draw.
  */
-async function renderEchartsNode(root: HTMLElement, node: EchartsNode, raw: string, draw: EchartsDraw): Promise<void> {
-  const allowScript = draw.allowScript && node.dataset.echartsScript === 'true'
-  const signature = `${draw.themeKey}:${raw.length}:${shortHash(raw)}:${allowScript ? 's' : 'j'}`
+async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: EchartsDraw): Promise<void> {
+  const source = sourceOf(node)
+  if (!source) return
+  const allowScript = draw.allowScript && source.asksForScript
+  const signature = `${draw.themeKey}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}`
   if (node.dataset.rendered === signature && node.__echartsChart) return
   let option: unknown
   let mapSource: string | null = null
   try {
-    const body = readEchartsBody(raw, { allowScript })
+    const body = source.read(allowScript)
     option = body.option
     mapSource = body.mapSource
   }
   catch (err) {
-    markEchartsError(node, blockMessage(err), raw, signature)
+    markEchartsError(node, blockMessage(err), source.key, signature)
     return
   }
   try {
@@ -141,20 +200,14 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, raw: stri
   }
   catch (err) {
     if (!root.contains(node)) return
-    markEchartsError(node, mapSource ? `${t('markdown.echarts_map_failed')}: ${errorMessage(err)}` : errorMessage(err), raw, signature)
+    markEchartsError(node, mapSource ? `${t('markdown.echarts_map_failed')}: ${errorMessage(err)}` : errorMessage(err), source.key, signature)
   }
-}
-
-/** The option a block was rendered from, read back through the document's fence-body set. */
-function echartsBodyOf(node: Element): string {
-  const index = Number((node as HTMLElement).dataset.echartsIndex)
-  return fenceBody(node, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
 }
 
 /** Draws every echarts block under a root. `instant` is for the surfaces that read the pixels. */
 export async function renderEcharts(root: HTMLElement, draw: EchartsDraw): Promise<void> {
   for (const node of [...root.querySelectorAll<EchartsNode>(ECHARTS_SELECTOR)]) {
-    await renderEchartsNode(root, node, echartsBodyOf(node), draw)
+    await renderEchartsNode(root, node, draw)
   }
 }
 
@@ -173,14 +226,20 @@ export async function renderStaticEcharts(root: HTMLElement, dark: boolean): Pro
 
 /**
  * A surface that knows nothing about echarts leaves the block showing its source, which is what a
- * reader of a page that never mounts a chart should see: the option, not a box that stays empty.
+ * reader of a page that never mounts a chart should see: the option, not a box that stays empty. A
+ * bare table-chart has no source of its own to show — the table beside it is the content — so its
+ * empty marker simply goes away.
  */
 export function showEchartsSource(root: HTMLElement): void {
   root.querySelectorAll<EchartsNode>(ECHARTS_SELECTOR).forEach((node) => {
     destroyEchartsInstance(node)
     node.classList.remove('loading')
-    node.classList.add('has-error', 'echarts-source')
     node.removeAttribute('aria-busy')
-    node.innerHTML = `<pre><code>${escapeHtml(echartsBodyOf(node))}</code></pre>`
+    if (!node.matches(FENCE_SELECTOR)) {
+      node.remove()
+      return
+    }
+    node.classList.add('has-error', 'echarts-source')
+    node.innerHTML = `<pre><code>${escapeHtml(fenceSource(node).key)}</code></pre>`
   })
 }

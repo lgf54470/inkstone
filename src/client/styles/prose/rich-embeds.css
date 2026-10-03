@@ -150,6 +150,18 @@
   min-height: 260px;
   max-height: 500px;
 }
+.ink-prose .table-chart {
+  width: 100%;
+  height: 320px;
+  margin: 0 0 var(--sp-3);
+}
+.ink-prose .table-chart:empty {
+  height: 0;
+  margin: 0;
+}
+.ink-prose .table-chart.has-error {
+  height: auto;
+}
 .ink-prose .echarts-block.echarts-source {
   align-items: stretch;
   color: var(--text-secondary);
