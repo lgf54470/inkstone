@@ -222,3 +222,16 @@ export function hasBackwardMove({ index, sub, step }: { index: number; sub: numb
 export function hasForwardMove({ index, count, sub, pageCount, step, steps }: { index: number; count: number; sub: number; pageCount: number; step: number; steps: number }): boolean {
   return index < count - 1 || sub < pageCount - 1 || step < steps
 }
+
+/**
+ * A slide index kept inside the deck.
+ *
+ * Three rules wear one shape: a show resumed against a note that has since lost slides cannot open
+ * past the end, a deck that shrinks mid-talk pulls the presenter back onto a slide that still exists,
+ * and a jump — from a key, the slide list or the overview — has no end to walk past. An empty deck
+ * answers `0` rather than `-1`: there is no slide to be on, but there is no index that is off either
+ * end of it, and every reader of this value indexes into the deck with it.
+ */
+export function clampSlideIndex(index: number, deckLength: number): number {
+  return Math.max(0, Math.min(index, Math.max(0, deckLength - 1)))
+}

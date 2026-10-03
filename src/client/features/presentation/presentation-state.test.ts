@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { backwardMove, deckProgress, entryIndexOf, escapeAction, forwardMove, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { backwardMove, deckProgress, entryIndexOf, escapeAction, forwardMove, interceptSlideLink, isBlockedSlideLinkHref, isSafeSlideLinkHref, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection , clampSlideIndex} from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -365,5 +365,25 @@ describe('forwardMove and backwardMove', () => {
     expect(backwardMove({ step: 2, sub: 0 })).toBe('step')
     expect(backwardMove({ step: 0, sub: 1 })).toBe('page')
     expect(backwardMove({ step: 0, sub: 0 })).toBe('slide')
+  })
+})
+
+// L-12: the slide level of the show's three clamps. The sub-page and the slice each had a direct case
+// of their own; this one was only ever reached *through* a key press, so a regression here was a red
+// somewhere else rather than a named failure.
+describe('clampSlideIndex keeps the show on a slide the deck has', () => {
+  it('lands a resumed position back on the last slide when the deck lost the one it remembered', () => {
+    expect(clampSlideIndex(8, 3)).toBe(2)
+    expect(clampSlideIndex(2, 3), 'a position the deck still has is left alone').toBe(2)
+  })
+
+  it('holds at both ends of a jump', () => {
+    expect(clampSlideIndex(-4, 5)).toBe(0)
+    expect(clampSlideIndex(99, 5)).toBe(4)
+  })
+
+  it('has no slide to be on when the deck is empty — and never an index off either end of it', () => {
+    expect(clampSlideIndex(0, 0)).toBe(0)
+    expect(clampSlideIndex(6, 0), 'an empty deck answers 0, not -1: every reader indexes with this').toBe(0)
   })
 })

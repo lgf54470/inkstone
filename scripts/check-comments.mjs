@@ -7395,6 +7395,14 @@ const allowed = new Map([
     '// the author wrote, so a one-slide note that paginates into fourteen is not drawn finished before it',
     '// has been turned. Decoration: the position itself is announced by the pill, not by this bar.',
   ]],
+  ['src/client/features/presentation/presentation-deck-index.test.ts', [
+    '// The slide level of the show\'s position, at the level a presenter feels it: the deck under the show',
+    '// changes — an edit, a follow that re-splits the note, another writer deleting the second half — and the',
+    '// show has to stay on a slide that exists rather than hold a number that indexes nothing (L-12).',
+    '// Recorded during the render itself, before any effect has had a turn: a show that opens past the end',
+    '// of the deck paints one frame of a slide that does not exist, and only this reading can see it.',
+    '// `jumpTo` is what a slide-list click, a key and the overview grid all go through.',
+  ]],
   ['src/client/features/presentation/presentation-hotkeys.test.ts', [
     '/**\n * The shortcut that puts the current note on the projector. These read the key as it actually\n * arrives — dispatched through the real registry, bound on `window` in the capture phase — because\n * what matters is who gets the key: the show when one is running, the note\'s editor cursor when the\n * keystroke lands inside the editor, and nobody at all when there is no note to present.\n */',
     '// The key is dispatched on the editor itself, not on the body: whether the registry hands a',
@@ -7607,6 +7615,9 @@ const allowed = new Map([
     '// N-31: the order the projector walks a stepped slide — step, then page, then slide — is the whole',
     '// feature\'s contract with a presenter\'s thumb, so it is named and tested apart from the state machine',
     '// that reads it.',
+    '// L-12: the slide level of the show\'s three clamps. The sub-page and the slice each had a direct case',
+    '// of their own; this one was only ever reached *through* a key press, so a regression here was a red',
+    '// somewhere else rather than a named failure.',
   ]],
   ['src/client/features/presentation/presentation-state.ts', [
     '// The rules that decide what a running show presents, kept pure so the session',
@@ -7668,6 +7679,7 @@ const allowed = new Map([
     '/** How far the current page is revealed: `step` is what is on screen now, `steps` what it is worth. */',
     '/** Backward needs no step count: which step the page before this one is entered at is the caller\'s\n * measurement to make, and this rule only decides that a page is what the press moves to. */',
     '/** Whether the turn has anywhere to go, read the same way the two moves above are: the surfaces that\n * offer a press — the pill, the right-click rows, the presenter console — say so on themselves, and a\n * page that is still arriving has a press left in it whatever slide it sits on (N-31). */',
+    '/**\n * A slide index kept inside the deck.\n *\n * Three rules wear one shape: a show resumed against a note that has since lost slides cannot open\n * past the end, a deck that shrinks mid-talk pulls the presenter back onto a slide that still exists,\n * and a jump — from a key, the slide list or the overview — has no end to walk past. An empty deck\n * answers `0` rather than `-1`: there is no slide to be on, but there is no index that is off either\n * end of it, and every reader of this value indexes into the deck with it.\n */',
   ]],
   ['src/client/features/presentation/presentation-theme.ts', [
     '// Theme flips must reach the slide canvas and its diagrams without going through',

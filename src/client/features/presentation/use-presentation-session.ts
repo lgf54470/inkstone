@@ -7,7 +7,7 @@ import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import { type DeckHandoutPayload, type DeckSheetPayload, useDeckExport } from './deck-export'
 import type { DeckExportProgress } from './deck-print'
-import { backwardMove, deckProgress, forwardMove, railOpenFor } from './presentation-state'
+import { backwardMove, clampSlideIndex, deckProgress, forwardMove, railOpenFor } from './presentation-state'
 import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useAudienceFollow } from './use-audience-follow'
 import { useDialogBehavior } from './use-dialog-behavior'
@@ -322,11 +322,11 @@ function useShowRoom(open: boolean): { railOpen: boolean; toggleRail: () => void
 // back onto a slide that exists, and `goTo` cannot walk past either end. The page *within* a slide is
 // a separate concern — see `useSubPage`.
 function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
-  const [index, setIndex] = useState(() => Math.max(0, Math.min(initialSlideIndex, Math.max(0, deckLength - 1))))
+  const [index, setIndex] = useState(() => clampSlideIndex(initialSlideIndex, deckLength))
   useEffect(() => {
-    setIndex((current) => Math.min(current, deckLength - 1))
+    setIndex((current) => clampSlideIndex(current, deckLength))
   }, [deckLength])
-  const goTo = useCallback((next: number) => setIndex(Math.max(0, Math.min(next, deckLength - 1))), [deckLength])
+  const goTo = useCallback((next: number) => setIndex(clampSlideIndex(next, deckLength)), [deckLength])
   return { index, goTo }
 }
 
