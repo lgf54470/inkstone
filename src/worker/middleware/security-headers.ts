@@ -30,9 +30,8 @@ export function registerSecurityHeaders(app: Hono<AppBindings>): void {
     // a third-party-backed body (e.g. a WebDAV server) must never receive a
     // valid same-origin nonce that would re-enable inline execution.
     const isApiPath = c.req.path.startsWith('/api/')
-    const scriptSource = !isApiPath && contentType.includes('text/html')
-      ? applyScriptNonce(c)
-      : "'self'"
+    const stampsNonce = !isApiPath && contentType.includes('text/html')
+    const scriptSource = stampsNonce ? applyScriptNonce(c) : "'self'"
     const formAction = authorizationFormAction(c.req.url, c.res)
     c.header('X-Content-Type-Options', 'nosniff')
     c.header('X-Frame-Options', 'DENY')
@@ -47,6 +46,15 @@ export function registerSecurityHeaders(app: Hono<AppBindings>): void {
     )
     if (isHttps) {
       c.header('Strict-Transport-Security', 'max-age=31536000')
+    }
+    if (stampsNonce) {
+      // A document that carries a per-response nonce must not be stored. The static layer offers the
+      // shell with `public, max-age=0, must-revalidate`, so a later navigation may reuse the stored
+      // body — whose inline bootstrap still carries the nonce of the response it came from — and
+      // meet a freshly minted one in this policy, which blocks that script. The service worker keeps
+      // its own offline copy through the Cache API (response and policy stored together), so this
+      // only drops the HTTP-cache path a nonced document cannot safely use.
+      c.header('Cache-Control', 'no-store')
     }
     if (isApiPath && !c.res.headers.has('Cache-Control')) {
       c.header('Cache-Control', 'no-store')

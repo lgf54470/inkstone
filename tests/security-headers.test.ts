@@ -81,6 +81,24 @@ describe('security headers middleware', () => {
     const { csp } = await scriptSourceOf(makeApp(), '/api/json')
     expect(csp).toContain("script-src 'self';")
   })
+
+  it('marks a nonced document unstorable so a cached body cannot meet a fresh nonce', async () => {
+    // The shell ships with `public, max-age=0, must-revalidate`, and a navigation that reuses the
+    // stored body would keep that body's bootstrap nonce while this policy declares a new one —
+    // blocking the script. The stamp and the policy may only ever be read together.
+    const app = new Hono<AppBindings>()
+    registerSecurityHeaders(app)
+    app.get('/cached', (c) => {
+      c.header('Cache-Control', 'public, max-age=0, must-revalidate')
+      return c.html(HTML_BODY)
+    })
+    const res = await app.request('/cached', {}, {} as AppBindings['Bindings'])
+    const csp = res.headers.get('Content-Security-Policy') ?? ''
+    const body = await res.text()
+    const stamped = body.match(/nonce="([\w-]+)"/)?.[1]
+    expect(csp).toContain(`'nonce-${stamped}'`)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+  })
 })
 
 describe('external image opt-in is refused on public pages', () => {

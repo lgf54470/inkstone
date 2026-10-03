@@ -212,5 +212,8 @@
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 908
+  },
+  "src/worker/middleware/security-headers.ts": {
+    "longFns": 2
   }
 }
