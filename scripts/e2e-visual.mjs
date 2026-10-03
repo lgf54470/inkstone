@@ -1448,33 +1448,32 @@ async function assertPresentationKeyGuide(page) {
   const after = await chromeBox()
   check('keys: the card did not move the capsule the presenter is aiming at', JSON.stringify(before) === JSON.stringify(after), JSON.stringify({ before, after }))
 
-  // The follow lamp is the keyed control this reads by name: it is the one capsule button the markup
-  // marks for itself, so the hover cannot land on a neighbour whose label moved.
-  const railCap = await page.evaluate(() => {
-    const button = document.querySelector('[data-presentation-chrome] [data-follow-toggle="true"]')
-    const box = button?.getBoundingClientRect()
-    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2), label: button?.getAttribute('aria-label') ?? '' } : null
-  })
-  if (railCap) {
-    await page.mouse.move(railCap.x, railCap.y)
-    await sleep(900)
-    const hovered = await page.evaluate(() => {
-      const tip = document.querySelector('[role="tooltip"]')
-      return tip ? { text: tip.textContent?.trim() ?? '', key: tip.querySelector('kbd')?.textContent?.trim() ?? '' } : null
-    })
-    check('keys: the capsule names the same key the card prints beside those words', hovered !== null && hovered.key === 'L' && hovered.text.includes(railCap.label), JSON.stringify({ hovered, press: railCap }))
-  } else {
-    check('keys: the capsule names the same key the card prints beside those words', false, 'no keyed control to hover')
-  }
-
+  // Escape is read as one moment: whether the card was up, what the keystroke left behind, and whether
+  // the show itself survived. A red line here has to say which of those it is about, rather than
+  // leaving the next reader to guess whether the card closed on its own a beat earlier.
+  const openBefore = await readCard()
   await page.keyboard.press('Escape')
   await sleep(400)
-  const afterEscape = await readCard()
-  check('keys: Escape puts the card away and keeps the show', afterEscape === null && Boolean(await page.evaluate(() => document.querySelector('[role="dialog"]'))), JSON.stringify(afterEscape))
+  const escaped = await page.evaluate(() => ({
+    card: Boolean(document.querySelector('[data-presentation-key-guide]')),
+    dialog: Boolean(document.querySelector('[role="dialog"]')),
+    dialogs: document.querySelectorAll('[role="dialog"]').length,
+    position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+  }))
+  check('keys: Escape puts the card away and keeps the show', openBefore !== null && escaped.card === false && escaped.dialog, JSON.stringify({ openBefore: openBefore !== null, ...escaped }))
 
   await holdShow()
   await page.mouse.click(400, 300, { button: 'right' })
   await sleep(500)
+  // The menu is the third rendering of the same map (the capsule's hint is a hover, and headless shell
+  // reports `(hover: none)`, so a pointer never summons it here) — its rows carry the key caps too.
+  const menuKeys = await page.evaluate((labels) => {
+    const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => labels.some((label) => item.textContent?.includes(label)))
+    if (!row) return null
+    return { label: row.textContent?.replace(row.querySelector('kbd')?.textContent ?? '', '').trim() ?? '', key: row.querySelector('kbd')?.textContent?.trim() ?? '' }
+  }, localeLabel('workspace.presentation_next'))
+  check('keys: the right-click row spells the turn the way the card does', menuKeys?.key === '\u2192', JSON.stringify({ menuKeys, card: card?.caps?.slice(0, 1) }))
+
   const openedFromMenu = await page.evaluate((label) => {
     const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => item.textContent?.includes(label))
     if (!row) return null
