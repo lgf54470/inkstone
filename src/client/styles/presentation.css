@@ -88,6 +88,19 @@
   left: var(--deck-pad-x);
 }
 
+.deck-print-page-number {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  padding: var(--sp-0\.5) var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--bg-overlay);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  print-color-adjust: exact;
+}
+
 @media print {
   html,
   body {

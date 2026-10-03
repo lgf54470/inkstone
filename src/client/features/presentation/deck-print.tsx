@@ -8,6 +8,7 @@ import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useUi } from '../../store/ui'
 import { collectDeckCss, deckImageGeometry, renderDeckPagePng, saveDeckImages, zipDeckImages } from './deck-image'
+import { formatDeckPosition, type DeckPosition } from './deck-position'
 import { railEntries } from './presentation-state'
 import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, type SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
@@ -17,6 +18,18 @@ import { SLIDE_PAD_X, SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
 // Exporting waits for the sheet to draw what the show draws, but not forever: a diagram that never
 // settles must cost the export the diagram, not the export itself.
 const PRINT_PREPARE_TIMEOUT_MS = 8000
+
+/**
+ * One exported page: the markup the show prepared for it, and where in the show that page was.
+ *
+ * The position travels with the page rather than being looked up at print time because the two exports
+ * read different things — the printer reads this box, the archive reads a rasterization of it — and a
+ * number that only one of them carries is the mismatch between the show and its export that this
+ * closes (N-32).
+ */
+export interface DeckPrintPage extends SlideMarkup {
+  position: DeckPosition
+}
 
 // The deck as printable pages, one per page the show walks — built from the same measured plans
 // and the same prepared markup the projector renders, so a printed deck and a shown deck agree
@@ -28,21 +41,32 @@ export function buildDeckPages(
   plans: Record<number, SlidePlan>,
   metrics: StageMetrics,
   externalImages: boolean,
-): SlideMarkup[] {
+): DeckPrintPage[] {
   return railEntries(deck.length, plans).map((entry) => {
+    // The position is written the way the projector writes its own corner chip: which slide of the
+    // deck, and which page of that slide. Both exports read it off the page, so what a handout says
+    // about "page 4 of 28" is what the room read (N-32).
+    const position = { index: entry.slide, count: deck.length, subPage: entry.sub, pageCount: entry.pageCount }
     const markup = readSlideHtml(cacheKeys[entry.slide] ?? '') ?? slideMarkup(renderSlideSource(deck[entry.slide] ?? '', externalImages))
     const plan = plans[entry.slide]
-    if (!plan) return markup
+    // A copy, always: the cached entry is shared with the show and the slide list, and neither of
+    // them carries a printed page number.
+    if (!plan) return { ...markup, position }
     // The plan carries the layout: a slide the projector laid out as flow prints as flow, and one it
     // kept as columns prints in its columns, because the page numbers both surfaces walk are the
     // ones that plan measured.
-    return { html: slicePageHtml(markup.html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences, layout: plan.layout }
+    return {
+      html: slicePageHtml(markup.html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight),
+      fences: markup.fences,
+      layout: plan.layout,
+      position,
+    }
   })
 }
 
 interface DeckSheetProps {
   /** One entry per deck page, from buildDeckPages(). */
-  pages: SlideMarkup[]
+  pages: DeckPrintPage[]
   metrics: StageMetrics
   font: ProseFont
   /** The theme the deck was measured in; a chart's axes follow it. */
@@ -68,6 +92,9 @@ function DeckSheet({ sheetRef, pages, metrics, font }: DeckSheetProps & { sheetR
           <div className='deck-print-body ink-slide'>
             <SlideProse html={page.html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={page.layout} />
           </div>
+          {/* Inside the page box, not beside it: the printer prints this box and the archive
+          rasterizes it, so a number drawn outside would reach the paper and not the archive. */}
+          <span className='deck-print-page-number'>{formatDeckPosition(page.position)}</span>
         </div>
       ))}
     </div>,

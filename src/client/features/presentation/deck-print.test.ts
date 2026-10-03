@@ -96,6 +96,61 @@ describe('buildDeckPages', () => {
   })
 })
 
+describe('buildDeckPages — the page number the room saw', () => {
+  it('carries each page the position the projector showed it at', () => {
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+
+    expect(pages.map((page) => page.position)).toEqual([
+      { index: 0, count: 2, subPage: 0, pageCount: 2 },
+      { index: 0, count: 2, subPage: 1, pageCount: 2 },
+      { index: 1, count: 2, subPage: 0, pageCount: 1 },
+    ])
+  })
+
+  it('counts an unmeasured slide as the one page it at least has', () => {
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+
+    expect(pages.map((page) => page.position.pageCount)).toEqual([1, 1])
+  })
+})
+
+describe('DeckSheet — the number printed on the page', () => {
+  it('prints the same corner position the projector shows, on every exported page', async () => {
+    stubFonts()
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckImageReady === 'true')
+      expect(drawn).toBe(true)
+      const numbers = [...document.querySelectorAll('.deck-print-page-number')].map((node) => node.textContent)
+      expect(numbers).toEqual(['1 / 2 · 1/2', '1 / 2 · 2/2', '2 / 2'])
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('hands the rasterizer the page with its number already on it', async () => {
+    stubFonts()
+    // This describe runs before the one that clears the rasterizer between cases, so the call this
+    // reads has to be its own: the neighbour's sheet would answer '1 / 2 · 1/2' and be right about
+    // its own deck.
+    vi.mocked(deckImage.renderDeckPagePng).mockClear()
+    // The PNG is drawn out of the same page box the printer prints, so the number the room read has
+    // to be inside that box before either export reads it — a number painted beside the sheet would
+    // land on the paper and not in the archive, which is the mismatch between what the room saw and what the paper carries that this closes.
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
+    try {
+      const drawn = await until(() => vi.mocked(deckImage.renderDeckPagePng).mock.calls.length > 0)
+      expect(drawn).toBe(true)
+      const first = vi.mocked(deckImage.renderDeckPagePng).mock.calls[0]?.[0]
+      expect(first?.querySelector('.deck-print-page-number')?.textContent).toBe('1 / 2')
+    } finally {
+      view.unmount()
+    }
+  })
+})
+
 describe('buildDeckPages — the fence bodies a page carries', () => {
   it('hands every page of a slide the bodies that slide was rendered from', () => {
     const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)

@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
-import { buildDeckPages, type DeckExportProgress } from './deck-print'
-import type { SlideMarkup } from './slide-html'
+import { buildDeckPages, type DeckExportProgress, type DeckPrintPage } from './deck-print'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 
@@ -11,7 +10,7 @@ import type { StageMetrics } from './slide-stage'
 
 /** One export sheet's pages, and what tears it down when it is done with them. */
 export interface DeckSheetPayload {
-  pages: SlideMarkup[]
+  pages: DeckPrintPage[]
   metrics: StageMetrics
   dark: boolean
   done: () => void
@@ -43,7 +42,7 @@ export function useDeckExport(options: DeckExportOptions): DeckExports {
   const { deck, cacheKeys, plans, metrics, externalImages, dark, title } = options
   // The kind of export is part of what is held: both sheets read the same pages, so holding the
   // pages alone would mount the printed deck and the image deck at the same time and export both.
-  const [request, setRequest] = useState<{ kind: 'print' | 'images'; pages: SlideMarkup[] } | null>(null)
+  const [request, setRequest] = useState<{ kind: 'print' | 'images'; pages: DeckPrintPage[] } | null>(null)
   const [imageProgress, setImageProgress] = useState<DeckExportProgress | null>(null)
   // The count starts at zero pages rather than staying absent until the first PNG lands: a deck that
   // takes a beat to begin drawing would otherwise give no sign that the press was heard at all.
