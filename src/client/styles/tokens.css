@@ -172,6 +172,17 @@
   --kanban-tag-slate-fg: oklch(48.5% 0.041 257.4);
   --kanban-tag-slate-bg: color-mix(in oklab, var(--kanban-tag-slate-fg) 14%, transparent);
 
+  --graph-tag-1: #dc2626;
+  --graph-tag-2: #c2410c;
+  --graph-tag-3: #a16207;
+  --graph-tag-4: #4d7c0f;
+  --graph-tag-5: #15803d;
+  --graph-tag-6: #0f766e;
+  --graph-tag-7: #0e7490;
+  --graph-tag-8: #1d4ed8;
+  --graph-tag-9: #6d28d9;
+  --graph-tag-10: #be185d;
+
   --z-under: -1;
   --z-flat: 0;
   --z-raised: 1;
@@ -280,6 +291,17 @@
   --kanban-tag-teal-bg: color-mix(in oklab, var(--kanban-tag-teal-fg) 14%, transparent);
   --kanban-tag-slate-fg: oklch(73% 0.035 256.8);
   --kanban-tag-slate-bg: color-mix(in oklab, var(--kanban-tag-slate-fg) 14%, transparent);
+
+  --graph-tag-1: #f87171;
+  --graph-tag-2: #fb923c;
+  --graph-tag-3: #fbbf24;
+  --graph-tag-4: #a3e635;
+  --graph-tag-5: #4ade80;
+  --graph-tag-6: #2dd4bf;
+  --graph-tag-7: #22d3ee;
+  --graph-tag-8: #60a5fa;
+  --graph-tag-9: #a78bfa;
+  --graph-tag-10: #f472b6;
 }
 
 

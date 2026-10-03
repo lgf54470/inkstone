@@ -85,8 +85,13 @@ export interface UiState {
   panel: PanelName | null
   /** FB-F4: the settings page a caller asked for when it opened the panel; null means the default. */
   settingsSection: string | null
+  /** Set when a caller asks the graph to open with its settings drawer out; the panel spends it (G-20). */
+  graphSettingsRequested: boolean
+  /** Set when a caller asks the graph to open around the note it sits in; the panel spends it (G-48). */
+  graphLocalRequested: boolean
   outlineOpen: boolean
   backlinksOpen: boolean
+  localGraphOpen: boolean
   toasts: ToastItem[]
   lightbox: { src: string; alt: string } | null
 
@@ -128,10 +133,15 @@ export interface UiState {
   openPanel: (panel: PanelName) => void
   /** Opens the settings panel on a named section (a caller that knows which page it wants). */
   openSettings: (section?: string) => void
+  /** Opens the full graph on its settings drawer, for a surface that holds no settings of its own. */
+  openGraphSettings: () => void
+  /** Opens the full graph built around the note the reader is on, for a surface already showing that neighbourhood. */
+  openGraphAroundNote: () => void
   closePanel: () => void
   togglePanel: (panel: PanelName) => void
   toggleOutline: () => void
   toggleBacklinks: () => void
+  toggleLocalGraph: () => void
   setLightbox: (value: UiState['lightbox']) => void
   toast: (input: Omit<ToastItem, 'id' | 'duration' | 'tone'> & { tone?: ToastItem['tone']; duration?: number }) => string
   dismissToast: (id: string) => void

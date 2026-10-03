@@ -119,11 +119,13 @@ export const Switch = memo(function Switch({
   onChange,
   disabled,
   label,
+  'aria-describedby': ariaDescribedBy,
 }: {
   checked: boolean
   onChange: (next: boolean) => void
   disabled?: boolean
   label?: string
+  'aria-describedby'?: string
 }) {
   return (
     <button
@@ -131,6 +133,7 @@ export const Switch = memo(function Switch({
       role='switch'
       aria-checked={checked}
       aria-label={label}
+      aria-describedby={ariaDescribedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(

@@ -26,7 +26,7 @@ Date: 2026-09-15
 | Mermaid（`mermaid` 块） | `mermaid.initialize({ theme })` 编译进 SVG，按 `dark` 分键缓存 | 重画 | `enhance/mermaid.ts`：`data-rendered` 签名含 `d`/`l`，不匹配即重渲染（命中缓存则换回原 SVG） |
 | 导图静态快照（分享 / 演示 / 导出 / 嵌套笔记） | `exportSvg` 快照 | 每次用都重画，自动正确 | `mindmap/static.ts`、`presentation/deck-print.tsx` |
 | 演示导出（PNG / PDF） | 导出时用 `getComputedStyle` 拷当前计算样式后栅格化 | 导出时重建，自动正确 | `presentation/deck-image.ts` |
-| 图谱面板 canvas | `getComputedStyle(document.documentElement)` 读 `--text-tertiary`/`--border-strong`/`--accent`/`--text-secondary` | ❌ 不重画（见 Consequences） | `features/graph/graph-panel/canvas-draw.ts`、`canvas.tsx` |
+| 图谱面板 canvas | `getComputedStyle(document.documentElement)` 读 `--text-tertiary`/`--border-strong`/`--accent`/`--text-secondary`/`--graph-tag-*` | ✅ 重画 | `canvas-draw.ts` 的 `createThemeObserver()`（`MutationObserver` 订阅 `data-theme`/`data-accent`）只换 `colorsRef.current` 并 `state.schedule?.()`，不重建布局（节点坐标与相机原地保留）；`scripts/e2e-visual.mjs` 断言**同一张 canvas 元素**的像素随主题翻转变化 |
 | 音乐可视化 canvas | 每 `ACCENT_REFRESH_FRAMES` 帧重读 `--accent` | ⚠️ 动画中自愈；`prefers-reduced-motion` 下只画一帧，此后停在读到的那个 accent | `features/music/music-visualizer.tsx` |
 
 **跟随 CSS、不需要机制**：KaTeX（唯一颜色是 `errorColor: 'var(--danger)'`）、Prism.js（只产 `.token.*` 类名，颜色在 `styles/prose/code.css` 按 `--syntax-*` 令牌给）、原生 `<video controls>` / `<audio controls>`（浏览器绘制，元素跨重渲染稳定）、组件库与设计系统组件（全走令牌，`hardcoded:check`/`tokens:check` 守卫）。
@@ -47,15 +47,6 @@ Date: 2026-09-15
 
 ## Consequences
 
-- **已知缺口：图谱面板 canvas 不跟随主题**（本次审计发现，未在本次修复）。`canvas-draw.ts` 的 `readThemeColors()` 用 `getComputedStyle` 读一次令牌，`canvas.tsx` 的 `useGraphCanvasLoop` 在 effect 首帧把结果交给 `createGraphTicker`，而 effect 依赖是 `[data, fitGraph, prefs.*]`——不含主题；`features/graph` 全目录没有出现 `theme`/`dark`，即没有任何订阅入口。
-- **复现证据**（Puppeteer，1440×900，账号主题设为"跟随系统"后翻转系统偏好，画布像素按步长采样求和）：
-
-  | | `--text-tertiary` | `--border-strong` | canvas 像素采样和 |
-  | --- | --- | --- | --- |
-  | 浅色 | `oklch(50% 0.009 265)` | `oklch(20% 0.01 265 / 17%)` | 33174 |
-  | 切到深色后 | `oklch(70% 0.009 265)` | `oklch(100% 0 0 / 17%)` | 33174（逐字节一致） |
-
-  令牌已翻转而画布像素完全相同，说明这次主题变化没有触发任何一次重绘。
 - **修复方向**：仿照 `use-preview.ts` 订阅主题，把主题作为 `useGraphCanvasLoop` 的依赖并重新 `readThemeColors()`；由于这条 effect 会重建布局（`buildInitialLayout`），重跑时应只换调色板、保留节点坐标与相机，或改为在 ticker 内按需重读颜色。修完的回归必须是浏览器断言：切主题后**同一张 canvas 元素**的像素发生变化。
 - **音乐可视化是次要缺口**：它在动画循环里每 N 帧重读一次 `--accent`，所以只在 `prefers-reduced-motion`（单帧绘制）下可能停在旧色；这属于可接受范围，本轮不改，但改这个组件时不要去掉那次重读。
 - **本文档与 `AGENTS.md` 的关系**：`AGENTS.md`「设计令牌位置」一节只保留一句指针（清单与约定以本 ADR 为准），避免规范文件继续膨胀。

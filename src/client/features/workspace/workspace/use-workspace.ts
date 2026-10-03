@@ -56,8 +56,10 @@ function useWorkspaceStore(pane: WorkspacePane | 'active') {
   const openPanel = useUi((s) => s.openPanel)
   const outlineOpen = useUi((s) => s.outlineOpen)
   const backlinksOpen = useUi((s) => s.backlinksOpen)
+  const localGraphOpen = useUi((s) => s.localGraphOpen)
   const toggleOutline = useUi((s) => s.toggleOutline)
   const toggleBacklinks = useUi((s) => s.toggleBacklinks)
+  const toggleLocalGraph = useUi((s) => s.toggleLocalGraph)
   const splitRatio = useUi((s) => s.splitRatio)
   const setLayout = useUi((s) => s.setLayout)
   const activeWorkspacePane = useUi((s) => s.activeWorkspacePane)
@@ -73,7 +75,7 @@ function useWorkspaceStore(pane: WorkspacePane | 'active') {
     previewSettings, editorSettings, updateSettings,
     editContent, editTitle, patchNote, tags, folders, notes,
     toast, locale,
-    openPanel, outlineOpen, backlinksOpen, toggleOutline, toggleBacklinks,
+    openPanel, outlineOpen, backlinksOpen, localGraphOpen, toggleOutline, toggleBacklinks, toggleLocalGraph,
     splitRatio, setLayout, activeWorkspacePane, workspacePaneLayouts, setWorkspacePaneLayout, activateWorkspacePane, closeSecondaryNote,
     isShared, isBlogPublished,
     breakpoint,
@@ -337,6 +339,20 @@ function buildWorkspaceHandlers(note: NotesState['notes'][string] | null | undef
   }
 }
 
+function useWorkspaceExport(
+  note: NoteSummary | null,
+  content: string,
+  locale: AppLocale,
+  toast: (input: Parameters<ReturnType<typeof useWorkspaceStore>['toast']>[0]) => string,
+  setIsExportMenuOpen: (open: boolean) => void,
+) {
+  return useCallback(async (format: 'md' | 'html' | 'pdf') => {
+    setIsExportMenuOpen(false)
+    if (!note) return
+    await runExport(format, note.title, content, locale, toast)
+  }, [setIsExportMenuOpen, note?.id, content, locale, toast])
+}
+
 export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit' | 'preview', grouped: boolean) {
   const store = useWorkspaceStore(pane)
   const refs = useWorkspaceRefs()
@@ -349,11 +365,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
   const cmds = useWorkspaceCommands({ note: store.note, editContent: store.editContent, view: local.view, layout: derived.layout, grouped, pane, setWorkspacePaneLayout: store.setWorkspacePaneLayout, updateSettings: store.updateSettings, previewScrollerRef: refs.previewScrollerRef })
   const menu = useWorkspaceContextMenu()
   const startPresentation = useStartPresentation(store.note, store.content)
-  const exportNote = useCallback(async (format: 'md' | 'html' | 'pdf') => {
-    local.setIsExportMenuOpen(false)
-    if (!store.note) return
-    await runExport(format, store.note.title, store.content, store.locale, store.toast)
-  }, [local.setIsExportMenuOpen, store.note?.id, store.content, store.locale, store.toast])
+  const exportNote = useWorkspaceExport(store.note, store.content, store.locale, store.toast, local.setIsExportMenuOpen)
   const sources = useMemo(() => buildWorkspaceSources(store.notes, store.tags, store.note), [store.notes, store.tags, store.note?.id])
   const handlers = useMemo(() => buildWorkspaceHandlers(store.note, store.toast), [store.note?.id, store.toast])
   const invalidateSyncAnchors = useSyncScroll(local.view, refs.previewScrollerRef, store.previewSettings.syncScroll && derived.layout === 'split')
@@ -365,7 +377,9 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
     editorSettings: store.editorSettings, editTitle: store.editTitle, patchNote: store.patchNote,
     tags: store.tags, folders: store.folders, toast: store.toast, locale: store.locale,
     openPanel: store.openPanel, outlineOpen: store.outlineOpen, backlinksOpen: store.backlinksOpen,
+    localGraphOpen: store.localGraphOpen,
     toggleOutline: store.toggleOutline, toggleBacklinks: store.toggleBacklinks,
+    toggleLocalGraph: store.toggleLocalGraph,
     splitRatio: store.splitRatio, setLayout: store.setLayout,
     activateWorkspacePane: store.activateWorkspacePane, closeSecondaryNote: store.closeSecondaryNote,
     isShared: store.isShared, isBlogPublished: store.isBlogPublished,

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
+import { initI18n, t } from '../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { register } from '../../lib/hotkeys'
 import { ShortcutsPanel } from './shortcuts-panel'
@@ -51,6 +52,19 @@ describe('ShortcutsPanel keyboard roaming', () => {
     })
     expect(document.body.querySelector('[aria-selected="true"]')).toBeNull()
     unmount()
+  })
+})
+
+describe('the graph canvas rows (G-28)', () => {
+  it('lists the canvas keys a reader can use without a pointer', async () => {
+    await initI18n()
+    const { unmount } = renderPanel(vi.fn())
+    try {
+      expect(document.body.textContent).toContain(t('graph.canvas_keys_menu'))
+      expect(document.body.textContent).toContain(t('graph.canvas_keys_fit'))
+    } finally {
+      unmount()
+    }
   })
 })
 

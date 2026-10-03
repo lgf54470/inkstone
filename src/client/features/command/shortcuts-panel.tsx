@@ -41,6 +41,16 @@ const INPUT_HINTS: {
   { keys: ['↵'], description: () => t('command.continue_lists_automatically_press_enter_on_an_empty_item_to_exit') },
   { keys: ['Tab'], description: () => t('command.jump_to_the_next_cell_in_the_table') },
 ]
+const GRAPH_CANVAS_HINTS: {
+  keys: string[]
+  description: () => string
+}[] = [
+  { keys: ['←', '→', '↑', '↓'], description: () => t('graph.canvas_keys_move') },
+  { keys: ['+', '−'], description: () => t('graph.canvas_keys_zoom') },
+  { keys: ['Home'], description: () => t('graph.canvas_keys_fit') },
+  { keys: ['Enter'], description: () => t('graph.canvas_keys_open') },
+  { keys: ['Menu', 'Shift+F10'], description: () => t('graph.canvas_keys_menu') },
+]
 const CALENDAR_YEAR_HINTS: {
   keys: string[]
   description: () => string
@@ -115,6 +125,10 @@ function registeredHotkeySections(): ShortcutSection[] {
     {
       group: t('command.calendar_year_hints'),
       rows: CALENDAR_YEAR_HINTS.map((item) => ({ keys: item.keys, description: item.description(), keywords: t(item.keywordKey).split(',') })),
+    },
+    {
+      group: t('common.graph'),
+      rows: GRAPH_CANVAS_HINTS.map((item) => ({ keys: item.keys, description: item.description() })),
     },
   ]
 }

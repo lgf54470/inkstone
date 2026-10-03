@@ -1,26 +1,45 @@
-import { useCallback, useEffect, useState, type MutableRefObject, type RefObject } from 'react'
-import { CircleDot, FolderOpen, PanelRightClose } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
-import { Menu, type MenuItem } from '../../../components/overlay'
+import { Menu } from '../../../components/overlay'
+import { GraphPaintError } from './graph-overlays'
 import { usePinnedWindows } from '../../../store/pinned-windows'
+import { useMediaQuery } from '../../../lib/hooks'
 import { t } from '../../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../../preview'
-import { graphScaleAfterWheel } from './helpers'
-import { PHYSICS_FRAME_LIMIT } from './constants'
-import type { CanvasNode, CanvasState } from './types'
+import { buildColorLegends, ensureNodeVisible, graphScaleAfterWheel, pickNeighborInDirection, type GraphArrowDirection } from './helpers'
+import type { CanvasNode, CanvasState, GraphCanvasLoopOptions } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
-import { buildInitialLayout, createCanvasResizer, createGraphTicker, readThemeColors } from './canvas-draw'
+import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
+import { GraphOverlays } from './graph-overlays'
+import { useGraphNodePreview } from './use-graph-preview'
+import {
+  type GraphControls,
+  graphMenuItems,
+  useDynamicGraphPrefs,
+  useGraphControls,
+  useGraphDrag,
+  useGraphFit,
+  useGraphNodeActions,
+  useGraphNodeFocus,
+  useGraphPrefsRef,
+  useGraphPaintError,
+  useGraphWheelZoom,
+  useGraphSearchDim,
+  useGraphWorldMath,
+  useIsDarkTheme,
+} from './canvas-hooks'
 
-export interface GraphControls {
-  zoomIn: () => void
-  zoomOut: () => void
-  fit: () => void
-}
+export type { GraphControls }
 
 interface GraphCanvasProps {
   data: GraphResponse
   prefs: GraphPreferences
+  /** The nodes the search box hit, or null while nothing is being located. */
+  searchHits?: ReadonlySet<string> | null
+  /** The filter line the search box holds, and what to do when a legend row is pressed (G-14 ④). */
+  legendQuery?: string
+  onLegendSelect?: (query: string) => void
   activeNoteId: string | null
   canvasRef: RefObject<HTMLCanvasElement | null>
   stateRef: RefObject<CanvasState>
@@ -32,120 +51,17 @@ interface GraphCanvasProps {
   onCreateNote: (title: string) => void
   onClose: () => void
   onMakeLocal: () => void
+  /**
+   * The canvas cannot persist a pin of its own — the preferences belong to the panel that owns them — so
+   * it reports the change instead. Without this a pin lives exactly as long as the panel does
+   * (G-07 step 2). Left unset where a pin is a view of the moment: the note's companion graph.
+   */
+  onPinChange?: (id: string, pinned: boolean) => void
+  /** The note menu can take a note out of the graph; the panel that owns the preferences answers (G-42). */
+  onExcludeChange?: (id: string, excluded: boolean) => void
+  /** Absent in the graph inside a note: that surface has no tag filter of its own to narrow. */
+  onFilterByTag?: (tag: string) => void
   controlsRef: MutableRefObject<GraphControls | null>
-}
-
-function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>) {
-  return useCallback(() => {
-    const canvas = canvasRef.current
-    const state = stateRef.current
-    if (!canvas || !state.nodes.length) return
-    const rect = canvas.getBoundingClientRect()
-    const xs = state.nodes.map((node) => node.x)
-    const ys = state.nodes.map((node) => node.y)
-    const minX = Math.min(...xs), maxX = Math.max(...xs)
-    const minY = Math.min(...ys), maxY = Math.max(...ys)
-    const width = Math.max(80, maxX - minX + 80)
-    const height = Math.max(80, maxY - minY + 80)
-    state.scale = Math.min(2.5, Math.max(0.2, Math.min(rect.width / width, rect.height / height)))
-    state.offsetX = rect.width / 2 - ((minX + maxX) / 2) * state.scale
-    state.offsetY = rect.height / 2 - ((minY + maxY) / 2) * state.scale
-    state.schedule?.()
-  }, [canvasRef, stateRef])
-}
-
-function useGraphCanvasLoop(data: GraphResponse, prefs: GraphPreferences, canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: React.Dispatch<React.SetStateAction<string | null>>, fitGraph: () => void) {
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !data) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const state = stateRef.current
-    hoverRef.current = null
-    setHover(null)
-    setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
-    buildInitialLayout(data, prefs, state)
-    const colors = readThemeColors()
-    const { resize, observer } = createCanvasResizer(canvas, ctx, state)
-    resize()
-    const style = getComputedStyle(document.documentElement)
-    createGraphTicker(state, canvas, ctx, colors, prefs, hoverRef, selectedIdRef, activeNoteIdRef, style)
-    const linkedTargetId = getLinkHoverTarget()
-    const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
-    hoverRef.current = linkedNode
-    setHover(linkedNode)
-    state.schedule?.()
-    const fitTimer = window.setTimeout(fitGraph, 120)
-    return () => {
-      window.clearTimeout(fitTimer)
-      cancelAnimationFrame(state.raf)
-      state.raf = 0; state.schedule = null
-      observer.disconnect()
-    }
-  }, [data, fitGraph, prefs.arrows, prefs.groupBy, prefs.labels, prefs.linkDistance, prefs.nodeScale, prefs.repulsion])
-}
-
-function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObject<HTMLCanvasElement | null>) {
-  const toWorld = useCallback((clientX: number, clientY: number) => {
-    const state = stateRef.current
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: (clientX - rect.left - state.offsetX) / state.scale, y: (clientY - rect.top - state.offsetY) / state.scale }
-  }, [canvasRef, stateRef])
-  const nodeAt = useCallback((x: number, y: number): CanvasNode | null => {
-    const nodes = stateRef.current.nodes
-    for (let index = nodes.length - 1; index >= 0; index--) {
-      const node = nodes[index]!
-      if (Math.hypot(node.x - x, node.y - y) <= node.r + 7) return node
-    }
-    return null
-  }, [stateRef])
-  return { toWorld, nodeAt }
-}
-
-function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: number, clientY: number) => { x: number; y: number }, nodeAt: (x: number, y: number) => CanvasNode | null, hoverRef: MutableRefObject<CanvasNode | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: (id: string | null) => void, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void, onClose: () => void) {
-  const beginDrag = useCallback((clientX: number, clientY: number, button: number) => {
-    if (button !== 0) return
-    const state = stateRef.current
-    const point = toWorld(clientX, clientY)
-    const node = nodeAt(point.x, point.y)
-    state.dragging = { node, startX: clientX, startY: clientY, ox: state.offsetX, oy: state.offsetY }
-    if (node) setSelectedId(node.id)
-  }, [nodeAt, setSelectedId, stateRef, toWorld])
-  const moveDrag = useCallback((clientX: number, clientY: number) => {
-    const state = stateRef.current
-    const point = toWorld(clientX, clientY)
-    if (state.dragging) {
-      if (state.dragging.node) {
-        state.dragging.node.x = point.x; state.dragging.node.y = point.y
-        state.dragging.node.vx = 0; state.dragging.node.vy = 0
-        state.frame = Math.min(state.frame, PHYSICS_FRAME_LIMIT - 100)
-      } else {
-        state.offsetX = state.dragging.ox + clientX - state.dragging.startX
-        state.offsetY = state.dragging.oy + clientY - state.dragging.startY
-      }
-      state.schedule?.(); return
-    }
-    const node = nodeAt(point.x, point.y)
-    if (hoverRef.current?.id !== node?.id) {
-      hoverRef.current = node; setHover(node); state.schedule?.()
-    }
-  }, [hoverRef, nodeAt, setHover, stateRef, toWorld])
-  const endDrag = useCallback((clientX: number, clientY: number) => {
-    const state = stateRef.current
-    const drag = state.dragging
-    state.dragging = null
-    if (!drag) return
-    const moved = Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY)
-    if (drag.node && moved < 5) {
-      if (drag.node.kind === 'note') {
-        if (usePinnedWindows.getState().focusPinnedByNote(drag.node.id)) return
-        void onOpenNote(drag.node.id)
-      }
-      else void onCreateNote(drag.node.title)
-      onClose()
-    }
-  }, [onCreateNote, onClose, onOpenNote, stateRef])
-  return { beginDrag, moveDrag, endDrag }
 }
 
 interface CanvasHandlers {
@@ -153,32 +69,91 @@ interface CanvasHandlers {
   hoverRef: MutableRefObject<CanvasNode | null>
   selectedIdRef: MutableRefObject<string | null>
   lastPointerEventAtRef: MutableRefObject<number>
+  isSpaceDownRef: MutableRefObject<boolean>
   setHover: (node: CanvasNode | null) => void
   setSelectedId: (id: string | null) => void
   setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void
-  beginDrag: (clientX: number, clientY: number, button: number) => void
+  openNodeMenu: (node: CanvasNode) => void
+  beginDrag: (clientX: number, clientY: number, button: number, forcePan?: boolean) => void
   moveDrag: (clientX: number, clientY: number) => void
-  endDrag: (clientX: number, clientY: number) => void
+  endDrag: (clientX: number, clientY: number, modifierKey?: boolean) => void
   toWorld: (clientX: number, clientY: number) => { x: number; y: number }
   nodeAt: (x: number, y: number) => CanvasNode | null
   fitGraph: () => void
   onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
   onCreateNote: (title: string) => void
   onClose: () => void
+  onFilterByTag?: (tag: string) => void
+  /** Speaks to the same live region the selection announcement uses, for keys that answer with words. */
+  announce: (message: string) => void
+  hover: CanvasNode | null
+  isDragging: boolean
+}
+
+function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
+  const { data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph, onPaintError } = options
+  const refitOnSettleRef = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const state = stateRef.current
+    const colorsRef = { current: readThemeColors() }
+    const themeObserver = createThemeObserver(colorsRef, () => state.schedule?.())
+    const { resize, observer } = createCanvasResizer(canvas, ctx, state)
+    resize()
+    const style = getComputedStyle(document.documentElement)
+    createGraphTicker({
+      state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style,
+      onSettled: () => {
+        if (!refitOnSettleRef.current) return
+        refitOnSettleRef.current = false
+        fitGraph()
+      },
+      onPaintError,
+    })
+    return () => {
+      cancelAnimationFrame(state.raf)
+      state.raf = 0; state.schedule = null
+      observer.disconnect()
+      themeObserver.disconnect()
+    }
+  }, [activeNoteIdRef, canvasRef, fitGraph, hoverRef, onPaintError, prefsRef, selectedIdRef, stateRef])
+
+  useEffect(() => {
+    const state = stateRef.current
+    const known = new Set(state.nodes.map((node) => node.id))
+    buildInitialLayout(data, prefsRef.current, state, state.nodes)
+    refitOnSettleRef.current = data.nodes.some((node) => !known.has(node.id))
+    hoverRef.current = null
+    setHover(null)
+    setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
+    const linkedTargetId = getLinkHoverTarget()
+    const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
+    if (linkedNode) {
+      hoverRef.current = linkedNode
+      setHover(linkedNode)
+    }
+    state.schedule?.()
+  }, [data, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
 }
 
 function handleCanvasPointerDown(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  if (event.button !== 0) return
+  if (event.button !== 0 && event.button !== 1) return
   h.lastPointerEventAtRef.current = performance.now()
   event.currentTarget.setPointerCapture(event.pointerId)
   const state = h.stateRef.current
   state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   if (state.pointers.size === 1) {
-    h.beginDrag(event.clientX, event.clientY, event.button)
+    h.beginDrag(event.clientX, event.clientY, event.button, h.isSpaceDownRef.current)
   } else if (state.pointers.size === 2) {
     const [a, b] = [...state.pointers.values()]
     state.dragging = null
-    state.pinch = { distance: Math.hypot(b!.x - a!.x, b!.y - a!.y), scale: state.scale, centerX: (a!.x + b!.x) / 2, centerY: (a!.y + b!.y) / 2 }
+    const cx = (a!.x + b!.x) / 2 - state.viewLeft
+    const cy = (a!.y + b!.y) / 2 - state.viewTop
+    state.pinch = { distance: Math.hypot(b!.x - a!.x, b!.y - a!.y), scale: state.scale, centerX: cx, centerY: cy }
   }
 }
 
@@ -189,30 +164,40 @@ function handleCanvasPointerMove(event: React.PointerEvent<HTMLCanvasElement>, h
   if (state.pointers.size >= 2 && state.pinch) {
     const [a, b] = [...state.pointers.values()]
     const distance = Math.hypot(b!.x - a!.x, b!.y - a!.y)
-    state.scale = Math.min(4, Math.max(0.2, state.pinch.scale * distance / Math.max(1, state.pinch.distance)))
-    state.schedule?.(); return
+    const cx = (a!.x + b!.x) / 2 - state.viewLeft
+    const cy = (a!.y + b!.y) / 2 - state.viewTop
+    const nextScale = Math.min(4, Math.max(0.2, (state.pinch.scale * distance) / Math.max(1, state.pinch.distance)))
+    const worldX = (state.pinch.centerX - state.offsetX) / state.scale
+    const worldY = (state.pinch.centerY - state.offsetY) / state.scale
+    state.scale = nextScale
+    state.offsetX = cx - worldX * nextScale
+    state.offsetY = cy - worldY * nextScale
+    state.pinch.centerX = cx
+    state.pinch.centerY = cy
+    state.schedule?.()
+    return
   }
   h.moveDrag(event.clientX, event.clientY)
 }
 
-function handleCanvasPointerUp(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  h.lastPointerEventAtRef.current = performance.now()
-  const state = h.stateRef.current
-  state.pointers.delete(event.pointerId)
-  if (!state.pinch) h.endDrag(event.clientX, event.clientY)
-  if (state.pointers.size < 2) state.pinch = null
+function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
+  const point = h.toWorld(event.clientX, event.clientY)
+  const node = h.nodeAt(point.x, point.y)
+  if (!node) return
+  if (node.kind === 'note') {
+    if (usePinnedWindows.getState().focusPinnedByNote(node.id)) return
+    void h.onOpenNote(node.id)
+  } else if (node.kind === 'unresolved') {
+    void h.onCreateNote(node.title)
+  } else {
+    return
+  }
+  h.onClose()
 }
 
-function handleCanvasPointerCancel(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
+function handleCanvasWheel(event: WheelEvent, canvas: HTMLCanvasElement, h: CanvasHandlers): void {
   const state = h.stateRef.current
-  state.pointers.delete(event.pointerId)
-  state.dragging = null
-  state.pinch = null
-}
-
-function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  const state = h.stateRef.current
-  const rect = event.currentTarget.getBoundingClientRect()
+  const rect = canvas.getBoundingClientRect()
   const x = event.clientX - rect.left, y = event.clientY - rect.top
   const next = graphScaleAfterWheel(state.scale, event.deltaY)
   if (next === state.scale) return
@@ -223,170 +208,288 @@ function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: Canvas
   state.schedule?.()
 }
 
-function handleCanvasContextMenu(event: React.MouseEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  event.preventDefault()
-  const point = h.toWorld(event.clientX, event.clientY)
-  const node = h.nodeAt(point.x, point.y)
-  if (node) {
-    h.setSelectedId(node.id)
-    h.setContext({ x: event.clientX, y: event.clientY, node })
-  }
-}
-
-function handleCanvasMouseLeave(h: CanvasHandlers): void {
-  const state = h.stateRef.current
-  state.dragging = null
-  h.hoverRef.current = null
-  h.setHover(null)
-  state.schedule?.()
+const ARROW_DIRECTIONS: Record<string, GraphArrowDirection> = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
 }
 
 function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
   const state = h.stateRef.current
+  if (event.key === ' ') {
+    h.isSpaceDownRef.current = true
+    event.preventDefault(); return
+  }
   if (event.key === '+' || event.key === '=') {
-    state.scale = Math.min(4, state.scale + 0.2)
-    event.preventDefault(); state.schedule?.()
-    return
+    state.scale = Math.min(4, state.scale + 0.2); event.preventDefault(); state.schedule?.(); return
   }
   if (event.key === '-') {
-    state.scale = Math.max(0.2, state.scale - 0.2)
-    event.preventDefault(); state.schedule?.()
-    return
+    state.scale = Math.max(0.2, state.scale - 0.2); event.preventDefault(); state.schedule?.(); return
   }
   if (event.key === 'Home') {
-    h.fitGraph()
-    event.preventDefault(); state.schedule?.()
+    h.fitGraph(); event.preventDefault(); state.schedule?.(); return
+  }
+  if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+    const menuNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
+    if (menuNode) {
+      h.openNodeMenu(menuNode)
+      event.preventDefault()
+    }
     return
   }
   if (event.key === 'Enter' && h.selectedIdRef.current) {
     const selectedNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
-    if (selectedNode?.kind === 'note') {
-      if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
-      void h.onOpenNote(selectedNode.id)
-    } else if (selectedNode) {
-      void h.onCreateNote(selectedNode.title)
-    }
-    if (selectedNode) h.onClose()
-    event.preventDefault(); state.schedule?.()
+    if (selectedNode) activateSelectedNode(selectedNode, h)
+    event.preventDefault(); state.schedule?.(); return
+  }
+  const direction = ARROW_DIRECTIONS[event.key]
+  if (direction) handleCanvasArrowKey(event, state, h, direction)
+}
+
+/** What Enter does to the node the reader is on: it opens what can be opened, and filters by what cannot. */
+function activateSelectedNode(node: CanvasNode, h: CanvasHandlers): void {
+  if (node.kind === 'note') {
+    if (usePinnedWindows.getState().focusPinnedByNote(node.id)) return
+    void h.onOpenNote(node.id)
+    h.onClose()
     return
   }
-  if (event.key.startsWith('Arrow')) {
-    const current = Math.max(0, state.nodes.findIndex((node) => node.id === h.selectedIdRef.current))
-    const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1
-    const next = state.nodes[(current + step + state.nodes.length) % state.nodes.length]
-    if (next) h.setSelectedId(next.id)
-    event.preventDefault(); state.schedule?.()
+  if (node.kind === 'unresolved') {
+    void h.onCreateNote(node.title)
+    h.onClose()
+    return
   }
+  // A tag node is not something to open, so Enter answers it the way the node actions menu answers the
+  // same node: narrow the graph to that tag. Both entries do the one thing (G-24).
+  if (!h.onFilterByTag) { h.announce(t('graph.tag_filter_unavailable')); return }
+  h.onFilterByTag(node.title)
+  h.onClose()
 }
 
-function graphMenuItems(context: { x: number; y: number; node: CanvasNode } | null, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void, onClose: () => void, onMakeLocal: () => void): MenuItem[] {
-  if (!context)
-    return []
-  const node = context.node
-  return [
-    { id: 'open', label: node.kind === 'unresolved' ? t('graph.create_note') : t('graph.open_note'), icon: <FolderOpen size={14}/>, onSelect: () => {
-      if (node.kind === 'unresolved') void onCreateNote(node.title)
-      else void onOpenNote(node.id)
-      onClose()
-    } },
-    { id: 'right', label: t('graph.open_to_right'), icon: <PanelRightClose size={14}/>, disabled: node.kind === 'unresolved', onSelect: () => { void onOpenNote(node.id, { pane: 'secondary' }) } },
-    { id: 'local', label: t('graph.make_local_center'), icon: <CircleDot size={14}/>, disabled: node.kind === 'unresolved', separatorBefore: true, onSelect: () => {
-      void onOpenNote(node.id)
-      onMakeLocal()
-    } },
-  ]
+function handleCanvasArrowKey(
+  event: React.KeyboardEvent<HTMLCanvasElement>,
+  state: CanvasState,
+  h: CanvasHandlers,
+  direction: GraphArrowDirection,
+): void {
+  // Nothing selected yet: the arrows enter the graph at an end rather than at a neighbour, so the
+  // first press always selects a node and always selects the one the key points from.
+  const currentIndex = state.nodes.findIndex((node) => node.id === h.selectedIdRef.current)
+  const nextIndex = currentIndex < 0
+    ? (direction === 'left' || direction === 'up' ? state.nodes.length - 1 : 0)
+    : pickNeighborInDirection(state.nodes, currentIndex, direction)
+  const next = state.nodes[nextIndex]
+  // A direction nothing lies in leaves the selection alone rather than jumping somewhere the key
+  // does not point: the node the reader hears stays the node they were on.
+  if (next && next.id !== h.selectedIdRef.current) {
+    h.setSelectedId(next.id)
+    ensureNodeVisible(state, next)
+  }
+  event.preventDefault(); state.schedule?.()
 }
 
-function GraphOverlays({ data, hover, selected, hint }: {
-  data: GraphResponse
-  hover: CanvasNode | null
-  selected: GraphResponse['nodes'][number] | null
-  hint: string
-}) {
-  const shown = hover ?? selected
-  return (
-    <>
-      {data.meta.truncated && <div role='status' className='absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
-        {t('graph.showing_limit', { shown: data.nodes.length, total: data.meta.totalNodes })}
-      </div>}
-      {shown && <div className='pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
-        <span className='max-w-[50vw] truncate'>{shown.title || t('common.untitled_note')}</span>
-        <span className='ml-2 text-[var(--text-quaternary)]'>{t('graph.direction_counts', { incoming: shown.inDegree, outgoing: shown.outDegree })}</span>
-      </div>}
-      <div className='pointer-events-none absolute top-3 left-4 hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block'>{hint}</div>
-    </>
-  )
-}
-
-function GraphCanvasElement({ canvasRef, handlers }: {
+function GraphCanvasElement({ canvasRef, handlers, hintId }: {
   canvasRef: RefObject<HTMLCanvasElement | null>
   handlers: CanvasHandlers
+  hintId: string
 }) {
+  useGraphWheelZoom(canvasRef, (event, canvas) => handleCanvasWheel(event, canvas, handlers))
+  const cursorClass = handlers.isDragging
+    ? 'cursor-grabbing'
+    : handlers.isSpaceDownRef.current
+      ? 'cursor-grab'
+      : handlers.hover
+        ? 'cursor-pointer'
+        : 'cursor-grab active:cursor-grabbing'
+
   return (
-    <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')}
-      className='size-full touch-none cursor-grab outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] active:cursor-grabbing'
+    <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')} aria-describedby={hintId}
+      className={`size-full touch-none ${cursorClass} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]`}
       onPointerDown={(event) => handleCanvasPointerDown(event, handlers)}
       onPointerMove={(event) => handleCanvasPointerMove(event, handlers)}
-      onPointerUp={(event) => handleCanvasPointerUp(event, handlers)}
-      onPointerCancel={(event) => handleCanvasPointerCancel(event, handlers)}
-      onMouseDown={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.beginDrag(event.clientX, event.clientY, event.button) }}
+      onPointerUp={(event) => {
+        handlers.lastPointerEventAtRef.current = performance.now()
+        handlers.stateRef.current.pointers.delete(event.pointerId)
+        if (!handlers.stateRef.current.pinch) handlers.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey)
+        if (handlers.stateRef.current.pointers.size < 2) handlers.stateRef.current.pinch = null
+      }}
+      onPointerCancel={(event) => {
+        handlers.stateRef.current.pointers.delete(event.pointerId)
+        handlers.stateRef.current.dragging = null
+        handlers.stateRef.current.pinch = null
+      }}
+      onMouseDown={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.beginDrag(event.clientX, event.clientY, event.button, handlers.isSpaceDownRef.current) }}
       onMouseMove={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.moveDrag(event.clientX, event.clientY) }}
-      onMouseUp={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.endDrag(event.clientX, event.clientY) }}
-      onMouseLeave={() => handleCanvasMouseLeave(handlers)}
-      onContextMenu={(event) => handleCanvasContextMenu(event, handlers)}
-      onWheel={(event) => handleCanvasWheel(event, handlers)}
+      onMouseUp={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey) }}
+      onDoubleClick={(event) => handleCanvasDoubleClick(event, handlers)}
+      onMouseLeave={() => { handlers.stateRef.current.dragging = null; handlers.hoverRef.current = null; handlers.setHover(null); handlers.stateRef.current.schedule?.() }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        const point = handlers.toWorld(event.clientX, event.clientY)
+        const node = handlers.nodeAt(point.x, point.y)
+        if (node) { handlers.setSelectedId(node.id); handlers.setContext({ x: event.clientX, y: event.clientY, node }) }
+      }}
       onKeyDown={(event) => handleCanvasKeyDown(event, handlers)}
+      onKeyUp={(event) => { if (event.key === ' ') handlers.isSpaceDownRef.current = false }}
     />
   )
 }
 
-export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, controlsRef }: GraphCanvasProps) {
-  const [hover, setHover] = useState<CanvasNode | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
+/**
+ * What a reader hears about the node the arrows reached. A tag node answers Enter differently from a
+ * note, and the only thing on screen that says so is the sigil and the second ring drawn on it — so
+ * the announcement names the kind as well, or the two are the same string to a reader (G-24).
+ */
+function nodeAnnouncement(node: CanvasNode): string {
+  const kind = node.kind === 'tag' ? `${t('graph.tag_node')} ` : ''
+  const title = node.title || t('common.untitled_note')
+  return `${kind}${title}, ${t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}`
+}
+
+function useGraphPreviewAndA11y(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  stateRef: RefObject<CanvasState>,
+  hoverRef: MutableRefObject<CanvasNode | null>,
+  setHover: (node: CanvasNode | null) => void,
+  selectedId: string | null,
+  activeNoteId: string | null,
+  activeNoteIdRef: MutableRefObject<string | null>,
+) {
+  const [liveAnnouncement, setLiveAnnouncement] = useState('')
+  const wasSelectedRef = useRef(false)
+  const preview = useGraphNodePreview(canvasRef, stateRef)
+
   useEffect(() => {
     activeNoteIdRef.current = activeNoteId
     stateRef.current.schedule?.()
-  }, [activeNoteId])
+  }, [activeNoteId, activeNoteIdRef, stateRef])
+
   useEffect(() => {
-    selectedIdRef.current = selectedId
     stateRef.current.schedule?.()
-  }, [selectedId])
+    if (selectedId) {
+      const node = stateRef.current.nodes.find((candidate) => candidate.id === selectedId)
+      if (node) {
+        setLiveAnnouncement(nodeAnnouncement(node))
+        preview.showPreview(node)
+        wasSelectedRef.current = true
+      }
+      return
+    }
+    // Putting a node down is the other half of picking it up, and a live region that only ever announces
+    // the last node leaves a reader still holding one they no longer have (G-27).
+    if (!wasSelectedRef.current) return
+    wasSelectedRef.current = false
+    setLiveAnnouncement(t('graph.selection_cleared'))
+    // `preview` is a fresh object on every render: listing it as a dependency would make this effect write
+    // the state that schedules the next render, and the panel would never stop painting.
+  }, [selectedId, stateRef, preview.showPreview])
+
   useEffect(() => subscribeLinkHoverTarget((noteId) => {
     const state = stateRef.current
     const node = noteId ? state.nodes.find((candidate) => candidate.id === noteId) ?? null : null
     hoverRef.current = node
     setHover(node)
+    preview.onHoverNode(node)
     state.schedule?.()
-  }), [])
+  }), [hoverRef, setHover, stateRef, preview.onHoverNode])
+
+  return { preview, liveAnnouncement, announce: setLiveAnnouncement }
+}
+
+/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */
+function useGraphLegends(data: GraphResponse, prefs: GraphPreferences) {
+  return useMemo(
+    () => buildColorLegends(data.nodes, prefs.groupBy, prefs.colorGroups),
+    [data, prefs.groupBy, prefs.colorGroups],
+  )
+}
+
+function useGraphCanvasController(props: GraphCanvasProps) {
+  const { data, prefs, searchHits, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
+  const [hover, setHover] = useState<CanvasNode | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const paint = useGraphPaintError(stateRef)
+  const isSpaceDownRef = useRef(false)
+  const { preview, liveAnnouncement, announce } = useGraphPreviewAndA11y(canvasRef, stateRef, hoverRef, setHover, selectedId, activeNoteId, activeNoteIdRef)
+
+  useEffect(() => { selectedIdRef.current = selectedId }, [selectedId, selectedIdRef])
+  const prefsRef = useGraphPrefsRef(prefs)
+  useDynamicGraphPrefs(stateRef, prefs)
+  useGraphSearchDim(stateRef, searchHits)
   const fitGraph = useGraphFit(canvasRef, stateRef)
-  useGraphCanvasLoop(data, prefs, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph)
-  const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
-  const { beginDrag, moveDrag, endDrag } = useGraphDrag(stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote, onClose)
-  const selected = data.nodes.find((node) => node.id === selectedId) ?? null
-  const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal)
-  const zoomIn = () => {
-    const state = stateRef.current
-    state.scale = Math.min(4, state.scale + 0.2)
-    state.schedule?.()
-  }
-  const zoomOut = () => {
-    const state = stateRef.current
-    state.scale = Math.max(0.2, state.scale - 0.2)
-    state.schedule?.()
-  }
-  controlsRef.current = { zoomIn, zoomOut, fit: fitGraph }
+  useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph, onPaintError: paint.reportPaintError })
+  const { toWorld, nodeAt } = useGraphWorldMath(stateRef)
+
+  const { beginDrag: origBeginDrag, moveDrag, endDrag: origEndDrag } = useGraphDrag({
+    stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote,
+    onDragStart: () => { setIsDragging(true); preview.clearTimers(); preview.closePreview() },
+    // The press re-hangs the card that line put away, so the drag has to put it away again (G-16).
+    onNodeDragged: () => preview.closePreview(),
+    onHoverChange: (node) => preview.onHoverNode(node),
+    onSelectNode: (node) => preview.showPreview(node),
+  })
+
+  const beginDrag = useCallback((clientX: number, clientY: number, button: number, forcePan?: boolean) => {
+    origBeginDrag(clientX, clientY, button, forcePan); setIsDragging(true)
+  }, [origBeginDrag])
+
+  const endDrag = useCallback((clientX: number, clientY: number, modifierKey?: boolean) => {
+    origEndDrag(clientX, clientY, modifierKey); setIsDragging(false)
+  }, [origEndDrag])
+
+  const { openNodeMenu, onTogglePin } = useGraphNodeActions(canvasRef, stateRef, setContext, props.onPinChange, onFilterByTag)
+  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin: props.onPinChange ? onTogglePin : undefined, onExcludeChange: props.onExcludeChange, excludedNoteIds: prefs.excludedNoteIds, onFilterByTag })
+  const selectNode = useGraphNodeFocus(stateRef, setSelectedId)
+  useGraphControls(controlsRef, stateRef, fitGraph, selectNode)
+  const colorLegends = useGraphLegends(data, prefs)
+
   const handlers: CanvasHandlers = {
-    stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef,
-    setHover, setSelectedId, setContext,
+    stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,
+    setHover, setSelectedId, setContext, openNodeMenu,
     beginDrag, moveDrag, endDrag, toWorld, nodeAt, fitGraph,
-    onOpenNote, onCreateNote, onClose,
+    onOpenNote, onCreateNote, onClose, onFilterByTag, announce, hover, isDragging,
   }
+
+  return { handlers, preview, colorLegends, liveAnnouncement, menuItems, hover, selectedId, context, setContext, paint }
+}
+
+export function GraphCanvas(props: GraphCanvasProps) {
+  const { data, canvasRef } = props
+  const b = useGraphCanvasController(props)
+  const selected = data.nodes.find((node) => node.id === b.selectedId) ?? null
+  const isDark = useIsDarkTheme()
+  const hintId = useId()
+  // Only a device that says it has a coarse pointer is told about a long press; one that says nothing
+  // keeps the sentence the app has always drawn (G-19).
+  const isTouchPointer = useMediaQuery('(pointer: coarse)')
+
   return (
     <>
-      <GraphCanvasElement canvasRef={canvasRef} handlers={handlers}/>
-      <GraphOverlays data={data} hover={hover} selected={selected} hint={t('graph.interaction_hint')}/>
-      <Menu anchor={context ?? { x: 0, y: 0 }} open={Boolean(context)} onClose={() => setContext(null)} items={menuItems} label={t('graph.node_actions')}/>
+      <GraphCanvasElement canvasRef={canvasRef} handlers={b.handlers} hintId={hintId}/>
+      {b.paint.paintError !== null && <GraphPaintError error={b.paint.paintError} onRetry={b.paint.retryPaint}/>}
+      <GraphOverlays
+        data={data}
+        hover={b.hover}
+        selected={selected}
+        hint={isTouchPointer ? t('graph.interaction_hint_touch') : t('graph.interaction_hint')}
+        hintBrief={isTouchPointer ? t('graph.interaction_hint_touch_brief') : t('graph.interaction_hint_brief')}
+        hintId={hintId}
+        previewCard={b.preview.previewCard}
+        anchorPos={b.preview.anchorPos}
+        anchorRef={b.preview.anchorRef}
+        isDark={isDark}
+        onClosePreview={b.preview.closePreview}
+        onEnterPreview={b.preview.pauseHide}
+        onLeavePreview={b.preview.resumeHide}
+        onPinPreview={b.preview.onPinPreview}
+        colorLegends={b.colorLegends}
+        legendQuery={props.legendQuery}
+        onLegendSelect={props.onLegendSelect}
+        onOpenNote={(id) => { props.onOpenNote(id) }}
+        onFocusNode={(id) => { props.controlsRef.current?.selectNode(id) }}
+        liveAnnouncement={b.liveAnnouncement}
+      />
+      <Menu anchor={b.context ?? { x: 0, y: 0 }} open={Boolean(b.context)} onClose={() => b.setContext(null)} items={b.menuItems} label={t('graph.node_actions')}/>
     </>
   )
 }

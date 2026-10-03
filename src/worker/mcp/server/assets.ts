@@ -20,7 +20,7 @@ function registerExploreGraphTool(toolCtx: McpToolCtx): void {
     'explore_note_graph',
     {
       title: 'Explore note graph',
-      description: 'Explore a bounded two-way link graph from one note, limited to three hops and 100 nodes.',
+      description: 'Explore a bounded two-way link graph from one note, limited to three hops and 100 nodes. Archived and deleted notes stay out of the graph, as they do in the app itself.',
       inputSchema: z.object({
         note_id: noteId,
         depth: z.number().int().min(1).max(3).default(2),

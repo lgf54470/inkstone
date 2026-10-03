@@ -1,5 +1,5 @@
 import { Check, FolderClosed, Smile } from 'lucide-react'
-import { ORGANIZER_COLORS } from '@shared/organizer-colors'
+import { ORGANIZER_COLORS, organizerColorLabel } from '@shared/organizer-colors'
 import type { Folder } from '@shared/types'
 import { Tooltip } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -59,11 +59,12 @@ export function FolderColorPicker({ folder, onPick }: {
       </Tooltip>
       {ORGANIZER_COLORS.map((color) => {
         const isSelected = folder.color === color
+        const colorName = organizerColorLabel(color, t)
         return (
-          <Tooltip key={color} label={color}>
+          <Tooltip key={color} label={colorName}>
             <button
               type='button'
-              aria-label={color}
+              aria-label={colorName}
               onClick={() => onPick(color)}
               className={cn(
                 'flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110',

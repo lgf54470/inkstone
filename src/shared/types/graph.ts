@@ -1,12 +1,18 @@
 export interface GraphNode {
   id: string
   title: string
-  kind: 'note' | 'unresolved'
+  /** `tag` nodes are synthesized from note tags, `unresolved` from links to missing notes. */
+  kind: 'note' | 'unresolved' | 'tag'
   degree: number
   inDegree: number
   outDegree: number
   folderId: string | null
-  folderName: string | null
+  /**
+   * Where that folder sits, ancestors joined by `/` (`Work/Notes`), and null when the note is unfiled. A
+   * nested vault can hold two folders that end with the same word, so a group and a `path:` term name the
+   * whole way down rather than the last word (G-48).
+   */
+  folderPath: string | null
   folderColor: string | null
   tags: Array<{ name: string; color: string | null }>
 }
@@ -43,5 +49,11 @@ export interface GraphQuery {
   tagsMatch?: 'any' | 'all'
   includeOrphans?: boolean
   includeUnresolved?: boolean
+  /** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */
+  showTagNodes?: boolean
+  /** Notes the reader took out of the graph. Sent comma-separated, like `tags` (G-42). */
+  excluded?: string[]
+  /** Which side of a link a local graph walks. Only meaningful with `mode: 'local'` (G-44). */
+  direction?: 'both' | 'incoming' | 'outgoing'
   limit?: number
 }

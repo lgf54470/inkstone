@@ -610,6 +610,246 @@ async function assertPresentationPages(page) {
   await setAppTheme(page, 'light')
 }
 
+/**
+ * The graph's canvas paints its own colours, so a theme flip has to reach the pixels and not just the
+ * tokens: the renderer audit's original reading was this canvas frozen at the palette of its first
+ * paint, byte-identical across a flip. Two promises are read here — the pixels change, and they change
+ * on the element that was already on screen, because a flip that rebuilt the canvas would satisfy the
+ * first alone. The reading starts from consecutively identical frames so the physics loop cannot move
+ * the number, and the element is marked before the flip so its identity has an answer afterwards.
+ */
+async function assertGraphThemeFollow(page) {
+  await setAppTheme(page, 'system')
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }])
+  await sleep(300)
+  await pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] })
+  await page.waitForSelector('[data-surface="graph"] canvas', { timeout: 15_000 })
+  const before = await waitForStillGraphCanvas(page)
+  check('graph: the canvas paints its nodes before the theme flip', Boolean(before) && before.sum > 0, JSON.stringify(before))
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (canvas) canvas.dataset.gateGraphCanvas = 'theme-flip'
+  })
+
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark', { timeout: 10_000 })
+  const after = await waitForChangedGraphCanvas(page, before?.sum ?? -1)
+  check('graph: a theme flip repaints the canvas element that was already on screen', after?.marker === 'theme-flip', JSON.stringify(after))
+  check('graph: the repainted pixels are the new palette, not the old one', Boolean(before) && Boolean(after) && after.sum !== before.sum, `before=${before?.sum} after=${after?.sum}`)
+
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (canvas) delete canvas.dataset.gateGraphCanvas
+  })
+  await page.emulateMediaFeatures([])
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('[data-surface="graph"]'), { timeout: 10_000 })
+  // Hand the run back on the light palette the scenarios after this one measure on.
+  await setAppTheme(page, 'light')
+}
+
+/** A sample of what the graph canvas has painted, taken on a stride so the read stays cheap. */
+async function readGraphCanvas(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (!canvas) return null
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+    let sum = 0
+    for (let index = 0; index < data.length; index += 400) sum += data[index] + data[index + 1] + data[index + 2]
+    return { sum, marker: canvas.dataset.gateGraphCanvas ?? null }
+  })
+}
+
+/**
+ * Three identical frames mean the physics loop has settled, so only a repaint can move the number.
+ * `attempts` is the caller's patience: a large graph runs out its frames over several seconds, and
+ * `stable` comes back with the answer so a caller that needs a settled drawing can tell "still" from
+ * "this is where the waiting stopped".
+ */
+async function waitForStillGraphCanvas(page, attempts = 24) {
+  let previous = await readGraphCanvas(page)
+  let stable = 0
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    await sleep(250)
+    const next = await readGraphCanvas(page)
+    stable = next && previous && next.sum > 0 && next.sum === previous.sum ? stable + 1 : 0
+    if (stable >= 2) return { ...next, stable }
+    previous = next
+  }
+  return { ...previous, stable }
+}
+
+async function waitForChangedGraphCanvas(page, before) {
+  for (let attempt = 0; attempt < 25; attempt++) {
+    await sleep(200)
+    const next = await readGraphCanvas(page)
+    if (next && next.sum !== before) return next
+  }
+  return readGraphCanvas(page)
+}
+
+// The walk's own numbers. Twenty presses take the canvas zoom from its floor (0.2) to its ceiling (4)
+// in 0.2 steps; 24 px is the padding the camera keeps between a node it brought in and the edge it
+// came through — the preview anchor the walk reads is the node's own box, so its half-width is the
+// node's radius and that padding is what is left of GRAPH_CAMERA_PADDING + radius against the edge.
+// The keys march out of the window and back: a walk that turns inside it never has to bring anything
+// into view (measured: a right-march reaches the padding on its fourth press and pans 144–436 px).
+const GRAPH_WALK_ZOOM_PRESSES = 20
+const GRAPH_WALK_PAN_PX = 24
+const GRAPH_INK_STRIDE = 2
+const GRAPH_WALK_KEYS = ['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowLeft', 'ArrowLeft', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft']
+
+/**
+ * Where the drawing's ink sits, as one count per column and per row of a strided sample. A pan moves
+ * every painted pixel by the same vector, so the two histograms move as one piece; a selection change
+ * repaints colours where the nodes already are and never turns painted into unpainted, so this
+ * fingerprint can only change when the camera does.
+ */
+async function readGraphInkProfile(page) {
+  return page.evaluate((stride) => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    const context = canvas?.getContext('2d', { willReadFrequently: true })
+    if (!canvas || !context) return null
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+    const columns = new Array(Math.ceil(canvas.width / stride)).fill(0)
+    const rows = new Array(Math.ceil(canvas.height / stride)).fill(0)
+    for (let y = 0; y < canvas.height; y += stride) {
+      for (let x = 0; x < canvas.width; x += stride) {
+        if (data[(y * canvas.width + x) * 4 + 3] === 0) continue
+        columns[Math.floor(x / stride)] += 1
+        rows[Math.floor(y / stride)] += 1
+      }
+    }
+    return {
+      columns,
+      rows,
+      stride,
+      deviceScale: canvas.width / canvas.getBoundingClientRect().width,
+    }
+  }, GRAPH_INK_STRIDE)
+}
+
+/** The shift whose two histograms agree best: a sample count, and a cosine similarity to judge it by. */
+function bestInkShift(before, after) {
+  let best = { shift: 0, score: 0 }
+  for (let shift = 1 - after.length; shift < after.length; shift += 1) {
+    let dot = 0, left = 0, right = 0
+    for (let index = 0; index < after.length; index += 1) {
+      const source = index - shift
+      const value = source >= 0 && source < before.length ? before[source] : 0
+      dot += value * after[index]
+      left += value * value
+      right += after[index] * after[index]
+    }
+    const score = left && right ? dot / Math.sqrt(left * right) : 0
+    if (score > best.score) best = { shift, score }
+  }
+  return best
+}
+
+/** How far the drawing moved between two reads, in CSS pixels, and how well the ink agrees there. */
+function graphPanBetween(before, after) {
+  if (!before || !after) return null
+  const columns = bestInkShift(before.columns, after.columns)
+  const rows = bestInkShift(before.rows, after.rows)
+  return {
+    dx: Math.round((columns.shift * before.stride) / before.deviceScale),
+    dy: Math.round((rows.shift * before.stride) / before.deviceScale),
+    score: Number(Math.min(columns.score, rows.score).toFixed(3)),
+  }
+}
+
+/**
+ * What the app says it selected and where that node is drawn: the box its preview card hangs off,
+ * which the panel computes from the same camera it pans with, and the canvas's own box.
+ */
+async function readGraphWalkStep(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[data-surface="graph"]')
+    const canvas = panel?.querySelector('canvas')
+    const anchor = [...(panel?.querySelectorAll('div[aria-hidden="true"]') ?? [])]
+      .filter((element) => getComputedStyle(element).position === 'fixed')
+      .map((element) => element.getBoundingClientRect())
+      .find((rect) => rect.left > -1_000 && rect.width >= 1)
+    const box = canvas?.getBoundingClientRect()
+    return {
+      announced: (panel?.querySelector('[aria-live]')?.textContent ?? '').trim().slice(0, 48),
+      anchor: anchor && { left: anchor.left, top: anchor.top, right: anchor.right, bottom: anchor.bottom },
+      canvas: box && { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+    }
+  })
+}
+
+/**
+ * Whether the pan on this step is what put the reached node where it is: the drawing moves opposite
+ * the camera, so the pan's sign says which edge the node came in through, and the app's own clamp
+ * leaves its box exactly the camera padding inside that edge.
+ */
+function broughtNodeToEdge(step) {
+  if (!step.anchor || !step.canvas || !step.pan) return false
+  const near = (value) => Math.abs(value - GRAPH_WALK_PAN_PX) <= 1
+  const againstEdge = []
+  if (step.pan.dx <= -GRAPH_WALK_PAN_PX) againstEdge.push(step.canvas.right - step.anchor.right)
+  if (step.pan.dx >= GRAPH_WALK_PAN_PX) againstEdge.push(step.anchor.left - step.canvas.left)
+  if (step.pan.dy <= -GRAPH_WALK_PAN_PX) againstEdge.push(step.canvas.bottom - step.anchor.bottom)
+  if (step.pan.dy >= GRAPH_WALK_PAN_PX) againstEdge.push(step.anchor.top - step.canvas.top)
+  return againstEdge.some(near)
+}
+
+/**
+ * The arrow keys are how a reader walks a graph too big to fit, and the promise they make (G-23) is
+ * that the node they land on is brought into the window. jsdom cannot hold that promise to account —
+ * it lays no canvas out, so the case there hands the camera a width and height by hand — so this
+ * scenario reads it off the real surface: a real layout, a real camera, real pixels. The drawing is
+ * zoomed in with the canvas's own zoom key first, because a fitted graph has every node on screen
+ * already and a walk that never has to bring one into view would prove nothing; the walk itself is
+ * arrow keys and nothing else.
+ *
+ * Each press is read twice. Where the app says the selected node is comes from the box its preview
+ * card hangs off, which the panel positions from the same camera it pans with; whether the camera
+ * moved comes from the painted pixels, which only a pan can move as a whole — a selection change
+ * repaints colours where the nodes already were.
+ */
+async function assertGraphKeyboardWalk(page) {
+  await pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] })
+  await page.waitForSelector('[data-surface="graph"] canvas', { timeout: 15_000 })
+  // A large graph runs its physics for seconds, and it is the settle that fits the camera: zooming
+  // before it would have the fit undo the zoom, and walking before it would read drifting nodes as a
+  // panning camera. The patience is longer than the default because this is the whole frame limit.
+  const settled = await waitForStillGraphCanvas(page, 80)
+  check('graph walk: the drawing settles before the keyboard drives it', Boolean(settled) && settled.stable >= 2, JSON.stringify(settled))
+
+  await page.focus('[data-surface="graph"] canvas')
+  for (let press = 0; press < GRAPH_WALK_ZOOM_PRESSES; press += 1) await page.keyboard.press('=')
+  await sleep(500)
+
+  const steps = []
+  for (const key of GRAPH_WALK_KEYS) {
+    const ink = await readGraphInkProfile(page)
+    await page.keyboard.press(key)
+    await sleep(500)
+    steps.push({ key, ...(await readGraphWalkStep(page)), pan: graphPanBetween(ink, await readGraphInkProfile(page)) })
+  }
+
+  const offscreen = steps.filter((step) => !step.anchor || !step.canvas
+    || step.anchor.left < step.canvas.left - 1 || step.anchor.right > step.canvas.right + 1
+    || step.anchor.top < step.canvas.top - 1 || step.anchor.bottom > step.canvas.bottom + 1)
+  check('graph walk: every node the arrows reach is drawn inside the window', offscreen.length === 0, JSON.stringify(offscreen.slice(0, 2)))
+  check('graph walk: the first arrow enters the graph and says which node it landed on', Boolean(steps[0]?.announced), JSON.stringify(steps[0]))
+
+  const panned = steps.filter((step) => step.pan && step.pan.score >= 0.75 && Math.hypot(step.pan.dx, step.pan.dy) >= GRAPH_WALK_PAN_PX)
+  check('graph walk: the camera pans rather than leaving the drawing where it was', panned.length >= 1,
+    JSON.stringify(steps.map((step) => ({ key: step.key, pan: step.pan }))))
+  check('graph walk: the pan is what brings the reached node in, at the camera padding',
+    panned.some((step) => broughtNodeToEdge(step)),
+    JSON.stringify(panned.map((step) => ({ key: step.key, pan: step.pan, anchor: step.anchor, canvas: step.canvas }))))
+  console.log(`  · graph walk: ${steps.length} presses over the graph, ${panned.length} of them panned — ${panned.map((step) => `${step.key} by (${step.pan.dx}, ${step.pan.dy})px at ${step.pan.score}`).join(', ') || 'none'}`)
+
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('[data-surface="graph"]'), { timeout: 10_000 })
+}
+
 // The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
 // missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
 // injected into the live page (its own browser build, evaluated rather than added as a script
@@ -1586,8 +1826,10 @@ const TOOLBAR_SURFACES = [
   // The graph has no button of its own at this width: its entry point is the account menu, which
   // unmounts on the way to the panel, so a person reaches it by shortcut. The sidebar's account
   // control is what holds the keyboard while that shortcut runs, and that is the element focus has to
-  // come back to.
-  { name: 'graph', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] }), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 2, loaded: { selector: 'canvas', min: 1 } },
+  // come back to. The scope control of this header is a radiogroup (radio + aria-checked), which this
+  // sweep does not press and which its own naming gate reads, so the disclosure the sweep has to find is
+  // the settings button: pressing it opens the drawer this surface discloses.
+  { name: 'graph', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] }), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 1, loaded: { selector: 'canvas', min: 1 } },
   { name: 'template library', open: (page) => pressOpener(page, { labels: ['从模板新建笔记', 'New note from template'] }), root: '[data-surface="templates"]', toolbar: '[data-surface="templates"] > header', minToggles: 1, loaded: { selector: '[data-template-id]', min: 1 } },
   { name: 'settings', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'] }), root: SETTINGS_PANEL, toolbar: `${SETTINGS_PANEL} header`, minToggles: 0, loaded: { selector: 'nav button', min: 3 } },
   { name: 'command palette', open: (page) => pressOpener(page, { labels: ['搜索笔记、执行命令', 'Search notes or run a command'] }), root: PALETTE_PANEL, toolbar: `${PALETTE_PANEL} > div`, minToggles: 0, loaded: { selector: '[role="option"]', min: 1 } },
@@ -7935,6 +8177,8 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertGraphThemeFollow(page)
+    await assertGraphKeyboardWalk(page)
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)

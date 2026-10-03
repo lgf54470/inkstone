@@ -103,6 +103,8 @@ Notes:
 
 Sidebar-selected tags join the graph's own tag filter (combined with the graph's tag dropdown). The match mode — any tag (union) or all tags (intersection) — is chosen in the graph settings, and both sources share the 20-tag cap.
 
+The graph draws wiki-link relationships between notes: an embed (`![[Note]]`) counts as a link like any other. Attachments are not part of the graph — a file is reachable from the note that references it, but it is never a node or an edge.
+
 The graph settings panel offers these controls:
 
 **Filters**

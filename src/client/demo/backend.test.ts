@@ -136,3 +136,104 @@ describe('demo blog route mutations', () => {
     expect(notePost.post).toMatchObject({ slug: 'welcome-to-inkstone' })
   })
 })
+
+const graphJson = (init: RequestInit) => ({ headers: { 'Content-Type': 'application/json' }, ...init })
+
+/** Three notes, one folder and one tag: enough for a filter line to have something to narrow. */
+async function seededGraphBackend(): Promise<DemoBackend> {
+  const backend = await authedBackend()
+  const folder = await (await call(backend, '/api/folders',
+    graphJson({ method: 'POST', body: JSON.stringify({ name: 'Reading Room' }) }))).json()
+  for (const body of [
+    { title: 'Note Alpha', content: 'Tags: #movies\n', folderId: folder.id },
+    { title: 'Note Beta', content: 'Tags: #movies\n' },
+    { title: 'Note Gamma', content: 'Plain body\n', folderId: folder.id },
+  ]) {
+    await call(backend, '/api/notes', graphJson({ method: 'POST', body: JSON.stringify(body) }))
+  }
+  return backend
+}
+
+async function graphTitles(backend: DemoBackend, query: string): Promise<string[]> {
+  const body = await (await call(backend, `/api/graph?q=${encodeURIComponent(query)}`)).json()
+  return body.nodes.map((node: { title: string }) => node.title).sort()
+}
+
+describe('demo graph route filter grammar', () => {
+  it('keeps only notes whose folder path matches a path: term', async () => {
+    const backend = await seededGraphBackend()
+    expect(await graphTitles(backend, 'path:"Reading Room" note')).toEqual(['Note Alpha', 'Note Gamma'])
+    expect(await graphTitles(backend, 'path:shop note')).toEqual([])
+  })
+
+  it('matches tag: exactly and excludes with a leading dash', async () => {
+    const backend = await seededGraphBackend()
+    expect(await graphTitles(backend, 'tag:movies note')).toEqual(['Note Alpha', 'Note Beta'])
+    expect(await graphTitles(backend, 'tag:movie note')).toEqual([])
+    expect(await graphTitles(backend, '-tag:movies path:Reading note')).toEqual(['Note Gamma'])
+    // A note with no folder has no path to exclude, so the negation keeps it.
+    expect(await graphTitles(backend, 'tag:movies -path:Reading note')).toEqual(['Note Beta'])
+  })
+})
+
+  it('keeps two folders that end with the same word apart, the way the real route does (G-48)', async () => {
+    const backend = await seededGraphBackend()
+    const parent = await (await call(backend, '/api/folders',
+      graphJson({ method: 'POST', body: JSON.stringify({ name: 'Study' }) }))).json()
+    const nested = await (await call(backend, '/api/folders',
+      graphJson({ method: 'POST', body: JSON.stringify({ name: 'Reading Room', parentId: parent.id }) }))).json()
+    await call(backend, '/api/notes', graphJson({ method: 'POST', body: JSON.stringify({ title: 'Deep Note', content: 'x\n', folderId: nested.id }) }))
+
+    expect(await graphTitles(backend, 'path:"Study/Reading Room"')).toEqual(['Deep Note'])
+
+    const nodes = (await (await call(backend, '/api/graph')).json()).nodes
+      .filter((node: { title: string }) => node.title === 'Deep Note')
+    expect(nodes.map((node: { folderPath: string | null }) => node.folderPath)).toEqual(['Study/Reading Room'])
+    expect(await graphTitles(backend, 'path:Study/Reading')).toEqual(['Deep Note'])
+    expect(await graphTitles(backend, 'path:"Reading Room"')).toEqual(['Deep Note', 'Note Alpha', 'Note Gamma'])
+    const withoutStudy = await graphTitles(backend, '-path:Study')
+    expect(withoutStudy).not.toContain('Deep Note')
+    expect(withoutStudy).toContain('Note Alpha')
+  })
+
+describe('the choices a reader makes about the picture (G-42, G-44)', () => {
+  async function createNotes(backend: DemoBackend, bodies: Array<{ title: string, content: string }>): Promise<void> {
+    for (const body of bodies) {
+      await call(backend, '/api/notes', graphJson({ method: 'POST', body: JSON.stringify(body) }))
+    }
+  }
+
+  async function noteId(backend: DemoBackend, title: string): Promise<string> {
+    const listed = await (await call(backend, '/api/notes')).json()
+    return listed.notes.find((note: { title: string }) => note.title === title).id
+  }
+
+  it('leaves out the note the reader took out of the graph, like the server does (G-42)', async () => {
+    const backend = await seededGraphBackend()
+    const beta = await noteId(backend, 'Note Beta')
+
+    const graph = await (await call(backend, `/api/graph?excluded=${beta}`)).json()
+
+    expect(graph.nodes.map((node: { title: string }) => node.title)).not.toContain('Note Beta')
+    expect(graph.nodes.length).toBeGreaterThan(0)
+  })
+
+  it('walks only the requested side of a link in a local graph, like the server does (G-44)', async () => {
+    const backend = await authedBackend()
+    await createNotes(backend, [
+      { title: 'Direction centre', content: 'Points at [[Direction out]]\n' },
+      { title: 'Direction out', content: 'Plain body\n' },
+      { title: 'Direction in', content: 'Points at [[Direction centre]]\n' },
+    ])
+    const centre = await noteId(backend, 'Direction centre')
+
+    const walk = async (direction: string): Promise<string[]> => {
+      const graph = await (await call(backend, `/api/graph?mode=local&center=${centre}&depth=1&direction=${direction}`)).json()
+      return graph.nodes.map((node: { title: string }) => node.title).sort()
+    }
+
+    expect(await walk('outgoing')).toEqual(['Direction centre', 'Direction out'])
+    expect(await walk('incoming')).toEqual(['Direction centre', 'Direction in'])
+    expect(await walk('both')).toEqual(['Direction centre', 'Direction in', 'Direction out'])
+  })
+})
