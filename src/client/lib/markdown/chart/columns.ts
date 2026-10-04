@@ -34,7 +34,13 @@ function lowerHeader(table: ChartTable): string[] {
 
 function mappedColumns(table: ChartTable, mapping: Record<string, unknown>): ScatterColumns | null {
   const header = lowerHeader(table)
-  const at = (key: string) => header.indexOf(String(mapping[key] ?? '').trim().toLowerCase())
+  // A column the note did not name is absent, not column zero: the keyword cell leaves an empty header
+  // cell behind, and an empty string looked up in that header answers 0 — which handed a mapping of x and
+  // y alone a size column and a series column the author never wrote, and drew a bubble nobody asked for.
+  const at = (key: string) => {
+    const wanted = String(mapping[key] ?? '').trim().toLowerCase()
+    return wanted === '' ? -1 : header.indexOf(wanted)
+  }
   const x = at('x')
   const y = at('y')
   // A mapping that names a column the header does not have is a mistake in the note, not a hint to

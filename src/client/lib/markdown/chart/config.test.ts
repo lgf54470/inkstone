@@ -55,6 +55,25 @@ describe('a chart table as a chart.js config', () => {
     expect((tableToChartConfig(mapped).data as { datasets: { label: string }[] }).datasets[0].label).toBe('g')
   })
 
+  // The keyword is matched case-insensitively, but the engine's name is camelCase: `:polarArea:` used to
+  // answer unknown-kind because the lowercased spelling was looked up in a list holding the camelCase one.
+  it('reads a camelCase kind whichever way the note spells it', () => {
+    for (const written of ['polarArea', 'polararea', 'POLARAREA']) {
+      const config = tableToChartConfig(table(written, ['', '数值'], [['苹果', '12'], ['香蕉', '30']]))
+      expect(config.type, written).toBe('polarArea')
+      expect(config.data, written).toEqual({ labels: ['苹果', '香蕉'], datasets: [{ data: [12, 30] }] })
+    }
+  })
+
+  it('reads a Cherry mapping that names only the axes as a plain scatter', () => {
+    const mapped = table('scatter', ['', 'temp', 'sales'], [['a', '20', '3'], ['b', '30', '7']], {
+      'cherry:mapping': { x: 'temp', y: 'sales' },
+    })
+    const config = tableToChartConfig(mapped)
+    expect(config.type).toBe('scatter')
+    expect(config.data).toEqual({ datasets: [{ data: [{ x: 20, y: 3, name: 'a' }, { x: 30, y: 7, name: 'b' }] }] })
+  })
+
   it('refuses a mapping whose x or y column the header does not name', () => {
     const mapped = table('scatter', ['', 'a', 'b'], [['r', '1', '2']], { 'cherry:mapping': { x: 'nope', y: 'b' } })
     expect(() => tableToChartConfig(mapped)).toThrow(ChartConfigError)
@@ -94,6 +113,12 @@ describe('a chart.js config as a chart table', () => {
   it('writes back the table a bar config came from', () => {
     const converted = chartConfigToTable(tableToChartConfig(AXIS))
     expect(converted.ok && converted.table).toEqual(AXIS)
+  })
+
+  it('writes a camelCase kind back in its own spelling', () => {
+    const converted = chartConfigToTable({ type: 'polarArea', data: { labels: ['苹果', '香蕉'], datasets: [{ data: [12, 30] }] } })
+    expect(converted.ok).toBe(true)
+    if (converted.ok) expect(converted.table.kind).toBe('polarArea')
   })
 
   it('writes a slice chart with an unnamed value column', () => {

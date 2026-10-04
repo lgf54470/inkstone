@@ -28,8 +28,21 @@ export class ChartConfigError extends Error {
 export type ChartTableLoss = 'not-a-config' | 'unknown-kind' | 'needs-echarts' | 'lossy'
 export type ChartTableConversion = { ok: true; table: ChartTable } | { ok: false; reason: ChartTableLoss }
 
-const AXIS_KINDS: readonly string[] = ['line', 'bar', 'radar']
 const SLICE_KINDS: readonly string[] = ['pie', 'doughnut', 'polarArea']
+
+/**
+ * The kind a written name means, in the spelling this family hands to the engine.
+ *
+ * A keyword arrives lowercased — `:BAR:` and `:Bar:` are the same chart, and the reference syntax says
+ * so — while the engine's own name is camelCase (`polarArea`), so the lookup has to fold the note's
+ * spelling down and the answer has to come back in the casing chart.js reads. Matching the two directly
+ * is what made `:polarArea:` unreachable: the list holds the camelCase name, the comparison held the
+ * lowercased one, and no spelling of it was ever in the list.
+ */
+function chartTableKind(name: string): ChartTableKind | null {
+  const written = name.toLowerCase()
+  return CHART_TABLE_KINDS.find((entry) => entry.toLowerCase() === written) ?? null
+}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -78,9 +91,10 @@ function scatterSeries(table: ChartTable): { type: string; datasets: Record<stri
 }
 
 export function tableToChartConfig(table: ChartTable): Record<string, unknown> {
-  const kind = table.kind.toLowerCase()
-  if ((ECHARTS_ONLY_KINDS as readonly string[]).includes(kind)) throw new ChartConfigError('needs-echarts', kind)
-  if (!(CHART_TABLE_KINDS as readonly string[]).includes(kind)) throw new ChartConfigError('unknown-kind', kind)
+  const written = table.kind.toLowerCase()
+  if ((ECHARTS_ONLY_KINDS as readonly string[]).includes(written)) throw new ChartConfigError('needs-echarts', written)
+  const kind = chartTableKind(written)
+  if (kind === null) throw new ChartConfigError('unknown-kind', written)
   const shape = kind === 'scatter' ? scatterSeries(table) : { type: kind, datasets: SLICE_KINDS.includes(kind) ? sliceSeries(table) : axisSeries(table) }
   // A scatter places its points by value, so it has no category row to carry; a pie's categories are
   // its slices, which the rows name rather than the header.
@@ -109,16 +123,19 @@ function readKeywordOptions(value: unknown): { value: Record<string, unknown> } 
 
 export function chartConfigToTable(config: unknown): ChartTableConversion {
   if (!isRecord(config) || typeof config.type !== 'string') return { ok: false, reason: 'not-a-config' }
-  const type = config.type.toLowerCase()
-  if ((ECHARTS_ONLY_KINDS as readonly string[]).includes(type)) return { ok: false, reason: 'needs-echarts' }
-  if (!AXIS_KINDS.includes(type) && !SLICE_KINDS.includes(type) && type !== 'scatter' && type !== 'bubble') return { ok: false, reason: 'unknown-kind' }
+  const written = config.type.toLowerCase()
+  if ((ECHARTS_ONLY_KINDS as readonly string[]).includes(written)) return { ok: false, reason: 'needs-echarts' }
+  // `bubble` has no keyword of its own: it is what a scatter table with a size column is drawn as, so a
+  // config carrying it still has a table home.
+  const kind = chartTableKind(written) ?? (written === 'bubble' ? 'bubble' : null)
+  if (kind === null) return { ok: false, reason: 'unknown-kind' }
   const data = isRecord(config.data) ? config.data : null
   if (!data || !Array.isArray(data.datasets) || data.datasets.length === 0) return { ok: false, reason: 'lossy' }
   const options = readKeywordOptions(config.options)
   if ('reason' in options) return options
-  if (type === 'scatter' || type === 'bubble') return scatterToTable(data.datasets, options.value)
-  if (SLICE_KINDS.includes(type)) return sliceToTable(data.labels, data.datasets, options.value, type)
-  return axisToTable(type, data.labels, data.datasets, options.value)
+  if (kind === 'scatter' || kind === 'bubble') return scatterToTable(data.datasets, options.value)
+  if (SLICE_KINDS.includes(kind)) return sliceToTable(data.labels, data.datasets, options.value, kind)
+  return axisToTable(kind, data.labels, data.datasets, options.value)
 }
 
 function axisToTable(type: string, labels: unknown, datasets: unknown[], title: Record<string, unknown>): ChartTableConversion {
