@@ -68,9 +68,9 @@ export function FolderRow({ node, siblings, index, parentNode, parentSiblings, o
   })
   return (
     <div role='treeitem' aria-level={node.depth + 1} aria-expanded={hasChildren ? expanded : undefined} className={cn(justCreated && 'anim-tree-item-enter')} data-new-folder={justCreated || undefined}>
-      <div ref={buttonRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} onDragOver={(event) => handleFolderDragOver(event, setDropState)} onDragLeave={(event) => { if (leftDropTarget(event)) setDropState('none'); }} onDrop={(event) => handleFolderDrop(event, { node, siblings, index, dropState, setDropState, onMove })} draggable={!renaming} onDragStart={(event) => { event.dataTransfer.setData(FOLDER_DRAG_TYPE, node.id); event.dataTransfer.effectAllowed = 'move'; }} className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropState === 'inside' && 'ring-1 ring-[var(--accent)]')} style={{ paddingLeft: treeRowIndent(node.depth) }}>
-        {dropState === 'before' && <span aria-hidden='true' className='pointer-events-none absolute top-0 right-1 left-1 h-px bg-[var(--accent)]'/>}
-        {dropState === 'after' && <span aria-hidden='true' className='pointer-events-none absolute right-1 bottom-0 left-1 h-px bg-[var(--accent)]'/>}
+      <div ref={buttonRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} onDragOver={(event) => handleFolderDragOver(event, setDropState)} onDragLeave={(event) => { if (leftDropTarget(event)) setDropState('none'); }} onDrop={(event) => handleFolderDrop(event, { node, siblings, index, dropState, setDropState, onMove })} draggable={!renaming} onDragStart={(event) => { event.dataTransfer.setData(FOLDER_DRAG_TYPE, node.id); event.dataTransfer.effectAllowed = 'move'; }} className={cn('group relative flex h-[var(--sp-10)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] pr-[var(--sp-1)] md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dropState === 'inside' && 'ring-1 ring-[var(--accent)]')} style={{ paddingLeft: treeRowIndent(node.depth) }}>
+        {dropState === 'before' && <span aria-hidden='true' className='pointer-events-none absolute top-0 right-[var(--sp-1)] left-[var(--sp-1)] h-px bg-[var(--accent)]'/>}
+        {dropState === 'after' && <span aria-hidden='true' className='pointer-events-none absolute right-[var(--sp-1)] bottom-0 left-[var(--sp-1)] h-px bg-[var(--accent)]'/>}
         <TreeExpandButton expanded={expanded} hasChildren={hasChildren} onToggle={() => toggleFolder(node.id)}/>
         <FolderRowIcon node={node} active={active} open={expanded && hasChildren} justCreated={justCreated}/>
         <FolderRowLabel node={node} folders={folders} active={active} isInbox={isInbox} renaming={renaming} onCommitRename={(value) => commitRename(value, node, patchFolder, renamingRef, onFinishRename)} onCancelRename={onFinishRename} onStartRename={() => onStartRename(node.id)}/>
@@ -138,9 +138,9 @@ function FolderRowLabel({ node, folders, active, isInbox, renaming, onCommitRena
       onCancelRename()
     }
     e.stopPropagation()
-  }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 py-px text-[length:var(--text-12\.5)] outline-none"/>)
+  }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12\.5)] outline-none"/>)
   return (<Tooltip label={folderPathLabel(folders, node.id)} side='right'>
-    <button type='button' aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-1.5 truncate py-1 text-left text-[length:var(--text-12\.5)] font-medium">
+    <button type='button' aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] truncate py-[var(--sp-1)] text-left text-[length:var(--text-12\.5)] font-medium">
       <span className='truncate'>{node.name}</span>
       {isInbox && (<span title={t('folders.inbox')} className='shrink-0 text-[var(--accent)]'><Inbox size={11}/></span>)}
     </button>
@@ -168,7 +168,7 @@ function FolderRowMeta({ count, active, onOpenMenu }: {
       {count > 0 ? count : ''}
     </span>
     <Tooltip label={t('common.more_actions')} side='left'>
-      <IconButton label={t('common.more_actions')} size='sm' onClick={onOpenMenu} className='absolute right-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100'>
+      <IconButton label={t('common.more_actions')} size='sm' onClick={onOpenMenu} className='absolute right-[var(--sp-1)] opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100'>
         <MoreHorizontal size={13}/>
       </IconButton>
     </Tooltip>

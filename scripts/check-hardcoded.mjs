@@ -106,10 +106,12 @@ const SCALE_MESSAGE = 'bare Tailwind scale step'
 // file is clean, and waiting for that would leave the ones already converted free to regress.
 const SCALE_ZERO_TOLERANCE_PREFIXES = [
   'src/client/components/activity-calendar/legend.tsx',
+  'src/client/components/activity-calendar/month-view.tsx',
   'src/client/components/calendar-grids.tsx',
   'src/client/components/date-range-popover.tsx',
   'src/client/components/overlay/tooltip.tsx',
   'src/client/components/tag-filter-popover.tsx',
+  'src/client/features/attachments/attachment-batch-bar.tsx',
   'src/client/features/attachments/attachment-drive-sidebar/folder-row.tsx',
   'src/client/features/attachments/attachment-drive-sidebar/tag-row.tsx',
   'src/client/features/attachments/attachment-rename-modal.tsx',
@@ -140,6 +142,7 @@ const SCALE_ZERO_TOLERANCE_PREFIXES = [
   'src/client/features/shell/save-indicator.tsx',
   'src/client/features/sidebar/sidebar-calendar.tsx',
   'src/client/features/sidebar/sidebar/search-button.tsx',
+  'src/client/features/sidebar/sidebar/sidebar-folders/row.tsx',
   'src/client/features/templates/gallery-controls.tsx',
   'src/client/lib/markdown/kanban/ui/kanban-column-count.tsx',
   'src/client/lib/markdown/kanban/ui/kanban-date-badge.tsx',
