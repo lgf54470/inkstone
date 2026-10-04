@@ -44,7 +44,7 @@ export function usePresenterSlideMedia(options: {
         mindmapBox: { width: contentWidth, height: contentHeight },
       })
       if (cancelled) return
-      await renderPendingMermaid(host, dark)
+      if (preview.mermaid) await renderPendingMermaid(host, dark)
     }
     void draw().catch((error: unknown) => {
       console.warn('[inkstone] presenter slide rendering failed', error)

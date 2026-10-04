@@ -89,7 +89,7 @@ export function SlideCanvas({ cacheKey, source, subPage, step, contentWidth, con
   const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, shown.steps, subPage, step, contentWidth, contentHeight, renderVersion)
   const prefersMotion = prefersReducedMotion()
   const effectiveInstantCharts = instantCharts || prefersMotion
-  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts)
+  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts, preview.mermaid)
   useBentoSlidesFallback(hostRef, html, fences, markDiagramsRendered)
   useFontLoadedMeasure(markDiagramsRendered)
   // Only a measurement of the markup on screen is published. The canvas is reused when
@@ -285,13 +285,16 @@ export function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage
 // editor preview does: an observer-driven re-render would fire on the diagram's
 // own DOM writes and re-render them forever, and every pagination re-measure
 // would then see the leftover placeholders instead of the diagram's real height.
-function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: string, dark: boolean, onRendered: () => void, instantCharts: boolean): void {
+function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: string, dark: boolean, onRendered: () => void, instantCharts: boolean, mermaid: boolean): void {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
     const render = async () => {
-      await renderPendingMermaid(host, dark)
+      // The account's own display preference, honoured here rather than assumed: the enhancement chain
+      // that painted this page may have written the fence's source into the block, and drawing on top of
+      // that is what turns a turned-off setting into a diagram the room never asked for.
+      if (mermaid) await renderPendingMermaid(host, dark)
       if (cancelled) return
       await renderChartJs(host, dark, { instant: instantCharts })
       if (!cancelled) onRendered()
