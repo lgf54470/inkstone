@@ -11288,7 +11288,9 @@ async function assertChartBlocks(page) {
   if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('chart scenario: the editor pane never became visible')
   await writeAtEndOfNote(page, CHART_BLOCKS, 'chart scenario')
   if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('chart scenario: the preview pane never became visible')
-  await waitForProseEnhancements(page)
+  // Not `waitForProseEnhancements` here: that readiness check reads the probe note's two formulas, and
+  // by this point a presentation scenario has handed the app a deck note that carries none. The wait
+  // below is this scenario's own readiness - every chart fence it just wrote has to paint.
 
   const markers = Object.values(CHART_MARKERS)
   await page.waitForFunction((wanted) => {
