@@ -8355,6 +8355,7 @@ const allowed = new Map([
     '/**\n * Clicking a node hands the map the DOM focus its shortcuts need — in a split\n * view the editor would otherwise swallow Tab, Delete and undo. The full screen\n * overlay is portaled outside this host, so it installs its own listener on the\n * modal body; both resolve the same entry and focus twice is harmless.\n */',
   ]],
   ['src/client/features/preview/use-preview.ts', [
+    '/**\n * The resolved appearance, in two shapes. `theme` is the light/dark answer everything branches on;\n * `appearance` also carries the accent and the paper choice, because a chart reads its series colours\n * from them at draw time and must repaint when they move even though light and dark did not change.\n */',
     '// Markup and the bodies it was rendered from are one document: a body-only edit leaves the rendered',
     '// string identical, so the string alone would never tell the mounted blocks their fence changed (P-01).',
     '// echarts bakes its colours into the canvas at draw time, so a theme change has to redraw the chart',
@@ -9655,6 +9656,11 @@ const allowed = new Map([
   ['src/client/lib/image.ts', [
     '// Best-effort bitmap release; a failed close only leaks until GC reclaims it.',
   ]],
+  ['src/client/lib/markdown/chart/accent.ts', [
+    '/**\n * The account\'s accent, read for the things that draw outside CSS.\n *\n * The pure oklch math lives in ./palette; this is the half that touches the document, kept apart so\n * the math stays testable without a DOM and so both drawing backends ask one question the same way.\n * Every call re-reads: a chart\'s colours must follow the accent the account has now, not the one that\n * happened to be set when the module was first loaded (ADR-0002 §5).\n */',
+    '/** cinnabar, the accent the token layer ships with. Only reached with no stylesheet in reach. */',
+    '/**\n * What the colours a chart would draw with currently depend on, in a string short enough to live in a\n * cache key. The accent is switchable per account and the ramp leans on the light mode, so a key that\n * carried only the light mode would let a chart keep colours it read before the accent moved.\n */',
+  ]],
   ['src/client/lib/markdown/chart/body.ts', [
     '/**\n * The fence-level half of ```chart: which languages draw a chart, which body format a body carries,\n * and the surgery that writes a converted body back into the note.\n *\n * The format is decided by the body alone, so the same block answers the same way in the preview, in\n * a slide, and in an export without any of them being told.\n */',
     '/** Fence languages that render as a chart block. */',
@@ -9689,6 +9695,24 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/chart/json.ts', [
     '/**\n * The JSON half of a ```chart body. Chart blocks carry tolerate formatting: comment and `**` markers\n * stripped and trailing commas allowed before the strict parse is retried, because a config typed\n * out of a documentation page arrives with both.\n */',
+  ]],
+  ['src/client/lib/markdown/chart/palette.test.ts', [
+    '// Past one cycle the ramp repeats by design — a chart with 40 series is not what this is for.',
+    '// Series 2 leans darker on paper and lighter on a dark canvas, so the same index moves the other',
+    '// way; series 1 is the accent in both, which is the point of anchoring on it.',
+  ]],
+  ['src/client/lib/markdown/chart/palette.ts', [
+    '/**\n * Chart colours derived from the account\'s accent.\n *\n * A chart library\'s default palette is a rainbow chosen by nobody for the benefit of everybody, and\n * it sits badly against a page whose whole identity is one accent. So the series colours are built\n * from that accent instead: the first few series are the accent at different lightnesses, and later\n * ones lean to neighbouring hues only as far as they must to stay tellable apart.\n *\n * oklch is used because the tokens are written in it, because its lightness axis is perceptual (a\n * ladder of equal steps *looks* like equal steps, which hsl does not give), and because the browser\n * paints it directly — no conversion to sRGB and no gamut clipping to reason about.\n */',
+    '/** `oklch(49% 0.15 30)` and `oklch(0.49 0.15 30 / 0.6)` both appear in the token layer. */',
+    '/**\n * Where in the usable lightness band each successive series lands, as a fraction of that band. The\n * sequence is deliberately scattered rather than monotonic: neighbours in a legend get far-apart\n * lightness, and every value is distinct, so no two stops can collide however the band is placed.\n * The first is unused — series one *is* the accent.\n */',
+    '/**\n * How far each series leans off the accent\'s hue. The first two stay on it, so a one- or two-series\n * chart reads as the accent plain; the lean only grows as far as it must to keep later series apart.\n */',
+    '/** The band a series colour may occupy, so nothing goes invisible against the page. */',
+    '/**\n * A categorical palette anchored on `accent`: the first entry is the accent exactly, and the rest are\n * placed within a lightness band around it, leaning off its hue only as far as distinctness needs.\n *\n * `dark` picks the band, because a colour that separates cleanly on paper can sit inside the\n * background on a dark canvas.\n */',
+    '// The accent\'s own lightness anchors the band rather than being clamped into it, so a pale accent',
+    '// and a deep one both keep their identity as the first series.',
+    '// A dark canvas washes colour out, so the chroma is held up a little rather than copied flat.',
+    '/**\n * The ramp a continuous scale (a heatmap\'s `visualMap`, a choropleth) interpolates between: near the\n * surface colour at the low end, the accent at full strength at the high end. Three stops rather than\n * two so the middle of the range does not go muddy.\n */',
+    '/** How many series a palette is generated for. echarts cycles past the end; ten covers a real chart. */',
   ]],
   ['src/client/lib/markdown/chart/table-from-dom.ts', [
     '/**\n * Reading a chart table back out of the rendered DOM.\n *\n * A bare table-chart lives in the note as an ordinary table, so the cells a chart needs are already\n * on screen. Re-reading them from there beats carrying a second copy of the data through an attribute:\n * the two could only disagree, and the table is what the author edits.\n */',
@@ -9763,12 +9787,9 @@ const allowed = new Map([
     '// written: a table whose first row has three cells and whose last has four is not a table.',
   ]],
   ['src/client/lib/markdown/echarts/theme.ts', [
-    '/**\n * The theme an echarts block draws with, read from the app\'s own tokens.\n *\n * echarts bakes its colours into the canvas at draw time, so this is called on every draw rather\n * than once at startup (ADR-0002 §5): a value cached across the module\'s life would freeze the\n * theme at the moment the library was first loaded. The palette is the graph tag ramp rather than a\n * chart-specific one — it is the only ten-step sequence the two themes both calibrate for contrast.\n */',
-    '/** `--graph-tag-1` … `--graph-tag-10`, the shared ten-step ramp. */',
+    '/**\n * The theme an echarts block draws with, read from the app\'s own tokens.\n *\n * echarts bakes its colours into the canvas at draw time, so this is called on every draw rather\n * than once at startup (ADR-0002 §5): a value cached across the module\'s life would freeze the\n * theme at the moment the library was first loaded. The series colours come from the account\'s\n * accent rather than a library default rainbow — see ../chart/palette for how the ramp is built.\n */',
     '/**\n * A chart\'s axes, in the shape echarts expects every axis kind to share. `splitLine` is what a grid\n * line is called on a value axis and what the spokes of a radar are called, so the same object\n * answers for both.\n */',
-  ]],
-  ['src/client/lib/markdown/echarts/tokens.ts', [
-    '/**\n * One CSS custom property, read from the element the theme is resolved onto.\n *\n * The fallback matters: with no stylesheet in reach — a jsdom test, the first paint before the\n * tokens land — `getPropertyValue` answers `\'\'`, and an empty colour is one echarts will happily\n * paint with, which reads as a chart that has lost its text rather than as a missing token.\n */',
+    '/**\n * Fills the accent ramp into the continuous scales a table chart builds, leaving anything the note\n * already stated alone: `visualMap` is what colours a heatmap cell or a choropleth region, and\n * without an explicit range echarts draws its own default blue.\n */',
   ]],
   ['src/client/lib/markdown/echarts/vendor.ts', [
     '/**\n * The only module that imports echarts. Everything else reaches the library through ./loader, which\n * is what keeps the library behind a lazy boundary (scripts/check-vendor-isolation.mjs guards that\n * this file stays the single door).\n */',
@@ -9822,10 +9843,14 @@ const allowed = new Map([
     '// asked to, and a fence that asks does not get its way on a surface that never offers.',
     '// A bare table-chart reads its data back out of the table next to it, so the assertion is that the',
     '// picture and the table agree rather than that some second copy was handed over.',
+    '// The accent is switchable per account and the palette is read at draw time, so a block must be',
+    '// redrawn when it moves rather than keeping the colours it first read (ADR-0002 §5). The token is',
+    '// written by hand because jsdom ships no stylesheet for it.',
   ]],
   ['src/client/lib/markdown/enhance/chart.ts', [
     '/** A table that means a kind only the echarts fence draws is a pointer, not a parse failure. */',
     '// Re-applies the app\'s axis colors under the user\'s own ticks/grid objects.',
+    '/**\n * Colours the series the note left uncoloured. chart.js\'s own default palette is a rainbow nobody\n * chose for this page, so an unstyled dataset takes the accent ramp instead — but a note that named\n * its own colours keeps them, because that is a statement about the data, not an omission.\n */',
     '// The chart was handed its size (see chartSize): measuring would read the same inflated rect',
     '// again. Without `responsive` the library keeps the canvas\'s own size, and the device pixel',
     '// ratio has to be passed because that is the only other thing the responsive path set up.',
@@ -9852,6 +9877,8 @@ const allowed = new Map([
     '// wherever the markup was mounted from the cache. A destroyed instance clears the property and',
     '// leaves the marker, which lands on the same path, so both draw again.',
     '/**\n * Draws every chart block under a root. `instant` is for the surfaces whose canvas is read rather than\n * looked at — a printed sheet, an exported document — where an entrance animation is a picture of\n * nothing at all (see `buildChartConfig`).\n */',
+    '// The accent is in the key beside the light mode: it is switchable per account, and a chart that',
+    '// kept the colours it read before it moved is the frozen-at-creation regression ADR-0002 §5 names.',
   ]],
   ['src/client/lib/markdown/enhance/code.ts', [
     '/**\n * How many lines this block folds beyond: its own `collapse=` when it wrote one (0 meaning it never\n * folds), otherwise the preview\'s setting. A block states its own preference because the note is\n * what a reader shares, while the setting is only this account\'s default.\n */',
@@ -9862,13 +9889,15 @@ const allowed = new Map([
     '/** Frees every chart under a root, for the surface that is about to throw its markup away. */',
     '/**\n * A layout change resizes the box, and the chart has to follow it: the library is handed an explicit\n * size when the box has been laid out, so nothing else would notice.\n */',
     '/** Whether this surface honours a fence\'s request to run JavaScript. */',
-    '/** The resolved theme, carried in the cache key only: the colours themselves come from the tokens. */',
+    '/** Which theme to draw for. The colours are read at draw time; this only picks the lightness\n   * direction of the accent ramp. */',
     '/** Whether to draw without the entrance animation, for the surface that reads the pixels. */',
     '/**\n * Where a block\'s option comes from, and the text a drawn chart is current against. A fence carries\n * its body in the document\'s fence-body set; a bare table-chart reads it back out of the table next to\n * it, so the two differ only here and share every path after this.\n */',
     '/** The text the draw signature is computed from: an edit to it must redraw, a re-render must not. */',
     '/** The source\'s own request to run JavaScript, which a surface may still refuse. */',
     '/**\n * A bare table-chart\'s own configuration travels on the marker, because the cell that held it is a\n * directive the renderer emptied. Everything else — the categories and the values — is the table.\n */',
     '/**\n * One block: read the option, then mount the chart. A body that cannot be read and a library that\n * cannot load both land on the same banner, with the source left underneath so the author can see\n * what the block was asked to draw.\n */',
+    '// The palette is in the key, not just the light mode: the accent is switchable per account, and a',
+    '// chart that kept its old colours after it moved would be the frozen-at-creation regression.',
     '/** Draws every echarts block under a root. `instant` is for the surfaces that read the pixels. */',
     '/**\n * Draws every block once for a surface that serializes or prints its markup. The chart is SVG, so the\n * drawing is the markup and nothing has to be converted; what differs from the live path is that the\n * entrance animation is off — a sheet handed to the print pipeline as soon as its fonts land cannot\n * wait for a chart to finish animating, and an animation caught mid-flight is a half-drawn picture.\n *\n * A snapshot never runs a note\'s JavaScript: the surface that takes one has no author watching, and\n * the fence\'s `js` marker is a request from the person writing the note.\n */',
     '/**\n * A surface that knows nothing about echarts leaves the block showing its source, which is what a\n * reader of a page that never mounts a chart should see: the option, not a box that stays empty. A\n * bare table-chart has no source of its own to show — the table beside it is the content — so its\n * empty marker simply goes away.\n */',
@@ -13578,6 +13607,9 @@ const allowed = new Map([
     '/**\n * Writes the pending change and reports whether it is still pending, which is the state\n * the surface paints (an unsaved-changes dot on Save). A write that landed leaves nothing\n * pending; a refused one — a conflicted fence, a note without content — is still the\n * user\'s unsaved work and keeps the dot, because the next save is the only way out of it.\n */',
     '/**\n * Which syntax the body is written back in. An outline body stays an outline for as long\n * as the document still fits it; an edit it cannot express (a shape, a moved element, an\n * imported asset) writes JSON from now on, so the note keeps holding the deck the editor\n * is showing. The mode is remembered rather than re-decided per write: the document is the\n * rich one from here on, and a retry after a failed write must not fall back to dropping it.\n */',
   ]],
+  ['src/client/lib/markdown/style-token.ts', [
+    '/**\n * One CSS custom property, read from the element the theme is resolved onto.\n *\n * The fallback matters: with no stylesheet in reach — a jsdom test, the first paint before the\n * tokens land — `getPropertyValue` answers `\'\'`, and an empty colour is one echarts will happily\n * paint with, which reads as a chart that has lost its text rather than as a missing token.\n */',
+  ]],
   ['src/client/lib/note-filter.ts', [
     '/** Decide whether a note belongs to the active list view, optionally stacked with a multi-tag selection (`any` or `all` must match). */',
   ]],
@@ -14074,6 +14106,7 @@ const allowed = new Map([
     '/**\n * The outline data a `map` chart may load.\n *\n * A note\'s table cell names the source, so the list has to be closed: without it a note could point a\n * reader\'s browser at an intranet address, or at any host that would log who read the page. The same\n * list is what the response\'s `connect-src` is widened with, and only for a viewer who already opted\n * into third-party resources — one list, read by the two layers that must agree.\n */',
     '/** Where the default country outlines come from when a table names no source of its own. */',
     '/** The largest outline payload a block will read, so one cell cannot ask for an unbounded download. */',
+    '/**\n * Where a browser asks for an outline. Same origin, so no third-party connection is needed and the\n * page\'s `connect-src` stays closed; the Worker is the one that reads the allowlisted host.\n */',
   ]],
   ['src/shared/markdown-utils/front-matter.ts', [
     '/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */',
@@ -14903,9 +14936,6 @@ const allowed = new Map([
     '// third parties cannot track them through images in shared notes. This CSP',
     '// is the enforcement layer for raw-HTML <img> tags, which the client-side',
     '// renderer gate cannot see.',
-    '// A `map` chart reads its outlines from one of the pinned hosts. That is a third-party request a',
-    '// visitor to a shared page never opted into, so the widening follows the same predicate as the',
-    '// images above and the same list the client validates against.',
     '// Inline scripts (theme bootstrap, MCP login page, dev React preamble)',
     '// are allowed through a fresh per-response nonce instead of',
     '// \'unsafe-inline\', so a future injection point cannot execute scripts.',
@@ -15400,6 +15430,17 @@ const allowed = new Map([
     '// The ledger row goes with the object, or the quota would keep charging for a file that is gone.',
     '// Objects predating the ledger have no row, and the delete is simply a no-op for them.',
   ]],
+  ['src/worker/routes/map-geojson.test.ts', [
+    '// The redirect was never followed to the hostile host.',
+  ]],
+  ['src/worker/routes/map-geojson.ts', [
+    '// The hop-by-hop allowlist walk already lives with the other route that reaches out to pinned',
+    '// hosts; it is taken through music\'s public entry rather than copied, because a second implementation',
+    '// of "follow a redirect only to a host we named" is exactly the kind of thing that drifts.',
+    '/**\n * The outline data a `map` chart draws, fetched from this origin.\n *\n * The alternative — letting the browser fetch the third-party host directly — costs more than it\n * saves: it needs `connect-src` widened for everyone, it tells the outline host who read the page,\n * and it fails silently on a shared post, where the reader has no settings to change. Read from here\n * instead, so a map works everywhere with no policy relaxed and the visitor\'s own address never\n * leaves for a third party.\n *\n * A GET, so `requireClientHeader` does not gate it and an anonymous reader of a shared page may call\n * it. It carries no user data in either direction: the only input is which public file to read.\n */',
+    '// Checked before anything is fetched, and again per redirect hop inside the fetcher: the worker',
+    '// following a redirect is still the worker fetching.',
+  ]],
   ['src/worker/routes/mcp-authorize.ts', [
     '/* Unreadable user settings fall back to the Accept-Language header. */',
   ]],
@@ -15508,6 +15549,8 @@ const allowed = new Map([
     '// rules the upload and WebDAV import paths enforce.',
     '// M-53b and the upload path both measure the quota the same way: WebDAV references',
     '// cost this deployment nothing.',
+    '// The outline proxy reads its GeoJSON from a pinned host too, so it takes the same hop-by-hop',
+    '// allowlist walk rather than writing a second one.',
   ]],
   ['src/worker/routes/music/keys.ts', [
     '// .mov and .m4v say video on their own; .mp4 and .webm carry either kind, so an',

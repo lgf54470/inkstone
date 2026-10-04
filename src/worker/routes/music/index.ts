@@ -45,3 +45,6 @@ export { isDerivedMusicObjectKey, isWebdavRelativePath } from './keys'
 // M-53b and the upload path both measure the quota the same way: WebDAV references
 // cost this deployment nothing.
 export { isStoredMusicSource, storedMusicBytes } from './quota'
+// The outline proxy reads its GeoJSON from a pinned host too, so it takes the same hop-by-hop
+// allowlist walk rather than writing a second one.
+export { fetchAllowedResource } from './outbound'

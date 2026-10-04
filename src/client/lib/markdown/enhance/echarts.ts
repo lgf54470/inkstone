@@ -4,6 +4,8 @@ import { t, type MessageKey } from '../../i18n'
 import { fenceBody } from '../fence-bodies'
 import { decodeDataValue } from '../data-attr'
 import { chartTableFromElement, chartTableText } from '../chart'
+import { chartPaletteKey } from '../chart'
+import { applyChartPalette } from '../echarts'
 import {
   EchartsOptionError,
   EchartsTableError,
@@ -92,8 +94,9 @@ function watchEchartsSize(node: EchartsNode, container: HTMLElement, chart: Echa
 interface EchartsDraw {
   /** Whether this surface honours a fence's request to run JavaScript. */
   allowScript: boolean
-  /** The resolved theme, carried in the cache key only: the colours themselves come from the tokens. */
-  themeKey: 'd' | 'l'
+  /** Which theme to draw for. The colours are read at draw time; this only picks the lightness
+   * direction of the accent ramp. */
+  dark: boolean
   /** Whether to draw without the entrance animation, for the surface that reads the pixels. */
   instant: boolean
 }
@@ -103,7 +106,7 @@ function withDrawMode(option: unknown, instant: boolean): unknown {
   return { animation: false, ...(option as Record<string, unknown>) }
 }
 
-async function drawInto(root: HTMLElement, node: EchartsNode, option: unknown, signature: string): Promise<void> {
+async function drawInto(root: HTMLElement, node: EchartsNode, option: unknown, dark: boolean, signature: string): Promise<void> {
   const { createEchartsChart } = await withTimeout(loadEcharts(), ECHARTS_RENDER_TIMEOUT_MS, t('markdown.echarts_render_failed'))
   if (!root.contains(node)) return
   destroyEchartsInstance(node)
@@ -112,7 +115,7 @@ async function drawInto(root: HTMLElement, node: EchartsNode, option: unknown, s
   const container = document.createElement('div')
   container.className = 'echarts-container'
   node.replaceChildren(container)
-  node.__echartsChart = createEchartsChart(container, option)
+  node.__echartsChart = createEchartsChart(container, option, dark)
   watchEchartsSize(node, container, node.__echartsChart)
   node.dataset.rendered = signature
 }
@@ -178,7 +181,9 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: Ech
   const source = sourceOf(node)
   if (!source) return
   const allowScript = draw.allowScript && source.asksForScript
-  const signature = `${draw.themeKey}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}`
+  // The palette is in the key, not just the light mode: the accent is switchable per account, and a
+  // chart that kept its old colours after it moved would be the frozen-at-creation regression.
+  const signature = `${chartPaletteKey(draw.dark)}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}`
   if (node.dataset.rendered === signature && node.__echartsChart) return
   let option: unknown
   let mapSource: string | null = null
@@ -196,7 +201,7 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: Ech
       const { registerEchartsMap } = await loadEcharts()
       registerEchartsMap(MAP_SERIES_NAME, await loadMapGeometry(mapSource))
     }
-    await drawInto(root, node, withDrawMode(option, draw.instant), signature)
+    await drawInto(root, node, applyChartPalette(withDrawMode(option, draw.instant), draw.dark), draw.dark, signature)
   }
   catch (err) {
     if (!root.contains(node)) return
@@ -221,7 +226,7 @@ export async function renderEcharts(root: HTMLElement, draw: EchartsDraw): Promi
  * the fence's `js` marker is a request from the person writing the note.
  */
 export async function renderStaticEcharts(root: HTMLElement, dark: boolean): Promise<void> {
-  await renderEcharts(root, { allowScript: false, themeKey: dark ? 'd' : 'l', instant: true })
+  await renderEcharts(root, { allowScript: false, dark, instant: true })
 }
 
 /**

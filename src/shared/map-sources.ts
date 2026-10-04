@@ -15,6 +15,16 @@ export const MAP_SOURCE_HOSTS = ['geo.datav.aliyun.com'] as const
 /** The largest outline payload a block will read, so one cell cannot ask for an unbounded download. */
 export const MAP_MAX_BYTES = 4_000_000
 
+/**
+ * Where a browser asks for an outline. Same origin, so no third-party connection is needed and the
+ * page's `connect-src` stays closed; the Worker is the one that reads the allowlisted host.
+ */
+export const MAP_GEOMETRY_PATH = '/api/map-geojson'
+
+export function mapGeometryUrl(source: string): string {
+  return `${MAP_GEOMETRY_PATH}?source=${encodeURIComponent(source)}`
+}
+
 export function isAllowedMapSource(raw: string): boolean {
   let url: URL
   try {

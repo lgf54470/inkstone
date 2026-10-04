@@ -2,7 +2,7 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../data-attr'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
-import { ChartConfigError, readChartBody } from '../chart'
+import { ChartConfigError, chartPalette, chartPaletteKey, readChartBody } from '../chart'
 import { shortHash, withTimeout } from './util'
 
 const CHARTJS_TEXT_COLORS = { dark: '#94a3b8', light: '#64748b' } as const
@@ -85,8 +85,31 @@ function themedScales(userScales: Record<string, unknown>, textColor: string, gr
   return scales
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * Colours the series the note left uncoloured. chart.js's own default palette is a rainbow nobody
+ * chose for this page, so an unstyled dataset takes the accent ramp instead — but a note that named
+ * its own colours keeps them, because that is a statement about the data, not an omission.
+ */
+function themedDatasets(datasets: unknown, palette: string[]): unknown {
+  if (!Array.isArray(datasets)) return datasets
+  return datasets.map((raw, index) => {
+    if (!isRecord(raw)) return raw
+    const colour = palette[index % palette.length]
+    const next: Record<string, unknown> = { ...raw }
+    if (next.backgroundColor === undefined) next.backgroundColor = colour
+    if (next.borderColor === undefined) next.borderColor = colour
+    return next
+  })
+}
+
 function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized: boolean, instant: boolean): Record<string, unknown> {
   const { text, grid } = chartThemeColors(dark)
+  const palette = chartPalette(dark)
+  const data = isRecord(config.data) ? config.data : null
   const userOptions = (config.options && typeof config.options === 'object' ? config.options : {}) as Record<string, unknown>
   const userScales = (userOptions.scales && typeof userOptions.scales === 'object' ? userOptions.scales : {}) as Record<string, unknown>
   const userPlugins = (userOptions.plugins && typeof userOptions.plugins === 'object' ? userOptions.plugins : {}) as Record<string, unknown>
@@ -119,7 +142,9 @@ function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized:
   // deck's sheet is resized exactly as it is handed to the print pipeline (the webfonts land and the
   // pages reflow), so a print could catch an empty chart box on a page that looked finished.
   if (instant) options.animation = false
-  return { ...config, options }
+  const next: Record<string, unknown> = { ...config, options }
+  if (data) next.data = { ...data, datasets: themedDatasets(data.datasets, palette) }
+  return next
 }
 
 // The size the chart really has: the container's layout box. Chart.js measures a responsive chart
@@ -210,7 +235,9 @@ export async function renderChartJs(root: HTMLElement, dark: boolean, { instant 
   const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')]
   for (const node of nodes) {
     const raw = decodeDataValue(node.dataset.chart)
-    const signature = `${dark ? 'd' : 'l'}:${raw.length}:${shortHash(raw)}`
+    // The accent is in the key beside the light mode: it is switchable per account, and a chart that
+  // kept the colours it read before it moved is the frozen-at-creation regression ADR-0002 §5 names.
+    const signature = `${chartPaletteKey(dark)}:${raw.length}:${shortHash(raw)}`
     if (node.dataset.rendered === signature && hasLiveChart(node))
       continue
     await renderChartNode(root, node, raw, signature, dark, instant)
