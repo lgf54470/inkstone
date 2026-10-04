@@ -4,9 +4,13 @@ import { commentsIn } from './lib/comment-scan.mjs'
 
 const allowed = new Map([
   ['pwa.config.ts', [
+    '/**\n * The modules the signed-in boot walks through, matched by **membership** rather than by a chunk\'s\n * facade: the bundler gives the shell chunk no facade at all (it is a merged chunk named after one\n * of its modules), so a `facadeModuleId` test could never see it no matter how the path was spelled.\n * Verified against the 2026-10-05 build: `shell-*.js` carries `workspaceSplitRatio` and is absent\n * from the facade list entirely, while `assets/shell-D1H5cajP.js` — the only chunk whose facade does\n * contain "shell" — is a lucide icon.\n *\n * These used to be written as `App.tsx` / `AppShell.tsx` / `Workspace.tsx` and flat locale files.\n * None of those paths exist (real names are kebab-case, the shell and workspace are reached through\n * their directory barrels, and a locale is a directory of 44 namespace files), and the match was a\n * case-sensitive `endsWith`, so all five silently matched nothing: the offline shell covered only\n * the 12 document chunks and every surface past `main.tsx` — including the two awaited locale\n * bundles — went to the network on every start.\n */',
     '// Cap for the per-track offline audio cache inside the service worker: when a',
     '// new save would cross it, the oldest-saved tracks are evicted first.',
     '/**\n * lucide ships one module per icon and the links picker loads them one at a time (ENG-11), so the\n * client build emits a chunk per icon. They belong in the app, not in the offline manifest: listing\n * ~1,700 of them would grow this service worker by tens of kilobytes and make every warm pass fetch\n * each one in turn, which is more than the offline copy of an icon is worth. An icon that has been\n * drawn is kept by the browser\'s own cache of the immutable asset, so the offline gap is limited to\n * icons a reader never saw while online.\n */',
+    '// A core module that matches no chunk means the boot path is not being precached — the failure',
+    '// that went unnoticed for releases because it only printed a warning. Stop the build instead.',
+    '/** Which of the boot modules this chunk holds a piece of. */',
   ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
@@ -19185,6 +19189,9 @@ const allowed = new Map([
   ]],
   ['tests/kanban-view-live-fields.test.ts', [
     '/**\n * KanbanView is persisted fence data: a declared field nobody reads is a dead\n * contract (review #19 left seven of them behind). Every field of the\n * KanbanView interface must be accessed (`view.<field>`) somewhere in the\n * client outside types.ts, so the next config knob ships wired or not at all.\n */',
+  ]],
+  ['tests/lib/pwa-core-files.test.ts', [
+    '/**\n * The offline shell has to cover the modules the signed-in boot walks through, and the bundler gives\n * the app-shell chunk no facade at all — it is a merged chunk named after one of its modules. The\n * matcher used to test `facadeModuleId.endsWith(...)`, so five paths that did not even exist matched\n * nothing, the whole thing degraded to the 12 document chunks, and it printed a warning nobody read.\n *\n * These cases hold both halves of the fix: matching by the modules a chunk actually contains, and\n * refusing the build when a boot module ends up in no chunk at all.\n */',
   ]],
   ['tests/logout-offline-audio.test.ts', [
     '/**\n * Offline audio is private content the service worker caches on this device\n * (features/music plan FEAT-10). It must not outlive the account that saved\n * it, so the logout flow has to clear that cache — and it has to happen after\n * the local database wipe, never inside a branch that logout can return from\n * early. logoutImpl itself is tangled in settings flushing, session caching\n * and location.reload, none of which is cheap to mount; this source-order\n * guard keeps the privacy invariant pinned the same way the fullscreen policy\n * test pins its ownership rule.\n */',
