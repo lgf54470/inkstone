@@ -62,8 +62,10 @@ async function ensureLocaleLoaded(target: AppLocale): Promise<void> {
 export async function initI18n(): Promise<void> {
   if (initPromise) return initPromise
   initPromise = (async () => {
-    await ensureLocaleLoaded('en-US')
-    if (locale !== 'en-US') await ensureLocaleLoaded(locale)
+    // Both, at once. `en-US` is what `t()` falls back through and what the reverse key map is built
+    // from, so a Chinese reader needs it too — but needing both is not a reason to start the second
+    // request a round trip after the first. For an English reader the second call is a no-op.
+    await Promise.all([ensureLocaleLoaded('en-US'), ensureLocaleLoaded(locale)])
     // Preload the other locale in background for instant switching, but don't block init.
     // Best-effort by design, and so it is caught rather than left floating: the loader is a
     // dynamic import, which rejects when the machine is out of memory or the chunk is missing at
@@ -191,4 +193,3 @@ function applyLocaleToDom(): void {
   if (bootLabel)
     bootLabel.textContent = t('app.boot_label')
 }
-applyLocaleToDom()

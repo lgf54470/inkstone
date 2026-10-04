@@ -11783,6 +11783,9 @@ const allowed = new Map([
   ['src/client/lib/hotkeys.ts', [
     '// Gate consulted after the combo matched; returning false leaves the key to the page.',
   ]],
+  ['src/client/lib/i18n-boot.test.ts', [
+    '/**\n * Two boot-path properties of the locale layer, neither of which anything else in the suite holds:\n *\n * 1. A Chinese reader needs *both* bundles — `en-US` is the fallback `t()` reads through and the\n *    source of the reverse key map — but needing both is not the same as fetching one after the\n *    other. Serialized, the second request starts a full round trip late.\n * 2. Writing the translated `<title>` must not happen before the messages exist. The module used to\n *    call `applyLocaleToDom()` at evaluation time, which replaced the value the inline script in\n *    `index.html` had just written with the literal string `app.document_title`.\n */',
+  ]],
   ['src/client/lib/i18n.test.ts', [
     '// A music failure carries its own code, so the reader gets the reason it actually hit:',
     '// borrowing the generic sentence for that status rewrote the story (a full playlist came',
@@ -11799,6 +11802,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/i18n.ts', [
     '/** Provides typed runtime localization with on-demand locale loading. */',
+    '// Both, at once. `en-US` is what `t()` falls back through and what the reverse key map is built',
+    '// from, so a Chinese reader needs it too — but needing both is not a reason to start the second',
+    '// request a round trip after the first. For an English reader the second call is a no-op.',
     '// Preload the other locale in background for instant switching, but don\'t block init.',
     '// Best-effort by design, and so it is caught rather than left floating: the loader is a',
     '// dynamic import, which rejects when the machine is out of memory or the chunk is missing at',
