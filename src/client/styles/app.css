@@ -1,4 +1,7 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
+
+@source '../../client';
+@source '../../shared';
 @import './tokens.css';
 @import './editor.css';
 @import './prose/container.css';
@@ -21,7 +24,6 @@
 @import './presentation.css';
 @import './share.css';
 @import './motion.css';
-
 
 @theme inline {
   --color-sunken: var(--bg-sunken);
@@ -69,7 +71,6 @@
   --ease-out: var(--ease-out);
   --ease-spring: var(--ease-spring);
 }
-
 
 @layer base {
   *,
@@ -156,7 +157,6 @@
     color: var(--text-quaternary);
   }
 
-
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border-strong) transparent;
@@ -183,7 +183,6 @@
   ::-webkit-scrollbar-corner {
     background: transparent;
   }
-
 
   html.theme-transition body {
     transition: background-color var(--dur-base) var(--ease-out);
@@ -221,7 +220,6 @@
   }
 }
 
-
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -252,7 +250,6 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
 
   .ink-slider {
     --pct: 50%;
@@ -301,7 +298,6 @@
     border: 1.5px solid var(--accent);
   }
 
-
   .panel {
     background: var(--bg-overlay);
     border: 1px solid var(--border-default);
@@ -309,8 +305,6 @@
     box-shadow: var(--shadow-pop);
   }
 }
-
-
 
 @media (hover: none) {
   .hover-only:hover {

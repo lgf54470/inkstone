@@ -139,6 +139,18 @@
 **改**：给 `src/client/styles/app.css` 加显式 `@source` 限定，把扫描集从整仓 `**/*`（2 676 文件 / 29 MiB）收到真正的 class 来源：`@source ../../client`、`@source ../../shared`，以及需要扫的 `.mjs` 门禁脚本**明确排除**（`scripts/check-comments.mjs` 2.27 MB、`e2e-visual.mjs` 678 KB 是最重的两个被扫文件）。
 
 **这条同时解决一个既有工程痛点**：AGENTS.md 与多处记忆里反复出现「门禁期间不能改文件，否则 Tailwind 重扫重出 `app.css`、页面在 `page.evaluate` 中途跳转」。**扫描集收窄后，改 `.md` 台账不再触发重扫**——那是白捡的收益。
+**本批实际采用的验收（已跑通，记下来供复现）**：不靠肉眼看 CSS 体积，而是拿产物证明没掉样式——
+① 取改动前全部 `*.css` 的 class 选择器集合为基线（3 249 条）；② 收窄后重建，逐条比对：
+`src/client` + `src/shared` 里非测试 `.tsx/.ts` 的 1 561 个 `className` token 中，
+「基线有、新产物没有」的为 **0 条**；③ 被丢的 146 条里挑 11 个可疑项（`mb-8`、`h-22`、`w-8`、
+`scale-95`、`cursor-not-allowed`、`bg-black/60`、`p-8`、`border-white` 等）在 `src/` 里按
+带引号的独立 class 串 grep，**零命中**——它们来自 `blog-frontend` 的 `.astro`（那边有自己的
+Tailwind 构建）与文档正文。结果 initial CSS 283 474 → 270 924 raw、43 683 → 41 724 gzip。
+④ 尾注：`@source` 的 rationale 不能写在 `app.css` 里——`comments:check` 全面禁止 CSS 注释
+（整个 `src/client/styles/` 零注释），理由只能活在提交信息与本文件里。
+**后续可自动化**：把上面 ② 那条「src 内 className token 必须全部仍被生成」做成门禁脚本，
+`@source` 被人改宽或改窄时即失败，而不是靠下次有人重跑这套比对。
+
 **风险**：**把 `@source` 写窄了会掉样式**（生产产物里用到的 class 若来自被排除的文件，就会不生成）。所以必须：改完 `npm run build` 后比对 CSS 产物（项目已有 `check-token-drift.mjs --update-baseline` 的同类机制可借鉴），并跑 `scripts/e2e-visual.mjs` 与 `check-contrast.mjs` 确认没有元素失去样式。**这条要在提交信息里写清「扫描集收窄的判据是产物 class 数不降」**。
 **顺带**：`app.css` 无条件 `@import` 全部 feature CSS（审查 §6.2，上一轮量得 277 KiB）。首屏样式表 43.7 KiB gz 里有多少属于「这台机器根本没开过音乐/看板/放映」，B9 顺手量一次；真要拆是另一批，本批只记账。
 
