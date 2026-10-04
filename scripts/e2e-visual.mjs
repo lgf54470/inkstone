@@ -674,23 +674,34 @@ async function assertPresentationPages(page) {
   check('presentation pages: the bar measures the same page list the rail walks', Math.abs(barFirst.percent - expectBar(barFirst)) <= 1 && Math.abs(barSecond.percent - expectBar(barSecond)) <= 1, JSON.stringify({ first: barFirst, second: barSecond }))
   check('presentation pages: two pages of one slide move the bar', barFirst.percent !== barSecond.percent && barSecond.percent > barFirst.percent, JSON.stringify({ first: barFirst.percent, second: barSecond.percent }))
 
-  // The list renders the same prepared markup the projector shows — diagrams and math included —
-  // and keeps doing so when the theme changes mid-talk, which is what happens to anyone on the
-  // "system" setting when the OS flips. The deck is re-prepared for the new theme, so this polls
-  // for the list to catch up instead of asserting on the frame right after the flip.
+  // The list renders the same prepared markup the projector shows — diagrams and math included — and
+  // keeps doing so when the theme changes mid-talk, which is what happens to anyone on the "system"
+  // setting when the OS flips. The deck is re-prepared for the new theme, so this polls for the list to
+  // catch up instead of asserting on the frame right after the flip. The comparison is page against
+  // page (L-1): the projector keeps a slide's other pages in the DOM behind `visibility: hidden` so
+  // chart.js never re-measures them, while a card holds one page of sliced markup, so the two can only
+  // ever agree about the page the show is standing on.
   await jumpToFirstPage(page)
-  const prepared = await waitForRenderedMarkup(page)
-  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `drawn=${prepared.drawn} stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
+  const prepared = await waitForDeckArtifacts(page)
+  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `drawn=${prepared.drawn} stage=${describeArtifacts(prepared.stagePage)} thumb=${describeArtifacts(prepared.thumb)}`)
   check('presentation pages: the projector draws the chart on its own canvas', prepared.stage.live && prepared.stage.painted > 0, describeArtifacts(prepared.stage))
-  check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, `drawn=${prepared.drawn} ${describeArtifacts(prepared.thumb)}`)
+  // The chart and the math of this slide land on the page the show is not looking at, so the picture the
+  // list owes the reader is asked of the card that carries them — walked to, then read the same way.
+  const chartCard = prepared.cards.find((entry) => entry.art.charts > 0)
+  check('presentation pages: the page that carries the chart is listed beside the others', Boolean(chartCard), JSON.stringify(prepared.cards.map((entry) => ({ sub: entry.sub, drawn: entry.drawn, charts: entry.art.charts, still: entry.art.still }))))
+  const onChart = await waitForPageArtifacts(page, prepared.slide, chartCard?.sub ?? 0)
+  check('presentation pages: the slide list shows the chart as a picture', onChart.thumb.still > 0, `drawn=${onChart.drawn} ${describeArtifacts(onChart.thumb)}`)
   const stillPixels = await readStillPixels(page)
-  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels} drawn=${prepared.drawn}`)
+  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels} drawn=${onChart.drawn}`)
+  check('presentation pages: the card of that page agrees with the projector on it', sameArtifacts(onChart), `drawn=${onChart.drawn} stage=${describeArtifacts(onChart.stagePage)} thumb=${describeArtifacts(onChart.thumb)}`)
+  await clickPageEntry(page, prepared.slide, 0)
 
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
   await sleep(400)
   check('presentation pages: the system theme flip reaches the show', (await readRenderedMarkup(page)).theme === 'dark')
-  const flipped = await waitForRenderedMarkup(page)
-  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `drawn=${flipped.drawn} stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
+  const flipped = await waitForDeckArtifacts(page)
+  const flippedChart = flipped.cards.find((entry) => entry.art.charts > 0)
+  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped) && Boolean(flippedChart) && flippedChart.art.still > 0, `drawn=${flipped.drawn} stage=${describeArtifacts(flipped.stagePage)} thumb=${describeArtifacts(flipped.thumb)} cards=${JSON.stringify(flipped.cards.map((entry) => `${entry.sub}:${entry.drawn}/${entry.art.charts}/${entry.art.still}`))}`)
   await page.emulateMediaFeatures([])
 
   // The slide canvas is scaled with a CSS transform, so a chart must not measure through it: the
@@ -3371,11 +3382,17 @@ async function jumpToFirstPage(page) {
 // `painted` samples the chart's canvas for non-transparent pixels: a chart block whose canvas was
 // never drawn (the cached-markup path used to trust a serialized "already rendered" marker) has
 // the right box and no drawing, which is exactly the failure this reads out.
+// The stage and a card are only comparable page against page. The projector keeps a slide's other
+// pages in the DOM behind `visibility: hidden` — a diagram that was only hidden keeps the canvas it
+// drew — while a card holds one page of sliced markup, so `stage` reads everything the canvas holds
+// (that is what the projector's own live chart is found in) and `stagePage` reads the blocks this page
+// reveals, which is what the card of this page must match. `cards` lists every page of the slide the
+// list is on, since the chart and the math can belong to a page the show has not walked to.
 async function readRenderedMarkup(page) {
   return page.evaluate(() => {
-    const count = (root, selector) => root?.querySelectorAll(selector).length ?? 0
-    const painted = (root) => {
-      const canvas = root?.querySelector('[data-chart] canvas')
+    const count = (roots, selector) => roots.reduce((total, root) => total + root.querySelectorAll(selector).length, 0)
+    const painted = (roots) => {
+      const canvas = roots.map((root) => root.querySelector('[data-chart] canvas')).find(Boolean)
       if (!canvas) return 0
       try {
         const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
@@ -3386,27 +3403,38 @@ async function readRenderedMarkup(page) {
         return -1
       }
     }
-    const artifacts = (root) => ({
-      svg: count(root, 'svg'),
-      katex: count(root, '.katex'),
+    const artifacts = (roots) => ({
+      svg: count(roots, 'svg'),
+      katex: count(roots, '.katex'),
       // The projector draws a chart live; the list and the printed page show the still the cache
       // holds, so a chart counts as present either way and `painted` tells the two apart.
-      charts: count(root, '[data-chart] canvas') + count(root, '[data-chart] img.chartjs-still'),
-      still: count(root, '[data-chart] img.chartjs-still'),
-      live: Boolean(root?.querySelector('[data-chart]')?.__chartInstance),
-      painted: painted(root),
+      charts: count(roots, '[data-chart] canvas') + count(roots, '[data-chart] img.chartjs-still'),
+      still: count(roots, '[data-chart] img.chartjs-still'),
+      live: roots.some((root) => Boolean(root.querySelector('[data-chart]')?.__chartInstance)),
+      painted: painted(roots),
     })
+    const only = (root) => (root ? [root] : [])
+    const revealed = (root) => (root ? [...root.children].filter((child) => child.style?.visibility !== 'hidden') : [])
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
     const card = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-selected="true"]')
-    const active = card?.querySelector('.ink-slide-thumb .ink-prose')
+    const prose = (entry) => entry?.querySelector('.ink-slide-thumb .ink-prose')
+    const slide = Number(card?.dataset.slideIndex ?? 0)
+    const cards = [...(panel?.querySelectorAll(`[data-presentation-rail] [data-slide-index="${slide}"]`) ?? [])].map((entry) => ({
+      sub: Number(entry.dataset.slidePage ?? 0),
+      drawn: entry.querySelector('[data-slide-thumb-draw]')?.dataset.slideThumbDraw ?? 'absent',
+      art: artifacts(only(prose(entry))),
+    }))
     return {
       theme: document.documentElement.dataset.theme ?? '',
+      slide,
       // Where the card's markup came from: the only reading that tells "the cache never held this
       // page" from "the cache holds it un-prepared" from "that page genuinely failed to enhance".
       drawn: card?.querySelector('[data-slide-thumb-draw]')?.dataset.slideThumbDraw ?? 'absent',
-      stage: artifacts(stage),
-      thumb: artifacts(active),
+      stage: artifacts(only(stage)),
+      stagePage: artifacts(revealed(stage)),
+      thumb: artifacts(only(prose(card))),
+      cards,
     }
   })
 }
@@ -3442,16 +3470,32 @@ async function readStillPixels(page) {
   })
 }
 
+// The card of the page the show stands on carries exactly what that page reveals on the projector —
+// and the page has to reveal something, or the two readings agree by being equally empty.
 function sameArtifacts(markup) {
-  return markup.stage.svg > 0 && markup.thumb.svg === markup.stage.svg && markup.thumb.katex === markup.stage.katex && markup.thumb.charts === markup.stage.charts
+  const page = markup.stagePage
+  return page.svg + page.katex + page.charts > 0 && markup.thumb.svg === page.svg && markup.thumb.katex === page.katex && markup.thumb.charts === page.charts
 }
 
 function describeArtifacts(artifacts) {
   return `svg=${artifacts.svg},katex=${artifacts.katex},charts=${artifacts.charts},live=${artifacts.live},painted=${artifacts.painted}`
 }
 
-// The deck is re-prepared one slide per idle slice, so the list catches up asynchronously.
-async function waitForRenderedMarkup(page) {
+// The deck is re-prepared one slide per idle slice, so the list catches up asynchronously. Both halves
+// have to arrive before the picture is asked about: this page's card agrees with what the projector
+// reveals on it, and some page of the slide has been drawn far enough to carry the chart.
+async function waitForDeckArtifacts(page) {
+  let markup = await readRenderedMarkup(page)
+  for (let attempt = 0; attempt < 40 && !(sameArtifacts(markup) && markup.cards.some((entry) => entry.art.charts > 0)); attempt++) {
+    await sleep(500)
+    markup = await readRenderedMarkup(page)
+  }
+  return markup
+}
+
+// Walks to one page of a slide and waits for that page's card to agree with the projector on it.
+async function waitForPageArtifacts(page, slide, sub) {
+  await clickPageEntry(page, slide, sub)
   let markup = await readRenderedMarkup(page)
   for (let attempt = 0; attempt < 30 && !sameArtifacts(markup); attempt++) {
     await sleep(500)
