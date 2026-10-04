@@ -44,16 +44,16 @@ export function LinkQrModal({ open, onClose, link }: LinkQrModalProps) {
       open={open}
       onClose={onClose}
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <QrCode size={16} className='text-[var(--accent)]' />
           <span>{t('blog.link_menu_qrcode')}</span>
         </div>
       }
       width={MODAL_WIDTH}
     >
-      <div className='flex flex-col items-center gap-4 py-3'>
+      <div className='flex flex-col items-center gap-[var(--sp-4)] py-[var(--sp-3)]'>
         <QrCardHeader link={link} />
-        <div className='p-4 bg-[var(--swatch-white)] rounded-[var(--r-lg)] shadow-sm border border-[var(--border-subtle)]'>
+        <div className='p-[var(--sp-4)] bg-[var(--swatch-white)] rounded-[var(--r-lg)] shadow-sm border border-[var(--border-subtle)]'>
           <QRCodeSVG value={link.url} size={190} level='M' />
         </div>
         <QrActions url={link.url} copied={copied} onCopy={handleCopy} />
@@ -64,7 +64,7 @@ export function LinkQrModal({ open, onClose, link }: LinkQrModalProps) {
 
 function QrCardHeader({ link }: { link: BlogLink }) {
   return (
-    <div className='flex items-center gap-2.5 max-w-xs'>
+    <div className='flex items-center gap-[var(--sp-2\\.5)] max-w-xs'>
       <div className='size-8 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--bg-sunken)] border border-[var(--border-subtle)]'>
         <LinkDynamicIcon icon={link.avatar} name={link.name} size={18} />
       </div>
@@ -83,7 +83,7 @@ function QrCardHeader({ link }: { link: BlogLink }) {
 function QrActions({ url, copied, onCopy }: { url: string; copied: boolean; onCopy: () => void }) {
   const safeOpenUrl = safeExternalUrl(url)
   return (
-    <div className='flex items-center gap-2 w-full pt-2'>
+    <div className='flex items-center gap-[var(--sp-2)] w-full pt-[var(--sp-2)]'>
       <Button variant='secondary' size='sm' className='flex-1 justify-center' onClick={onCopy}>
         {copied ? <Check size={14} className='text-[var(--success)]' /> : <Copy size={14} />}
         <span>{copied ? t('common.copied') : t('blog.link_menu_copy')}</span>

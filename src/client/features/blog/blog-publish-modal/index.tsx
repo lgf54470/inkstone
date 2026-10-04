@@ -37,7 +37,7 @@ function SlugField({ form }: { form: PublishForm }) {
   const hint = (
     <span className='flex flex-wrap items-center gap-x-2'>
       {slugAvailable === true && (
-        <span className='inline-flex items-center gap-1 text-[var(--success)]'>
+        <span className='inline-flex items-center gap-[var(--sp-1)] text-[var(--success)]'>
           <Check size={11} /> {t('blog.slug_available')}
         </span>
       )}
@@ -73,7 +73,7 @@ function CoverField({ form }: { form: PublishForm }) {
         <button
           type='button'
           onClick={() => setCoverUrl(firstImageInContent.url)}
-          className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--accent)] hover:underline'
+          className='inline-flex items-center gap-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--accent)] hover:underline'
         >
           <Sparkles size={11} />
           {t('blog.use_first_image')}
@@ -125,7 +125,7 @@ function CategoryField({ form }: { form: PublishForm }) {
 
 function PinRow({ form }: { form: PublishForm }) {
   return (
-    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2'>
+    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)]'>
       <div>
         <span className='block font-medium text-[var(--text-secondary)]'>{t('blog.pin_to_top')}</span>
         <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">
@@ -139,7 +139,7 @@ function PinRow({ form }: { form: PublishForm }) {
 
 function CommentsRow({ form }: { form: PublishForm }) {
   return (
-    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-3)]'>
       <div>
         <span className='block font-medium text-[var(--text-primary)]'>{t('blog.allow_comments')}</span>
         <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
@@ -155,8 +155,8 @@ function AvailableTagPicker({ form }: { form: PublishForm }) {
   const { availableTags, tags, setTags } = form
   if (availableTags.length === 0) return null
   return (
-    <div className='flex flex-wrap items-center gap-1 mb-2'>
-      <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)] mr-1">{t('blog.tags')}:</span>
+    <div className='flex flex-wrap items-center gap-[var(--sp-1)] mb-[var(--sp-2)]'>
+      <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)] mr-[var(--sp-1)]">{t('blog.tags')}:</span>
       {availableTags.map((at) => {
         const isSelected = tags.includes(at.name)
         return (
@@ -165,7 +165,7 @@ function AvailableTagPicker({ form }: { form: PublishForm }) {
             type='button'
             onClick={() => toggleTag(tags, at.name, setTags)}
             className={cn(
-              'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[length:var(--text-10\\.5)] transition-colors',
+              'inline-flex items-center gap-[var(--sp-0\\.5)] rounded px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-10\\.5)] transition-colors',
               isSelected
                 ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
                 : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
@@ -183,11 +183,11 @@ function AvailableTagPicker({ form }: { form: PublishForm }) {
 function SelectedTagList({ form }: { form: PublishForm }) {
   const { tags, handleRemoveTag } = form
   return (
-    <div className='flex flex-wrap gap-1.5 mb-2'>
+    <div className='flex flex-wrap gap-[var(--sp-1\\.5)] mb-[var(--sp-2)]'>
       {tags.map((tag) => (
         <span
           key={tag}
-          className='inline-flex items-center gap-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--accent)]'
+          className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--accent)]'
         >
           <Hash size={10} />
           {tag}
@@ -203,7 +203,7 @@ function SelectedTagList({ form }: { form: PublishForm }) {
 function TagComposer({ form }: { form: PublishForm }) {
   const { tagInput, setTagInput, handleAddTag } = form
   return (
-    <div className='flex gap-2'>
+    <div className='flex gap-[var(--sp-2)]'>
       <Input
         value={tagInput}
         onChange={(e) => setTagInput(e.target.value)}
@@ -229,7 +229,7 @@ function TagsSection({ form }: { form: PublishForm }) {
   // address one of the two, and the chips sit between the label and the input).
   return (
     <fieldset>
-      <legend className='mb-1 block font-medium text-[var(--text-secondary)]'>{t('blog.tags')}</legend>
+      <legend className='mb-[var(--sp-1)] block font-medium text-[var(--text-secondary)]'>{t('blog.tags')}</legend>
       <AvailableTagPicker form={form} />
       <SelectedTagList form={form} />
       <TagComposer form={form} />
@@ -265,18 +265,18 @@ function PublishFooter({
 }) {
   const { previewUrl, isSaving, handleSave } = form
   return (
-    <div className='flex items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3'>
+    <div className='flex items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)] py-[var(--sp-3)]'>
       <a
         href={previewUrl}
         target='_blank'
         rel='noopener noreferrer'
-        className='inline-flex items-center gap-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:text-[var(--accent)]'
+        className='inline-flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:text-[var(--accent)]'
       >
         <ExternalLink size={12} />
         <span>{t('blog.frontend_preview')}</span>
       </a>
 
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Button variant='ghost' size='sm' onClick={onClose} disabled={isSaving}>
           {t('common.cancel')}
         </Button>
@@ -326,8 +326,8 @@ export function BlogPublishModal({
       ariaLabel={editing ? t('blog.edit_modal_title') : t('blog.publish_modal_title')}
       className='p-0 overflow-hidden'
     >
-      <div className='flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
-        <div className='flex items-center gap-2'>
+      <div className='flex h-[var(--sp-12)] items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-4)] bg-[var(--bg-surface)]'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <Globe size={16} className='text-[var(--accent)]' />
           <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
             {editing ? t('blog.edit_modal_title') : t('blog.publish_modal_title')}
@@ -338,11 +338,11 @@ export function BlogPublishModal({
         </IconButton>
       </div>
 
-      <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\\.5)]">
+      <div className="max-h-[75vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12\\.5)]">
         <TitleField form={form} />
         <SlugField form={form} />
         <CoverField form={form} />
-        <div className='grid grid-cols-2 gap-4'>
+        <div className='grid grid-cols-2 gap-[var(--sp-4)]'>
           <FolderField form={form} />
           <CategoryField form={form} />
         </div>

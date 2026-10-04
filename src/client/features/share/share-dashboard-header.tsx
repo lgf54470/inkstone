@@ -14,7 +14,7 @@ type DashboardBundle = ReturnType<typeof useShareDashboardView>
 export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
   const { loadedAt } = bundle
   return (
-    <div className='flex flex-wrap items-center justify-between gap-3 pb-4'>
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-3)] pb-[var(--sp-4)]'>
       <div>
         <h2 className='text-[length:var(--text-18)] font-bold text-[var(--text-primary)]'>
           {t('share.analytics_dashboard_title')}
@@ -24,13 +24,13 @@ export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
         </p>
         {/* The dashboard reads every share, whatever folder or tag the sidebar has selected: saying
             so is the difference between a wrong number and a stated scope. */}
-        <p className='pt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <p className='pt-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t('share.analytics_dashboard_scope')}
         </p>
         {/* The age of what is on screen, stated rather than implied: without it a person cannot
             tell a quiet week from a tab opened before lunch. */}
         {loadedAt !== null && (
-          <p className='pt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          <p className='pt-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             {t('share.analytics_updated_at', { time: relativeTime(loadedAt) })}
           </p>
         )}
@@ -45,7 +45,7 @@ export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
 function DashboardControls({ bundle }: { bundle: DashboardBundle }) {
   const { range, setRange, isLoading, loadData, autoRefresh, setAutoRefresh, exportCsv, analytics } = bundle
   return (
-    <div className='flex items-center gap-2'>
+    <div className='flex items-center gap-[var(--sp-2)]'>
       <Segmented
         label={t('share.range_label')}
         options={rangeOptions()}
@@ -87,9 +87,9 @@ function DashboardControls({ bundle }: { bundle: DashboardBundle }) {
 export function FilterSummaryBanner({ bundle }: { bundle: DashboardBundle }) {
   const { filteredBots, filteredSelf, filteredOwner } = bundle
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
-      <div className='flex items-center gap-2'>
-        <span className='flex h-2 w-2 rounded-full bg-[var(--success)]' />
+    <div className="mb-[var(--sp-4)] flex flex-wrap items-center justify-between gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
+      <div className='flex items-center gap-[var(--sp-2)]'>
+        <span className='flex h-[var(--sp-2)] w-[var(--sp-2)] rounded-full bg-[var(--success)]' />
         <span>
           {t('share.filter_stats_summary', {
             bots: filteredBots,

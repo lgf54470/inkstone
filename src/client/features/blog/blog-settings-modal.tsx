@@ -28,7 +28,7 @@ export function BlogSettingsModal({
     >
       <SettingsModalHeader onClose={onClose} />
 
-      <div className='border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2'>
+      <div className='border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-4)] py-[var(--sp-2)]'>
         <Segmented
           label={t('blog.settings_tab_label')}
           value={form.activeTab}
@@ -41,7 +41,7 @@ export function BlogSettingsModal({
       </div>
 
       <form onSubmit={form.handleSave}>
-        <div className="max-h-[66vh] overflow-y-auto p-5 space-y-4 text-[length:var(--text-12\.5)]">
+        <div className="max-h-[66vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12\.5)]">
           {form.activeTab === 'traffic' ? (
             <TrafficSettingsTab form={form} />
           ) : (
@@ -57,8 +57,8 @@ export function BlogSettingsModal({
 
 function SettingsModalHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className='flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
-      <div className='flex items-center gap-2'>
+    <div className='flex h-[var(--sp-12)] items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-4)] bg-[var(--bg-surface)]'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Settings size={16} className='text-[var(--accent)]' />
         <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {t('blog.settings')}
@@ -73,12 +73,12 @@ function SettingsModalHeader({ onClose }: { onClose: () => void }) {
 
 function SettingsModalFooter({ isSaving, onClose }: { isSaving: boolean; onClose: () => void }) {
   return (
-    <div className='flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3'>
+    <div className='flex items-center justify-end gap-[var(--sp-2)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)] py-[var(--sp-3)]'>
       <Button variant='ghost' size='sm' type='button' onClick={onClose} disabled={isSaving}>
         {t('common.cancel')}
       </Button>
       <Button variant='primary' size='sm' type='submit' loading={isSaving}>
-        <Save size={13} className='mr-1' />
+        <Save size={13} className='mr-[var(--sp-1)]' />
         {t('blog.save_settings')}
       </Button>
     </div>
@@ -133,15 +133,15 @@ function TrafficSettingsTab({ form }: { form: SettingsFormBundle }) {
 
 function TrafficFiltersSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
-      <div className='flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-2)] pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
         <Shield size={15} className='text-[var(--success)]' />
         <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
           {t('share.settings_traffic_filter_title')}
         </h4>
       </div>
 
-      <div className='flex flex-col gap-3 pt-3'>
+      <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <FilterSwitchRow label={t('share.filter_exclude_bots')} hint={t('share.filter_exclude_bots_hint')} checked={form.bots} onChange={form.setBots} />
         <FilterSwitchRow label={t('share.filter_exclude_self')} hint={t('share.filter_exclude_self_hint')} checked={form.selfRef} onChange={form.setSelfRef} />
         <FilterSwitchRow label={t('share.filter_exclude_owner')} hint={t('share.filter_exclude_owner_hint')} checked={form.owner} onChange={form.setOwner} />
@@ -164,15 +164,15 @@ function FilterSwitchRow({ label, hint, checked, onChange }: { label: string; hi
 
 function RetentionSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
-      <div className='flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-2)] pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
         <Database size={15} className='text-[var(--accent)]' />
         <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
           {t('share.settings_retention_title')}
         </h4>
       </div>
 
-      <div className='flex flex-col gap-3 pt-3'>
+      <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <RetentionField
           label={t('share.retention_days_label')}
           valueLabel={form.retentionDays === '0' ? t('share.retention_unlimited') : t('share.retention_days_val', { days: form.retentionDays })}
@@ -209,7 +209,7 @@ function RetentionField({
   const labelId = useId()
   return (
     <div>
-      <div className='flex items-center justify-between pb-1.5'>
+      <div className='flex items-center justify-between pb-[var(--sp-1\\.5)]'>
         <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{valueLabel}</span>
       </div>
@@ -220,7 +220,7 @@ function RetentionField({
 
 function CleanupActions({ busy, onClean }: { busy: boolean; onClean: (type: 'bots' | 'older_than' | 'all') => Promise<void> }) {
   return (
-    <div className='flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border-subtle)]'>
+    <div className='flex flex-wrap items-center gap-[var(--sp-2)] pt-[var(--sp-2)] border-t border-[var(--border-subtle)]'>
       <Button size='sm' variant='secondary' type='button' onClick={() => void onClean('bots')} disabled={busy}>
         {t('share.clean_bots_only')}
       </Button>
@@ -254,12 +254,12 @@ function SiteSettingsTab({ form }: { form: SettingsFormBundle }) {
 
 function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
+    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-4)]'>
       <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
         {t('blog.site_basic_info')}
       </h3>
 
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('blog.site_name')}>
           <Input value={form.siteName} onChange={(e) => form.setSiteName(e.target.value)} placeholder={t('blog.site_name_placeholder')} />
         </Field>
@@ -277,12 +277,12 @@ function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
 
 function AuthorSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
+    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-4)]'>
       <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
         {t('blog.author_profile_settings')}
       </h3>
 
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('blog.author_name')}>
           <Input value={form.authorName} onChange={(e) => form.setAuthorName(e.target.value)} placeholder={t('blog.author_name_placeholder')} />
         </Field>
@@ -301,7 +301,7 @@ function AuthorSection({ form }: { form: SettingsFormBundle }) {
 function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
   const postsPerPageId = useId()
   return (
-    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
+    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-4)]'>
       <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
         {t('blog.comments_and_display_rules')}
       </h3>
@@ -314,7 +314,7 @@ function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
         <Switch checked={form.requireCommentApproval} onChange={form.setRequireCommentApproval} label={t('blog.require_approval')} />
       </div>
 
-      <div className='flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]'>
+      <div className='flex items-center justify-between pt-[var(--sp-2)] border-t border-[var(--border-subtle)]'>
         <div>
           <span id={postsPerPageId} className='block font-medium text-[var(--text-primary)]'>{t('blog.posts_per_page')}</span>
           <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('blog.posts_per_page_hint')}</span>
@@ -326,7 +326,7 @@ function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
           aria-labelledby={postsPerPageId}
           value={form.postsPerPage}
           onChange={(e) => form.setPostsPerPage(Number(e.target.value))}
-          className='w-16 text-center'
+          className='w-[var(--sp-16)] text-center'
         />
       </div>
     </div>
@@ -335,11 +335,11 @@ function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
 
 function SocialLinksSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
+    <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-4)]'>
       <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
         {t('blog.social_links')}
       </h3>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Input value={form.github} onChange={(e) => form.setGithub(e.target.value)} placeholder={t('blog.github_placeholder')} />
         <Input value={form.twitter} onChange={(e) => form.setTwitter(e.target.value)} placeholder={t('blog.twitter_placeholder')} />
         <Input value={form.email} onChange={(e) => form.setEmail(e.target.value)} placeholder={t('blog.email_placeholder')} />

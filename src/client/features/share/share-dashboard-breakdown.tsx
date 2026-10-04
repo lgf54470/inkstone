@@ -13,9 +13,9 @@ export function CountryBreakdownCard({ analytics, locale }: {
 }) {
   const topCountries = analytics?.topCountries ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<Globe2 size={15} className='text-[var(--accent)]' />} title={t('share.top_countries_title')} badge={t('share.visitor_geography')} />
-      <div className='space-y-2.5 pt-3'>
+      <div className='space-y-2.5 pt-[var(--sp-3)]'>
         {topCountries.length === 0 ? (
           <EmptyRow label={t('share.no_data_yet')} />
         ) : (
@@ -47,9 +47,9 @@ export function ReferrerBreakdownCard({ analytics, onOpenChannelLogs }: {
   const topReferrers = analytics?.topReferrers ?? []
   const channels = analytics?.channels ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<Compass size={15} className='text-[var(--accent)]' />} title={t('share.top_referrers_title')} badge={t('share.traffic_sources')} />
-      <div className='space-y-2.5 pt-3'>
+      <div className='space-y-2.5 pt-[var(--sp-3)]'>
         {topReferrers.length === 0 ? (
           <EmptyRow label={t('share.no_data_yet')} />
         ) : (
@@ -80,8 +80,8 @@ function ChannelSplit({ rows, onOpenLogs }: {
 }) {
   const hasMarker = rows.some((row) => !isReservedChannelName(row.name))
   return (
-    <div className='mt-3 space-y-2.5 border-t border-[var(--border-subtle)] pt-3'>
-      <p className='flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
+    <div className='mt-[var(--sp-3)] space-y-2.5 border-t border-[var(--border-subtle)] pt-[var(--sp-3)]'>
+      <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
         <Tag size={12} aria-hidden />
         {t('share.channel_section_title')}
       </p>
@@ -119,9 +119,9 @@ export function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnal
   const devices = analytics?.devices ?? []
   const osList = analytics?.osList ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<Laptop size={15} className='text-[var(--accent)]' />} title={t('share.devices_and_systems')} badge={t('share.client_environment')} />
-      <div className='space-y-3 pt-3'>
+      <div className='space-y-3 pt-[var(--sp-3)]'>
         {devices.length === 0 && osList.length === 0 ? <EmptyRow label={t('share.no_data_yet')} /> : (<>
           <p className='text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
             {t('share.device_type')}
@@ -137,7 +137,7 @@ export function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnal
             ))}
           </div>
 
-          <p className='pt-2 text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
+          <p className='pt-[var(--sp-2)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
             {t('share.operating_system')}
           </p>
           <div className='space-y-2'>

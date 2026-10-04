@@ -47,9 +47,9 @@ export const SlideCodeBlock = memo(function SlideCodeBlock({
     <div
       data-slide-code
       style={codePaletteVars(palette)}
-      className='size-full overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-4 font-mono text-sm'
+      className='size-full overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-[var(--sp-4)] font-mono text-sm'
     >
-      <div className='mb-2 flex items-center justify-between border-b border-[var(--border-subtle)] pb-1 text-xs text-[var(--text-tertiary)]'>
+      <div className='mb-[var(--sp-2)] flex items-center justify-between border-b border-[var(--border-subtle)] pb-[var(--sp-1)] text-xs text-[var(--text-tertiary)]'>
         <span>{highlighted?.language || el.lang || 'code'}</span>
       </div>
       <pre className='overflow-x-auto text-[var(--text-primary)]'>

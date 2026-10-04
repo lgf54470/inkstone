@@ -25,7 +25,7 @@ export function LinkImportExportModal(props: LinkImportExportModalProps) {
 
   return (
     <Modal open={props.open} onClose={props.onClose} title={t('blog.link_import_export')} width={MODAL_WIDTH}>
-      <div className='space-y-4 py-1'>
+      <div className='space-y-4 py-[var(--sp-1)]'>
         <ImportExportHeader
           activeTab={state.activeTab}
           setActiveTab={state.setActiveTab}
@@ -72,7 +72,7 @@ function ImportExportHeader({
         <button
           type='button'
           onClick={() => setActiveTab('import')}
-          className={`px-4 py-2 text-[length:var(--text-13)] font-medium border-b-2 ${
+          className={`px-[var(--sp-4)] py-[var(--sp-2)] text-[length:var(--text-13)] font-medium border-b-2 ${
             activeTab === 'import' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
@@ -81,7 +81,7 @@ function ImportExportHeader({
         <button
           type='button'
           onClick={() => setActiveTab('export')}
-          className={`px-4 py-2 text-[length:var(--text-13)] font-medium border-b-2 ${
+          className={`px-[var(--sp-4)] py-[var(--sp-2)] text-[length:var(--text-13)] font-medium border-b-2 ${
             activeTab === 'export' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
@@ -89,7 +89,7 @@ function ImportExportHeader({
         </button>
       </div>
 
-      <div className='flex gap-2'>
+      <div className='flex gap-[var(--sp-2)]'>
         <FormatSelectButton current={format} target='json' label={t('blog.link_import_format_json')} icon={<FileJson size={14} />} onSelect={setFormat} />
         <FormatSelectButton current={format} target='html' label={t('blog.link_import_format_html')} icon={<FileText size={14} />} onSelect={setFormat} />
         <FormatSelectButton current={format} target='csv' label={t('blog.link_import_format_csv')} icon={<FileSpreadsheet size={14} />} onSelect={setFormat} />
@@ -158,14 +158,14 @@ function LinkImportTab({
     <div className='space-y-3'>
       <div className='flex items-center justify-between'>
         <span className='text-[length:var(--text-12)] text-[var(--text-secondary)]'>{t('blog.link_import_paste_or_upload')}</span>
-        <label className='cursor-pointer inline-flex items-center gap-1 rounded bg-[var(--bg-sunken)] px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)]'>
+        <label className='cursor-pointer inline-flex items-center gap-[var(--sp-1)] rounded bg-[var(--bg-sunken)] px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)]'>
           <Upload size={12} />
           {t('blog.link_choose_file')}
           <input type='file' accept='.json,.html,.htm,.csv' className='hidden' onChange={handleFileUpload} />
         </label>
       </div>
       <Textarea value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder={placeholder} rows={8} className='font-mono text-[length:var(--text-11)]' />
-      <div className='flex justify-end gap-2 pt-2'>
+      <div className='flex justify-end gap-[var(--sp-2)] pt-[var(--sp-2)]'>
         <Button type='button' variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
         <Button type='button' variant='primary' loading={busy} disabled={!inputText.trim()} onClick={handleExecuteImport}>{t('blog.link_import_action')}</Button>
       </div>
@@ -182,11 +182,11 @@ function LinkExportTab({
   onClose: () => void
 }) {
   return (
-    <div className='space-y-4 py-2'>
+    <div className='space-y-4 py-[var(--sp-2)]'>
       <p className='text-[length:var(--text-12)] text-[var(--text-secondary)]'>
         {t('blog.links_subtitle')} ({t('blog.link_export_summary', { links: linksCount, categories: categoriesCount })})
       </p>
-      <div className='flex justify-end gap-2 pt-2'>
+      <div className='flex justify-end gap-[var(--sp-2)] pt-[var(--sp-2)]'>
         <Button type='button' variant='ghost' onClick={onClose}>{t('common.cancel')}</Button>
         <Button type='button' variant='primary' onClick={onExport}>
           <Download size={14} />
@@ -203,7 +203,7 @@ function FormatSelectButton({ current, target, label, icon, onSelect }: { curren
     <button
       type='button'
       onClick={() => onSelect(target)}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--r-sm)] text-[length:var(--text-11)] border transition-colors ${
+      className={`flex items-center gap-[var(--sp-1\\.5)] px-[var(--sp-2\\.5)] py-[var(--sp-1\\.5)] rounded-[var(--r-sm)] text-[length:var(--text-11)] border transition-colors ${
         isSelected
           ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
           : 'border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'

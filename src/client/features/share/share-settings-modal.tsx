@@ -24,7 +24,7 @@ export function ShareSettingsModal({
       open={open}
       onClose={onClose}
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <Settings size={16} className='text-[var(--accent)]' />
           <span>{t('share.settings_modal_title')}</span>
         </div>
@@ -32,7 +32,7 @@ export function ShareSettingsModal({
       description={t('share.settings_modal_desc')}
       width={MODAL_WIDTH}
       footer={
-        <div className='flex w-full items-center justify-end gap-2'>
+        <div className='flex w-full items-center justify-end gap-[var(--sp-2)]'>
           <Button size='sm' variant='ghost' onClick={onClose}>
             {t('common.cancel')}
           </Button>
@@ -42,7 +42,7 @@ export function ShareSettingsModal({
         </div>
       }
     >
-      <div className='flex flex-col gap-4'>
+      <div className='flex flex-col gap-[var(--sp-4)]'>
         <TrafficFilterSection bundle={bundle} />
         <RetentionSection bundle={bundle} />
         <HygieneSection bundle={bundle} />
@@ -56,7 +56,7 @@ function SectionHeader({ icon, title }: {
   title: string
 }) {
   return (
-    <div className='flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]'>
+    <div className='flex items-center gap-[var(--sp-2)] pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
       {icon}
       <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {title}
@@ -68,16 +68,16 @@ function SectionHeader({ icon, title }: {
 function TrafficFilterSection({ bundle }: { bundle: SettingsBundle }) {
   const { bots, setBots, selfRef, setSelfRef, owner, setOwner } = bundle
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
       <SectionHeader icon={<Shield size={15} className='text-[var(--success)]' />} title={t('share.settings_traffic_filter_title')} />
-      <div className='flex flex-col gap-3 pt-3'>
+      <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <SettingsSwitchRow title={t('share.filter_exclude_bots')} hint={t('share.filter_exclude_bots_hint')} checked={bots} onChange={setBots} />
         <SettingsSwitchRow title={t('share.filter_exclude_self')} hint={t('share.filter_exclude_self_hint')} checked={selfRef} onChange={setSelfRef} />
         <SettingsSwitchRow title={t('share.filter_exclude_owner')} hint={t('share.filter_exclude_owner_hint')} checked={owner} onChange={setOwner} />
       </div>
       {/* Where a setting is kept is part of what it means: the filters live in this browser, the
           retention below lives on the account. Saying it once per group is what makes Save honest. */}
-      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <p className='pt-[var(--sp-3)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('share.settings_stored_local')}
       </p>
     </div>
@@ -115,9 +115,9 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
     { value: '0', label: t('share.retention_unlimited') },
   ]
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
       <SectionHeader icon={<Database size={15} className='text-[var(--accent)]' />} title={t('share.settings_retention_title')} />
-      <div className='flex flex-col gap-3 pt-3'>
+      <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <RetentionField
           label={t('share.retention_days_label')}
           valueText={retentionDays === '0' ? t('share.retention_unlimited') : t('share.retention_days_val', { days: retentionDays })}
@@ -133,7 +133,7 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
       </div>
-      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <p className='pt-[var(--sp-3)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('share.settings_stored_account')}
       </p>
     </div>
@@ -151,9 +151,9 @@ function HygieneSection({ bundle }: { bundle: SettingsBundle }) {
     label: days === 0 ? t('share.stale_days_off') : t('share.stale_days_val', { days }),
   }))
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
       <SectionHeader icon={<MoonStar size={15} className='text-[var(--warning)]' />} title={t('share.settings_hygiene_title')} />
-      <div className='flex flex-col gap-3 pt-3'>
+      <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <RetentionField
           label={t('share.stale_days_label')}
           valueText={t('share.stale_days_val', { days: Number(staleLinkDays) })}
@@ -162,7 +162,7 @@ function HygieneSection({ bundle }: { bundle: SettingsBundle }) {
           options={options}
         />
       </div>
-      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <p className='pt-[var(--sp-3)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('share.settings_stored_account')}
       </p>
     </div>
@@ -179,7 +179,7 @@ function RetentionField({ label, valueText, value, onChange, options }: {
   const labelId = useId()
   return (
     <div>
-      <div className='flex items-center justify-between pb-1.5'>
+      <div className='flex items-center justify-between pb-[var(--sp-1\\.5)]'>
         <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
           {label}
         </span>
@@ -202,7 +202,7 @@ function CleanupActions({ isBusy, onClean }: {
   onClean: (type: 'bots' | 'older_than' | 'all') => void
 }) {
   return (
-    <div className='flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border-subtle)]'>
+    <div className='flex flex-wrap items-center gap-[var(--sp-2)] pt-[var(--sp-2)] border-t border-[var(--border-subtle)]'>
       <Button
         size='sm'
         variant='secondary'

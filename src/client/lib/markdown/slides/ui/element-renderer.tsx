@@ -248,7 +248,7 @@ function TableRenderer({ el }: { el: TableElement }) {
               {row.cells.map((cell, cIdx) => (
                 <td
                   key={`c-${cIdx}`}
-                  className={`p-3 text-sm ${cell.bold ? 'font-semibold' : ''}`}
+                  className={`p-[var(--sp-3)] text-sm ${cell.bold ? 'font-semibold' : ''}`}
                   dangerouslySetInnerHTML={{ __html: sanitizeSlideRichText(cell.html) }}
                 />
               ))}

@@ -85,7 +85,7 @@ export function TimelineRangeControls({
 }) {
   useLocaleRepaint()
   return (
-    <div className='flex items-center justify-between gap-3 pb-3'>
+    <div className='flex items-center justify-between gap-[var(--sp-3)] pb-[var(--sp-3)]'>
       <Segmented
         label={t('preview.kanban_timeline_scale')}
         size='sm'
@@ -132,13 +132,13 @@ export function TimelineDayHeader({ days, dayWidth }: { days: TimelineRange['day
           key={day.dateStr}
           data-timeline-day={day.dateStr}
           style={{ width: `${dayWidth}px` }}
-          className='flex h-12 shrink-0 items-center justify-center overflow-hidden border-r border-[var(--border-subtle)] text-[length:var(--text-11)]'
+          className='flex h-[var(--sp-12)] shrink-0 items-center justify-center overflow-hidden border-r border-[var(--border-subtle)] text-[length:var(--text-11)]'
         >
           {day.label !== '' && (
             <span
               className={
                 day.isToday
-                  ? 'rounded-full bg-[var(--accent)] px-1.5 py-0.5 font-bold text-[var(--accent-contrast)]'
+                  ? 'rounded-full bg-[var(--accent)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-bold text-[var(--accent-contrast)]'
                   : 'truncate text-[var(--text-tertiary)]'
               }
             >
@@ -170,7 +170,7 @@ export function TimelineUndatedList({
   if (items.length === 0) return null
   return (
     <div data-kanban-timeline-undated className='border-t border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
-      <div className='px-3 py-2 text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
+      <div className='px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
         {t('preview.kanban_timeline_undated', { count: items.length })}
       </div>
       <ul className='flex flex-col'>
@@ -198,7 +198,7 @@ export function TimelineUndatedList({
 export function TimelineClippedNotice({ days }: { days: number }) {
   useLocaleRepaint()
   return (
-    <p data-kanban-timeline-clipped role='status' className='pb-2 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+    <p data-kanban-timeline-clipped role='status' className='pb-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
       {t('preview.kanban_timeline_clipped', { days })}
     </p>
   )

@@ -11,7 +11,7 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
   // the card says so rather than printing the zero that count produces.
   const fingerprints = useSession((s) => s.site?.visitorFingerprints ?? true)
   return (
-    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+    <div className='grid grid-cols-1 gap-[var(--sp-3)] sm:grid-cols-2 lg:grid-cols-4'>
       <KpiCard
         icon={<MousePointerClick size={16} className='text-[var(--accent)]' />}
         label={t('share.total_views_pv')}
@@ -47,19 +47,19 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
 /** How many shares are live right now, against how many exist — the one share-shaped KPI. */
 function ActiveSharesCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
   return (
-    <div className='flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5 shadow-[var(--shadow-soft)]'>
+    <div className='flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center justify-between text-[var(--text-tertiary)]'>
         <span className='text-[length:var(--text-12)] font-medium'>{t('share.active_shares_count')}</span>
         <Globe2 size={16} className='text-[var(--accent)]' />
       </div>
-      <div className='pt-2'>
+      <div className='pt-[var(--sp-2)]'>
         <div className='text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]'>
           {analytics?.activeShares ?? 0}
-          <span className='ml-1.5 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)]'>
+          <span className='ml-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)]'>
             / {analytics?.totalShares ?? 0} {t('share.shares_unit')}
           </span>
         </div>
-        <p className='pt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <p className='pt-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t('share.active_shares_hint')}
         </p>
       </div>

@@ -5,7 +5,7 @@
  */
 import type { KanbanProperty } from './types'
 
-// The narrowest column the table already draws by default is the checkbox at `w-16`, so a resize
+// The narrowest column the table already draws by default is the checkbox at `w-[var(--sp-16)]`, so a resize
 // never offers a width the layout would not have accepted on its own.
 export const KANBAN_COLUMN_MIN_WIDTH = 64
 

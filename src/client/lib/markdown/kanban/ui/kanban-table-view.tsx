@@ -47,7 +47,7 @@ function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggle
   const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
     <div role='row' className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
-      <div role='columnheader' className='w-10 shrink-0 p-2.5 text-center'>
+      <div role='columnheader' className='w-[var(--sp-10)] shrink-0 p-[var(--sp-2\\.5)] text-center'>
         <input
           type='checkbox'
           checked={isAllSelected}
@@ -130,7 +130,7 @@ function TableGroupList({
 }: TableGroupListProps) {
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
   return (
-    <div role='presentation' className='p-3'>
+    <div role='presentation' className='p-[var(--sp-3)]'>
       {groups.map((group) => (
         <KanbanTableGroup
           key={group.groupKey}
@@ -164,7 +164,7 @@ function TableGroupList({
           <button
             type='button'
             onClick={onAddColumn}
-            className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+            className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-[var(--sp-3)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
           >
             <Plus size={14} />
             <span>+ {t('preview.kanban_add_new_group')}</span>
@@ -204,7 +204,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   const reorder = useKanbanTableReorder({ groupPropertyId: groupByProp, onMove: onReorderRows ?? (() => {}) })
 
   return (
-    <div className='h-full w-full overflow-auto p-4'>
+    <div className='h-full w-full overflow-auto p-[var(--sp-4)]'>
       <div role='table' aria-label={t('preview.kanban_view_table')} className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TableHeaderRow
           columns={data.columns}

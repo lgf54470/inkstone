@@ -36,12 +36,12 @@ export function BlogBatchBar({
   const menuItems = buildFolderMenuItems(folders, selectedCount, batchPosts, () => setIsFolderMenuOpen(false), toast)
 
   return (
-    <div className='absolute inset-x-4 bottom-4 z-[var(--z-menu)] mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[length:var(--text-12)]'>
+    <div className='absolute inset-x-4 bottom-[var(--sp-4)] z-[var(--z-menu)] mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-[var(--sp-2)] rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-[var(--sp-4)] py-[var(--sp-2)] shadow-[var(--shadow-modal)] backdrop-blur text-[length:var(--text-12)]'>
       <span className='font-semibold text-[var(--text-primary)] whitespace-nowrap'>
         {t('blog.selected_posts_count', { value0: selectedCount })}
       </span>
 
-      <div className='h-4 w-px bg-[var(--border-default)]' />
+      <div className='h-[var(--sp-4)] w-px bg-[var(--border-default)]' />
 
       <BatchBarPrimary
         bundle={{
@@ -89,23 +89,23 @@ function BatchBarPrimary({ bundle }: { bundle: BatchBarPrimaryBundle }) {
   return (
     <>
       <Button size='sm' variant='secondary' loading={busy} onClick={() => void batchPublish(batchPosts)}>
-        <CheckCircle size={12} className='mr-1 text-[var(--success)]' />
+        <CheckCircle size={12} className='mr-[var(--sp-1)] text-[var(--success)]' />
         {t('blog.batch_publish')}
       </Button>
 
       <Button size='sm' variant='secondary' loading={busy} onClick={() => void batchUnpublish(batchPosts, selectedCount)}>
-        <XCircle size={12} className='mr-1 text-[var(--text-tertiary)]' />
+        <XCircle size={12} className='mr-[var(--sp-1)] text-[var(--text-tertiary)]' />
         {t('blog.batch_unpublish')}
       </Button>
 
       <Button ref={folderButtonRef} size='sm' variant='secondary' loading={busy} onClick={onToggleFolderMenu}>
-        <FolderInput size={12} className='mr-1' />
+        <FolderInput size={12} className='mr-[var(--sp-1)]' />
         {t('blog.batch_move_folder')}
       </Button>
       <Menu open={isFolderMenuOpen} anchor={folderButtonRef} items={menuItems} onClose={onCloseFolderMenu} />
 
       <Button size='sm' variant='secondary' loading={busy} onClick={() => void batchPin(batchPosts, toast)}>
-        <Pin size={12} className='mr-1 text-[var(--accent)]' />
+        <Pin size={12} className='mr-[var(--sp-1)] text-[var(--accent)]' />
         {t('blog.batch_pin')}
       </Button>
     </>
@@ -123,7 +123,7 @@ function BatchCategorySelect({
     <Select
       onChange={(e) => void batchSetCategory(batchPosts, e.target.value)}
       defaultValue=''
-      className="h-7 text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"
+      className="h-[var(--sp-7)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"
     >
       <option value='' disabled>
         {t('blog.change_category')}
@@ -152,11 +152,11 @@ function BatchBarDelete({
   return (
     <>
       <Button size='sm' variant='danger' loading={busy} onClick={() => void batchDelete(batchPosts, selectedCount)}>
-        <Trash2 size={12} className='mr-1' />
+        <Trash2 size={12} className='mr-[var(--sp-1)]' />
         {t('common.delete')}
       </Button>
 
-      <div className='h-4 w-px bg-[var(--border-default)]' />
+      <div className='h-[var(--sp-4)] w-px bg-[var(--border-default)]' />
 
       <Button size='sm' variant='ghost' onClick={onClearSelection}>
         {t('common.cancel')}

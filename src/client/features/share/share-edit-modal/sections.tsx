@@ -12,8 +12,8 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
   const { share, isCopied, handleCopyLink, setIsAnalyticsOpen, setIsQrOpen, openPanel } = b
   if (!share?.url) return null
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--accent-soft)] bg-[var(--accent-soft)]/20 p-3 space-y-2.5'>
-      <div className='flex items-center gap-2'>
+    <div className='rounded-[var(--r-md)] border border-[var(--accent-soft)] bg-[var(--accent-soft)]/20 p-[var(--sp-3)] space-y-2.5'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Input
           type='text'
           readOnly
@@ -28,13 +28,13 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
           href={share.url}
           target='_blank'
           rel='noreferrer'
-          className='inline-flex h-7 items-center justify-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
+          className='inline-flex h-[var(--sp-7)] items-center justify-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2\\.5)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
           title={t('share.open_link')}
         >
           <ExternalLink size={13} />
         </a>
       </div>
-      <div className='flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--border-subtle)]/60'>
+      <div className='flex flex-wrap items-center gap-[var(--sp-2)] pt-[var(--sp-1)] border-t border-[var(--border-subtle)]/60'>
         <Button size='sm' variant='secondary' icon={<BarChart3 size={13} className='text-[var(--accent)]' />} onClick={() => setIsAnalyticsOpen(true)}>
           {t('share.note_analytics_title')}
         </Button>
@@ -61,7 +61,7 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
 export function ShareStatusCard({ b }: { b: ShareEditModalBundle }) {
   const { isEnabled, setIsEnabled } = b
   return (
-    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
+    <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
       <div>
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           {t('share.share_status')}
@@ -78,8 +78,8 @@ export function ShareStatusCard({ b }: { b: ShareEditModalBundle }) {
 export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
   const { shareFolders, shareFolderId, setShareFolderId } = b
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-1.5 pb-1.5'>
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
+      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)] pb-[var(--sp-1\\.5)]'>
         <FolderClosed size={14} className='text-[var(--text-tertiary)]' />
         <span>{t('share.folders_isolation')}</span>
       </div>
@@ -103,17 +103,17 @@ export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
 export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
   const { shareTags, newTagInput, setNewTagInput, handleAddTag, handleRemoveTag } = b
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 space-y-2'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-1.5'>
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)] space-y-2'>
+      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
         <Hash size={14} className='text-[var(--text-tertiary)]' />
         <span>{t('share.tags_isolation')}</span>
       </div>
-      <div className='flex flex-wrap items-center gap-1.5 min-h-6'>
+      <div className='flex flex-wrap items-center gap-[var(--sp-1\\.5)] min-h-[var(--sp-6)]'>
         {shareTags.length === 0 ? (
           <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.no_tags')}</span>
         ) : (
           shareTags.map((tagName) => (
-            <span key={tagName} className='inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
+            <span key={tagName} className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
               <Hash size={10} className='text-[var(--accent)]' />
               <span>{tagName}</span>
               <IconButton
@@ -128,7 +128,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
           ))
         )}
       </div>
-      <div className='flex items-center gap-1.5 pt-1'>
+      <div className='flex items-center gap-[var(--sp-1\\.5)] pt-[var(--sp-1)]'>
         <Input
           type='text'
           value={newTagInput}
@@ -154,8 +154,8 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
 export function ShareSlugCard({ b }: { b: ShareEditModalBundle }) {
   const { shouldUseCustomSlug, setShouldUseCustomSlug, customSlug, setCustomSlug, isSlugChecking, slugAvailable, slugError } = b
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='flex items-center justify-between pb-2'>
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-2)]'>
         <div>
           <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
             {t('share.custom_slug')}
@@ -167,14 +167,14 @@ export function ShareSlugCard({ b }: { b: ShareEditModalBundle }) {
         <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} label={t('share.custom_slug')} />
       </div>
       {shouldUseCustomSlug && (
-        <div className='pt-2'>
+        <div className='pt-[var(--sp-2)]'>
           <SlugEditorRow
             customSlug={customSlug}
             setCustomSlug={setCustomSlug}
             isSlugChecking={isSlugChecking}
             slugAvailable={slugAvailable}
           />
-          {slugError && <p className='pt-1 text-[length:var(--text-11)] text-[var(--danger)]'>{slugError}</p>}
+          {slugError && <p className='pt-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--danger)]'>{slugError}</p>}
         </div>
       )}
     </div>
@@ -188,7 +188,7 @@ function SlugEditorRow({ customSlug, setCustomSlug, isSlugChecking, slugAvailabl
   slugAvailable: boolean | null
 }) {
   return (
-    <div className='flex items-center gap-1.5'>
+    <div className='flex items-center gap-[var(--sp-1\\.5)]'>
       <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
       <Input
         type='text'
@@ -222,8 +222,8 @@ function SlugEditorRow({ customSlug, setCustomSlug, isSlugChecking, slugAvailabl
 export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
   const { shouldUsePassword, setShouldUsePassword, password, setPassword, share } = b
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='flex items-center justify-between pb-2'>
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-2)]'>
         <div>
           <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
             {t('share.access_password')}
@@ -235,7 +235,7 @@ export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
         <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} label={t('share.access_password')} />
       </div>
       {shouldUsePassword && (
-        <div className='pt-2'>
+        <div className='pt-[var(--sp-2)]'>
           <Input
             type='password'
             value={password}
@@ -253,8 +253,8 @@ export function ShareExpiryCard({ b }: { b: ShareEditModalBundle }) {
   const { share, EXPIRY_OPTIONS, expiry, setExpiry } = b
   const titleId = useId()
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5'>
+    <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
+      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-[var(--sp-1\\.5)]'>
         {t('share.expiration_title')}
       </div>
       <Segmented
@@ -270,7 +270,7 @@ export function ShareExpiryCard({ b }: { b: ShareEditModalBundle }) {
 export function EditModalFooter({ b, onClose }: { b: ShareEditModalBundle; onClose: () => void }) {
   const { share, isSaving, isRevoking, isLoadingShare, handleSave, handleRevoke } = b
   return (
-    <div className='flex w-full items-center justify-between gap-2'>
+    <div className='flex w-full items-center justify-between gap-[var(--sp-2)]'>
       {share ? (
         <Button
           size='sm'
@@ -286,7 +286,7 @@ export function EditModalFooter({ b, onClose }: { b: ShareEditModalBundle; onClo
       ) : (
         <span />
       )}
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Button size='sm' variant='secondary' onClick={onClose} disabled={isSaving || isRevoking}>
           {t('common.cancel')}
         </Button>

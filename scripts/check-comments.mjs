@@ -3076,6 +3076,10 @@ const allowed = new Map([
     '// The row both menu surfaces draw (SH-93, where the two hand-rolled copies became one). What has to',
     '// stay true is what the row states about itself and what it draws from the item — not its classes,',
     '// which the two callers still spell differently on purpose.',
+    '// The class these read is now the token form (`gap-[var(--sp-2\\\\.5)]` is the runtime string; the',
+    '// source keeps the double backslash because CSS escapes the dot in the custom property\'s name).',
+    '// What the case judges is unchanged: a menu row sits looser than a submenu row, and a surface can',
+    '// still add its own tone on top.',
   ]],
   ['src/client/components/overlay/menu-row.tsx', [
     '/**\n * The row both menu surfaces draw: the dropped-down menu and the nested submenu lists.\n *\n * It is a raw `<button>` on purpose. `Button` fixes a height and padding per size and wraps its\n * children in one non-stretching span, while a menu row is a fixed-height track holding a 16px\n * icon, a label that has to stretch and truncate, a check mark and a shortcut or a panel arrow as\n * siblings — the shape `Button` cannot express. What the two surfaces do *not* share is how a key\n * reaches a row: the menu\n * keeps a cursor index and moves it, the submenu lists move the DOM focus. So this file owns the\n * shape and the ARIA the row states about itself, and each caller passes its own keyboard wiring,\n * its own way of marking the row the person is on, and its own check mark.\n */',
@@ -11008,7 +11012,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/column-width.ts', [
     '/**\n * The rules behind a column\'s width, kept free of the DOM so both the writer that stores a width in\n * the fence and the renderer that draws it answer from the same numbers. Which classes a column is\n * drawn with stays with the renderer.\n */',
-    '// The narrowest column the table already draws by default is the checkbox at `w-16`, so a resize',
+    '// The narrowest column the table already draws by default is the checkbox at `w-[var(--sp-16)]`, so a resize',
     '// never offers a width the layout would not have accepted on its own.',
     '// Past this a column is wider than the board it sits in, and the rest of the fence stops being',
     '// readable next to it: a document is not an infinite canvas.',
@@ -11098,7 +11102,7 @@ const allowed = new Map([
     '/**\n * Where one dependency arrow sits on a time view\'s grid, in the pixels the bars are drawn with.\n * The path leaves the blocker at its right edge — the day it is done — and lands on the dependent\'s\n * left edge — the day its wait begins — as an elbow that bows out to the right when the two bars\n * overlap; the arrowhead is a separate filled triangle because a stroked marker would scale with\n * the stroke. An end without a bar on this window (an undated card, or one clipped out) draws no\n * arrow rather than one aimed at nothing.\n */',
     '/** The stroked elbow, in the rows area\'s own pixel coordinates. */',
     '/** The filled arrowhead at the dependent\'s edge, tip first. */',
-    '/** Both time views draw their rows at this height (`h-10`); the arrow\'s y is the row\'s middle. */',
+    '/** Both time views draw their rows at this height (`h-[var(--sp-10)]`); the arrow\'s y is the row\'s middle. */',
     '/** How far the elbow bows past both bar edges when the arrow has to reach backwards. */',
     '/**\n * Every bar on the window, keyed by its card — computed once for the view that draws the bars and\n * the dependency layer that needs their edges. Both used to run this geometry themselves, so a zoom\n * step on a ceiling-size board did the whole scan twice in one commit.\n */',
   ]],

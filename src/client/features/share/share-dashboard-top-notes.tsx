@@ -11,9 +11,9 @@ export function TopNotesCard({ analytics, onSelectNoteAnalytics }: {
 }) {
   const topNotes = analytics?.topNotes ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<BarChart3 size={15} className='text-[var(--accent)]' />} title={t('share.top_notes_title')} badge={t('share.top_notes_badge')} />
-      <div className='divide-y divide-[var(--border-subtle)] pt-1'>
+      <div className='divide-y divide-[var(--border-subtle)] pt-[var(--sp-1)]'>
         {topNotes.length === 0 ? (
           <EmptyRow label={t('share.no_data_yet')} />
         ) : (
@@ -35,10 +35,10 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
   const pct = Math.round((note.views / maxVal) * 100)
   return (
     <div
-      className='-mx-2 flex items-center gap-3 rounded-[var(--r-md)] px-2 py-2.5 transition-colors hover:bg-[var(--bg-hover)]'
+      className='-mx-2 flex items-center gap-[var(--sp-3)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-2\\.5)] transition-colors hover:bg-[var(--bg-hover)]'
     >
       <span
-        className={`flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
+        className={`flex h-[var(--sp-5)] w-[var(--sp-5)] items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
           index < 3
             ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]'
@@ -52,11 +52,11 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
           <span className='truncate font-medium text-[var(--text-primary)]'>
             {note.noteTitle || t('common.untitled_note')}
           </span>
-          <span className='ml-2 font-mono font-semibold text-[var(--text-primary)]'>
+          <span className='ml-[var(--sp-2)] font-mono font-semibold text-[var(--text-primary)]'>
             {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span>
           </span>
         </div>
-        <div className='mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-base)]'>
+        <div className='mt-[var(--sp-1)] h-[var(--sp-1\\.5)] w-full overflow-hidden rounded-full bg-[var(--bg-base)]'>
           <div
             className='h-full rounded-full bg-[var(--accent)] transition-all'
             style={{ width: `${pct}%` }}

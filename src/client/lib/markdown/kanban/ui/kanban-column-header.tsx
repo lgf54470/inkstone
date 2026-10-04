@@ -28,7 +28,7 @@ export function ColumnHeaderTitle({
     ? t('preview.kanban_column_sum', { name: sumName, count: sum })
     : undefined
   return (
-    <div className='flex min-w-0 items-center gap-2'>
+    <div className='flex min-w-0 items-center gap-[var(--sp-2)]'>
       <span
         className={`truncate text-[length:var(--text-13)] font-semibold ${isTinted ? '' : 'text-[var(--text-primary)]'}`}
       >
@@ -37,7 +37,7 @@ export function ColumnHeaderTitle({
       <KanbanColumnCount
         count={count}
         limit={wipLimit}
-        className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium'
+        className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium'
       />
       {sum !== undefined && sumWords && (
         // Same surface recipe as the count pill, so the two read as one family. The glyph and figure
@@ -46,7 +46,7 @@ export function ColumnHeaderTitle({
         <span
           data-kanban-sum=''
           title={sumWords}
-          className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium tabular-nums text-[var(--text-tertiary)]'
+          className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium tabular-nums text-[var(--text-tertiary)]'
         >
           <span aria-hidden='true'>{t('preview.kanban_column_sum_figure', { count: formatKanbanSum(sum) })}</span>
           <span className='sr-only'>{sumWords}</span>
@@ -81,7 +81,7 @@ function ColumnMenuButton({
       ref={buttonRef}
       type='button'
       onClick={onToggle}
-      className={`rounded-[var(--r-xs)] p-0.5 hover:bg-[var(--bg-hover)] ${
+      className={`rounded-[var(--r-xs)] p-[var(--sp-0\\.5)] hover:bg-[var(--bg-hover)] ${
         isTinted ? 'hover:text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
       }`}
       aria-label={label}
@@ -138,7 +138,7 @@ function ColumnHeaderBand({
       style={tint}
       data-kanban-column-head=''
       data-kanban-column-tint={tint ? color : undefined}
-      className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-2 py-1.5 active:cursor-grabbing'
+      className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] active:cursor-grabbing'
     >
       <ColumnHeaderTitle label={label} count={count} wipLimit={wipLimit} sum={sum} sumName={sumName} isTinted={tint !== undefined} />
       <ColumnMenuButton
@@ -267,21 +267,21 @@ export function CollapsedColumn({
       aria-label={over > 0
         ? t('preview.kanban_expand_column_over', { name: localizedLabel, over, limit: group.wipLimit ?? 0 })
         : t('preview.kanban_expand_column_named', { name: localizedLabel })}
-      className={`flex w-10 shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-3 transition-colors ${
+      className={`flex w-[var(--sp-10)] shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-[var(--sp-3)] transition-colors ${
         isDragOver
           ? 'border-[var(--accent)] bg-[var(--accent-softer)]'
           : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
       }`}
     >
-      <span className='flex flex-col items-center gap-2'>
+      <span className='flex flex-col items-center gap-[var(--sp-2)]'>
         {dotColor && <span className='size-2.5 rounded-full' style={{ backgroundColor: dotColor }} />}
         <KanbanColumnCount
           count={group.items.length}
           limit={group.wipLimit}
-          className='rounded-[var(--r-full)] bg-[var(--bg-inset)] px-1 py-0.5 text-[length:var(--text-10)]'
+          className='rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)]'
         />
       </span>
-      <span className='mt-4 flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
+      <span className='mt-[var(--sp-4)] flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {localizedLabel}
       </span>
     </button>

@@ -65,7 +65,7 @@ function VirtualTree({ ns, rootLabel, rootIcon, filter, filterArg }: {
     }
   }
   return (
-    <div role='tree' aria-label={rootLabel} className='mt-0.5 space-y-px' onDragOver={blockDrop} onDrop={blockDrop}>
+    <div role='tree' aria-label={rootLabel} className='mt-[var(--sp-0\\.5)] space-y-px' onDragOver={blockDrop} onDrop={blockDrop}>
       <VirtualRow ns={ns} rootLabel={rootLabel} rootIcon={rootIcon} node={root}/>
     </div>
   )
@@ -102,7 +102,7 @@ function VirtualRow({ ns, rootLabel, rootIcon, node }: {
   const dim = node.count === 0 && !isRoot
   return (
     <div role='treeitem' aria-level={node.depth + 2} aria-expanded={hasChildren ? expanded : undefined}>
-      <div className={cn('group relative flex h-10 items-center gap-1 rounded-[var(--r-md)] pr-1 md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: virtualTreeRowIndent(node.depth) }}>
+      <div className={cn('group relative flex h-[var(--sp-10)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] pr-[var(--sp-1)] md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', dim && 'opacity-60')} style={{ paddingLeft: virtualTreeRowIndent(node.depth) }}>
         <TreeExpandButton expanded={expanded} hasChildren={hasChildren} onToggle={() => toggleFolder(node.id)}/>
         <VirtualRowIcon active={active} isRoot={isRoot} rootIcon={rootIcon} open={expanded && hasChildren}/>
         <VirtualRowLabel active={active} isRoot={isRoot} rootLabel={rootLabel} name={node.name} tooltip={tooltip} onOpen={open}/>
@@ -145,7 +145,7 @@ function VirtualRowLabel({ active, isRoot, rootLabel, name, tooltip, onOpen }: {
 }) {
   return (
     <Tooltip label={tooltip} side='right'>
-      <button type='button' aria-current={active ? 'page' : undefined} onClick={onOpen} className="min-w-0 flex-1 truncate py-1 text-left text-[length:var(--text-12\.5)] font-medium">
+      <button type='button' aria-current={active ? 'page' : undefined} onClick={onOpen} className="min-w-0 flex-1 truncate py-[var(--sp-1)] text-left text-[length:var(--text-12\.5)] font-medium">
         {isRoot ? rootLabel : name}
       </button>
     </Tooltip>

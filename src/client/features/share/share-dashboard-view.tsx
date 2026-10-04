@@ -52,7 +52,7 @@ export function ShareDashboardView({
   const expiredLinks = analytics?.expiredLinks
   const toast = useUi((s) => s.toast)
   return (
-    <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5'>
+    <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-[var(--sp-5)]'>
       <DashboardHeader bundle={bundle} />
       {error ? (
         <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
@@ -61,7 +61,7 @@ export function ShareDashboardView({
       ) : (
         <>
           {expiredLinks && expiredLinks.items.length > 0 && (
-            <div className='mb-4'>
+            <div className='mb-[var(--sp-4)]'>
               <ShareExpiredNoticeCard
                 expiredLinks={expiredLinks}
                 onAcknowledge={() => void acknowledgeExpired(loadData, range, toast)}
@@ -72,7 +72,7 @@ export function ShareDashboardView({
           {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}
           <KpiGrid analytics={analytics} />
           <TimelineCard bundle={bundle} />
-          <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
+          <div className='mt-[var(--sp-4)] grid grid-cols-1 gap-[var(--sp-4)] lg:grid-cols-2'>
             <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
             <CountryBreakdownCard analytics={analytics} locale={locale} />
             <ReferrerBreakdownCard analytics={analytics} onOpenChannelLogs={onOpenChannelLogs} />
