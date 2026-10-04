@@ -6,7 +6,7 @@
  * collection. A map that cannot load says so on the block — a blank outline reads as a chart with no
  * data in it, which is the opposite of the truth.
  */
-import { MAP_MAX_BYTES } from '@shared/map-sources'
+import { MAP_MAX_BYTES, mapGeometryUrl } from '@shared/map-sources'
 
 const MAP_FETCH_TIMEOUT_MS = 15000
 
@@ -26,7 +26,7 @@ async function fetchGeometry(url: string): Promise<unknown> {
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), MAP_FETCH_TIMEOUT_MS)
   try {
-    const response = await fetch(url, { signal: controller.signal, referrerPolicy: 'no-referrer' })
+    const response = await fetch(mapGeometryUrl(url), { signal: controller.signal })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const text = await response.text()
     if (text.length > MAP_MAX_BYTES) throw new Error('outline data too large')

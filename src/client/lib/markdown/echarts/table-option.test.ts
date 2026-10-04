@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readChartTable, writeChartTable } from '../chart'
-import { EchartsTableError, echartsOptionToTable, tableToEchartsOption } from './table-option'
+import { EchartsTableError, echartsOptionToTable, mapRequestOfOption, tableToEchartsOption } from './table-option'
+import { DEFAULT_MAP_SOURCE } from '@shared/map-sources'
 
 /** The eight examples from the reference page's table-chart section, copied as written. */
 const DEMO: Record<string, string> = {
@@ -122,8 +123,29 @@ describe('a chart table as an echarts option', () => {
 
   it('points a map at the registered outlines and lets the visual map span its values', () => {
     const built = tableToEchartsOption(readChartTable(DEMO.map))
-    expect(built.mapSource).toBe('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    expect(built.map?.source).toBe('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    expect(built.map?.name).toBe('inkstone-map')
     expect(seriesOf(built.option as Record<string, unknown>)[0]).toMatchObject({ type: 'map', map: 'inkstone-map', data: [{ name: '北京', value: 100 }, { name: '上海', value: 200 }] })
+  })
+
+  // A note that writes its own series has already named the geometry it draws, and the outline
+  // registration has to answer to that name — otherwise pasting an official example leaves the block
+  // asking for a map nobody registered.
+  it('reads a map out of an option body and keeps the name the note gave it', () => {
+    expect(mapRequestOfOption({ series: [{ type: 'map', map: 'china' }, { type: 'bar' }] }))
+      .toEqual({ source: DEFAULT_MAP_SOURCE, name: 'china' })
+    expect(mapRequestOfOption({ series: [{ type: 'map' }] })?.name).toBe('inkstone-map')
+    expect(mapRequestOfOption({ series: [{ type: 'line', data: [1] }] })).toBeNull()
+    expect(mapRequestOfOption('not an object')).toBeNull()
+    expect(mapRequestOfOption({ series: { type: 'map' } })).toBeNull()
+  })
+
+  it('takes the outline of an option body from the source the note names, and refuses one it does not', () => {
+    expect(mapRequestOfOption({ mapDataSource: 'https://geo.datav.aliyun.com/areas_v3/bound/310000_full.json', series: [{ type: 'map', map: 'shanghai' }] })?.source)
+      .toBe('https://geo.datav.aliyun.com/areas_v3/bound/310000_full.json')
+    expect(() => mapRequestOfOption({ mapDataSource: 'http://内网/geo.json', series: [{ type: 'map' }] })).toThrow(EchartsTableError)
+    // An empty string is the note naming nothing, not a source of its own.
+    expect(mapRequestOfOption({ mapDataSource: '  ', series: [{ type: 'map' }] })?.source).toBe(DEFAULT_MAP_SOURCE)
   })
 
   it('refuses a map whose source is not on the allowlist', () => {

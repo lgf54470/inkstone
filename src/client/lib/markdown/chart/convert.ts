@@ -6,10 +6,11 @@
  * conversion that quietly dropped a second axis would leave the note drawing a different chart than
  * the one the author was looking at when they pressed it.
  */
-import { detectChartMode } from './body'
+import { detectChartMode, resolveChartMode } from './body'
 import { ChartConfigError, chartConfigToTable, tableToChartConfig } from './config'
 import { parseChartJson } from './json'
 import { ChartTableError, readChartTable, writeChartTable } from './table'
+import type { DeclaredStyle } from './style'
 
 /** Why a body cannot be written the other way. Every caller turns this into a sentence. */
 export type ChartConvertFailure =
@@ -25,9 +26,9 @@ export type ChartConvertFailure =
 
 export type ChartConversion = { ok: true; body: string } | { ok: false; reason: ChartConvertFailure }
 
-/** The config a chart fence means, from a JSON body or from a table one. */
-export function readChartBody(raw: string): Record<string, unknown> {
-  return detectChartMode(raw) === 'table' ? tableToChartConfig(readChartTable(raw)) : parseChartJson(raw)
+/** The config a chart fence means, from a JSON body or from a table one, as the note states it. */
+export function readChartBody(raw: string, style: DeclaredStyle | null = null): Record<string, unknown> {
+  return resolveChartMode(raw, style) === 'table' ? tableToChartConfig(readChartTable(raw)) : parseChartJson(raw)
 }
 
 function failure(err: unknown): ChartConversion {
@@ -36,6 +37,7 @@ function failure(err: unknown): ChartConversion {
   return { ok: false, reason: 'invalid-json' }
 }
 
+/** The body written the other way round, from the format the block is currently in. */
 export function convertChartBody(raw: string): ChartConversion {
   try {
     if (detectChartMode(raw) === 'table') {

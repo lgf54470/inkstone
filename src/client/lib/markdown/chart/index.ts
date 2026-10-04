@@ -1,4 +1,13 @@
-export { CHART_LANGUAGES, applyChartBodyAtFence, chartFenceAt, detectChartMode, normalizeEol, type ChartFence, type ChartMode } from './body'
+export {
+  CHART_LANGUAGES,
+  applyChartFencePatch,
+  chartFenceAt,
+  detectChartMode,
+  normalizeEol,
+  resolveChartMode,
+  type ChartFence,
+  type ChartMode,
+} from './body'
 export {
   ChartConfigError,
   CHART_TABLE_KINDS,
@@ -13,6 +22,7 @@ export {
 export {
   ChartTableError,
   CHART_KEYWORD_RE,
+  CHART_TABLE_MESSAGES,
   cellNumber,
   formatKeywordCell,
   isChartTableBody,
@@ -22,8 +32,20 @@ export {
   writeChartTable,
   type ChartKeyword,
   type ChartTable,
+  type ChartTableReason,
 } from './table'
 export { resolveScatterColumns, symbolSize, type ScatterColumns } from './columns'
+export { accentPalette, accentRamp, formatOklch, parseOklch, PALETTE_SIZE, type Oklch } from './palette'
+export { chartAccent, chartPalette, chartPaletteKey, chartRamp } from './accent'
+export {
+  NO_DECLARED_STYLE,
+  parseStyleValue,
+  readFenceStyle,
+  styleSignature,
+  withFenceStyle,
+  type DeclaredStyle,
+  type StyleRead,
+} from './style'
 export { chartTableFromElement, chartTableText } from './table-from-dom'
 export { parseChartJson } from './json'
 export { convertChartBody, readChartBody, type ChartConversion, type ChartConvertFailure } from './convert'

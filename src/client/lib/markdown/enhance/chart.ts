@@ -2,7 +2,17 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../data-attr'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
-import { ChartConfigError, readChartBody } from '../chart'
+import {
+  ChartConfigError,
+  ChartTableError,
+  CHART_TABLE_MESSAGES,
+  chartPalette,
+  chartPaletteKey,
+  parseStyleValue,
+  readChartBody,
+  styleSignature,
+  type StyleRead,
+} from '../chart'
 import { shortHash, withTimeout } from './util'
 
 const CHARTJS_TEXT_COLORS = { dark: '#94a3b8', light: '#64748b' } as const
@@ -50,14 +60,17 @@ export function destroyChartInstances(root: HTMLElement | null): void {
 
 function chartConfigMessage(err: unknown): string {
   if (err instanceof ChartConfigError) return t(CHART_CONFIG_MESSAGES[err.reason])
+  if (err instanceof ChartTableError) return t(CHART_TABLE_MESSAGES[err.reason])
+  // The only thing in this path that parses JSON is the config reader, so a SyntaxError here is the
+  // body not being readable — and the engine's own sentence about it is one the note's language has.
+  if (err instanceof SyntaxError) return t('markdown.chart_convert_invalid_json')
   return errorMessage(err)
 }
 
-function markChartError(node: HTMLElement, err: unknown, raw: string, signature: string): void {
+function markChartError(node: HTMLElement, message: string, raw: string, signature: string): void {
   node.classList.remove('loading')
   node.classList.add('has-error', 'chart-error')
   node.removeAttribute('aria-busy')
-  const message = chartConfigMessage(err)
   node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t('markdown.chart_rendering_failed'))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`
   node.dataset.rendered = signature
 }
@@ -85,8 +98,31 @@ function themedScales(userScales: Record<string, unknown>, textColor: string, gr
   return scales
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * Colours the series the note left uncoloured. chart.js's own default palette is a rainbow nobody
+ * chose for this page, so an unstyled dataset takes the accent ramp instead — but a note that named
+ * its own colours keeps them, because that is a statement about the data, not an omission.
+ */
+function themedDatasets(datasets: unknown, palette: string[]): unknown {
+  if (!Array.isArray(datasets)) return datasets
+  return datasets.map((raw, index) => {
+    if (!isRecord(raw)) return raw
+    const colour = palette[index % palette.length]
+    const next: Record<string, unknown> = { ...raw }
+    if (next.backgroundColor === undefined) next.backgroundColor = colour
+    if (next.borderColor === undefined) next.borderColor = colour
+    return next
+  })
+}
+
 function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized: boolean, instant: boolean): Record<string, unknown> {
   const { text, grid } = chartThemeColors(dark)
+  const palette = chartPalette(dark)
+  const data = isRecord(config.data) ? config.data : null
   const userOptions = (config.options && typeof config.options === 'object' ? config.options : {}) as Record<string, unknown>
   const userScales = (userOptions.scales && typeof userOptions.scales === 'object' ? userOptions.scales : {}) as Record<string, unknown>
   const userPlugins = (userOptions.plugins && typeof userOptions.plugins === 'object' ? userOptions.plugins : {}) as Record<string, unknown>
@@ -119,7 +155,9 @@ function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized:
   // deck's sheet is resized exactly as it is handed to the print pipeline (the webfonts land and the
   // pages reflow), so a print could catch an empty chart box on a page that looked finished.
   if (instant) options.animation = false
-  return { ...config, options }
+  const next: Record<string, unknown> = { ...config, options }
+  if (data) next.data = { ...data, datasets: themedDatasets(data.datasets, palette) }
+  return next
 }
 
 // The size the chart really has: the container's layout box. Chart.js measures a responsive chart
@@ -147,16 +185,28 @@ function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { r
   holder.__chartObserver = observer
 }
 
-// One block: parse the config, then instantiate the chart; both failures land
-// on the same error banner. The root-containment check aborts the whole batch
-// once the node was detached mid-render (the original behavior).
-async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string, signature: string, dark: boolean, instant: boolean): Promise<void> {
+// One block: read the body in the format the note states (or in the one its shape implies), then
+// instantiate the chart; both failures land on the same error banner. The root-containment check
+// aborts the whole batch once the node was detached mid-render (the original behavior).
+async function renderChartNode(
+  root: HTMLElement,
+  node: HTMLElement,
+  raw: string,
+  style: StyleRead,
+  signature: string,
+  dark: boolean,
+  instant: boolean,
+): Promise<void> {
+  if (style.invalid !== null) {
+    markChartError(node, t('markdown.chart_style_unknown'), raw, signature)
+    return
+  }
   let config: Record<string, unknown>
   try {
-    config = readChartBody(raw)
+    config = readChartBody(raw, style.style)
   }
   catch (err: unknown) {
-    markChartError(node, err, raw, signature)
+    markChartError(node, chartConfigMessage(err), raw, signature)
     return
   }
   try {
@@ -188,7 +238,7 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
   catch (err: unknown) {
     if (!root.contains(node))
       return
-    markChartError(node, err, raw, signature)
+    markChartError(node, chartConfigMessage(err), raw, signature)
   }
 }
 
@@ -210,9 +260,13 @@ export async function renderChartJs(root: HTMLElement, dark: boolean, { instant 
   const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')]
   for (const node of nodes) {
     const raw = decodeDataValue(node.dataset.chart)
-    const signature = `${dark ? 'd' : 'l'}:${raw.length}:${shortHash(raw)}`
+    const style = parseStyleValue(node.dataset.chartStyle ?? null)
+    // The accent is in the key beside the light mode: it is switchable per account, and a chart that
+    // kept the colours it read before it moved is the frozen-at-creation regression ADR-0002 §5 names.
+    // The stated format is in it for the same reason: which reader runs is not in the body's text.
+    const signature = `${chartPaletteKey(dark)}:${raw.length}:${shortHash(raw)}:${styleSignature(style)}`
     if (node.dataset.rendered === signature && hasLiveChart(node))
       continue
-    await renderChartNode(root, node, raw, signature, dark, instant)
+    await renderChartNode(root, node, raw, style, signature, dark, instant)
   }
 }

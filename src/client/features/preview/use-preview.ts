@@ -108,17 +108,27 @@ function usePreviewSource(props: PreviewProps) {
 
 type PreviewSource = ReturnType<typeof usePreviewSource>
 
-function useThemeTracking() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme ?? 'dark')
+const APPEARANCE_ATTRIBUTES = ['data-theme', 'data-accent', 'data-background'] as const
+
+function readAppearance(): string {
+  const root = document.documentElement
+  return `${root.dataset.theme ?? 'dark'}|${root.dataset.accent ?? ''}|${root.dataset.background ?? ''}`
+}
+
+/**
+ * The resolved appearance, in two shapes. `theme` is the light/dark answer everything branches on;
+ * `appearance` also carries the accent and the paper choice, because a chart reads its series colours
+ * from them at draw time and must repaint when they move even though light and dark did not change.
+ */
+function useThemeTracking(): { theme: string; appearance: string } {
+  const [appearance, setAppearance] = useState(readAppearance)
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const next = document.documentElement.dataset.theme ?? 'dark'
-      setTheme((current) => (current === next ? current : next))
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    const observer = new MutationObserver(() => setAppearance((current) => (current === readAppearance() ? current : readAppearance())))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: [...APPEARANCE_ATTRIBUTES] })
     return () => observer.disconnect()
   }, [])
-  return theme
+  const [theme = 'dark', accent = '', background = ''] = appearance.split('|')
+  return { theme, appearance: `${theme}|${accent}|${background}` }
 }
 
 function useTagColors(hostRef: RefObject<HTMLDivElement | null>, committedHtml: string, allTags: Tag[]) {
@@ -214,6 +224,7 @@ function usePreviewRendering(opts: {
 function usePreviewPostRender(opts: {
   committedHtml: string
   theme: string
+  appearance: string
   hostRef: RefObject<HTMLDivElement | null>
   scrollerRef: RefObject<HTMLDivElement | null>
   onRendered: (() => void) | undefined
@@ -221,7 +232,7 @@ function usePreviewPostRender(opts: {
   mermaidEpoch: number
   preview: PreviewSettings
 }) {
-  const { committedHtml, theme, hostRef, scrollerRef, onRendered, pendingViewportRef, mermaidEpoch, preview } = opts
+  const { committedHtml, theme, appearance, hostRef, scrollerRef, onRendered, pendingViewportRef, mermaidEpoch, preview } = opts
   const mermaidRevisionRef = useRef(0)
 
   const startMermaidRender = useCallback(() => {
@@ -257,7 +268,7 @@ function usePreviewPostRender(opts: {
     if (!host) return
     void renderChartJs(host, theme === 'dark')
     return () => destroyChartInstances(host)
-  }, [committedHtml, theme])
+  }, [committedHtml, theme, appearance])
 
   // echarts bakes its colours into the canvas at draw time, so a theme change has to redraw the chart
   // rather than restyle it (ADR-0002 §4). The theme is part of the draw signature for the same reason
@@ -265,9 +276,9 @@ function usePreviewPostRender(opts: {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    void renderEcharts(host, { allowScript: true, themeKey: theme === 'dark' ? 'd' : 'l', instant: false })
+    void renderEcharts(host, { allowScript: true, dark: theme === 'dark', instant: false })
     return () => destroyEchartsInstances(host)
-  }, [committedHtml, theme])
+  }, [committedHtml, theme, appearance])
 
   useLayoutEffect(() => {
     const snapshot = pendingViewportRef.current
@@ -447,10 +458,10 @@ function usePreviewKeyboard(opts: {
 
 export function usePreview(props: PreviewProps) {
   const src = usePreviewSource(props)
-  const theme = useThemeTracking()
+  const { theme, appearance } = useThemeTracking()
   const html = usePreviewRendering({ rendered: src.rendered, debounced: src.debounced, embedContextTitle: src.embedContextTitle, preview: src.preview, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, noteId: src.sourceNoteId })
   useTagColors(src.hostRef, html.committedHtml, src.allTags)
-  const startMermaidRender = usePreviewPostRender({ committedHtml: html.committedHtml, theme, hostRef: src.hostRef, scrollerRef: src.scrollerRef, onRendered: src.onRendered, pendingViewportRef: html.pendingViewportRef, mermaidEpoch: html.mermaidEpoch, preview: src.preview })
+  const startMermaidRender = usePreviewPostRender({ committedHtml: html.committedHtml, theme, appearance, hostRef: src.hostRef, scrollerRef: src.scrollerRef, onRendered: src.onRendered, pendingViewportRef: html.pendingViewportRef, mermaidEpoch: html.mermaidEpoch, preview: src.preview })
   const hover = usePreviewLinkHover({ sourceNoteId: src.sourceNoteId, preview: src.preview, committedHtml: html.committedHtml })
   // One scope per preview instance: two panes showing the same note must not
   // claim each other's map or board instances.

@@ -2,7 +2,14 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { fenceBody } from '../../lib/markdown/fence-bodies'
 import { escapeAttr } from '../../lib/markdown/renderer'
-import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure } from '../../lib/markdown/chart'
+import {
+  applyChartFencePatch,
+  chartFenceAt,
+  convertChartBody,
+  detectChartMode,
+  type ChartConvertFailure,
+  type DeclaredStyle,
+} from '../../lib/markdown/chart'
 import { applyEchartsFencePatch, convertEchartsBody, detectEchartsMode, echartsFenceAt, type EchartsConvertFailure } from '../../lib/markdown/echarts'
 import { downloadBlob } from '../../lib/export-note'
 import { t, type MessageKey } from '../../lib/i18n'
@@ -58,9 +65,12 @@ function graphOf(element: HTMLElement): GraphBlock | null {
   return { wrapper, block, kind: named === 'chart' || named === 'echarts' ? named : 'mermaid' }
 }
 
-function toolButton(action: string, label: string, icon: string): string {
+function toolButton(action: string, label: string, icon: string, pressed?: boolean): string {
   const name = escapeAttr(label)
-  return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${name}" aria-label="${name}">${icon}</button>`
+  // A toggle has to state the state it is in *before* it is first pressed, or a screen reader announces
+  // a control whose position nobody can hear.
+  const state = pressed === undefined ? '' : ` aria-pressed="${String(pressed)}"`
+  return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${name}" aria-label="${name}"${state}>${icon}</button>`
 }
 
 const ICONS = {
@@ -96,17 +106,27 @@ function convertButton(current: FormatName, other: Exclude<FormatName, 'table'>)
   return toolButton('convert-format', t(CONVERT_LABELS[target]), escapeHtml(t(FORMAT_LABELS[target])))
 }
 
-/** Which format a block's body is in, read from the body itself rather than from a mark on the node. */
+/**
+ * Which format a block's body is in, read from the body itself rather than from a mark on the node.
+ * The stated `style=` decides which reader *draws* the block (see ../chart/style); the control works
+ * off the shape, so on a note whose two statements disagree it offers to write the body it actually
+ * holds — and restating the format as it goes, which is what makes the press a repair.
+ */
 function formatOf(block: HTMLElement, kind: GraphKind): FormatName {
   if (kind === 'mermaid') return 'json'
   const source = decodedSource(block, kind)
   return kind === 'chart' ? detectChartMode(source) : detectEchartsMode(source)
 }
 
+/** The format the control switches to: the other one, whichever the body is written in. */
+function otherStyle(mode: FormatName): DeclaredStyle {
+  return mode === 'table' ? 'json' : 'table'
+}
+
 function renderHeadHtml(kind: GraphKind, format: FormatName): string {
   const zoomable = kind === 'mermaid'
   const titleKey = kind === 'mermaid' ? 'preview.graph_mermaid' : kind === 'chart' ? 'preview.graph_chart' : 'preview.graph_echarts'
-  const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
+  const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source, false)
   return [
     `<div class="block-head">`,
     `<span class="block-head-title">${escapeHtml(t(titleKey))}</span>`,
@@ -227,23 +247,27 @@ const ECHARTS_CONVERT_MESSAGES: Record<EchartsConvertFailure, MessageKey> = {
 }
 
 /**
- * Rewrites an echarts fence as the other format. A conversion always lands on a body made of data, so
- * the `js` marker goes with the option it was written for — leaving it would let a note keep claiming
- * a permission its new body does not need.
+ * Rewrites an echarts fence as the other format, by the line its block was drawn at. A conversion
+ * always lands on a body made of data, so the `js` marker goes with the option it was written for —
+ * leaving it would let a note keep claiming a permission its new body does not need — and the body's
+ * new format is written into `style=` beside it, so the note states what it now holds.
+ *
+ * The line is the only thing a caller needs, which is what lets the preview's format control and the
+ * editor's right-click menu run the same write.
  */
-export function convertEchartsFormat(
-  block: HTMLElement,
+export function convertEchartsFence(
+  line: number | undefined,
   content: string,
   onEdit: (next: string) => void,
   toast: BlockToast,
 ): boolean {
-  const line = Number(block.dataset.line)
-  if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
+  if (line === undefined || !Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
   const fence = echartsFenceAt(content, line)
   if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const target = otherStyle(detectEchartsMode(fence.body))
   const converted = convertEchartsBody(fence.body)
   if (!converted.ok) return declined(toast, ECHARTS_CONVERT_MESSAGES[converted.reason])
-  const next = applyEchartsFencePatch(content, fence, { body: converted.body, script: converted.script })
+  const next = applyEchartsFencePatch(content, fence, { body: converted.body, script: converted.script, style: target })
   if (next === null) return declined(toast, 'preview.graph_block_moved')
   onEdit(next)
   return true
@@ -254,22 +278,27 @@ export function convertEchartsFormat(
  * that is what the fence is looked up by: when the note no longer holds it, nothing is written, in
  * either direction of the mistake.
  */
-export function convertChartFormat(
-  block: HTMLElement,
+export function convertChartFence(
+  line: number | undefined,
   content: string,
   onEdit: (next: string) => void,
   toast: BlockToast,
 ): boolean {
-  const line = Number(block.dataset.line)
-  if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
+  if (line === undefined || !Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
   const fence = chartFenceAt(content, line)
   if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const target = otherStyle(detectChartMode(fence.body))
   const converted = convertChartBody(fence.body)
   if (!converted.ok) return declined(toast, CONVERT_MESSAGES[converted.reason])
-  const next = applyChartBodyAtFence(content, fence, converted.body)
+  const next = applyChartFencePatch(content, fence, { body: converted.body, style: target })
   if (next === null) return declined(toast, 'preview.graph_block_moved')
   onEdit(next)
   return true
+}
+
+/** The line a rendered block claims to sit on, or NaN when its markup carries none. */
+function lineOf(block: HTMLElement): number {
+  return Number(block.dataset.line)
 }
 
 function declined(toast: BlockToast, messageKey: MessageKey): boolean {
@@ -316,9 +345,10 @@ export const graphBlockToolbar: BlockToolbarModule = {
       const editable = blockActionSource(ctx)
       if (!graph || !editable) return true
       const onEdit = (next: string) => ctx.api.editContent(editable.noteId, next)
+      const line = lineOf(graph.block)
       return graph.kind === 'echarts'
-        ? convertEchartsFormat(graph.block, editable.source, onEdit, ctx.api.toast)
-        : convertChartFormat(graph.block, editable.source, onEdit, ctx.api.toast)
+        ? convertEchartsFence(line, editable.source, onEdit, ctx.api.toast)
+        : convertChartFence(line, editable.source, onEdit, ctx.api.toast)
     }
     return executeGraphBlockAction(action, button, ctx.api.toast)
   },

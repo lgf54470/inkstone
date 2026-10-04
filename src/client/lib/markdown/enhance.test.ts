@@ -407,11 +407,36 @@ function echartsRoot(body: string, info = 'echarts'): HTMLElement {
 const drawn = (root: HTMLElement): boolean => Boolean(root.querySelector('[data-echarts] svg'))
 const blockOf = (root: HTMLElement): HTMLElement => root.querySelector<HTMLElement>('[data-echarts]')!
 
+describe('the accent palette reaches the drawings', () => {
+  it('colours a chart.js dataset the note left unstyled, and leaves a named colour alone', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const json = JSON.stringify({
+      type: 'bar',
+      data: { labels: ['A', 'B'], datasets: [{ label: 'x', data: [1, 2] }, { label: 'y', data: [3, 4], backgroundColor: 'rgb(1, 2, 3)' }] },
+    })
+    const root = document.createElement('div')
+    root.innerHTML = `<div data-chart="${encodeDataValue(json)}"></div>`
+    document.body.append(root)
+    try {
+      await renderChartJs(root, false)
+      const datasets = (root.querySelector('[data-chart]') as unknown as { __chartInstance?: { data: { datasets: { backgroundColor?: unknown }[] } } }).__chartInstance?.data.datasets ?? []
+      expect(datasets).toHaveLength(2)
+      expect(String(datasets[0]?.backgroundColor)).toMatch(/^oklch\(/)
+      expect(datasets[1]?.backgroundColor).toBe('rgb(1, 2, 3)')
+      destroyChartInstances(root)
+    }
+    finally {
+      restoreCanvasContext()
+      root.remove()
+    }
+  })
+})
+
 describe('echarts blocks', () => {
   it('draws the option and stops announcing a pending block', async () => {
     const root = echartsRoot(ECHARTS_OPTION)
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(drawn(root)).toBe(true)
       expect(blockOf(root).classList.contains('loading')).toBe(false)
       expect(blockOf(root).getAttribute('aria-busy')).toBeNull()
@@ -425,7 +450,7 @@ describe('echarts blocks', () => {
   it('honours a fence that asked to run JavaScript, on the surface that allows it', async () => {
     const root = echartsRoot(ECHARTS_SCRIPT, 'echarts js')
     try {
-      await renderEcharts(root, { allowScript: true, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: true, dark: false, instant: false })
       expect(drawn(root)).toBe(true)
     }
     finally {
@@ -439,7 +464,7 @@ describe('echarts blocks', () => {
   it('will not run a function body the fence never asked to run', async () => {
     const root = echartsRoot(ECHARTS_SCRIPT)
     try {
-      await renderEcharts(root, { allowScript: true, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: true, dark: false, instant: false })
       expect(drawn(root)).toBe(false)
       expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('not readable as JSON5')
     }
@@ -452,7 +477,7 @@ describe('echarts blocks', () => {
   it('refuses the same fence where the surface does not run a note\'s JavaScript', async () => {
     const root = echartsRoot(ECHARTS_SCRIPT)
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(drawn(root)).toBe(false)
       expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('write `js` after the fence marker')
       expect(blockOf(root).textContent).toContain('formatter')
@@ -466,13 +491,13 @@ describe('echarts blocks', () => {
   it('redraws under a changed theme rather than keeping the colours it first read', async () => {
     const root = echartsRoot(ECHARTS_OPTION)
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       const first = blockOf(root).dataset.rendered
       const firstSvg = root.querySelector('[data-echarts] svg')
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(blockOf(root).dataset.rendered).toBe(first)
       expect(root.querySelector('[data-echarts] svg')).toBe(firstSvg)
-      await renderEcharts(root, { allowScript: false, themeKey: 'd', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: true, instant: false })
       expect(blockOf(root).dataset.rendered).not.toBe(first)
       expect(root.querySelector('[data-echarts] svg')).not.toBe(firstSvg)
     }
@@ -485,7 +510,7 @@ describe('echarts blocks', () => {
   it('shows the option it could not read', async () => {
     const root = echartsRoot('{ this is not: readable')
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(blockOf(root).classList.contains('echarts-error')).toBe(true)
       expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('not readable as JSON5')
     }
@@ -511,7 +536,7 @@ describe('echarts blocks', () => {
   it('draws a chart from a table body', async () => {
     const root = echartsRoot(['| :bar:{\"title\": \"Tally\"} | A | B |', '| --- | --- | --- |', '| s | 1 | 2 |'].join('\n'))
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(drawn(root)).toBe(true)
       expect(blockOf(root).querySelector('svg')?.textContent).toContain('Tally')
     }
@@ -524,7 +549,7 @@ describe('echarts blocks', () => {
   it('refuses a map whose outlines come from off the allowlist', async () => {
     const root = echartsRoot(['| :map:{"mapDataSource": "https://evil.example.com/geo.json"} | v |', '| --- | --- |', '| 北京 | 1 |'].join('\n'))
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(drawn(root)).toBe(false)
       expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('allowed https source')
     }
@@ -546,7 +571,7 @@ describe('echarts blocks', () => {
     ].join('\n')).html
     document.body.append(root)
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       const marker = root.querySelector<HTMLElement>('[data-table-chart]')!
       expect(marker.querySelector('svg')).not.toBeNull()
       expect(marker.querySelector('svg')?.textContent).toContain('Tally')
@@ -566,6 +591,29 @@ describe('echarts blocks', () => {
     expect(root.querySelector('table')).not.toBeNull()
   })
 
+  // The accent is switchable per account and the palette is read at draw time, so a block must be
+  // redrawn when it moves rather than keeping the colours it first read (ADR-0002 §5). The token is
+  // written by hand because jsdom ships no stylesheet for it.
+  it('redraws when the accent moves, without the note changing', async () => {
+    const root = echartsRoot(['| :heatmap: | a | b |', '| --- | --- | --- |', '| r | 1 | 2 |'].join('\n'))
+    document.documentElement.style.setProperty('--accent', 'oklch(49% 0.15 30)')
+    try {
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
+      const block = root.querySelector<HTMLElement>('[data-echarts]')!
+      const before = block.dataset.rendered
+      expect(before).toContain('oklch(49% 0.15 30)')
+      document.documentElement.style.setProperty('--accent', 'oklch(55% 0.12 210)')
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
+      expect(block.dataset.rendered).not.toBe(before)
+      expect(block.dataset.rendered).toContain('oklch(55% 0.12 210)')
+    }
+    finally {
+      document.documentElement.style.removeProperty('--accent')
+      destroyEchartsInstances(root)
+      root.remove()
+    }
+  })
+
   it('shows the source to a surface that names no echarts mode', async () => {
     const root = echartsRoot(ECHARTS_OPTION)
     showEchartsSource(root)
@@ -579,7 +627,7 @@ describe('echarts blocks', () => {
     root.innerHTML = '<div class="echarts-block loading" data-echarts="" data-echarts-index="0"></div>'
     document.body.append(root)
     try {
-      await renderEcharts(root, { allowScript: false, themeKey: 'l', instant: false })
+      await renderEcharts(root, { allowScript: false, dark: false, instant: false })
       expect(blockOf(root).querySelector('.chart-error-text')?.textContent).toContain('no chart option in it')
     }
     finally {

@@ -22,10 +22,10 @@ export type EchartsChart = ECharts
  * than their pixels, and an inline `<svg>` survives that trip while a canvas comes out blank. It is
  * also what the reference renderer for this syntax draws with.
  */
-export function createEchartsChart(element: HTMLElement, option: unknown): EchartsChart {
+export function createEchartsChart(element: HTMLElement, option: unknown, dark: boolean): EchartsChart {
   const width = element.clientWidth
   const height = element.clientHeight
-  const chart = echarts.init(element, echartsTheme(), {
+  const chart = echarts.init(element, echartsTheme(dark), {
     renderer: 'svg',
     ...(width > 0 && height > 0 ? { width, height } : {}),
   })

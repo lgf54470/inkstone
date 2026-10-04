@@ -1,4 +1,5 @@
 import { decodeDataValue } from '../../../lib/markdown/data-attr'
+import { echartsBody } from '../../../lib/markdown/echarts'
 import { excalidrawBody } from '../../../lib/markdown/excalidraw'
 import { kanbanBody } from '../../../lib/markdown/kanban'
 import { mindmapBody } from '../../../lib/markdown/mindmap'
@@ -63,6 +64,13 @@ function detectChart(target: HTMLElement): PreviewContextData | null {
   const chartEl = target.closest<HTMLElement>('.chartjs-block, [data-chart]')
   if (!chartEl) return null
   return { type: 'chart', target, chart: { code: decodeDataValue(chartEl.dataset.chart ?? '') || chartEl.textContent || '', sourceLine: getSourceLine(chartEl) } }
+}
+
+/** The block's own fence body, read back by the index the renderer stamped; a bare table-chart has none. */
+function detectEcharts(target: HTMLElement): PreviewContextData | null {
+  const block = target.closest<HTMLElement>('.echarts-block, [data-echarts]')
+  if (!block) return null
+  return { type: 'echarts', target, echarts: { code: echartsBody(block), sourceLine: getSourceLine(block) } }
 }
 
 function detectMindmap(target: HTMLElement): PreviewContextData | null {
@@ -149,6 +157,7 @@ const DETECTORS: Array<(target: HTMLElement) => PreviewContextData | null> = [
   detectMath,
   detectMermaid,
   detectChart,
+  detectEcharts,
   detectMindmap,
   detectExcalidraw,
   detectKanban,

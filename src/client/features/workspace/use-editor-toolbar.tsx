@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditorView } from '@codemirror/view'
-import { BENTO_SLIDES_TEMPLATES, CHARTJS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertAlign, insertBlockId, insertCallout, insertColumns, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTimeline, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
+import { BENTO_SLIDES_TEMPLATES, CHARTJS_TEMPLATES, ECHARTS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, insertAbbreviation, insertAdvancedCodeBlock, insertAlign, insertBlockId, insertCallout, insertColumns, insertDefinitionList, insertDetails, insertDiagramCode, insertEmoji, insertFootnote, insertFrontMatter, insertImage, insertNoteTemplate, insertRuby, insertRunnableJsBlock, insertTableOfContents, insertTabs, insertTimeline, insertTag, insertTaskWithStatus, insertWikiLink, setHeading, toggleBlockReference, toggleHighlight, toggleInlineMath, toggleNoteEmbed, toggleSubscript, toggleSuperscript, toggleUnderline } from '../../editor/commands'
 import type { DiagramTemplate } from '../../editor/diagram-templates'
 import type { MessageKey } from '../../lib/i18n'
 import type { MenuItem } from '../../components/overlay'
@@ -59,11 +59,12 @@ function noteMenuItems(run: Run): MenuItem[] {
   ]
 }
 
-type DiagramKind = 'mermaid' | 'chart' | 'mindmap' | 'kanban' | 'excalidraw' | 'slides'
+type DiagramKind = 'mermaid' | 'chart' | 'echarts' | 'mindmap' | 'kanban' | 'excalidraw' | 'slides'
 
 const DIAGRAM_MENUS: Record<DiagramKind, { labelKey: MessageKey; templates: DiagramTemplate[]; width: number }> = {
   mermaid: { labelKey: 'workspace.mermaid_diagram', templates: MERMAID_TEMPLATES, width: MERMAID_MENU_WIDTH },
   chart: { labelKey: 'workspace.chartjs_diagram', templates: CHARTJS_TEMPLATES, width: CHART_MENU_WIDTH },
+  echarts: { labelKey: 'workspace.echarts_chart', templates: ECHARTS_TEMPLATES, width: CHART_MENU_WIDTH },
   mindmap: { labelKey: 'workspace.mind_map', templates: MINDMAP_TEMPLATES, width: MINDMAP_MENU_WIDTH },
   kanban: { labelKey: 'workspace.kanban', templates: KANBAN_TEMPLATES, width: KANBAN_MENU_WIDTH },
   excalidraw: { labelKey: 'workspace.whiteboard', templates: EXCALIDRAW_TEMPLATES, width: EXCALIDRAW_MENU_WIDTH },
@@ -117,6 +118,7 @@ function blockMenuItems(run: Run): MenuItem[] {
   return [
     ...diagramMenuItems(run, 'mermaid'),
     ...diagramMenuItems(run, 'chart'),
+    ...diagramMenuItems(run, 'echarts'),
     ...diagramMenuItems(run, 'mindmap'),
     ...diagramMenuItems(run, 'kanban'),
     ...diagramMenuItems(run, 'excalidraw'),

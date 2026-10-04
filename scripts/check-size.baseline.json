@@ -142,6 +142,9 @@
   "src/client/lib/markdown/chart/config.test.ts": {
     "longFns": 2
   },
+  "src/client/lib/markdown/chart/palette.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/chart/table.test.ts": {
     "longFns": 1
   },
@@ -152,7 +155,7 @@
     "longFns": 1
   },
   "src/client/lib/markdown/enhance.test.ts": {
-    "lines": 591,
+    "lines": 639,
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
@@ -249,5 +252,8 @@
   },
   "src/worker/middleware/security-headers.ts": {
     "longFns": 2
+  },
+  "src/worker/routes/map-geojson.test.ts": {
+    "longFns": 1
   }
 }

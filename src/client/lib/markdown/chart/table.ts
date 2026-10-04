@@ -8,6 +8,7 @@
  * read one syntax without either importing the other.
  */
 import { isDelimiterRow, splitTableRow } from '../table-editor'
+import type { MessageKey } from '../../i18n'
 
 /**
  * The keyword cell, taken from Cherry verbatim: `:kind:` with an optional `{…}` configuration
@@ -41,7 +42,25 @@ export interface ChartTable {
 }
 
 /** Why a body is not a usable chart table. Every caller turns this into the block's error state. */
-export class ChartTableError extends Error {}
+export type ChartTableReason = 'no-header' | 'no-keyword' | 'no-delimiter' | 'bad-json'
+
+/**
+ * The reason in the words the author can act on. The key lives beside the failure rather than in the
+ * message because the block's banner is what a reader of a Chinese note sees, and a parser that threw
+ * English into it would put one untranslated sentence on every broken table.
+ */
+export const CHART_TABLE_MESSAGES: Record<ChartTableReason, MessageKey> = {
+  'no-header': 'markdown.chart_table_no_header',
+  'no-keyword': 'markdown.chart_table_no_keyword',
+  'no-delimiter': 'markdown.chart_table_no_delimiter',
+  'bad-json': 'markdown.chart_table_bad_options',
+}
+
+export class ChartTableError extends Error {
+  constructor(readonly reason: ChartTableReason) {
+    super(reason)
+  }
+}
 
 function unescapeCell(cell: string): string {
   return cell.replace(/\\([\\|])/g, '$1')
@@ -88,11 +107,11 @@ function parseKeywordOptions(inner: string): Record<string, unknown> {
   try {
     parsed = JSON.parse(text, safeReviver)
   }
-  catch (err) {
-    throw new ChartTableError(err instanceof Error ? err.message : String(err))
+  catch {
+    throw new ChartTableError('bad-json')
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new ChartTableError('expected a JSON object')
+    throw new ChartTableError('bad-json')
   }
   return parsed as Record<string, unknown>
 }
@@ -105,10 +124,10 @@ export function formatKeywordCell(keyword: ChartKeyword): string {
 /** Reads a chart table out of fence text. Ragged rows are padded, the way a rendered table pads them. */
 export function readChartTable(body: string): ChartTable {
   const lines = body.split('\n').filter((line) => line.trim().length > 0)
-  if (lines.length < 2) throw new ChartTableError('a chart table needs a header row')
+  if (lines.length < 2) throw new ChartTableError('no-header')
   const keyword = parseChartKeyword(splitTableRow(lines[0]!)[0] ?? '')
-  if (!keyword) throw new ChartTableError('the first cell must name a chart, like `:bar:`')
-  if (!isDelimiterRow(lines[1]!)) throw new ChartTableError('a chart table needs a `| --- |` row')
+  if (!keyword) throw new ChartTableError('no-keyword')
+  if (!isDelimiterRow(lines[1]!)) throw new ChartTableError('no-delimiter')
   const header = splitTableRow(lines[0]!).map(unescapeCell)
   header[0] = ''
   const width = header.length

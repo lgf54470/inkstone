@@ -3,13 +3,11 @@
  *
  * echarts bakes its colours into the canvas at draw time, so this is called on every draw rather
  * than once at startup (ADR-0002 §5): a value cached across the module's life would freeze the
- * theme at the moment the library was first loaded. The palette is the graph tag ramp rather than a
- * chart-specific one — it is the only ten-step sequence the two themes both calibrate for contrast.
+ * theme at the moment the library was first loaded. The series colours come from the account's
+ * accent rather than a library default rainbow — see ../chart/palette for how the ramp is built.
  */
-import { token } from './tokens'
-
-/** `--graph-tag-1` … `--graph-tag-10`, the shared ten-step ramp. */
-const SERIES_TOKEN_COUNT = 10
+import { token } from '../style-token'
+import { chartPalette, chartRamp } from '../chart'
 
 export interface EchartsTheme {
   color: string[]
@@ -46,7 +44,24 @@ function axisTheme(text: string, grid: string, area: string): Record<string, unk
   }
 }
 
-export function echartsTheme(): EchartsTheme {
+/**
+ * Fills the accent ramp into the continuous scales a table chart builds, leaving anything the note
+ * already stated alone: `visualMap` is what colours a heatmap cell or a choropleth region, and
+ * without an explicit range echarts draws its own default blue.
+ */
+export function applyChartPalette(option: unknown, dark: boolean): unknown {
+  if (!option || typeof option !== 'object' || Array.isArray(option)) return option
+  const source = option as Record<string, unknown>
+  const next: Record<string, unknown> = { ...source }
+  const ramp = chartRamp(dark)
+  if (source.visualMap && typeof source.visualMap === 'object' && !Array.isArray(source.visualMap)) {
+    const map = source.visualMap as Record<string, unknown>
+    if (map.inRange === undefined) next.visualMap = { ...map, inRange: { color: ramp } }
+  }
+  return next
+}
+
+export function echartsTheme(dark: boolean): EchartsTheme {
   const text = token('--text-secondary', '#475569')
   const faint = token('--text-tertiary', '#64748b')
   const grid = token('--border-subtle', 'rgba(100, 116, 139, 0.24)')
@@ -55,7 +70,7 @@ export function echartsTheme(): EchartsTheme {
   const body = token('--text-primary', '#0f172a')
   const area = token('--bg-sunken', 'rgba(100, 116, 139, 0.06)')
   return {
-    color: Array.from({ length: SERIES_TOKEN_COUNT }, (_, index) => token(`--graph-tag-${index + 1}`, body)),
+    color: chartPalette(dark),
     backgroundColor: 'transparent',
     textStyle: { fontFamily: token('--font-ui', 'sans-serif'), color: text },
     title: { textStyle: { color: body }, subtextStyle: { color: faint } },

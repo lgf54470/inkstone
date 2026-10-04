@@ -17,6 +17,7 @@ import { avatarRoutes } from './routes/avatars'
 import { backupRoutes } from './routes/backup'
 import { settingsRoutes } from './routes/settings'
 import { boardLibraryRoutes } from './routes/board-library'
+import { mapGeoJsonRoutes } from './routes/map-geojson'
 import { kanbanRoutes } from './routes/kanban'
 import { collectionPageRoutes, shareManageRoutes, sharePageRoutes, shareRoutes } from './routes/share'
 import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
@@ -120,6 +121,7 @@ function registerApiRoutes(app: Hono<AppBindings>): void {
   app.route('/api/kanban', kanbanRoutes)
   app.route('/api/update', updateRoutes)
   app.route('/api/mcp', mcpSettingsRoutes)
+  app.route('/api', mapGeoJsonRoutes)
   app.route('/api/share', shareManageRoutes)
   app.route('/api/public', shareRoutes)
   app.route('/api/blog/public', blogPublicRoutes)

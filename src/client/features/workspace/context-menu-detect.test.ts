@@ -35,6 +35,19 @@ function mountTable(): HTMLTableElement {
   return table
 }
 
+function mountEcharts(): HTMLDivElement {
+  const block = document.createElement('div')
+  block.className = 'echarts-block'
+  block.dataset.echarts = ''
+  block.dataset.echartsIndex = '0'
+  block.dataset.sourceLine = '18'
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'echarts', '{ series: [] }\n')
+  registerFenceBodies(block, fences)
+  document.body.appendChild(block)
+  return block
+}
+
 function mountChart(): HTMLDivElement {
   const chart = document.createElement('div')
   chart.className = 'chartjs-block'
@@ -172,6 +185,12 @@ describe('detectEditorContext blocks and diagrams', () => {
     const ctx = detectAt('```chart\n{"type":"bar"}\n```', 15)
     expect(ctx.type).toBe('chart')
     expect(ctx.chart?.code).toBe('{"type":"bar"}')
+  })
+
+  it('detects echarts block', () => {
+    const ctx = detectAt('```echarts js\n{ series: [] }\n```', 18)
+    expect(ctx.type).toBe('echarts')
+    expect(ctx.echarts?.code).toBe('{ series: [] }')
   })
 
   it('detects kanban block', () => {
@@ -315,6 +334,13 @@ describe('detectPreviewContext', () => {
     expect(ctx.table?.colIndex).toBe(0)
     expect(ctx.table?.sourceLine).toBe(10)
     table.remove()
+  })
+
+  it('detects echarts element in preview DOM', () => {
+    const ctx = detectPreviewContext(mountEcharts())
+    expect(ctx.type).toBe('echarts')
+    expect(ctx.echarts?.code).toBe('{ series: [] }')
+    expect(ctx.echarts?.sourceLine).toBe(18)
   })
 
   it('detects chart element in preview DOM', () => {

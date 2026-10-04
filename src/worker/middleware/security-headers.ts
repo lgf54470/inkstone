@@ -1,7 +1,6 @@
 import type { Context, Hono } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { LEGACY_SESSION_COOKIE, SESSION_COOKIE } from '@shared/constants'
-import { MAP_SOURCE_HOSTS } from '@shared/map-sources'
 import { mergeSettings } from '@shared/user-settings'
 import { initializeDatabase } from '../db/schema'
 import type { AppBindings } from '../env'
@@ -21,10 +20,6 @@ export function registerSecurityHeaders(app: Hono<AppBindings>): void {
     // renderer gate cannot see.
     const thirdParty = contentType.includes('text/html') && await viewerAllowsExternalImages(c)
     const imageSchemes = thirdParty ? (isHttps ? 'https:' : 'https: http:') : ''
-    // A `map` chart reads its outlines from one of the pinned hosts. That is a third-party request a
-    // visitor to a shared page never opted into, so the widening follows the same predicate as the
-    // images above and the same list the client validates against.
-    const mapSources = thirdParty ? MAP_SOURCE_HOSTS.map((host) => `https://${host}`).join(' ') : ''
     // Inline scripts (theme bootstrap, MCP login page, dev React preamble)
     // are allowed through a fresh per-response nonce instead of
     // 'unsafe-inline', so a future injection point cannot execute scripts.
@@ -44,7 +39,7 @@ export function registerSecurityHeaders(app: Hono<AppBindings>): void {
     c.header(
       'Content-Security-Policy',
         `default-src 'self'; base-uri 'self'; script-src ${scriptSource}; style-src 'self' 'unsafe-inline'; ` +
-        `img-src 'self' data: blob: ${imageSchemes}; font-src 'self' data:; connect-src 'self' ${mapSources}; worker-src 'self' blob:; ` +
+        `img-src 'self' data: blob: ${imageSchemes}; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; ` +
         `manifest-src 'self'; media-src 'self' blob:; form-action ${formAction}; frame-src 'none'; ` +
         "frame-ancestors 'none'; object-src 'none'",
     )

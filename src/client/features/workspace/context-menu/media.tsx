@@ -1,7 +1,6 @@
 import { EditorSelection } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import {
-  BarChart2,
   CheckSquare,
   FileCode,
   FileText,
@@ -16,10 +15,11 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { formatCode } from '../../../lib/markdown/code-formatter'
-import { CHARTJS_TEMPLATES, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES } from '../../../editor/commands'
+import { MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES } from '../../../editor/commands'
 import { detectMindmapMode, loadMindmapVendor, type MindmapMode } from '../../../lib/markdown/mindmap'
 import { findCodeFenceInLines, isMarkdownContainer, type EditorContextData, type PreviewContextData } from '../context-menu-detect'
 import type { MenuCtx } from './types'
+import { buildTemplateItems } from './fence-template'
 import { submenuFor } from '../../../components/overlay'
 
 type CodeBlockData = NonNullable<EditorContextData['codeBlock']>
@@ -29,6 +29,7 @@ type PreviewCodeBlockData = NonNullable<PreviewContextData['codeBlock']>
 const CODE_LANGUAGES = [
   'mermaid',
   'chart',
+  'echarts',
   'bento-slides',
   'kanban',
   'mindmap',
@@ -138,10 +139,6 @@ function formatCodeInContentFlow(content: string, sourceLine: number, cb: Previe
   onEditContent(lines.join('\n'))
 }
 
-function applyTemplateFlow(editorView: EditorView, from: number, to: number, blockLang: string, text: string) {
-  editorView.dispatch({ changes: { from, to, insert: '```' + blockLang + '\n' + text + '\n```' } })
-}
-
 async function convertMindmapInEditor(
   editorView: EditorView | null | undefined,
   from: number,
@@ -167,17 +164,6 @@ async function convertMindmapInEditor(
   } catch {
     useUi.getState().toast({ title: t('preview.mindmap_render_failed'), tone: 'warning' })
   }
-}
-
-function buildTemplateItems(editorView: EditorView | null | undefined, from: number, to: number, blockLang: string, templates: { id: string; label: string; text: string }[]) {
-  return templates.map((tpl) => ({
-    id: tpl.id,
-    label: tpl.label,
-    onSelect: () => {
-      if (!editorView) return
-      applyTemplateFlow(editorView, from, to, blockLang, tpl.text)
-    },
-  }))
 }
 
 export function buildImageItems(ctx: MenuCtx): MenuItem[] | null {
@@ -466,28 +452,6 @@ export function buildExcalidrawItems(ctx: MenuCtx): MenuItem[] | null {
       ...(previewContext
         ? [
             { id: 'jump-excalidraw', label: t('contextmenu.excalidraw_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
-          ]
-        : []),
-    ]
-  }
-  return null
-}
-
-export function buildChartItems(ctx: MenuCtx): MenuItem[] | null {
-  const { editorView, editorContext, previewContext, onJumpToLine } = ctx
-
-  if (editorContext?.type === 'chart' || previewContext?.type === 'chart') {
-    const templates = CHARTJS_TEMPLATES.map((tpl) => ({ id: tpl.id, label: t(tpl.labelKey), text: tpl.code }))
-    const tplItems = editorContext?.chart ? buildTemplateItems(editorView, editorContext.chart.from, editorContext.chart.to, 'chart', templates) : []
-    return [
-      ...(editorContext?.chart
-        ? [
-            { id: 'chart-templates-sub', label: t('contextmenu.chart_templates'), icon: <BarChart2 size={14} />, separatorBefore: true, subItems: tplItems, submenu: submenuFor(tplItems, 190) },
-          ]
-        : []),
-      ...(previewContext
-        ? [
-            { id: 'jump-chart', label: t('contextmenu.chart_jump_to_editor'), icon: <Pencil size={14} />, separatorBefore: true, onSelect: () => onJumpToLine(previewContext.sourceLine ?? 0) },
           ]
         : []),
     ]

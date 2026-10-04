@@ -9,6 +9,7 @@ import { detectKanbanMode, KANBAN_LANGUAGES } from '../kanban'
 import { detectSlidesMode, BENTO_SLIDES_LANGUAGES } from '../slides'
 import { detectMindmapMode, MINDMAP_LANGUAGES, MINDMAP_THEME_ATTR, readFenceAnnotation } from '../mindmap'
 import { ECHARTS_LANGUAGES, readsFenceScript } from '../echarts'
+import { readFenceStyle } from '../chart'
 import { emptyEnvironment, renderEnv } from './env'
 import { stripObsidianComments, parseFenceInfo } from './parse'
 import { readCodeOptions } from './code-options'
@@ -124,7 +125,7 @@ function renderFence(md: MarkdownIt, tokens: Token[], index: number, rendererEnv
   }
   if (info.language === 'chart' || info.language === 'chartjs') {
     renderEnv(rendererEnv).hasChart = true
-    return `<div class="chartjs-block loading"${line} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`
+    return `<div class="chartjs-block loading"${line}${styleAttr(token, 'data-chart-style')} data-chart="${escapeAttr(encodeDataValue(token.content))}" aria-busy="true">${escapeHtml(t('markdown.rendering_chart'))}</div>`
   }
   if ((ECHARTS_LANGUAGES as readonly string[]).includes(info.language))
     return renderEchartsBlock(token, line, rendererEnv)
@@ -197,6 +198,16 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
 }
 
 /**
+ * The format a fence states for its body, carried out of the info line and onto the block under the
+ * family's own attribute — the same trip the mind map's `theme=` makes, because the layer that reads a
+ * body has the node, not the note's text. As written, so an unreadable value can be reported.
+ */
+function styleAttr(token: Token, attribute: string): string {
+  const style = readFenceStyle(token.info)
+  return style === null ? '' : ` ${attribute}="${escapeAttr(style)}"`
+}
+
+/**
  * The echarts placeholder. The option travels through the document's fence-body set rather than an
  * attribute (see `../fence-bodies`): a gallery option runs to a couple of kilobytes, and that is
  * re-encoded on every preview pass if it rides in the markup. The head the block gets — title, source,
@@ -208,11 +219,11 @@ function renderEchartsBlock(token: Token, line: string, rendererEnv: unknown): s
   const body = token.content
   const index = takeFenceIndex(env.fences, 'echarts', body)
   // The ask travels as its own mark so the surface can weigh it: a note may only run JavaScript where
-  // the person looking at it is the person who wrote it, and only when the fence asked. The body's own
-  // format is not stamped here — a block reads that back from the body, the same way a chart does.
+  // the person looking at it is the person who wrote it, and only when the fence asked. What the body
+  // is made of is not stamped unless the note states it — otherwise the block reads that back.
   const script = readsFenceScript(token.info)
   return [
-    `<div class="echarts-block loading"${line} data-echarts="" data-echarts-index="${index}"${script ? ' data-echarts-script="true"' : ''} aria-busy="true">`,
+    `<div class="echarts-block loading"${line}${styleAttr(token, 'data-echarts-style')} data-echarts="" data-echarts-index="${index}"${script ? ' data-echarts-script="true"' : ''} aria-busy="true">`,
     `<div class="echarts-block-placeholder" data-echarts-placeholder>${escapeHtml(t('markdown.rendering_chart'))}</div>`,
     `</div>`,
   ].join('')
