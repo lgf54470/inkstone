@@ -20,7 +20,7 @@ export function initializeDatabase(env: Env): Promise<DatabaseState> {
 
 async function createSchema(db: D1Database): Promise<DatabaseState> {
   const stored = await readStoredDatabaseState(db)
-  if (stored) return stored
+  if (stored) return stored.ftsEnabled ? stored : await retryFts(db, stored)
 
   const initialized = await db
     .prepare(`SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'users'`)
@@ -39,24 +39,36 @@ async function createSchema(db: D1Database): Promise<DatabaseState> {
   }
   await assertFinalSchema(db)
 
-  let state: DatabaseState
+  const ftsEnabled = await tryEnableFts(db)
+  await setMeta(db, DATABASE_STATE_KEY, JSON.stringify({
+    schema: schemaFingerprint(),
+    ftsEnabled,
+  }))
+  return { ftsEnabled }
+}
+
+/**
+ * A cached "no FTS5" is not permanent: the D1 image can change and an account can gain the module
+ * without its schema fingerprint moving. The expensive converge pass stays skipped and only the two
+ * index statements are retried, upgrading the cache once they work.
+ */
+async function retryFts(db: D1Database, stored: DatabaseState): Promise<DatabaseState> {
+  if (!await tryEnableFts(db)) return stored
+  await setMeta(db, DATABASE_STATE_KEY, JSON.stringify({ schema: schemaFingerprint(), ftsEnabled: true }))
+  return { ftsEnabled: true }
+}
+
+async function tryEnableFts(db: D1Database): Promise<boolean> {
   try {
     await db.batch([db.prepare(FTS_STATEMENT), db.prepare(BLOG_FTS_STATEMENT)])
-    state = { ftsEnabled: true }
+    return true
   } catch (error) {
     console.warn(
       '[inkstone] The current database does not support FTS5; search will use LIKE:',
       error instanceof Error ? error.message : error,
     )
-    state = { ftsEnabled: false }
+    return false
   }
-  if (state.ftsEnabled) {
-    await setMeta(db, DATABASE_STATE_KEY, JSON.stringify({
-      schema: schemaFingerprint(),
-      ftsEnabled: true,
-    }))
-  }
-  return state
 }
 
 async function applyMigrations(db: D1Database): Promise<void> {
@@ -91,8 +103,8 @@ async function readStoredDatabaseState(db: D1Database): Promise<DatabaseState | 
     const raw = await getMeta(db, DATABASE_STATE_KEY)
     if (!raw) return null
     const value = JSON.parse(raw) as { schema?: unknown; ftsEnabled?: unknown }
-    if (value.schema !== schemaFingerprint() || value.ftsEnabled !== true) return null
-    return { ftsEnabled: true }
+    if (value.schema !== schemaFingerprint() || typeof value.ftsEnabled !== 'boolean') return null
+    return { ftsEnabled: value.ftsEnabled }
   } catch {
     return null
   }

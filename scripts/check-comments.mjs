@@ -16932,6 +16932,7 @@ const allowed = new Map([
     '// Existing installations must converge additively. CREATE IF NOT EXISTS',
     '// never rewrites user data; running table creation before indexes also',
     '// lets a partially initialized database recover missing feature tables.',
+    '/**\n * A cached "no FTS5" is not permanent: the D1 image can change and an account can gain the module\n * without its schema fingerprint moving. The expensive converge pass stays skipped and only the two\n * index statements are retried, upgrading the cache once they work.\n */',
   ]],
   ['src/worker/db/schema/share-presence.ts', [
     '/**\n * One row per shared note that is currently being presented to an audience (ADR-0006).\n *\n * Keyed by slug because that is all a viewer knows: `POST /api/public/:slug/present` is the whole read\n * path, and one row per share is the decision that "a share has one show at a time" is enforced by the\n * schema rather than by convention. The token is stored hashed for the same reason session tokens are —\n * this row is the capability that lets a stranger read where a talk is, and a leaked row must not be a\n * leaked link.\n *\n * Nothing else lives here on purpose: no viewer identifiers, no per-page history, no counts. The row\n * answers one question ("where is the show now, and may this caller hear it"), and the lease in\n * `expires_at` is what stops a forgotten show from answering it forever.\n */',
@@ -19485,6 +19486,7 @@ const allowed = new Map([
     '// writing it on the control names nothing and must not satisfy the guard.',
   ]],
   ['tests/schema-migrations.test.ts', [
+    '/** Rewrites the cached database-state row the way a stale or hand-edited one would look. */',
     '// Simulate a database whose music tables came from an earlier build: different',
     '// column names, tag links by name, seconds instead of milliseconds.',
     '// A new handle and a cleared fingerprint force the migration pass to run again.',
@@ -19500,6 +19502,11 @@ const allowed = new Map([
     '// A post that already existed is live, not in the bin, and keeps its text.',
     '// The shape an installation had before FEA-06: no owner flag on a reply, no stored spam score.',
     '// A comment that already existed is a reader\'s, not the author\'s, and was never scored.',
+    '/**\n   * The convergence pass is skipped whenever the cached schema fingerprint matches — but that cache\n   * used to be written only by a database that got FTS5 running, so an account on a D1 without it\n   * re-ran every table, migration, index and `PRAGMA` check on each cold isolate, inside the user\'s\n   * first request. These cases hold the fix from both sides: the pass must not repeat, a cached\n   * state must still be one this build wrote, and a missing FTS5 must not be latched off forever.\n   */',
+    '/** A distinct binding object is a distinct isolate: `initializeDatabase` memoizes per `env.DB`. */',
+    '/** The SQL one `initializeDatabase` call prepared, and nothing before it. */',
+    '// A hand-written or half-migrated row must not be read as "FTS is off": that would quietly drop',
+    '// every account onto LIKE search with nothing failing anywhere.',
   ]],
   ['tests/security-headers.test.ts', [
     '// The shell ships with `public, max-age=0, must-revalidate`, and a navigation that reuses the',
