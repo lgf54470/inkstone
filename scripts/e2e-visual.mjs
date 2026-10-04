@@ -148,6 +148,8 @@ const LABELS = {
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
   presentFollowLost: localeLabel('workspace.presentation_follow_lost'),
+  editorSection: localeLabel('settings.editor'),
+  diagramToggle: localeLabel('settings.diagram'),
   moveToTrash: localeLabel('common.move_to_trash'),
   deletePermanently: localeLabel('notes.delete_permanently'),
   trashView: localeLabel('navigation.trash'),
@@ -2727,6 +2729,142 @@ async function assertPresenterConsole(browser, page) {
     await clickButton(page, LABELS.presentExit)
     await sleep(700)
   }
+}
+
+// L-16 asked whether a switch the account turns during a show reaches the pages already measured, and
+// its own entry said the browser had no way in — true of the show's page, where the settings dialog is
+// out of reach, and false of a second tab of the same account, which is exactly what L-10 needed to
+// delete a note. So this is the direct face of that judgement: another tab turns the diagram switch,
+// and both surfaces of the running show have to answer for it, back to front and then front to back.
+async function assertSettingsReachTheShow(browser, page) {
+  await openDiagramNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const drawn = await waitForDiagramSurfaces(page, 'on')
+  check('presentation settings: the show draws the diagram the account asked for', drawn.agrees, JSON.stringify(drawn))
+
+  const other = await browser.newPage()
+  try {
+    await other.setViewport(DESKTOP_VIEWPORT)
+    await other.goto(BASE, { waitUntil: 'networkidle2' })
+    await dismissUpdatePrompt(other)
+    await sleep(2_000)
+    const off = await toggleSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    check('presentation settings: another tab can reach the diagram switch', off.arrived && off.clicked !== '', JSON.stringify(off))
+    try {
+      const dropped = await waitForDiagramSurfaces(page, 'off')
+      check('presentation settings: the projector and the slide list both drop a diagram the account turned off', dropped.agrees, JSON.stringify(dropped))
+    } finally {
+      // Whatever the reading said, the account goes back the way it was found: every scenario after
+      // this one measures a show whose diagrams are drawn.
+      await restoreSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    }
+    const back = await toggleSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    const drawnAgain = await waitForDiagramSurfaces(page, 'on')
+    check('presentation settings: turning the switch back draws the picture on both surfaces again', back.clicked !== '' && drawnAgain.agrees, JSON.stringify({ back, ...drawnAgain }))
+  } finally {
+    await other.close()
+  }
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  await openDeckNote(page)
+}
+
+const DIAGRAM_NOTE = '# Diagrams on the projector\n\n```mermaid\nflowchart LR\n  A[Source] --> B[Screen]\n```\n'
+
+async function openDiagramNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, DIAGRAM_NOTE, 'presentation settings')
+  await sleep(1_500)
+}
+
+// Both surfaces read the same cache, so the pair is what a flipped switch has to move: the stage shows
+// the block it measured, and the card shows the page the rail says is current.
+async function readDiagramSurfaces(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
+    const stageBlock = stage?.querySelector('[data-mermaid]')
+    const card = panel?.querySelector('[data-presentation-rail] [aria-selected="true"] [data-slide-thumb-draw]')
+    const cardBlock = card?.closest('.ink-slide-thumb')?.querySelector('[data-mermaid]')
+    return {
+      stage: { svg: stage ? stage.querySelectorAll('[data-mermaid] svg').length : -1, source: /flowchart/.test(stageBlock?.textContent ?? '') },
+      card: { drawn: card?.getAttribute('data-slide-thumb-draw') ?? 'absent', svg: cardBlock ? cardBlock.querySelectorAll('svg').length : -1 },
+    }
+  })
+}
+
+async function waitForDiagramSurfaces(page, want) {
+  const agreesOn = (read) => read.stage.svg >= 1 && read.card.svg >= 1
+  // What a flip must take away on *both* surfaces is the picture itself; the card's marker is left in
+  // the detail rather than judged, because the background pass does not restart on a settings change
+  // and so keeps that page's capture as `undrawn` until the next show — a lag L-17 records, not a
+  // stale picture this scenario should bless by asserting it.
+  const agreesOff = (read) => read.stage.svg === 0 && read.stage.source && read.card.svg === 0
+  const agrees = want === 'on' ? agreesOn : agreesOff
+  let read = await readDiagramSurfaces(page)
+  for (let attempt = 0; attempt < 30 && !agrees(read); attempt += 1) {
+    await sleep(500)
+    read = await readDiagramSurfaces(page)
+  }
+  return { ...read, agrees: agrees(read) }
+}
+
+/** Opens the settings dialog in this tab, finds one switch by its accessible name, and presses it. */
+async function toggleSwitchInSettings(page, sectionLabels, switchLabels) {
+  await pressCombo(page, ['Control', ','])
+  const arrived = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="dialog"] nav button')]
+    .some((button) => labels.includes((button.textContent ?? '').trim())), { timeout: 20_000 }, sectionLabels)
+    .then(() => true, () => false)
+  await page.evaluate((labels) => {
+    const button = [...document.querySelectorAll('[role="dialog"] nav button')].find((entry) => labels.includes((entry.textContent ?? '').trim()))
+    button?.click()
+  }, sectionLabels)
+  const switchFound = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="switch"]')]
+    .some((entry) => labels.includes(entry.getAttribute('aria-label') ?? '')), { timeout: 20_000 }, switchLabels)
+    .then(() => true, () => false)
+  const pressed = await page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!entry) return { clicked: '', checked: null }
+    entry.click()
+    return { clicked: entry.getAttribute('aria-label') ?? '', checked: entry.getAttribute('aria-checked') }
+  }, switchLabels)
+  await sleep(1_200)
+  const state = await readSwitchState(page, switchLabels)
+  await page.keyboard.press('Escape')
+  await sleep(900)
+  return { arrived, switchFound, ...pressed, state }
+}
+
+async function readSwitchState(page, switchLabels) {
+  return page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    return entry?.getAttribute('aria-checked') ?? null
+  }, switchLabels)
+}
+
+// The settings section is lazy, so this reopens the dialog rather than assuming it is still on screen,
+// and presses the switch only if the account is left with the setting this scenario turned off.
+async function restoreSwitchInSettings(page, sectionLabels, switchLabels) {
+  await pressCombo(page, ['Control', ','])
+  const arrived = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="switch"]')]
+    .some((entry) => labels.includes(entry.getAttribute('aria-label') ?? '')), { timeout: 20_000 }, switchLabels)
+    .then(() => true, () => false)
+  const pressed = arrived ? await page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!entry || entry.getAttribute('aria-checked') !== 'false') return { clicked: '', checked: entry?.getAttribute('aria-checked') ?? null }
+    entry.click()
+    return { clicked: entry.getAttribute('aria-label') ?? '', checked: 'false' }
+  }, switchLabels) : { clicked: '', checked: null }
+  await sleep(1_200)
+  await page.keyboard.press('Escape')
+  await sleep(900)
+  return { arrived, ...pressed }
 }
 
 // N-19 promised what a show says when the note behind it disappears. Its jsdom suite reached that
@@ -10357,6 +10495,7 @@ async function main() {
     await assertAudienceFollow(browser, page, consoleErrors)
     await assertPresenterConsole(browser, page)
     await assertFollowLost(browser, page)
+    await assertSettingsReachTheShow(browser, page)
     await assertSlideLayouts(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
