@@ -11514,6 +11514,11 @@ const allowed = new Map([
     '// Serial queue that mimics Web Locks: one task at a time, FIFO. Installed on',
     '// navigator.locks so the cache\'s critical section runs against it.',
   ]],
+  ['src/client/lib/db-legacy-scan.idb.test.ts', [
+    '/**\n * A returning user\'s boot used to read and structured-clone-deserialize every record in the local\n * cache — every cached note body — just to find out whether any of it predated the per-user key\n * namespace. `bindLocalUser` writes the unscoped `userId` key on every call and never clears it, so\n * from the second boot onward the "is this the legacy user?" test is always true and the scan always\n * runs, awaited inside `persistSession` and therefore before the boot splash may lift.\n *\n * The scan is the expensive part, not the migration: deciding whether legacy keys exist needs keys\n * only. These cases keep the fix from degenerating into "skip the work" — the first pins that a\n * cache full of namespaced data is never read value-by-value, the rest pin that data which really is\n * legacy still moves, still wins nothing over an existing copy, and still gets removed.\n */',
+    '/** Wraps the three reads this test cares about; every other call goes to the real module. */',
+    '/**\n * `dbState.activeUserId` is module state, and `bindLocalUser` short-circuits when it already equals\n * the user being bound — the migration only runs on a page load\'s first bind. Cleared here so each\n * case starts at that first bind instead of inheriting the previous case\'s.\n */',
+  ]],
   ['src/client/lib/db-multitab.idb.test.ts', [
     '// This file runs the same multi-tab scenarios as db-multitab.test.ts, but every',
     '// freshTab() opens its own real idb-keyval connection to one fake-indexeddb',
@@ -11579,6 +11584,7 @@ const allowed = new Map([
     '// pinning and favouriting the same track offline must leave both flags, not whichever came last.',
   ]],
   ['src/client/lib/db/keys.ts', [
+    '/**\n * Keys without values. `entries` deserializes every record it returns, so asking it "does any legacy\n * key exist?" reads and clones every cached note body — see `migrateLegacyData`.\n */',
     '// The bound user and the namespace fallback flag live here (not in core.ts)',
     '// because store-io.ts\'s key scoping reads them, and core.ts imports store-io.ts;',
     '// a leaf module keeps the db layer free of an import cycle. Mutated through the',
@@ -11597,6 +11603,7 @@ const allowed = new Map([
     '// the value is re-validated on every read: a truncated or hand-edited entry is dropped instead of',
     '// replayed.',
     '// Quota/private-mode or transient IndexedDB failures are absorbed; in-memory state stays authoritative.',
+    '/**\n * Which pre-namespace keys this database holds, without reading their values where the store can\n * list keys at all. `entries` deserializes every cached note body to answer a question the key\n * string already answers, and `bindLocalUser` calls this on every page load\'s first bind — behind\n * the boot splash.\n *\n * The `entries` branch stays because a store shim without `keys` must still migrate rather than\n * silently keep a legacy cache nobody ever moves.\n */',
     '// An offline tab never sees another tab\'s brand-new notes; merging with the',
     '// on-disk index keeps those entries when this tab rewrites the index, while',
     '// ids this tab deleted are still dropped (stale ids heal on the next pull).',

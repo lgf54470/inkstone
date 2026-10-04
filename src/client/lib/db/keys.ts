@@ -8,8 +8,14 @@ const optionalIdbExport = (name: string): unknown => Object.prototype.hasOwnProp
   : undefined
 export 
 const delMany = optionalIdbExport('delMany') as ((keys: IDBValidKey[], store?: UseStore) => Promise<void>) | undefined
-export 
+export
 const entries = optionalIdbExport('entries') as (<KeyType extends IDBValidKey, ValueType = unknown>(store?: UseStore) => Promise<[KeyType, ValueType][]>) | undefined
+/**
+ * Keys without values. `entries` deserializes every record it returns, so asking it "does any legacy
+ * key exist?" reads and clones every cached note body — see `migrateLegacyData`.
+ */
+export
+const readAllKeys = optionalIdbExport('keys') as ((store?: UseStore) => Promise<IDBValidKey[]>) | undefined
 export const store = createStore(CLIENT_DATABASE_NAME, 'kv')
 export const KEY = {
   notes: 'notes',
