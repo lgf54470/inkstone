@@ -19,7 +19,7 @@ export function MusicFloatingLyrics() {
       type='button'
       onClick={() => setImmersive(true)}
       aria-label={t('music.open_lyrics')}
-      className='mx-2.5 mb-1 flex shrink-0 flex-col gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--bg-hover)]'
+      className='mx-[var(--sp-2\\.5)] mb-[var(--sp-1)] flex shrink-0 flex-col gap-[var(--sp-0\\.5)] rounded-[var(--r-sm)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-left transition-colors hover:bg-[var(--bg-hover)]'
     >
       <span className='truncate text-[length:var(--text-11)] font-medium text-[var(--accent)]'>{current?.text}</span>
       {next && <span className='truncate text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{next.text}</span>}

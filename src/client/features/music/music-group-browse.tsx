@@ -13,7 +13,7 @@ import type { MusicGroup, MusicGroupKind } from './music-grouping'
 
 // Albums and artists arrive as flat tag fields on each track (FEAT-10-era library),
 // so the whole grouping view is derived client-side and never needs a server round-trip.
-const GROUP_GRID_CLASS = 'grid h-full grid-cols-[repeat(auto-fill,minmax(150px,1fr))] content-start gap-3 overflow-y-auto p-4'
+const GROUP_GRID_CLASS = 'grid h-full grid-cols-[repeat(auto-fill,minmax(150px,1fr))] content-start gap-[var(--sp-3)] overflow-y-auto p-[var(--sp-4)]'
 
 export const MusicGroupBrowse = memo(function MusicGroupBrowse({ kind }: { kind: MusicGroupKind }) {
   const tracks = useMusic((state) => state.tracks)
@@ -44,7 +44,7 @@ function GroupCard({ group, kind, onOpen }: { group: MusicGroup; kind: MusicGrou
     <button
       type='button'
       onClick={onOpen}
-      className='flex min-w-0 flex-col gap-1.5 rounded-[var(--r-lg)] p-2 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
+      className='flex min-w-0 flex-col gap-[var(--sp-1\\.5)] rounded-[var(--r-lg)] p-[var(--sp-2)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
     >
       <MusicArtwork url={group.coverUrl} alt='' className='aspect-square w-full rounded-[var(--r-md)]' iconSize={28} />
       <span className='truncate text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>{groupNameLabel(group, kind)}</span>
@@ -73,7 +73,7 @@ export const MusicGroupDetailHeader = memo(function MusicGroupDetailHeader({ sco
     : scope.artist || t('music.unknown_artist')
   const durationMs = tracks.reduce((sum, track) => sum + track.durationMs, 0)
   return (
-    <div className='flex shrink-0 items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
+    <div className='flex shrink-0 items-center gap-[var(--sp-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)] py-[var(--sp-2)]'>
       <IconButton
         label={t('music.group_back')}
         size='sm'

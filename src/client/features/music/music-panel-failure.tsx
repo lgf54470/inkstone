@@ -8,8 +8,8 @@ import { t } from '../../lib/i18n'
 // already on screen and has no other announcement.
 export function PanelFailure({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div role='status' className='flex flex-col items-center gap-2 py-6 text-center'>
-      <p className='flex items-center gap-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
+    <div role='status' className='flex flex-col items-center gap-[var(--sp-2)] py-[var(--sp-6)] text-center'>
+      <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         <AlertCircle size={13} className='shrink-0' aria-hidden='true' />
         {message}
       </p>

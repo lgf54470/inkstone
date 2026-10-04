@@ -114,7 +114,7 @@ function TrackForm({
       <Field label={t('music.field_title')} required hint={titleMissing ? t('music.field_title_required') : undefined}>
         <Input value={form.title} invalid={titleMissing} onChange={(event) => onChange({ ...form, title: event.target.value })} />
       </Field>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('music.field_artist')}>
           <Input value={form.artist} onChange={(event) => onChange({ ...form, artist: event.target.value })} />
         </Field>
@@ -159,7 +159,7 @@ function TagPicker({
     return <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_tags')}</p>
   }
   return (
-    <div className='flex flex-wrap gap-1.5'>
+    <div className='flex flex-wrap gap-[var(--sp-1\\.5)]'>
       {tags.map((tag) => {
         const active = selected.includes(tag.id)
         return (
@@ -169,7 +169,7 @@ function TagPicker({
             aria-pressed={active}
             onClick={() => onChange(active ? selected.filter((id) => id !== tag.id) : [...selected, tag.id])}
             className={cn(
-              'inline-flex items-center gap-1 rounded-[var(--r-full)] border px-2 py-1 text-[length:var(--text-11)] transition-colors',
+              'inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-full)] border px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11)] transition-colors',
               active
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',

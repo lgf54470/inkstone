@@ -30,13 +30,13 @@ export function ProviderSuggestions() {
     commitQuery('')
   }
   return (
-    <ul data-provider-suggestions='' aria-label={t('music.search_suggestions')} className='space-y-0.5 pb-1'>
+    <ul data-provider-suggestions='' aria-label={t('music.search_suggestions')} className='space-y-0.5 pb-[var(--sp-1)]'>
       {suggestions.map((suggestion) => (
         <li key={suggestion.key}>
           <button
             type='button'
             onClick={() => pick(suggestion)}
-            className='flex w-full min-w-0 items-center gap-2 rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+            className='flex w-full min-w-0 items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1)] text-left text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           >
             {suggestionIcon(suggestion.kind)}
             <span className='min-w-0 flex-1 truncate'>{suggestion.label}</span>

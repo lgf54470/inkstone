@@ -119,6 +119,12 @@ const SCALE_ZERO_TOLERANCE_PREFIXES = [
   'src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx',
   'src/client/lib/markdown/slides/ui/slides-stage.tsx',
   'src/client/lib/markdown/slides/ui/unsupported-element.tsx',
+  'src/client/features/music/music-edit-track-modal.tsx',
+  'src/client/features/music/music-floating-lyrics.tsx',
+  'src/client/features/music/music-group-browse.tsx',
+  'src/client/features/music/music-panel-failure.tsx',
+  'src/client/features/music/music-provider-suggestions.tsx',
+  'src/client/features/music/music-track-list.tsx',
 ]
 
 // Files whose hex literals are authored content or a self-contained
