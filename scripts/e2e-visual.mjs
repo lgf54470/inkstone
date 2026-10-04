@@ -1216,6 +1216,87 @@ async function assertPresentationLaser(page) {
   check('laser: the show still ends on the next Esc, and leaves no dot on the note', !closed.open && !closed.layer, JSON.stringify(closed))
 }
 
+/**
+ * Get the projector into browser fullscreen, and prove the browser is still there when this returns.
+ *
+ * L-13's measurement: in a headless shell the browser can drop native fullscreen on its own about a
+ * second after the app asked for it, and the app follows the browser rather than its own wish — so a
+ * scene that reads a fullscreen-only behaviour without re-checking is reading a surface that was never
+ * active. A real key press re-arms it, which is why this presses `f` rather than clicking the control.
+ */
+async function enterProjectorFullscreen(page) {
+  let rePressed = 0
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+      await sleep(1_500)
+      if (await page.evaluate(() => Boolean(document.fullscreenElement))) return { entered: true, rePressed }
+    }
+    rePressed++
+    await page.keyboard.press('f')
+    const held = await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5_000 }).then(() => true, () => false)
+    if (held) return { entered: true, rePressed }
+  }
+  return { entered: false, rePressed }
+}
+
+// The chrome is the projector's own thing to get out of the way: while the room is looking at the slide,
+// the bar and the pointer must not be part of the picture. This has only ever been *reported* by the
+// gates (N-15's `faded` was a value in a detail, never a verdict), so nothing in CI proved the fade
+// works, let alone that it comes back. Both halves are judged here, on the browser's own word about
+// fullscreen.
+async function assertPresentationChromeAutoHide(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
+
+  const { entered, rePressed } = await enterProjectorFullscreen(page)
+  check('chrome fade: the room is really in browser fullscreen before the fade is read', entered, `rePressed=${rePressed}`)
+  if (!entered) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    return
+  }
+
+  const read = () => page.evaluate(() => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const style = chrome ? getComputedStyle(chrome) : null
+    return {
+      present: Boolean(chrome),
+      inert: chrome?.hasAttribute('inert') === true,
+      opacity: Number.parseFloat(style?.opacity ?? '1'),
+      pointer: style?.pointerEvents ?? '',
+    }
+  })
+
+  const idleMs = Number(/CHROME_IDLE_MS = (\d+)/.exec(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/client/features/presentation/use-chrome-auto-hide.ts'), 'utf8'))?.[1] ?? '0')
+  check('chrome fade: the idle window is read from the app rather than guessed', idleMs > 0, `CHROME_IDLE_MS=${idleMs}`)
+
+  const before = await read()
+  await sleep(idleMs + 900)
+  const faded = await read()
+  check('chrome fade: the controls step out of the way while nothing happens',
+    before.opacity > 0.9 && faded.inert && faded.opacity === 0 && faded.pointer === 'none', JSON.stringify({ before, faded }))
+
+  const box = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-slide-canvas]')?.getBoundingClientRect()
+    return canvas ? { x: Math.round(canvas.x + canvas.width / 2), y: Math.round(canvas.y + canvas.height / 2) } : null
+  })
+  if (box) await page.mouse.move(box.x, box.y)
+  await sleep(700)
+  const awake = await read()
+  check('chrome fade: a pointer move brings the controls back without a click', !awake.inert && awake.opacity > 0.9, JSON.stringify(awake))
+
+  // Two presses, because that is what the show does with them: the first leaves browser fullscreen and
+  // the next one ends the show — the laser scene steps through the same order.
+  for (let press = 0; press < 3; press++) {
+    await page.keyboard.press('Escape')
+    await sleep(600)
+    if (!(await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]'))))) break
+  }
+  const down = await page.evaluate(() => ({ open: Boolean(document.querySelector('[data-slide-canvas]')), full: Boolean(document.fullscreenElement) }))
+  check('chrome fade: the scene puts its show and its fullscreen down', !down.open && !down.full, JSON.stringify({ ...down, rePressed }))
+}
+
 async function assertPresentationScreenCover(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
@@ -10054,6 +10135,7 @@ async function main() {
     await assertKanbanOnProjector(page)
     await assertPresentationAccessibility(page)
     await assertPresentationLaser(page)
+    await assertPresentationChromeAutoHide(page)
     await assertPresentationScreenCover(page)
     await assertDeckExport(page)
     await assertSlideCarriesNoControls(page)
