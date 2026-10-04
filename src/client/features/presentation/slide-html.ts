@@ -1,5 +1,6 @@
 import { renderMarkdown, type RenderResult } from '../../lib/markdown/renderer'
 import type { FenceBodies } from '../../lib/markdown/fence-bodies'
+import type { PreviewSettings } from '@shared/types/settings'
 import { takeLayoutDirective, takeStepDirective, type SlideLayout } from './slides'
 import { resolvePageIndex, type SlidePage, type SlidePlan } from './slide-pagination'
 
@@ -37,6 +38,15 @@ export interface SlideMarkup {
    */
   drawn?: boolean
   /**
+   * Which display settings this entry was prepared under, as `slideSettingFlags` writes them. The
+   * enhancement chain reads `math`, `mermaid` and `externalImages` out of the account's own settings, so
+   * a page prepared for one set of them is not the page the room asks for after the presenter turns one
+   * off — and the key cannot say, because it names the slide's text, the theme and the box, none of
+   * which moved. Readers compare it; a mismatch is a page that has not been prepared for these settings
+   * (L-16). Absent means exactly what it says: nothing was prepared here.
+   */
+  flags?: string
+  /**
    * Set when the page could not be enhanced: its diagrams, math and embeds stayed placeholders while
    * the text of the slide is still there. It travels with the entry rather than with a surface
    * because the slide list, the projector and the export all read the same prepared page — one of
@@ -49,6 +59,27 @@ export interface SlideMarkup {
 export interface SlideRender extends RenderResult {
   layout?: SlideLayout
   steps?: boolean
+}
+
+/**
+ * The settings a prepared page was drawn under, in the shortest form that still tells them apart: the
+ * three switches that reach `renderSlideSource` or the enhancement chain. Anything else the account can
+ * turn — the note's code-fence collapse, the table of contents, the pinned-window size — does not change
+ * what a slide holds, so it must not cost a re-render of the deck someone is standing on.
+ */
+export function slideSettingFlags(preview: Pick<PreviewSettings, 'math' | 'mermaid' | 'externalImages'>): string {
+  return `${preview.math ? 'm' : '-'}${preview.mermaid ? 'd' : '-'}${preview.externalImages ? 'i' : '-'}`
+}
+
+/**
+ * The entry a surface may draw from, given the settings it is drawing for. A page the preparation chain
+ * wrote names the settings it was written under, and a page for others is not this page (L-16). An entry
+ * with nothing named on it is the plain render someone parked there mid-flight: every surface already
+ * reads that as "not prepared yet" and renders over it, so it is left alone here rather than given a
+ * second meaning.
+ */
+export function stagedFor(markup: SlideMarkup | undefined, flags: string): SlideMarkup | undefined {
+  return markup && markup.flags !== undefined && markup.flags !== flags ? undefined : markup
 }
 
 // Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
@@ -158,9 +189,9 @@ export function slideMarkup(rendered: SlideRender): SlideMarkup {
  * failure rides on that entry rather than on a surface: the projector, the slide list and the printed
  * deck all read the same prepared page, and one of them finding it broken is news for all three.
  */
-export function markSlideFailed(key: string): void {
+export function markSlideFailed(key: string, flags: string): void {
   const staged = slideHtmlCache.get(key)
-  if (staged) rememberSlideHtml(key, { ...staged, failed: true })
+  if (staged) rememberSlideHtml(key, { ...staged, failed: true, flags })
 }
 
 const slideKeyListeners = new Map<string, Set<() => void>>()

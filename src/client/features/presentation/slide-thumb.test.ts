@@ -12,10 +12,13 @@ import {
   thumbDrawOf,
   thumbMetrics,
   ThumbRootContext,
+  useCachedSlideHtml,
   useNearViewport,
 } from './slide-thumb'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
+import { useSession } from '../../store/session'
+import { rememberSlideHtml, slideCacheKey, slideSettingFlags } from './slide-html'
 import type { RailEntry } from './presentation-state'
 
 class MockIntersectionObserver {
@@ -367,6 +370,11 @@ describe('thumbDrawOf — what a card says about its own source', () => {
     expect(thumbDrawOf(undefined), 'a card with no entry renders the source itself').toBe('plain')
   })
 
+})
+
+// The two cases below read the marker a card wears, not the answer behind it: the attribute is what a
+// browser scenario queries, so it has to say the state even when the state is "nothing drawn yet".
+describe('data-slide-thumb-draw — what a card lets a reader query', () => {
   it('carries the answer on the card a reader can query', () => {
     const view = { thumb: thumbMetrics(160, 1280, 720), designWidth: 1280, designHeight: 720, externalImages: false, proseFont: 'serif' as never }
     const ref = { current: null as HTMLSpanElement | null }
@@ -379,5 +387,42 @@ describe('thumbDrawOf — what a card says about its own source', () => {
     const ref = { current: null as HTMLSpanElement | null }
     const { container } = renderElement(createElement(SlideThumb, { thumbRef: ref, near: false, html: '', layout: undefined, drawn: 'plain', active: false, view }))
     expect(container.querySelector('[data-slide-thumb-draw]'), 'a far-off card has no markup to account for').toBeNull()
+  })
+})
+
+// A card reads the same cache the projector writes, so it answers for the settings the account holds
+// now: an entry the preparation chain wrote under a switch the presenter has since turned is not this
+// page, and drawing it would keep the flip invisible in the list (L-16).
+function CacheProbe({ cacheKey }: { cacheKey: string }) {
+  const cached = useCachedSlideHtml(cacheKey)
+  return createElement('span', { 'data-draw': cached?.html ?? 'none' })
+}
+
+describe('useCachedSlideHtml — which settings a card reads', () => {
+  const key = slideCacheKey({ fingerprint: 'flip', dark: false, index: 0, contentWidth: 1168, contentHeight: 632 })
+  const flagsOf = (patch: Record<string, boolean> = {}) => {
+    const preview = useSession.getState().settings.preview
+    return slideSettingFlags({ ...preview, ...patch })
+  }
+
+  it('reads a page prepared under other settings as nothing prepared, and the new one when it lands', () => {
+    rememberSlideHtml(key, { html: '<p>the other settings</p>', fences: createFenceBodies(), prepared: true, drawn: true, flags: flagsOf({ mermaid: !useSession.getState().settings.preview.mermaid }) })
+    const view = renderElement(createElement(CacheProbe, { cacheKey: key }))
+    expect(view.container.querySelector('span')?.getAttribute('data-draw'), 'a card does not draw a page prepared for a switch the account has turned').toBe('none')
+
+    act(() => {
+      rememberSlideHtml(key, { html: '<p>these settings</p>', fences: createFenceBodies(), prepared: true, drawn: true, flags: flagsOf() })
+    })
+    expect(view.container.querySelector('span')?.getAttribute('data-draw'), 'and the card follows the entry the preparation replaced it with').toBe('<p>these settings</p>')
+    view.unmount()
+  })
+
+  it('leaves a plain render parked in the cache readable, because nothing was ever prepared', () => {
+    // The preparer writes the un-enhanced page first so a reader has the slide's text; that entry names
+    // no settings, and treating it as stale would make every card blank for the length of a preparation.
+    rememberSlideHtml(key, { html: '<p>plain</p>', fences: createFenceBodies() })
+    const view = renderElement(createElement(CacheProbe, { cacheKey: key }))
+    expect(view.container.querySelector('span')?.getAttribute('data-draw')).toBe('<p>plain</p>')
+    view.unmount()
   })
 })

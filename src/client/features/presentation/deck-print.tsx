@@ -10,7 +10,7 @@ import { useUi } from '../../store/ui'
 import { collectDeckCss, deckImageGeometry, renderDeckPagePng, saveDeckImages, zipDeckImages } from './deck-image'
 import { formatDeckPosition, type DeckPosition } from './deck-position'
 import { railEntries } from './presentation-state'
-import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, type SlideMarkup } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, stagedFor, type SlideMarkup } from './slide-html'
 import { planPageSteps, type SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
@@ -43,13 +43,17 @@ export function buildDeckPages(
   plans: Record<number, SlidePlan>,
   metrics: StageMetrics,
   externalImages: boolean,
+  flags: string,
 ): DeckPrintPage[] {
   return railEntries(deck.length, plans).flatMap((entry): DeckPrintPage[] => {
     // The position is written the way the projector writes its own corner chip: which slide of the
     // deck, which page of that slide, and how far that page had arrived. Both exports read it off the
     // page, so what a printout says about "page 4 of 28, second reveal" is what the room read (N-32).
     const at = { index: entry.slide, count: deck.length, subPage: entry.sub, pageCount: entry.pageCount }
-    const markup = readSlideHtml(cacheKeys[entry.slide] ?? '') ?? slideMarkup(renderSlideSource(deck[entry.slide] ?? '', externalImages))
+    // An entry prepared under other settings is not the page this export would print, so it reads as
+    // nothing prepared and the plain render takes over — the same answer the show gives one beat after
+    // the switch is turned, while the preparer replaces the entry (L-16).
+    const markup = stagedFor(readSlideHtml(cacheKeys[entry.slide] ?? ''), flags) ?? slideMarkup(renderSlideSource(deck[entry.slide] ?? '', externalImages))
     const plan = plans[entry.slide]
     // A copy, always: the cached entry is shared with the show and the slide list, and neither of
     // them carries a printed page number.

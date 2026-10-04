@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useSession } from '../../store/session'
 import { LAG_FRAME_MS, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, type SlicePace } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { SlideCanvas } from './slide-canvas'
-import { captureSlideHtml, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan } from './slide-html'
+import { captureSlideHtml, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan, slideSettingFlags, stagedFor } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 import { useSlideHtml } from './use-slide-html'
@@ -57,7 +58,11 @@ export interface PreflightProgress {
 export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onProgress }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
-  const { cursor, report, measured, finished } = usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef, onPlan })
+  // The pass draws for the settings the account has now, so both its gate and its capture are stamped
+  // with them: an entry prepared under other settings is not a page this pass may measure, list, or
+  // file back into the cache (L-16).
+  const flags = slideSettingFlags(useSession((s) => s.settings.preview))
+  const { cursor, report, measured, finished } = usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, flags, hostRef, onPlan })
   const slides = deck.length
   useEffect(() => onProgress({ measured, slides, finished }), [measured, slides, finished, onProgress])
   useSlideHtml({ open: cursor !== null, deck, hashes, index: cursor ?? 0, content, noteTitle, dark, metrics })
@@ -71,7 +76,7 @@ export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, 
   // gives the list both its picture and its page count from placeholders — a chart's skeleton is not
   // the height of the chart. A page still being drawn is waited for; a page that never finishes is
   // skipped by the stall guard and measured by the projector when the presenter reaches it.
-  const staged = cursor === null ? undefined : readSlideHtml(key)
+  const staged = stagedFor(cursor === null ? undefined : readSlideHtml(key), flags)
   const ready = useDeferredMount(Boolean(staged?.prepared || staged?.failed), key)
   if (!ready) return null
 
@@ -153,25 +158,26 @@ function usePassState(): PassState {
 // The pass itself: which slide is being measured, what to do with its measurement and how
 // one slide hands over to the next. It advances on the canvas's own report, so a slide's
 // plan is always the one measured from the markup that was really on screen.
-function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef, onPlan }: {
+function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, flags, hostRef, onPlan }: {
   deck: string[]
   hashes: string[]
   fingerprint: string
   dark: boolean
   cacheKeys: string[]
+  flags: string
   hostRef: RefObject<HTMLDivElement | null>
   onPlan: (slide: number, plan: SlidePlan) => void
 }): { cursor: number | null; report: (plan: SlidePlan, settled: boolean) => void; measured: number; finished: boolean } {
   const pass = usePassState()
   const { done, skipped, sliceStart, sliceCost, cursorRef } = pass
-  const queue = useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPlan })
+  const queue = useSliceQueue({ deck, hashes, cacheKeys, flags, fingerprint, dark, pass, onPlan })
   const { cursor, scheduleNext, countVisited } = queue
   cursorRef.current = cursor
 
   const report = useCallback((plan: SlidePlan, settled: boolean) => {
     const slide = cursorRef.current
     if (slide === null) return
-    publishPlan(slide, plan, { hashes, hostRef, cacheKeys, onPlan, settled })
+    publishPlan(slide, plan, { hashes, hostRef, cacheKeys, flags, onPlan, settled })
     // A page whose diagram pass has not finished is not listed yet: the canvas keeps its host, the pass
     // keeps its cursor, and the report that arrives when the drawings land is the one that advances. A
     // page that never lands is taken by the stall guard, exactly as a page that never measured.
@@ -180,7 +186,7 @@ function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef,
     done.current.add(slide)
     countVisited()
     scheduleNext(slide + 1)
-  }, [hashes, cacheKeys, hostRef, onPlan, scheduleNext, countVisited, cursorRef, done, sliceCost, sliceStart])
+  }, [hashes, cacheKeys, flags, hostRef, onPlan, scheduleNext, countVisited, cursorRef, done, sliceCost, sliceStart])
 
   // A slide that never reports (a pathological diagram, say) is skipped instead of pausing the
   // pass; the canvas still measures it when the presenter reaches it.
@@ -200,13 +206,13 @@ function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef,
 // while its capture does not, and reading the plan alone let a flip leave every card showing its
 // placeholders for the rest of the show (L-1). The cached plan is still published at once: the list gets
 // its page counts immediately, and the slide stays in the queue to have its pictures put back.
-function initPreflightDone(hashes: string[], cacheKeys: string[], onPlan: (slide: number, plan: SlidePlan) => void): Set<number> {
+function initPreflightDone(hashes: string[], cacheKeys: string[], flags: string, onPlan: (slide: number, plan: SlidePlan) => void): Set<number> {
   const done = new Set<number>()
   for (let i = 0; i < hashes.length; i++) {
     const cached = readSlidePlan(hashes[i] ?? '')
     if (!cached) continue
     onPlan(i, cached)
-    const markup = readSlideHtml(cacheKeys[i] ?? '')
+    const markup = stagedFor(readSlideHtml(cacheKeys[i] ?? ''), flags)
     if (markup?.drawn || markup?.failed) done.add(i)
   }
   return done
@@ -216,10 +222,11 @@ function initPreflightDone(hashes: string[], cacheKeys: string[], onPlan: (slide
 // deck has been listed. It restarts whenever the deck or the markup under it changes — an edited
 // note re-splits into different slides, and a theme flip invalidates every slide's markup, so
 // either way every slide has to be visited again.
-function useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPlan }: {
+function useSliceQueue({ deck, hashes, cacheKeys, flags, fingerprint, dark, pass, onPlan }: {
   deck: string[]
   hashes: string[]
   cacheKeys: string[]
+  flags: string
   fingerprint: string
   dark: boolean
   pass: PassState
@@ -252,14 +259,14 @@ function useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPla
 
   const countVisited = useCallback(() => setMeasured(done.current.size + skipped.current.size), [done, skipped])
   const restart = useCallback(() => {
-    const alreadyDone = initPreflightDone(hashes, cacheKeys, onPlan)
+    const alreadyDone = initPreflightDone(hashes, cacheKeys, flags, onPlan)
     done.current = alreadyDone
     skipped.current = new Set()
     pace.current = { factor: 1, quietRun: 0 }
     setFinished(alreadyDone.size >= deck.length)
     setMeasured(alreadyDone.size)
     scheduleNext(0)
-  }, [deck, hashes, cacheKeys, onPlan, scheduleNext, done, skipped, pace])
+  }, [deck, hashes, cacheKeys, flags, onPlan, scheduleNext, done, skipped, pace])
   usePassRestart(`${deckLength}:${fingerprint}:${dark}`, restart, idle)
 
   return { cursor, finished, measured, scheduleNext, countVisited }
@@ -268,10 +275,11 @@ function useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPla
 // What a measurement means: the markup it came from goes back to the cache under the slide's key
 // (so the projector's later visit is a cache hit instead of a second render) and the plan goes to
 // the show, which lists this slide's pages.
-function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKeys, onPlan, settled }: {
+function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKeys, flags, onPlan, settled }: {
   hashes: string[]
   hostRef: RefObject<HTMLDivElement | null>
   cacheKeys: string[]
+  flags: string
   onPlan: (slide: number, plan: SlidePlan) => void
   settled: boolean
 }): void {
@@ -279,7 +287,7 @@ function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKey
   const html = captureSlideHtml(hostRef.current)
   // The capture is markup the same blocks were drawn into, so it keeps the bodies those blocks
   // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
-  const markup = key === undefined ? undefined : readSlideHtml(key)
+  const markup = stagedFor(key === undefined ? undefined : readSlideHtml(key), flags)
   // The entry keeps its own `prepared` / `failed`: the capture came from what that entry was drawn
   // into, so it cannot promote a page that is still being drawn. `prepared: true` used to be stamped
   // here whatever the entry said, and a page caught mid-preparation was then left alone forever.

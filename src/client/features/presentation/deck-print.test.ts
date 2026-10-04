@@ -5,7 +5,7 @@ import { createFenceBodies, takeFenceIndex, type FenceBodies } from '../../lib/m
 import { renderElement } from '../../lib/test-render'
 import * as deckImage from './deck-image'
 import { buildDeckPages, DeckHandoutSheet, DeckImageSheet, saveDeckPages } from './deck-print'
-import { readSlideHtml, rememberSlideHtml, slideCacheKey } from './slide-html'
+import { readSlideHtml, rememberSlideHtml, slideCacheKey, slideSettingFlags } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 
@@ -46,6 +46,7 @@ function boardFences(body: string): FenceBodies {
 }
 
 const deck = [FIRST, SECOND]
+const FLAGS = slideSettingFlags({ math: true, mermaid: true, externalImages: true })
 const cacheKeys = deck.map((_, index) => slideCacheKey({ fingerprint: 'fingerprint', dark: false, index, contentWidth: METRICS.contentWidth, contentHeight: METRICS.contentHeight }))
 
 beforeEach(() => {
@@ -55,7 +56,7 @@ beforeEach(() => {
 
 describe('buildDeckPages', () => {
   it('gives a measured slide one printed page per page the show walks', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     expect(pages).toHaveLength(3)
     expect(pages[0]!.html).toBe('<p>one</p><p>two</p>')
     expect(pages[1]!.html).toContain('scale(0.5)')
@@ -63,13 +64,13 @@ describe('buildDeckPages', () => {
   })
 
   it('prints an unmeasured slide as the single page it at least has', () => {
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     expect(pages.map((page) => page.html)).toEqual([FIRST, SECOND])
   })
 
   it('renders a slide the show never prepared from its markdown', () => {
     const unprepared = ['```kanban\n{"title":"never prepared"}\n```']
-    const pages = buildDeckPages(unprepared, ['missing:key'], {}, METRICS, false)
+    const pages = buildDeckPages(unprepared, ['missing:key'], {}, METRICS, false, FLAGS)
     expect(pages).toHaveLength(1)
     expect(pages[0]!.html).toContain('data-kanban')
     // The printed sheet draws a board out of the body, so a page built on the spot has to carry
@@ -80,13 +81,13 @@ describe('buildDeckPages', () => {
 
   it('prints the prepared markup rather than the raw source when both exist', () => {
     rememberSlideHtml(cacheKeys[0], { html: '<p>enhanced</p><p>diagram</p>', fences: FIRST_BODIES })
-    const pages = buildDeckPages([FIRST], [cacheKeys[0]], {}, METRICS, false)
+    const pages = buildDeckPages([FIRST], [cacheKeys[0]], {}, METRICS, false, FLAGS)
     expect(pages[0]!.html).toBe('<p>enhanced</p><p>diagram</p>')
   })
 
   it('keeps the deck page order, whether or not the plan belongs to the first slide', () => {
     // Slide 1 keeps its floor page, slide 2 contributes the two its plan measured.
-    const pages = buildDeckPages(deck, cacheKeys, { 1: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 1: PAGINATED }, METRICS, false, FLAGS)
     expect(pages).toHaveLength(3)
     expect(pages[0]!.html).toBe(FIRST)
     expect(pages[1]!.html).toBe(SECOND)
@@ -99,7 +100,7 @@ describe('buildDeckPages', () => {
 
 describe('buildDeckPages — the page number the room saw', () => {
   it('carries each page the position the projector showed it at', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
 
     expect(pages.map((page) => page.position)).toEqual([
       { index: 0, count: 2, subPage: 0, pageCount: 2 },
@@ -109,7 +110,7 @@ describe('buildDeckPages — the page number the room saw', () => {
   })
 
   it('counts an unmeasured slide as the one page it at least has', () => {
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
 
     expect(pages.map((page) => page.position.pageCount)).toEqual([1, 1])
   })
@@ -118,7 +119,7 @@ describe('buildDeckPages — the page number the room saw', () => {
 describe('DeckSheet — the number printed on the page', () => {
   it('prints the same corner position the projector shows, on every exported page', async () => {
     stubFonts()
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckImageReady === 'true')
@@ -139,7 +140,7 @@ describe('DeckSheet — the number printed on the page', () => {
     // The PNG is drawn out of the same page box the printer prints, so the number the room read has
     // to be inside that box before either export reads it — a number painted beside the sheet would
     // land on the paper and not in the archive, which is the mismatch between what the room saw and what the paper carries that this closes.
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     try {
       const drawn = await until(() => vi.mocked(deckImage.renderDeckPagePng).mock.calls.length > 0)
@@ -154,7 +155,7 @@ describe('DeckSheet — the number printed on the page', () => {
 
 describe('buildDeckPages — the fence bodies a page carries', () => {
   it('hands every page of a slide the bodies that slide was rendered from', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     // Slicing a page takes blocks out, never the numbering the remaining blocks point into.
     expect(pages[0]!.fences).toBe(FIRST_BODIES)
     expect(pages[1]!.fences).toBe(FIRST_BODIES)
@@ -165,7 +166,7 @@ describe('buildDeckPages — the fence bodies a page carries', () => {
 describe('buildDeckPages — the layout a printed page keeps', () => {
   it('prints a column slide in the columns the projector measured it in', () => {
     const columns: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1], layout: 'split' }
-    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false, FLAGS)
     expect(pages[0]!.layout).toBe('split')
     expect(pages[0]!.html).toBe(FIRST)
   })
@@ -175,14 +176,14 @@ describe('buildDeckPages — the layout a printed page keeps', () => {
     // nothing because that is what the projector measured. A page that printed the columns anyway
     // would slice its pages out of a geometry the show never used.
     rememberSlideHtml(cacheKeys[0], { html: FIRST, fences: FIRST_BODIES, layout: 'split' })
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     expect(pages[0]!.layout).toBeUndefined()
     expect(pages[1]!.layout).toBeUndefined()
   })
 
   it('keeps the switch for a slide the show never measured', () => {
     rememberSlideHtml(cacheKeys[1], { html: SECOND, fences: SECOND_BODIES, layout: 'cover' })
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     expect(pages[1]!.layout).toBe('cover')
   })
 })
@@ -230,6 +231,17 @@ async function until(probe: () => boolean, ticks = 120) {
   return probe()
 }
 
+describe('buildDeckPages — the settings a cached page answers for', () => {
+  it('prints the markdown of a page prepared under settings the account has turned off', () => {
+    // The export reads the same cache the show filled. An entry the preparation chain wrote while
+    // `math` was on must not print a page of formulas the room has since asked to see as source (L-16).
+    rememberSlideHtml(cacheKeys[1], { html: '<p>prepared for the other settings</p>', fences: SECOND_BODIES, prepared: true, flags: '---' })
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
+    expect(pages[1]!.html, 'a page for other settings prints from the deck, not from that entry').not.toContain('prepared for the other settings')
+    expect(pages[1]!.html).toContain('second slide')
+  })
+})
+
 describe('DeckImageSheet — what the export leaves behind', () => {
   beforeEach(() => {
     stubFonts()
@@ -240,7 +252,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
   // The sheet is a portal on `document.body`, so each test takes its own back down in a `finally`:
   // a failed assertion that left one up would be read by the next test as its own.
   it('writes one archive for one press of the control', async () => {
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckImageReady === 'true')
@@ -258,7 +270,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     const steps: string[] = []
     vi.mocked(deckImage.saveDeckImages).mockImplementation(() => { steps.push('archive written') })
     const onDone = vi.fn(() => { steps.push('deck handed back') })
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone }))
     try {
       const handed = await until(() => onDone.mock.calls.length > 0)
@@ -279,7 +291,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     stubFonts(new Promise<void>((resolve) => { release = resolve }))
     const mounted = vi.fn()
     const showing = vi.fn()
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const sheet = (onDone: () => void) => createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone })
     const view = renderElement(sheet(mounted))
     await flush(2)
@@ -304,7 +316,7 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     let release: () => void = () => {}
     stubFonts(new Promise<void>((resolve) => { release = resolve }))
     const onDone = vi.fn()
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone }))
     await flush(2)
     view.unmount()
@@ -320,7 +332,7 @@ describe('DeckHandoutSheet — one page of the handout per slide', () => {
 
   it('gives each slide one handout page carrying its own pages and its own notes', async () => {
     stubFonts()
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: NOTES, metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
@@ -338,7 +350,7 @@ describe('DeckHandoutSheet — one page of the handout per slide', () => {
 
   it('names the slide the handout page belongs to with the number the room read', async () => {
     stubFonts()
-    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: NOTES, metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
@@ -352,7 +364,7 @@ describe('DeckHandoutSheet — one page of the handout per slide', () => {
 
   it('says a slide has no notes instead of leaving the reader a blank half-page', async () => {
     stubFonts()
-    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: ['', ''], metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
@@ -374,7 +386,7 @@ describe('DeckHandoutSheet — a slide nobody measured', () => {
     const three = [FIRST, SECOND, '<p>third</p>']
     const keys = three.map((_, index) => slideCacheKey({ fingerprint: 'fingerprint', dark: false, index, contentWidth: METRICS.contentWidth, contentHeight: METRICS.contentHeight }))
     rememberSlideHtml(keys[2], { html: three[2], fences: FIRST_BODIES })
-    const pages = buildDeckPages(three, keys, { 0: PAGINATED }, METRICS, false)
+    const pages = buildDeckPages(three, keys, { 0: PAGINATED }, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckHandoutSheet, { pages, notes: ['a', 'b', 'c'], metrics: METRICS, font: 'sans', dark: false, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector<HTMLElement>('[data-deck-print]')?.dataset.deckPrintReady === 'true')
@@ -412,7 +424,7 @@ describe('DeckSheet — the deck a printed page draws', () => {
     // replaces that text. The sheet has no such host, so the printed page used to carry the promise.
     stubFonts()
     deckMarkup()
-    const pages = buildDeckPages([FIRST, SECOND], cacheKeys, {}, METRICS, false)
+    const pages = buildDeckPages([FIRST, SECOND], cacheKeys, {}, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     try {
       const drawn = await until(() => document.querySelector('[data-deck-print] .bento-slides-fallback-card') !== null)
@@ -433,7 +445,7 @@ describe('DeckSheet — the layout a printed page is drawn in', () => {
     rememberSlideHtml(cacheKeys[0], { html: FIRST, fences: FIRST_BODIES, layout: 'split' })
     const columns: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1], layout: 'split' }
     const refused: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1] }
-    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false, FLAGS)
     const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     const drawn = await until(() => document.querySelectorAll('.deck-print-page').length === pages.length)
     try {
@@ -443,7 +455,7 @@ describe('DeckSheet — the layout a printed page is drawn in', () => {
     finally {
       view.unmount()
     }
-    const fell = buildDeckPages(deck, cacheKeys, { 0: refused }, METRICS, false)
+    const fell = buildDeckPages(deck, cacheKeys, { 0: refused }, METRICS, false, FLAGS)
     const second = renderElement(createElement(DeckImageSheet, { pages: fell, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onProgress: NO_PROGRESS, onDone: vi.fn() }))
     const redrawn = await until(() => document.querySelectorAll('.deck-print-page').length === fell.length)
     try {

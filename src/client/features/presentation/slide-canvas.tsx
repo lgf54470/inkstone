@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { useSession } from '../../store/session'
 import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useIsDarkTheme } from './presentation-theme'
-import { readSlideHtml, renderSlideSource, subscribeSlideHtml } from './slide-html'
+import { readSlideHtml, renderSlideSource, stagedFor, slideSettingFlags, subscribeSlideHtml } from './slide-html'
 import { planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
 import type { SlideLayout } from './slides'
 import { LAYOUT_CLASS, SlideProse } from './slide-prose'
@@ -79,9 +79,15 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, step, onPlan
 export function SlideCanvas({ cacheKey, source, subPage, step, contentWidth, contentHeight, onPlan, instantCharts = false }: SlideCanvasProps) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const preview = useSession((s) => s.settings.preview)
+  const flags = slideSettingFlags(preview)
   const dark = useIsDarkTheme()
   const hostRef = useRef<HTMLDivElement>(null)
-  const prepared = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey))
+  const staged = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey))
+  // A page prepared under the account's *other* settings is not this page: the cache key names the
+  // slide, the theme and the box, and none of those moved when the presenter turned a display switch
+  // mid-show. Until the preparer replaces the entry the canvas draws its own plain render, which is
+  // the same shape a first visit already takes (L-16).
+  const prepared = stagedFor(staged, flags)
   // The cache is the prepared markup for this slide; the plain render only exists to cover the
   // first paint before it lands. It is therefore *not* run when the cache already answers: the
   // measuring pass walks slide after slide it has just prepared, and rendering each of them a second

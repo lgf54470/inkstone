@@ -140,6 +140,18 @@ describe('SlidePreflight — a page is listed only once its drawings answered', 
     view.unmount()
   })
 
+  it('lists a page again when its capture was drawn for settings the account has since turned', async () => {
+    // The flags an entry names are part of what "already listed" means: a plan measured and a page drawn
+    // under `math` on say nothing about the deck the presenter is now showing with it off (L-16).
+    rememberSlidePlan(HASHES[0] ?? '', { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] })
+    seed({ ...plainEntry(), prepared: true, drawn: true, flags: 'drawn-for-other-settings' })
+    const onProgress = vi.fn()
+    const view = await runPass(vi.fn(), onProgress)
+    const measured = () => (onProgress.mock.calls.at(-1)?.[0] as { measured: number } | undefined)?.measured ?? -1
+    expect(measured(), 'a page drawn for the other settings is not listed for these').toBe(0)
+    view.unmount()
+  })
+
   it('marks the entry it hands the list drawn, because that is what the list paints', async () => {
     seed({ ...plainEntry(), prepared: true })
     const view = await runPass(vi.fn())

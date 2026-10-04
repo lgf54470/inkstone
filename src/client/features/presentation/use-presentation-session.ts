@@ -12,6 +12,7 @@ import { useChromeAutoHide } from './use-chrome-auto-hide'
 import { useAudienceFollow } from './use-audience-follow'
 import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
+import { slideSettingFlags } from './slide-html'
 import { planPageSteps, type SlidePlan } from './slide-pagination'
 import { useSlidePlans } from './use-slide-plans'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
@@ -191,13 +192,13 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0, startedAt } = options
   const { content: presentedContent, title: liveTitle, followLost, toggleFollowing } = usePresentedNote({ open, noteId, snapshot, following })
   const { deck, notes, hashes, fingerprint } = useShowDeck(presentedContent)
-  const { dark, externalImages, proseFont } = useShowSettings()
+  const { dark, externalImages, flags, proseFont } = useShowSettings()
   const nav = usePresentationNav(deck, hashes, initialSlideIndex)
   const { isFullscreen, toggleFullscreen, metrics, chromeHidden } = useShowStage({ open, panelRef, stageRef })
   const { railOpen, toggleRail, compact } = useShowRoom(open)
   const noteTitle = liveTitle ?? storedTitle
   const cacheKeys = useSlideCacheKeys(hashes, dark, metrics)
-  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle, notes, proseFont })
+  const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, flags, dark, title: noteTitle, notes, proseFont })
   const { listProgress, onProgress } = useListProgress()
   const presenter = useSessionPresenter({ open, noteTitle, nav, deck, notes, proseFont, startedAt })
   const audience = useSessionAudience(open, noteId, nav)
@@ -296,9 +297,11 @@ function useListProgress(): { listProgress: PreflightProgress; onProgress: (prog
 // the preview the deck was written against.
 function useShowSettings() {
   const dark = useIsDarkTheme()
-  const externalImages = useSession((s) => s.settings.preview.externalImages)
+  // One object rather than three field reads: the flags below name the settings a prepared page was
+  // drawn under, and reading the fields apart would let them disagree with what the page holds.
+  const preview = useSession((s) => s.settings.preview)
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
-  return { dark, externalImages, proseFont }
+  return { dark, externalImages: preview.externalImages, flags: slideSettingFlags(preview), proseFont }
 }
 
 // What the room the show sits in allows, read once: a window with room for the list opens it by

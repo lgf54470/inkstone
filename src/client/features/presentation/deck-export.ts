@@ -27,6 +27,8 @@ export interface DeckExportOptions {
   plans: Record<number, SlidePlan>
   metrics: StageMetrics
   externalImages: boolean
+  /** The display settings the cached pages were prepared under; a page for others prints as plain. */
+  flags: string
   /** The theme the deck was measured in: a chart's axes are drawn for it. */
   dark: boolean
   title: string
@@ -94,7 +96,7 @@ async function writeDeckHtmlFile(pages: DeckPrintPage[], options: DeckExportOpti
 }
 
 export function useDeckExport(options: DeckExportOptions): DeckExports {
-  const { deck, cacheKeys, plans, metrics, externalImages, dark, title, notes } = options
+  const { deck, cacheKeys, plans, metrics, externalImages, flags, dark, title, notes } = options
   // Read when the press happens rather than captured in the callback that was built for this render:
   // the file is written after a stylesheet collection, and the deck may have moved under it.
   const optionsRef = useRef(options)
@@ -115,8 +117,8 @@ export function useDeckExport(options: DeckExportOptions): DeckExports {
     const unmeasured = deck.reduce((count, _, index) => (plans[index] ? count : count + 1), 0)
     if (unmeasured > 0)
       useUi.getState().toast({ title: t('workspace.presentation_export_unmeasured', { value0: unmeasured }), tone: 'warning' })
-    return buildDeckPages(deck, cacheKeys, plans, metrics, externalImages)
-  }, [deck, cacheKeys, plans, metrics, externalImages])
+    return buildDeckPages(deck, cacheKeys, plans, metrics, externalImages, flags)
+  }, [deck, cacheKeys, plans, metrics, externalImages, flags])
   const build = useCallback(
     (kind: 'print' | 'images' | 'handout') => {
       const pages = collect()

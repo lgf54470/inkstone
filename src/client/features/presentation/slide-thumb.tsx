@@ -5,9 +5,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
+import { useSession } from '../../store/session'
 import type { RailEntry } from './presentation-state'
 import { describeDeckPosition } from './deck-position'
-import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, subscribeSlideHtmlKey, type SlideMarkup } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, slideSettingFlags, stagedFor, subscribeSlideHtmlKey, type SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { SlideLayout } from './slides'
 import { SlideProse } from './slide-prose'
@@ -141,10 +142,12 @@ export function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }:
 
 // Follows the prepared markup rather than reading it once: a theme flip or an edit replaces a
 // slide's markup under a card, and a single read left that card on an un-rendered placeholder
-// for the rest of the show.
+// for the rest of the show. An entry prepared under the account's *other* settings is not this card's
+// page either — the cache key cannot say, so the entry does (L-16).
 export function useCachedSlideHtml(cacheKey: string): SlideMarkup | undefined {
+  const flags = slideSettingFlags(useSession((s) => s.settings.preview))
   const subscribe = useCallback((cb: () => void) => subscribeSlideHtmlKey(cacheKey, cb), [cacheKey])
-  return useSyncExternalStore(subscribe, () => readSlideHtml(cacheKey), () => undefined)
+  return useSyncExternalStore(subscribe, () => stagedFor(readSlideHtml(cacheKey), flags), () => undefined)
 }
 
 export function SlideThumb({ thumbRef, near, html, layout, drawn, active, view, className }: {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createFenceBodies, takeFenceIndex, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { buildDeckPages, groupDeckHandout } from './deck-print'
 import { formatDeckPosition } from './deck-position'
-import { rememberSlideHtml, slideCacheKey } from './slide-html'
+import { rememberSlideHtml, slideCacheKey, slideSettingFlags } from './slide-html'
 import { planSlidePages, type SlideBlock, type SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 
@@ -10,6 +10,7 @@ import type { StageMetrics } from './slide-stage'
 // paper too. The export reads the same measured plan the projector walked, so the states it prints are
 // the states the presenter passed through — and the handout still shows each page once, as its author
 // finished it.
+const FLAGS = slideSettingFlags({ math: true, mermaid: true, externalImages: true })
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const FIRST = '<p>one</p><p>two</p><h2>three</h2><p>four</p>'
 const SECOND = '<p>second slide</p>'
@@ -38,7 +39,7 @@ beforeEach(() => {
 
 describe('buildDeckPages — a stepped slide prints one page per step', () => {
   it('walks the steps before the page is over', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false, FLAGS)
     expect(STEPPED.pages).toHaveLength(1)
     expect(pages).toHaveLength(5)
     expect(pages.slice(0, 4).map((page) => page.position.step)).toEqual([0, 1, 2, 3])
@@ -47,26 +48,26 @@ describe('buildDeckPages — a stepped slide prints one page per step', () => {
   })
 
   it('reveals one more block on each printed state, and none on the last', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false, FLAGS)
     expect(pages.slice(0, 4).map((page) => hidden(page.html))).toEqual([3, 2, 1, 0])
   })
 
   // The four states of one page used to carry one number, which asked whoever held the printout to work
   // out which of them the room had actually ended on. Each sheet now says how far it had arrived.
   it('numbers every state of a page by itself, inside the number the room read', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false, FLAGS)
     expect(pages.slice(0, 4).map((page) => formatDeckPosition(page.position))).toEqual(['1 / 2 · 1/4', '1 / 2 · 2/4', '1 / 2 · 3/4', '1 / 2 · 4/4'])
   })
 
   it('hands the handout the page as its author finished it, once per page', () => {
-    const slides = groupDeckHandout(buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false), ['say this', ''])
+    const slides = groupDeckHandout(buildDeckPages(deck, cacheKeys, { 0: STEPPED }, METRICS, false, FLAGS), ['say this', ''])
     expect(slides).toHaveLength(2)
     expect(slides[0]!.pages).toHaveLength(1)
     expect(hidden(slides[0]!.pages[0]!.html)).toBe(0)
   })
 
   it('leaves a slide without the switch exactly one page per page', () => {
-    const pages = buildDeckPages(deck, cacheKeys, { 0: planSlidePages(BLOCKS, 632) }, METRICS, false)
+    const pages = buildDeckPages(deck, cacheKeys, { 0: planSlidePages(BLOCKS, 632) }, METRICS, false, FLAGS)
     expect(pages.filter((page) => page.position.index === 0)).toHaveLength(1)
     expect(pages.every((page) => page.position.step === undefined)).toBe(true)
   })

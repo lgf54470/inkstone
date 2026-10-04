@@ -9,6 +9,8 @@
 import { act, createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement, type RenderedElement } from '../../lib/test-render'
+import { useSession } from '../../store/session'
+import type { PreviewSettings } from '@shared/types/settings'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import { clearSlideHtmlCache, hashContent, readSlideHtml, rememberSlideHtml, slideCacheKey } from './slide-html'
 
@@ -79,6 +81,13 @@ function keyFor(index: number): string {
   return slideCacheKey({ fingerprint: hashContent(DECK[index] ?? ''), dark: false, index, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })
 }
 
+/** Writes the account's own display settings, the way the settings panel does. */
+function turnSetting(patch: Partial<PreviewSettings>): void {
+  act(() => {
+    useSession.setState((state) => ({ ...state, settings: { ...state.settings, preview: { ...state.settings.preview, ...patch } } }))
+  })
+}
+
 beforeEach(() => {
   clearSlideHtmlCache()
   prep.calls = 0
@@ -91,6 +100,41 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   document.body.innerHTML = ''
+})
+
+describe('useSlideHtml — the settings a page was prepared under', () => {
+  it('prepares the page again when the account turns its diagrams off mid-show', async () => {
+    // The enhancement chain reads `math` / `mermaid` / `externalImages` out of the account's own
+    // settings, and the canvas's diagram pass honours them too, so a page prepared for one set of them
+    // is not the page the room is asking for after the presenter turns one off. It used to be left
+    // alone forever: the cache is keyed without them, so the entry the flip pointed at was already
+    // `prepared` and the early return said there was nothing to do (L-16).
+    const view: RenderedElement = renderElement(createElement(Host, { index: 0 }))
+    await finishRun(0)
+    expect(preparedHtml(0)).toContain('Prepared')
+    expect(prep.calls).toBe(1)
+
+    turnSetting({ mermaid: false })
+    await settle()
+    expect(prep.calls, 'a page prepared for the other settings is not prepared for these').toBe(2)
+    await finishRun(1)
+    expect(preparedHtml(0), 'and the replacement is what the surfaces read from then on').toContain('Prepared')
+    view.unmount()
+  })
+
+  it('leaves a prepared page alone when the setting it turned never reached the slide', async () => {
+    // The other half of the same rule: a flip of something the slide does not read must not re-render
+    // the deck a presenter is standing on. `codeBlockCollapse` is the account's note setting, and a
+    // slide prints its code fences collapsed by the constant the preparation passes down.
+    const view: RenderedElement = renderElement(createElement(Host, { index: 0 }))
+    await finishRun(0)
+    expect(prep.calls).toBe(1)
+
+    turnSetting({ codeBlockCollapse: !useSession.getState().settings.preview.codeBlockCollapse })
+    await settle()
+    expect(prep.calls, 'nothing about this page changed, so nothing is prepared again').toBe(1)
+    view.unmount()
+  })
 })
 
 describe('useSlideHtml — when a page cannot be prepared', () => {

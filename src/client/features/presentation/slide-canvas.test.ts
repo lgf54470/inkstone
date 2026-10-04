@@ -301,6 +301,21 @@ describe('SlideCanvas — the report a page is measured by', () => {
     view.unmount()
   })
 
+})
+
+// The cache is one store for the stage, the list and the export, so "which settings was this page drawn
+// under" has to be answered at every one of those reads (L-16).
+describe('SlideCanvas — the settings a cached page answers for', () => {
+  it('draws its own render of a page prepared under settings the account has turned off', () => {
+    // The projector and the list read one cache, so the same rule that clears a card has to clear the
+    // stage: an entry written under other settings is not this page (L-16).
+    rememberSlideHtml(CACHED_KEY, { html: '<h1>Stale under these settings</h1>', fences: createFenceBodies(), prepared: true, flags: 'stale' })
+    const view = mountCanvas(vi.fn())
+    expect(view.container.textContent).not.toContain('Stale under these settings')
+    expect(renderSlideSourceMock, 'the canvas renders the slide itself rather than showing another setting\'s page').toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
   it('settles a page whose diagram threw, because nothing else is coming to finish it', async () => {
     diagram.failMermaid = true
     try {

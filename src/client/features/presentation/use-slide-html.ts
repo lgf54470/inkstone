@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../../store/session'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
-import { markSlideFailed, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup, type SlideRender } from './slide-html'
+import { markSlideFailed, readSlideHtml, stagedFor, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup, slideSettingFlags, type SlideRender } from './slide-html'
 import type { StageMetrics } from './slide-stage'
 
 // One staged page, put through the enhancement chain and written back to the cache. The channels are
@@ -19,9 +19,10 @@ async function prepareStagedSlide(source: {
   dark: boolean
   contentWidth: number
   contentHeight: number
+  flags: string
   isCurrent: () => boolean
 }): Promise<void> {
-  const { key, staging, rendered, content, noteTitle, math, mermaid, dark, contentWidth, contentHeight, isCurrent } = source
+  const { key, staging, rendered, content, noteTitle, math, mermaid, dark, contentWidth, contentHeight, flags, isCurrent } = source
   if (rendered.hasEmbeds) {
     await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, fences: rendered.fences, isCurrent })
   }
@@ -46,7 +47,7 @@ async function prepareStagedSlide(source: {
     mindmapBox: { width: contentWidth, height: contentHeight },
   })
   if (!isCurrent()) return
-  rememberSlideHtml(key, { ...slideMarkup(rendered), html: staging.innerHTML, prepared: true })
+  rememberSlideHtml(key, { ...slideMarkup(rendered), html: staging.innerHTML, prepared: true, flags })
 }
 
 // Renders the enhanced markup for one slide off-DOM and caches it, so the canvas and
@@ -75,11 +76,14 @@ export function useSlideHtml(options: {
   // The identity of the slide comes from the deck, which identified it once when it split (`useShowDeck`)
   // — hashing this page's text again here would be a second answer to a question already answered.
   const key = slideCacheKey({ fingerprint: hashes[index] ?? '', dark, index, contentWidth, contentHeight })
+  // The settings are not part of the key — it names the slide, the theme and the box, none of which a
+  // settings flip touches — so they ride on the entry and every reader compares them (L-16).
+  const flags = slideSettingFlags(preview)
   useEffect(() => {
     if (!open) return
     // The plain render is not a finished page (see `SlideMarkup.prepared`), so an interrupted run
     // leaves the page to be drawn again — by this visit, or by the next one that asks for it.
-    const staged = readSlideHtml(key)
+    const staged = stagedFor(readSlideHtml(key), flags)
     if (staged?.prepared || staged?.failed) return
     let cancelled = false
     const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
@@ -89,22 +93,24 @@ export function useSlideHtml(options: {
     staging.innerHTML = rendered.html
     // The rejection must not vanish: it used to, and the only trace was a formula skeleton the
     // presenter had no way to tell apart from a slow show.
-    prepareStagedSlide({ key, staging, rendered, content, noteTitle, math: preview.math, mermaid: preview.mermaid, dark, contentWidth, contentHeight, isCurrent: () => !cancelled })
+    prepareStagedSlide({ key, staging, rendered, content, noteTitle, math: preview.math, mermaid: preview.mermaid, dark, contentWidth, contentHeight, flags, isCurrent: () => !cancelled })
       .then(() => { if (!cancelled) setTick((tick) => tick + 1) })
       .catch((error: unknown) => {
         if (cancelled) return
         console.warn('[inkstone] slide preparation failed', error)
-        markSlideFailed(key)
+        markSlideFailed(key, flags)
         setTick((tick) => tick + 1)
       })
     return () => {
       cancelled = true
     }
-    // The key is the whole input set of the preparation that is not a setting: it carries the slide's
-    // own text, its index, the theme and the box it is drawn in, so everything else the effect reads
-    // is pinned by it. Leaving the note's text and the deck array out is the point — an edit in
-    // another slide re-splits the note and hands over a new array, and taking that as a reason to
-    // start over cancelled the run on the page the presenter is actually looking at.
-  }, [open, key, preview.externalImages, preview.math, preview.mermaid])
-  return readSlideHtml(key)?.failed === true
+    // The key and the flags together are the whole input set of the preparation that is not a live
+    // edit: the key carries the slide's own text, its index, the theme and the box it is drawn in, and
+    // the flags carry the three settings the chain reads. Leaving the note's text and the deck array
+    // out is the point — an edit in another slide re-splits the note and hands over a new array, and
+    // taking that as a reason to start over cancelled the run on the page the presenter is actually
+    // looking at.
+  }, [open, key, flags])
+  const staged = stagedFor(readSlideHtml(key), flags)
+  return staged?.failed === true
 }

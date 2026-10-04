@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import { buildDeckHtmlDocument } from './deck-html'
 import { buildDeckPages } from './deck-print'
-import { rememberSlideHtml, slideCacheKey } from './slide-html'
+import { rememberSlideHtml, slideCacheKey, slideSettingFlags } from './slide-html'
 import { planSlidePages, type SlideBlock } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 
 // N-33: a deck someone else can play. The file has to carry its own styles, its own navigation, and
 // URLs that work from `file://` — and it has to be built from the same pages the projector walked,
 // stepped states included, or the exported deck is a different talk.
+const FLAGS = slideSettingFlags({ math: true, mermaid: true, externalImages: true })
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const ORIGIN = 'https://notes.example'
 
@@ -23,7 +24,7 @@ function document_of(html: string, extraHtml = '<p>plain</p>', plans: Record<num
   const cacheKeys = deck.map((_, index) => slideCacheKey({ fingerprint: 'fingerprint', dark: false, index, contentWidth: METRICS.contentWidth, contentHeight: METRICS.contentHeight }))
   rememberSlideHtml(cacheKeys[0], { html: `<h2>One</h2>${html}`, fences: createFenceBodies() })
   rememberSlideHtml(cacheKeys[1], { html: extraHtml, fences: createFenceBodies() })
-  const pages = buildDeckPages(deck, cacheKeys, plans, METRICS, false)
+  const pages = buildDeckPages(deck, cacheKeys, plans, METRICS, false, FLAGS)
   return buildDeckHtmlDocument({
     pages,
     metrics: METRICS,
@@ -83,7 +84,7 @@ describe('buildDeckHtmlDocument — the states the show walked, in order', () =>
     rememberSlideHtml(cacheKeys[0], { html: deck[0]!, fences: createFenceBodies() })
     rememberSlideHtml(cacheKeys[1], { html: deck[1]!, fences: createFenceBodies() })
     const file = buildDeckHtmlDocument({
-      pages: buildDeckPages(deck, cacheKeys, { 0: stepped }, METRICS, false),
+      pages: buildDeckPages(deck, cacheKeys, { 0: stepped }, METRICS, false, FLAGS),
       metrics: METRICS,
       css: '',
       title: 'Stepped',

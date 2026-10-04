@@ -12,7 +12,7 @@ import { initI18n, t } from '../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { createFenceBodies } from '../../lib/markdown/fence-bodies'
 import { useDeckExport, type DeckExportOptions } from './deck-export'
-import { clearSlideHtmlCache, rememberSlideHtml, slideCacheKey } from './slide-html'
+import { clearSlideHtmlCache, rememberSlideHtml, slideCacheKey, slideSettingFlags } from './slide-html'
 import type { StageMetrics } from './slide-stage'
 
 vi.mock('./deck-image', () => ({
@@ -55,6 +55,7 @@ function options(overrides: Partial<DeckExportOptions> = {}): DeckExportOptions 
     plans: {},
     metrics: METRICS,
     externalImages: false,
+    flags: slideSettingFlags({ math: true, mermaid: true, externalImages: false }),
     dark: false,
     title: 'Release plan',
     notes: NOTES,
