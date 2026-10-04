@@ -251,6 +251,12 @@ export type MessageKey =
   | 'interactive.graph_fit'
   | 'interactive.graph_source'
   | 'interactive.graph_export'
+  | 'interactive.graph_echarts'
+  | 'interactive.echarts_option_empty'
+  | 'interactive.echarts_option_invalid'
+  | 'interactive.echarts_option_not_object'
+  | 'interactive.echarts_map_refused'
+  | 'interactive.echarts_map_failed'
   // Friend Links & Navigation
   | 'links.title'
   | 'links.description'

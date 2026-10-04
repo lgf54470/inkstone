@@ -11,6 +11,12 @@ export const DEFAULT_MAP_SOURCE = 'https://geo.datav.aliyun.com/areas_v3/bound/1
 
 export const MAP_SOURCE_HOSTS = ['geo.datav.aliyun.com'] as const
 
+/**
+ * The name a map is registered under when the note did not name one. Both halves of a map table have to
+ * use it — the option's `series[].map` and the registration — so it is written once, here.
+ */
+export const MAP_SERIES_NAME = 'inkstone-map'
+
 /** The largest outline payload a block will read, so one cell cannot ask for an unbounded download. */
 export const MAP_MAX_BYTES = 4_000_000
 

@@ -61,7 +61,7 @@
 .ink-prose .markdown-example-preview-body > :last-child {
   margin-bottom: 0;
 }
-.ink-prose .markdown-example-preview-body :is(.callout, .markdown-tabs, .markdown-details, .code-block, .mermaid-block, .chartjs-block),
+.ink-prose .markdown-example-preview-body :is(.callout, .markdown-tabs, .markdown-details, .code-block, .mermaid-block, .chartjs-block, .echarts-block),
 .ink-prose .markdown-example-preview-body > :is(figure, details) {
   margin-block: 0;
 }

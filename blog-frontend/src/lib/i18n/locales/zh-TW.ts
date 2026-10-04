@@ -258,6 +258,12 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'interactive.graph_fit': '符合視窗',
   'interactive.graph_source': '檢視原始碼',
   'interactive.graph_export': '匯出圖片',
+  'interactive.graph_echarts': 'ECharts 圖表',
+  'interactive.echarts_option_empty': '這個塊裡沒有圖表資料',
+  'interactive.echarts_option_invalid': '圖表資料讀不成 JSON5（部落格端只畫資料，不執行函式）',
+  'interactive.echarts_option_not_object': '圖表資料必須是一個物件',
+  'interactive.echarts_map_refused': '地圖只能從白名單裡的 https 位置載入輪廓資料',
+  'interactive.echarts_map_failed': '地圖輪廓資料載入失敗',
 
   // Friend Links & Navigation
   'links.title': '友鏈與導航',

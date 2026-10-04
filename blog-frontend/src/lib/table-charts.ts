@@ -1,9 +1,8 @@
 import { chartTableFromElement } from './chart/from-dom.ts'
-import { applyChartPalette, echartsTheme } from './chart/theme.ts'
+import { renderEcharts } from './chart/draw.ts'
 import { chartPaletteKey } from './chart/accent.ts'
 import { tableToEchartsOption } from './chart/table-option.ts'
-import { isDarkMode } from './diagram-reveal'
-import { mapGeometryUrl } from './map-geometry.ts'
+import { isDarkMode } from './diagram-reveal.ts'
 
 /**
  * Drawing the charts a bare table asks for: the renderer leaves an empty `.table-chart` above a table
@@ -17,16 +16,7 @@ import { mapGeometryUrl } from './map-geometry.ts'
 
 const SELECTOR = '.table-chart[data-table-chart]'
 
-let echartsPromise: Promise<typeof import('echarts')> | null = null
 const drawn = new WeakMap<HTMLElement, string>()
-
-function loadEcharts(): Promise<typeof import('echarts')> {
-  echartsPromise ??= import('echarts').catch((err) => {
-    echartsPromise = null
-    throw err
-  })
-  return echartsPromise
-}
 
 function markerConfig(block: HTMLElement): Record<string, unknown> {
   const raw = block.dataset.tableChartConfig
@@ -69,41 +59,11 @@ async function renderTableChart(block: HTMLElement): Promise<void> {
     return drop(block)
   }
   try {
-    const echarts = await loadEcharts()
-    if (built.mapSource) {
-      const geometry = await fetchMapGeometry(built.mapSource)
-      if (!geometry) return drop(block)
-      echarts.registerMap('inkstone-map', geometry as never)
-    }
-    const container = document.createElement('div')
-    container.className = 'echarts-container'
-    block.replaceChildren(container)
-    const chart = echarts.init(container, echartsTheme(dark), { renderer: 'svg' })
-    chart.setOption(applyChartPalette(built.option, dark) as never, true)
+    await renderEcharts(block, built.option, built.map, dark)
     drawn.set(block, key)
   }
   catch {
     drop(block)
-  }
-}
-
-/**
- * The outline data a map needs, asked for on this page's own origin (see `src/lib/map-geometry.ts`).
- * The shape check stays: a payload that is not a FeatureCollection is no chart rather than a crash, and
- * the route that serves it could have been answered by a cache the site does not control.
- */
-async function fetchMapGeometry(source: string): Promise<unknown | null> {
-  try {
-    const response = await fetch(mapGeometryUrl(source), { referrerPolicy: 'no-referrer' })
-    if (!response.ok) return null
-    const geometry: unknown = await response.json()
-    const isCollection = Boolean(geometry) && typeof geometry === 'object'
-      && (geometry as { type?: unknown }).type === 'FeatureCollection'
-      && Array.isArray((geometry as { features?: unknown }).features)
-    return isCollection ? geometry : null
-  }
-  catch {
-    return null
   }
 }
 

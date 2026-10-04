@@ -33,6 +33,15 @@ describe('drawing a post\'s chart table', () => {
     expect(root.querySelectorAll('tbody tr')).toHaveLength(2)
   })
 
+  it('paints the chart a table body written inside a chart fence asked for', async () => {
+    const root = mount('```chart\n' + BAR + '\n```')
+    expect(root.querySelector('.table-chart[data-table-chart="bar"]')).not.toBeNull()
+    initTableCharts()
+    const drawn = await settle(() => Boolean(root.querySelector('.table-chart svg')))
+    expect(drawn).toBe(true)
+    expect(root.querySelectorAll('tbody tr')).toHaveLength(2)
+  })
+
   it('keeps the table when a chart cannot be drawn, rather than showing an error at a reader', async () => {
     const root = mount('| :map:{"mapDataSource": "https://evil.example.com/g.json"} | v |\n| --- | --- |\n| 北京 | 1 |')
     initTableCharts()
