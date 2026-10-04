@@ -106,6 +106,12 @@ const SCALE_MESSAGE = 'bare Tailwind scale step'
 // file is clean, and waiting for that would leave the ones already converted free to regress.
 const SCALE_ZERO_TOLERANCE_PREFIXES = [
   'src/client/features/presentation/',
+  'src/client/lib/markdown/kanban/ui/kanban-detail-shell.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-due-notice.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-empty-board.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-item-detail-description.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-item-detail.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-tag-filter-bar.tsx',
   'src/client/lib/markdown/slides/ui/embed-block.tsx',
   'src/client/lib/markdown/slides/ui/inspector-element.tsx',
   'src/client/lib/markdown/slides/ui/layout-picker.tsx',

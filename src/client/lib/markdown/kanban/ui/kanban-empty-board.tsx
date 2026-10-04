@@ -26,9 +26,9 @@ export const KanbanEmptyBoard = memo(function KanbanEmptyBoard({ onAddItem, onAp
   return (
     <div
       data-kanban-empty
-      className='flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto px-6 py-10 text-center'
+      className='flex h-full w-full flex-col items-center justify-center gap-[var(--sp-4)] overflow-y-auto px-[var(--sp-6)] py-[var(--sp-10)] text-center'
     >
-      <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-col gap-[var(--sp-1\\.5)]'>
         {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
             utility written on it (see the hand-back block in `styles/kanban.css`). */}
         <div className='text-[length:var(--text-15)] font-semibold'>
@@ -45,11 +45,11 @@ export const KanbanEmptyBoard = memo(function KanbanEmptyBoard({ onAddItem, onAp
         {t('preview.kanban_empty_add')}
       </Button>
 
-      <div className='flex flex-col items-center gap-2'>
+      <div className='flex flex-col items-center gap-[var(--sp-2)]'>
         <span id={templatesLabelId} className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
           {t('preview.kanban_empty_templates')}
         </span>
-        <div role='group' aria-labelledby={templatesLabelId} className='flex flex-wrap items-center justify-center gap-2'>
+        <div role='group' aria-labelledby={templatesLabelId} className='flex flex-wrap items-center justify-center gap-[var(--sp-2)]'>
           {KANBAN_TEMPLATE_KINDS.map((kind) => (
             <Button
               key={kind}

@@ -15,8 +15,8 @@ export { KANBAN_DESCRIPTION_MAX_CHARS }
 const KANBAN_DESCRIPTION_WARN_CHARS = KANBAN_DESCRIPTION_MAX_CHARS - 500
 const DESCRIPTION_ROWS = 4
 const EXPANDED_DESCRIPTION_ROWS = 16
-const DESCRIPTION_TEXT_CLASS = 'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-2.5 text-[length:var(--text-12)] text-[var(--text-primary)]'
-const DESCRIPTION_CONTROL_CLASS = 'flex items-center justify-center rounded-[var(--r-xs)] p-1 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+const DESCRIPTION_TEXT_CLASS = 'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-2\\.5)] text-[length:var(--text-12)] text-[var(--text-primary)]'
+const DESCRIPTION_CONTROL_CLASS = 'flex items-center justify-center rounded-[var(--r-xs)] p-[var(--sp-1)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
 
 /** What the length bound has to say about the draft in progress: the notice only after a rejection. */
 function DescriptionFeedback({ count, trimmed }: { count: number; trimmed: boolean }) {
@@ -54,7 +54,7 @@ function DescriptionHeader({
   onTogglePreview: () => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-2'>
+    <div className='flex items-center justify-between gap-[var(--sp-2)]'>
       {/* The type goes on this wrapper, not on the heading: prose owns a note's `h4` and wins any
           utility written on it (see the hand-back block in `styles/kanban.css`). */}
       <div className='text-[length:var(--text-13)] font-semibold'>
@@ -62,7 +62,7 @@ function DescriptionHeader({
           {t('preview.kanban_card_description')}
         </h4>
       </div>
-      <div className='flex items-center gap-1'>
+      <div className='flex items-center gap-[var(--sp-1)]'>
         {previewable ? (
           <button
             type='button'
@@ -205,7 +205,7 @@ export function DetailDescription({
 }) {
   const box = useDescriptionBox(content, onChange, renderDescription)
   return (
-    <div data-kanban-description className='flex flex-col gap-2'>
+    <div data-kanban-description className='flex flex-col gap-[var(--sp-2)]'>
       <DescriptionHeader
         boxId={box.boxId}
         expanded={box.expanded}
