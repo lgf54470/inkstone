@@ -7,7 +7,7 @@
  */
 import { resolveScatterColumns, symbolSize } from './columns.ts'
 import { type ChartTable } from './model.ts'
-import { DEFAULT_MAP_SOURCE, isAllowedMapSource } from './map-sources.ts'
+import { DEFAULT_MAP_SOURCE, isAllowedMapSource, MAP_SERIES_NAME } from './map-sources.ts'
 
 /** The kinds an echarts fence draws from a table. */
 export const ECHARTS_TABLE_KINDS = ['line', 'bar', 'radar', 'pie', 'scatter', 'heatmap', 'sankey', 'map'] as const
@@ -23,11 +23,17 @@ export class EchartsTableError extends Error {
   }
 }
 
+/** The outlines a map wants: which file to register, and under the name the series looks it up by. */
+export interface EchartsMapRequest {
+  source: string
+  name: string
+}
+
 export interface EchartsTableOption {
   /** Whatever the library is handed: a table builds a record, an option body may be any object. */
   option: unknown
-  /** Set only by `map`: the outline data to register before drawing. */
-  mapSource: string | null
+  /** Set only by a map: the outline data to register before drawing. */
+  map: EchartsMapRequest | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,11 +193,31 @@ function sankeyOption(table: ChartTable): Record<string, unknown> {
  * than fetched: the note's author does not get to choose which host a reader's browser contacts.
  */
 export function resolveMapSource(table: ChartTable): string {
-  const raw = typeof table.options.mapDataSource === 'string' && table.options.mapDataSource.trim() !== ''
-    ? table.options.mapDataSource.trim()
-    : DEFAULT_MAP_SOURCE
+  const raw = typeof table.options.mapDataSource === 'string' ? table.options.mapDataSource.trim() : ''
+  return assertMapSource(raw === '' ? DEFAULT_MAP_SOURCE : raw)
+}
+
+function assertMapSource(raw: string): string {
   if (!isAllowedMapSource(raw)) throw new EchartsTableError('map-refused', 'map')
   return raw
+}
+
+/**
+ * The outlines a map *option* asks for. A note that writes its series by hand has already named the
+ * geometry it draws (`map: 'china'`), so the registration goes under that name rather than under a
+ * second one the note never mentioned — which is what lets an official example be pasted in and draw.
+ * The file comes from `mapDataSource` beside it, or from the default when the note names none, and a
+ * source off the allowlist is refused for the same reason the table form refuses it.
+ */
+export function mapRequestOfOption(option: unknown): EchartsMapRequest | null {
+  if (!isRecord(option)) return null
+  const entries = option.series
+  if (!Array.isArray(entries)) return null
+  const series = entries.find((entry): entry is Record<string, unknown> => isRecord(entry) && entry.type === 'map')
+  if (!series) return null
+  const named = typeof series.map === 'string' ? series.map.trim() : ''
+  const source = typeof option.mapDataSource === 'string' ? option.mapDataSource.trim() : ''
+  return { source: assertMapSource(source === '' ? DEFAULT_MAP_SOURCE : source), name: named === '' ? MAP_SERIES_NAME : named }
 }
 
 function mapOption(table: ChartTable): Record<string, unknown> {
@@ -204,7 +230,7 @@ function mapOption(table: ChartTable): Record<string, unknown> {
     series: [{
       name: typeof table.options.title === 'string' ? table.options.title : '',
       type: 'map',
-      map: 'inkstone-map',
+      map: MAP_SERIES_NAME,
       roam: true,
       data: table.rows.map((row) => ({ name: row[0] ?? '', value: num(row[1]) })),
     }],
@@ -228,8 +254,8 @@ export function tableToEchartsOption(table: ChartTable): EchartsTableOption {
     map: () => mapOption(table),
   }[kind]!()
   const option = { ...built, ...extraOf(table) }
-  if (kind !== 'map') return { option, mapSource: null }
-  return { option, mapSource: resolveMapSource(table) }
+  if (kind !== 'map') return { option, map: null }
+  return { option, map: { source: resolveMapSource(table), name: MAP_SERIES_NAME } }
 }
 
 /**

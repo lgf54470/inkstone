@@ -20,7 +20,8 @@ import { stripObsidianComments } from './obsidian.ts'
 import { parseFenceInfo, splitHtmlIntoLines } from './fence.ts'
 import { EXAMPLE_SPLIT_DEFAULTS, exampleRatioLabel, parseExampleSplit, type ExampleFamily } from './split.ts'
 import type { FenceInfo, RenderEnv, RenderOptions, RenderResult } from './types.ts'
-import { heavyFenceKind, renderHeavyFence } from './heavy-blocks.ts'
+import { heavyFenceKind, renderHeavyFence, sourceFrame } from './heavy-blocks.ts'
+import { chartFenceAsksForScript, chartFenceBody, chartFenceLanguage, renderChartJsFence, renderEchartsOptionFence, routeChartFence, type ChartLanguage } from './chart-fences.ts'
 import { registerBlockRules } from './rules/block.ts'
 import { registerCoreRules } from './rules/core.ts'
 import { registerInlineRules } from './rules/inline.ts'
@@ -75,8 +76,27 @@ function renderMermaidFence(code: string): string {
   return `<div class="mermaid-block loading" data-mermaid="${encodeURIComponent(code)}" aria-busy="true">正在加载图表...</div>`
 }
 
-function renderChartFence(code: string): string {
-  return `<div class="chartjs-block loading" data-chart="${encodeURIComponent(code)}" aria-busy="true">正在加载图表...</div>`
+function chartSourceFrame(language: ChartLanguage, body: string, rawInfo: string): string {
+  const title = language === 'echarts' ? 'ECharts 图表' : 'Chart.js 图表'
+  const hint = chartFenceAsksForScript(rawInfo) ? '博客端不执行笔记里的 JavaScript' : '博客端以源码形式展示'
+  return sourceFrame(title, body, hint)
+}
+
+/**
+ * A chart fence on a read-only surface. The route is the note's own: `style=` when it states one, the
+ * body's shape when it does not, and source whenever the two disagree or the body asks for JavaScript.
+ * A table body is rendered as the table it is and left to the site's existing table-chart path, so the
+ * numbers reach the reader twice — once as a picture, once as the table underneath it.
+ */
+function renderChartFence(language: ChartLanguage, body: string, rawInfo: string, env: RenderEnv): string {
+  const route = routeChartFence(language, body, rawInfo)
+  if (route === 'table') {
+    if (env.mdDepth + 1 > MAX_MD_EXAMPLE_DEPTH) return chartSourceFrame(language, body, rawInfo)
+    return renderMarkdown(body, { depth: env.mdDepth + 1, locale: env.locale }).html
+  }
+  if (route === 'chart-js') return renderChartJsFence(body)
+  if (route === 'echarts-option') return renderEchartsOptionFence(body)
+  return chartSourceFrame(language, body, rawInfo)
 }
 
 /** The grid's resolved layout and ratio; both are always emitted so CSS and the client agree. */
@@ -186,9 +206,10 @@ function renderFence(tokens: Token[], idx: number, env: RenderEnv): string {
     return renderMermaidFence(code)
   }
 
-  // 2. Chart.js block
-  if (lang === 'chart' || lang === 'chartjs') {
-    return renderChartFence(code)
+  // 2. Chart.js / echarts block，两种体（数据或图表表格）都认
+  const chartLanguage = chartFenceLanguage(lang)
+  if (chartLanguage) {
+    return renderChartFence(chartLanguage, chartFenceBody(code), token.info, env)
   }
 
   // 3. md-example comparison block（递归渲染，深度超限时降级为普通代码块防栈溢出 DoS）

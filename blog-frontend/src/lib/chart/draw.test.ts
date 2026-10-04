@@ -33,6 +33,15 @@ describe('drawing a post\'s chart table', () => {
     expect(root.querySelectorAll('tbody tr')).toHaveLength(2)
   })
 
+  it('paints the chart a table body written inside a chart fence asked for', async () => {
+    const root = mount('```chart\n' + BAR + '\n```')
+    expect(root.querySelector('.table-chart[data-table-chart="bar"]')).not.toBeNull()
+    initTableCharts()
+    const drawn = await settle(() => Boolean(root.querySelector('.table-chart svg')))
+    expect(drawn).toBe(true)
+    expect(root.querySelectorAll('tbody tr')).toHaveLength(2)
+  })
+
   it('keeps the table when a chart cannot be drawn, rather than showing an error at a reader', async () => {
     const root = mount('| :map:{"mapDataSource": "https://evil.example.com/g.json"} | v |\n| --- | --- |\n| 北京 | 1 |')
     initTableCharts()
@@ -40,6 +49,24 @@ describe('drawing a post\'s chart table', () => {
     expect(gone).toBe(true)
     expect(root.querySelector('table')).not.toBeNull()
     expect(root.textContent).toContain('北京')
+  })
+
+})
+
+describe('a drawn chart table following the page', () => {
+  // The accent is read when the chart is drawn, so a site redeployed with another one must not leave a
+  // reader looking at colours the previous accent painted. The key a drawn block caches under is what
+  // decides that, and a key carrying only the light mode would answer "already drawn" here.
+  it('repaints when the accent moves, without the post changing', async () => {
+    const root = mount(BAR)
+    initTableCharts()
+    await settle(() => Boolean(root.querySelector('.table-chart svg')))
+    const first = root.querySelector('.table-chart svg')
+    document.documentElement.style.setProperty('--accent', 'oklch(62% 0.16 252)')
+    rerenderTableChartsForTheme()
+    const repainted = await settle(() => root.querySelector('.table-chart svg') !== first)
+    expect(repainted).toBe(true)
+    document.documentElement.style.removeProperty('--accent')
   })
 
   it('repaints for the theme it is showing', async () => {

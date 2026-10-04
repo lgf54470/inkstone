@@ -107,7 +107,8 @@
   }
 }
 
-.ink-prose .chartjs-block {
+.ink-prose .chartjs-block,
+.ink-prose .echarts-block {
   margin: 1em 0;
   padding: 14px;
   border: 1px solid var(--border-subtle);
@@ -117,7 +118,8 @@
   justify-content: center;
   overflow-x: auto;
 }
-.ink-prose .chartjs-container {
+.ink-prose .chartjs-container,
+.ink-prose .echarts-block .echarts-container {
   position: relative;
   width: 100%;
   max-width: 720px;
@@ -130,13 +132,15 @@
   width: 100%;
   height: 100%;
 }
-.ink-prose .chartjs-block.loading {
+.ink-prose .chartjs-block.loading,
+.ink-prose .echarts-block.loading {
   min-height: 120px;
   align-items: center;
   color: var(--text-tertiary);
   font-size: 12px;
 }
-.ink-prose .chartjs-block.loading::before {
+.ink-prose .chartjs-block.loading::before,
+.ink-prose .echarts-block.loading::before {
   width: 12px;
   height: 12px;
   margin-right: 8px;
@@ -146,7 +150,8 @@
   content: '';
   animation: mermaid-spin var(--anim-spin) linear infinite;
 }
-.ink-prose .chartjs-block.has-error {
+.ink-prose .chartjs-block.has-error,
+.ink-prose .echarts-block.has-error {
   flex-direction: column;
   justify-content: flex-start;
 }
@@ -156,7 +161,8 @@
   margin-bottom: 8px;
   font-weight: 500;
 }
-.ink-prose .chartjs-block.has-error pre {
+.ink-prose .chartjs-block.has-error pre,
+.ink-prose .echarts-block.has-error pre {
   margin: 0;
   padding: 8px;
   background: var(--bg-base);

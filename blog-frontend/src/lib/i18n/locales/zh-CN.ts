@@ -258,6 +258,15 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'interactive.graph_fit': '适应窗口',
   'interactive.graph_source': '查看源码',
   'interactive.graph_export': '导出图片',
+  // A ```echarts body the client cannot draw gets a banner naming the reason, with the body underneath
+  // so the reader can see what the block was asked for. The invalid one cannot advise writing `js` the
+  // way the app's does: a post would still not run it.
+  'interactive.graph_echarts': 'ECharts 图表',
+  'interactive.echarts_option_empty': '这个块里没有图表数据',
+  'interactive.echarts_option_invalid': '图表数据读不成 JSON5（博客端只画数据，不执行函数）',
+  'interactive.echarts_option_not_object': '图表数据必须是一个对象',
+  'interactive.echarts_map_refused': '地图只能从白名单里的 https 地址加载轮廓数据',
+  'interactive.echarts_map_failed': '地图轮廓数据加载失败',
 
   // Friend Links & Navigation
   'links.title': '友链与导航',

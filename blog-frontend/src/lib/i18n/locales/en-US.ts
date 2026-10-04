@@ -258,6 +258,12 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'interactive.graph_fit': 'Fit',
   'interactive.graph_source': 'View source',
   'interactive.graph_export': 'Export image',
+  'interactive.graph_echarts': 'ECharts chart',
+  'interactive.echarts_option_empty': 'This block has no chart data in it',
+  'interactive.echarts_option_invalid': 'The chart data is not readable as JSON5 (a post draws data only — it never runs functions)',
+  'interactive.echarts_option_not_object': 'The chart data must be one object',
+  'interactive.echarts_map_refused': 'A map may only load its outlines from an allowed https source',
+  'interactive.echarts_map_failed': 'Failed to load the map outlines',
 
   // Friend Links & Navigation
   'links.title': 'Links & Navigation',

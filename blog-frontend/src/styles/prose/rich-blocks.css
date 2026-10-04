@@ -53,7 +53,8 @@
   background: var(--bg-inset);
 }
 .ink-prose .graph-block > .mermaid-block,
-.ink-prose .graph-block > .chartjs-block {
+.ink-prose .graph-block > .chartjs-block,
+.ink-prose .graph-block > .echarts-block {
   margin: 0;
   border: 0;
   border-radius: 0;

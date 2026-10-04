@@ -1,7 +1,13 @@
 import type { Chart, ChartConfiguration } from 'chart.js/auto'
+import type { LooseJson, EchartsOptionReason } from './chart/option.ts'
+import type { MessageKey } from './i18n'
 import { asRecord } from './normalize'
 import { t, getCurrentLocale } from './i18n'
 import { createConcurrencyQueue } from './concurrency-queue'
+import { EchartsOptionError, parseEchartsOption } from './chart/option.ts'
+import { EchartsTableError, mapRequestOfOption } from './chart/table-option.ts'
+import { MapOutlineError, renderEcharts } from './chart/draw.ts'
+import { chartPalette } from './chart/accent.ts'
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -102,11 +108,12 @@ function scheduleViewportFallback(): void {
   if (settleTimer !== null) clearTimeout(settleTimer)
   settleTimer = setTimeout(() => {
     settleTimer = null
-    for (const block of document.querySelectorAll<HTMLElement>('.mermaid-block.loading, .chartjs-block.loading')) {
+    for (const block of document.querySelectorAll<HTMLElement>('.mermaid-block.loading, .chartjs-block.loading, .echarts-block.loading')) {
       const rect = block.getBoundingClientRect()
       // 隐藏块 rect 全零（display:none），视口重叠判断天然跳过
       if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue
       if (block.classList.contains('mermaid-block')) queueMermaidRender(block)
+      else if (block.classList.contains('echarts-block')) enqueueEchartsRender(block)
       else enqueueChartRender(block)
     }
   }, SCROLL_SETTLE_MS)
@@ -120,14 +127,19 @@ export function revealPanelBlocks(panel: HTMLElement): void {
   for (const block of panel.querySelectorAll<HTMLElement>('.chartjs-block')) {
     if (!renderedChartBlocks.has(block)) enqueueChartRender(block)
   }
+  for (const block of panel.querySelectorAll<HTMLElement>('.echarts-block')) {
+    if (!renderedEchartsBlocks.has(block)) enqueueEchartsRender(block)
+  }
 }
 
 export function initDiagramLazyRender(): void {
   const mermaidBlocks = [...document.querySelectorAll<HTMLElement>('.mermaid-block')]
   const chartBlocks = [...document.querySelectorAll<HTMLElement>('.chartjs-block')]
-  if (mermaidBlocks.length === 0 && chartBlocks.length === 0) return
+  const echartsBlocks = [...document.querySelectorAll<HTMLElement>('.echarts-block')]
+  if (mermaidBlocks.length === 0 && chartBlocks.length === 0 && echartsBlocks.length === 0) return
   for (const block of mermaidBlocks) scheduleMermaidReveal(block)
   for (const block of chartBlocks) scheduleChartReveal(block)
+  for (const block of echartsBlocks) scheduleEchartsReveal(block)
   // 滚动兜底只绑一次：initDiagramLazyRender 幂等，重复调用不重复监听
   if (!viewportFallbackBound) {
     viewportFallbackBound = true
@@ -151,12 +163,12 @@ export function showMermaidError(block: HTMLElement, err: unknown, raw: string):
   block.classList.replace('loading', 'has-error')
 }
 
-export function showChartError(block: HTMLElement, err: unknown, raw: string): void {
+export function showBlockMessage(block: HTMLElement, message: string, raw: string): void {
   const banner = document.createElement('div')
   banner.className = 'chart-error-banner'
   const text = document.createElement('span')
   text.className = 'chart-error-text'
-  text.textContent = t('interactive.chart_error', { error: errorMessage(err) }, getCurrentLocale())
+  text.textContent = message
   const pre = document.createElement('pre')
   const code = document.createElement('code')
   code.textContent = raw
@@ -165,6 +177,10 @@ export function showChartError(block: HTMLElement, err: unknown, raw: string): v
   block.replaceChildren(banner, pre)
   block.classList.remove('loading')
   block.classList.add('has-error')
+}
+
+export function showChartError(block: HTMLElement, err: unknown, raw: string): void {
+  showBlockMessage(block, t('interactive.chart_error', { error: errorMessage(err) }, getCurrentLocale()), raw)
 }
 
 async function renderMermaidBlock(block: HTMLElement): Promise<void> {
@@ -209,7 +225,26 @@ function cssVarValue(name: string, fallback: string): string {
   return value || fallback
 }
 
-function buildChartConfig(config: Record<string, unknown>, textColor: string, gridColor: string): ChartConfiguration {
+/**
+ * Colours the series the note left uncoloured, the same rule the app's chart.js path applies: chart.js's
+ * own default palette is a rainbow nobody chose for this page, so an unstyled dataset takes the accent
+ * group instead — and a note that named its own colours keeps them, because that is a statement about
+ * the data rather than an omission.
+ */
+function themedDatasets(datasets: unknown, palette: string[]): unknown {
+  if (!Array.isArray(datasets)) return datasets
+  return datasets.map((raw, index) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+    const dataset = raw as Record<string, unknown>
+    const next: Record<string, unknown> = { ...dataset }
+    const colour = palette[index % palette.length]
+    if (next.backgroundColor === undefined) next.backgroundColor = colour
+    if (next.borderColor === undefined) next.borderColor = colour
+    return next
+  })
+}
+
+function buildChartConfig(config: Record<string, unknown>, textColor: string, gridColor: string, palette: string[]): ChartConfiguration {
   const userOptions = asRecord(config.options)
   const userScales = asRecord(userOptions.scales)
   const scales: Record<string, Record<string, unknown>> = {}
@@ -224,8 +259,13 @@ function buildChartConfig(config: Record<string, unknown>, textColor: string, gr
     }
   }
 
+  const source = config.data && typeof config.data === 'object' && !Array.isArray(config.data)
+    ? config.data as Record<string, unknown>
+    : null
+  const data = source ? { ...source, datasets: themedDatasets(source.datasets, palette) } : undefined
   return {
     ...config,
+    ...(data ? { data } : {}),
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -281,7 +321,7 @@ async function renderChartBlock(block: HTMLElement): Promise<void> {
     container.appendChild(canvas)
     block.appendChild(container)
 
-    const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor))
+    const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor, chartPalette(isDarkMode())))
     chartInstances.set(block, instance)
     renderedChartBlocks.add(block)
     chartRevealObserver.current?.unobserve(block)
@@ -291,6 +331,68 @@ async function renderChartBlock(block: HTMLElement): Promise<void> {
     renderedChartBlocks.add(block)
     chartRevealObserver.current?.unobserve(block)
   }
+}
+
+// —— echarts 围栏 ——
+// 体按 JSON5 读取（echarts 官网示例就是那种写法），并且只读取：带 `js` 标记的围栏在 SSR 渲染阶段
+// 就降级成了源码框，它的 JavaScript 走不到客户端。json5 与 mermaid/echarts 一样按需动态导入，
+// 不进文章页的入口包。
+const renderedEchartsBlocks = new WeakSet<HTMLElement>()
+const echartsRevealObserver: { current: IntersectionObserver | null } = { current: null }
+
+let json5Promise: Promise<LooseJson> | null = null
+
+function loadJson5(): Promise<LooseJson> {
+  json5Promise ??= import('json5').then(({ default: json5 }) => json5).catch((err) => {
+    json5Promise = null // 加载失败时清除缓存，允许下一次渲染重试
+    throw err
+  })
+  return json5Promise
+}
+
+const OPTION_MESSAGES: Record<EchartsOptionReason, MessageKey> = {
+  empty: 'interactive.echarts_option_empty',
+  'not-object': 'interactive.echarts_option_not_object',
+  json: 'interactive.echarts_option_invalid',
+}
+
+/** 哪一类失败说哪句话；轮廓那两类点名轮廓，因为读者要改的是笔记里的地址而不是本站设置。 */
+function echartsBlockMessage(err: unknown): string {
+  const locale = getCurrentLocale()
+  if (err instanceof EchartsOptionError) return t(OPTION_MESSAGES[err.reason], {}, locale)
+  if (err instanceof EchartsTableError && err.reason === 'map-refused') return t('interactive.echarts_map_refused', {}, locale)
+  if (err instanceof MapOutlineError) return t('interactive.echarts_map_failed', {}, locale)
+  return errorMessage(err)
+}
+
+async function renderEchartsBlock(block: HTMLElement): Promise<void> {
+  if (renderedEchartsBlocks.has(block)) return
+  const raw = decodeURIComponent(block.dataset.echartsCode || '')
+  try {
+    const option = parseEchartsOption(raw, await loadJson5())
+    const map = mapRequestOfOption(option)
+    block.classList.remove('loading', 'has-error')
+    block.removeAttribute('aria-busy')
+    await renderEcharts(block, option, map, isDarkMode())
+    renderedEchartsBlocks.add(block)
+    echartsRevealObserver.current?.unobserve(block)
+  } catch (err: unknown) {
+    console.warn('ECharts block render error:', err)
+    showBlockMessage(block, t('interactive.chart_error', { error: echartsBlockMessage(err) }, getCurrentLocale()), raw)
+    renderedEchartsBlocks.add(block)
+    echartsRevealObserver.current?.unobserve(block)
+  }
+}
+
+// 与 chart.js 共用同一条并发队列：两者抢的是同一段主线程
+function enqueueEchartsRender(block: HTMLElement): void {
+  if (renderedEchartsBlocks.has(block) || chartQueuedBlocks.has(block)) return
+  chartQueuedBlocks.add(block)
+  chartRenderQueue.push(() => renderEchartsBlock(block).finally(() => chartQueuedBlocks.delete(block)))
+}
+
+function scheduleEchartsReveal(block: HTMLElement): void {
+  scheduleReveal(block, renderedEchartsBlocks, echartsRevealObserver, enqueueEchartsRender)
 }
 
 // 主题切换只重渲染当前可见的图；隐藏块标记为待渲染，展示时按新主题渲染。
@@ -308,6 +410,13 @@ export function rerenderDiagramsForTheme(): void {
     renderedChartBlocks.delete(block)
     if (block.getClientRects().length > 0) {
       enqueueChartRender(block)
+    }
+  }
+  for (const block of document.querySelectorAll<HTMLElement>('.echarts-block')) {
+    if (!renderedEchartsBlocks.has(block)) continue
+    renderedEchartsBlocks.delete(block)
+    if (block.getClientRects().length > 0) {
+      enqueueEchartsRender(block)
     }
   }
 }

@@ -1,13 +1,24 @@
+import type { MessageKey } from './i18n'
 import { t, getCurrentLocale } from './i18n'
 
 /**
- * The toolbar a rendered diagram carries — zoom/fit for a vector Mermaid diagram,
- * the fence source behind it, and an image export (SVG for Mermaid, PNG for Chart.js).
+ * The toolbar a rendered diagram carries — zoom/fit for a vector diagram,
+ * the fence source behind it, and an image export (SVG for Mermaid and echarts,
+ * PNG for Chart.js).
  * Adapted from the root app's features/preview/graph-block-toolbar.ts; unlike the
  * editor surface this one never writes the post, it is a reading aid only.
  */
 
-type GraphKind = 'mermaid' | 'chart'
+type GraphKind = 'mermaid' | 'chart' | 'echarts'
+
+/** Which attribute carries which family's body. */
+const BODY_ATTR: Record<GraphKind, string> = {
+  mermaid: 'mermaid',
+  chart: 'chart',
+  echarts: 'echartsCode',
+}
+
+const GRAPH_SELECTOR = '[data-mermaid], [data-chart], [data-echarts-code]'
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
 
@@ -20,7 +31,7 @@ const ICONS = {
 }
 
 function decodedSource(block: HTMLElement, kind: GraphKind): string {
-  const raw = kind === 'mermaid' ? block.dataset.mermaid : block.dataset.chart
+  const raw = block.dataset[BODY_ATTR[kind]]
   return raw === undefined ? '' : decodeURIComponent(raw)
 }
 
@@ -28,11 +39,16 @@ function toolButton(action: string, label: string, icon: string): string {
   return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${label}" aria-label="${label}">${icon}</button>`
 }
 
+const HEAD_TITLES: Record<GraphKind, MessageKey> = {
+  mermaid: 'interactive.graph_mermaid',
+  chart: 'interactive.graph_chart',
+  echarts: 'interactive.graph_echarts',
+}
+
 function renderHeadHtml(kind: GraphKind): string {
-  const zoomable = kind === 'mermaid'
-  const title = kind === 'mermaid'
-    ? t('interactive.graph_mermaid', {}, getCurrentLocale())
-    : t('interactive.graph_chart', {}, getCurrentLocale())
+  // A chart.js picture is a canvas: it has no vector to scale, so only the two vector families zoom.
+  const zoomable = kind !== 'chart'
+  const title = t(HEAD_TITLES[kind], {}, getCurrentLocale())
   const labels = {
     zoomIn: t('interactive.graph_zoom_in', {}, getCurrentLocale()),
     zoomOut: t('interactive.graph_zoom_out', {}, getCurrentLocale()),
@@ -78,10 +94,10 @@ function wrapGraphBlock(block: HTMLElement, kind: GraphKind): HTMLElement {
 
 /** Wraps every diagram block once; called on init and harmless on repeated passes. */
 export function enhanceGraphBlockToolbars(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLElement>('[data-mermaid], [data-chart]').forEach((block) => {
+  root.querySelectorAll<HTMLElement>(GRAPH_SELECTOR).forEach((block) => {
     if (block.closest('[data-graph-block]')) return
     if (block.parentElement?.matches('[data-graph-block]')) return
-    const kind: GraphKind = block.hasAttribute('data-chart') ? 'chart' : 'mermaid'
+    const kind: GraphKind = block.hasAttribute('data-chart') ? 'chart' : block.hasAttribute('data-echarts-code') ? 'echarts' : 'mermaid'
     block.classList.add('graph-block-body')
     wrapGraphBlock(block, kind)
   })
@@ -89,9 +105,11 @@ export function enhanceGraphBlockToolbars(root: ParentNode = document): void {
 
 function graphOf(element: HTMLElement): { wrapper: HTMLElement; block: HTMLElement; kind: GraphKind } | null {
   const wrapper = element.closest<HTMLElement>('[data-graph-block]')
-  const block = wrapper?.querySelector<HTMLElement>('[data-mermaid], [data-chart]') ?? null
+  const block = wrapper?.querySelector<HTMLElement>(GRAPH_SELECTOR) ?? null
   if (!wrapper || !block) return null
-  return { wrapper, block, kind: wrapper.dataset.graphBlock === 'chart' ? 'chart' : 'mermaid' }
+  const declared = wrapper.dataset.graphBlock
+  const kind: GraphKind = declared === 'chart' || declared === 'echarts' ? declared : 'mermaid'
+  return { wrapper, block, kind }
 }
 
 function zoomedScale(wrapper: HTMLElement, direction: 1 | -1): number {
@@ -128,11 +146,11 @@ function downloadBlob(filename: string, blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function exportSvg(block: HTMLElement): void {
+function exportSvg(block: HTMLElement, name: string): void {
   const svg = block.querySelector<SVGSVGElement>('svg')
   if (!svg) return
   const markup = new XMLSerializer().serializeToString(svg)
-  downloadBlob('inkstone-mermaid.svg', new Blob([markup], { type: 'image/svg+xml' }))
+  downloadBlob(`inkstone-${name}.svg`, new Blob([markup], { type: 'image/svg+xml' }))
 }
 
 function exportPng(block: HTMLElement): void {
@@ -158,8 +176,9 @@ export function executeGraphBlockAction(action: string, targetEl: HTMLElement): 
   else if (action === 'fit') applyZoom(graph.wrapper, graph.block, null)
   else if (action === 'toggle-source') toggleSource(graph.wrapper, targetEl)
   else if (action === 'export-image') {
-    if (graph.kind === 'mermaid') exportSvg(graph.block)
-    else exportPng(graph.block)
+    // The two vector families hand over their markup; chart.js paints a canvas and must be rasterized.
+    if (graph.kind === 'chart') exportPng(graph.block)
+    else exportSvg(graph.block, graph.kind)
   }
   else return false
   return true

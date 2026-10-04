@@ -1,7 +1,8 @@
 import { chartTableFromElement } from './chart/from-dom.ts'
-import { echartsTheme } from './chart/theme.ts'
+import { renderEcharts } from './chart/draw.ts'
+import { chartPaletteKey } from './chart/accent.ts'
 import { tableToEchartsOption } from './chart/table-option.ts'
-import { isDarkMode } from './diagram-reveal'
+import { isDarkMode } from './diagram-reveal.ts'
 
 /**
  * Drawing the charts a bare table asks for: the renderer leaves an empty `.table-chart` above a table
@@ -15,16 +16,7 @@ import { isDarkMode } from './diagram-reveal'
 
 const SELECTOR = '.table-chart[data-table-chart]'
 
-let echartsPromise: Promise<typeof import('echarts')> | null = null
 const drawn = new WeakMap<HTMLElement, string>()
-
-function loadEcharts(): Promise<typeof import('echarts')> {
-  echartsPromise ??= import('echarts').catch((err) => {
-    echartsPromise = null
-    throw err
-  })
-  return echartsPromise
-}
 
 function markerConfig(block: HTMLElement): Record<string, unknown> {
   const raw = block.dataset.tableChartConfig
@@ -43,11 +35,13 @@ function drop(block: HTMLElement): void {
 }
 
 /**
- * What this block was drawn from. A post's text does not change under a reader, so the only thing
- * that can make a drawn picture stale is the theme it was painted for.
+ * What this block was drawn from. A post's text does not change under a reader, so the things that can
+ * make a drawn picture stale are the reading theme and the accent the site was deployed with — both of
+ * which the palette is computed from, so the key carries them together rather than the light mode
+ * alone.
  */
 function sourceKey(block: HTMLElement, dark: boolean): string {
-  return `${dark ? 'd' : 'l'}:${block.dataset.tableChart}`
+  return `${chartPaletteKey(dark)}:${block.dataset.tableChart}`
 }
 
 async function renderTableChart(block: HTMLElement): Promise<void> {
@@ -65,37 +59,11 @@ async function renderTableChart(block: HTMLElement): Promise<void> {
     return drop(block)
   }
   try {
-    const echarts = await loadEcharts()
-    if (built.mapSource) {
-      const geometry = await fetchMapGeometry(built.mapSource)
-      if (!geometry) return drop(block)
-      echarts.registerMap('inkstone-map', geometry as never)
-    }
-    const container = document.createElement('div')
-    container.className = 'echarts-container'
-    block.replaceChildren(container)
-    const chart = echarts.init(container, echartsTheme(), { renderer: 'svg' })
-    chart.setOption(built.option as never, true)
+    await renderEcharts(block, built.option, built.map, dark)
     drawn.set(block, key)
   }
   catch {
     drop(block)
-  }
-}
-
-/** The outline data a map needs. Same shape check as the app: a bad payload is no chart, not a crash. */
-async function fetchMapGeometry(url: string): Promise<unknown | null> {
-  try {
-    const response = await fetch(url, { referrerPolicy: 'no-referrer' })
-    if (!response.ok) return null
-    const geometry: unknown = await response.json()
-    const isCollection = Boolean(geometry) && typeof geometry === 'object'
-      && (geometry as { type?: unknown }).type === 'FeatureCollection'
-      && Array.isArray((geometry as { features?: unknown }).features)
-    return isCollection ? geometry : null
-  }
-  catch {
-    return null
   }
 }
 

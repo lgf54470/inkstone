@@ -62,7 +62,8 @@ export function renderMindmapFence(body: string, info: string): string {
   ].join('')
 }
 
-function sourceFrame(title: string, body: string, hint: string): string {
+/** The titled frame with the source behind a disclosure: what this surface shows for a block it cannot draw. */
+export function sourceFrame(title: string, body: string, hint: string): string {
   const count = lineCount(body)
   return [
     `<div class="static-block" data-static-block="1">`,
