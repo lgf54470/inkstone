@@ -46,6 +46,7 @@ export const messages = {
 'markdown.chart_convert_table_syntax': '这个块里的表格读不出来',
 'markdown.chart_convert_not_config': '这个块不是图表配置，没有对应的表格写法',
 'markdown.chart_convert_lossy': '这张图里有表格装不下的内容',
+'markdown.chart_convert_styled': '这张图给某个系列单独设了样式（颜色、边框、填充这类），表格放不下；删掉这些键再改写。',
 'markdown.chart_style_unknown': '这个块声明的 `style=` 不是格式，请写 `style=json` 或 `style=table`',
 'markdown.echarts_render_failed': 'ECharts 图表渲染失败',
 'markdown.echarts_option_empty': '这个块里没有图表配置',

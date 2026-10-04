@@ -25,7 +25,7 @@ export class ChartConfigError extends Error {
 }
 
 /** A config that will not survive the round trip, and why the toggle should decline to offer it. */
-export type ChartTableLoss = 'not-a-config' | 'unknown-kind' | 'needs-echarts' | 'lossy'
+export type ChartTableLoss = 'not-a-config' | 'unknown-kind' | 'needs-echarts' | 'lossy' | 'styled'
 export type ChartTableConversion = { ok: true; table: ChartTable } | { ok: false; reason: ChartTableLoss }
 
 const SLICE_KINDS: readonly string[] = ['pie', 'doughnut', 'polarArea']
@@ -108,17 +108,42 @@ export function tableToChartConfig(table: ChartTable): Record<string, unknown> {
   return config
 }
 
-/** Only a bare title is writable as a keyword cell; anything else in `options` has no table home. */
+/**
+ * The config's `options`, written back as the keyword cell's own JSON.
+ *
+ * The cell carries arbitrary configuration — `keywordOptions` hands everything in it straight to
+ * `options` — so the inverse is nearly the identity. The one thing it folds is the title, which the cell
+ * writes as a bare string and `keywordOptions` turns into `plugins.title`; a title object with anything
+ * beside `display` and `text` is left exactly as it is, because folding it away would be the loss this
+ * file refuses everywhere else. Rejecting everything but a title, as this used to, turned `responsive`
+ * into a reason a chart could not be written as a table — a key the cell would have carried without
+ * complaint, and one every example in the reference docs has.
+ */
 function readKeywordOptions(value: unknown): { value: Record<string, unknown> } | { ok: false; reason: 'lossy' } {
   if (value === undefined) return { value: {} }
   if (!isRecord(value)) return { ok: false, reason: 'lossy' }
   const { plugins, ...rest } = value
-  if (plugins === undefined) return Object.keys(rest).length === 0 ? { value: {} } : { ok: false, reason: 'lossy' }
+  if (plugins === undefined) return { value: rest }
   if (!isRecord(plugins)) return { ok: false, reason: 'lossy' }
   const { title, ...otherPlugins } = plugins
-  if (Object.keys(otherPlugins).length > 0) return { ok: false, reason: 'lossy' }
-  if (!isRecord(title) || title.display !== true || typeof title.text !== 'string') return { ok: false, reason: 'lossy' }
-  return { value: { ...rest, title: title.text } }
+  if (isRecord(title) && Object.keys(title).length === 2 && title.display === true && typeof title.text === 'string') {
+    const folded: Record<string, unknown> = { ...rest, title: title.text }
+    if (Object.keys(otherPlugins).length > 0) folded.plugins = otherPlugins
+    return { value: folded }
+  }
+  return { value: { ...rest, plugins } }
+}
+
+/**
+ * Whether a dataset or a point carries more than the name and the numbers a table row can hold.
+ *
+ * A table gives a series its label and its values and nothing else: a colour, a border width, a second
+ * axis or a `fill` belongs to the dataset rather than to the data, and no cell of the shared syntax has
+ * a home for it. Writing such a config as a table would restyle the chart under the author's hands, so
+ * the control declines and names what is in the way.
+ */
+function hasExtraKeys(record: Record<string, unknown>, held: string[]): boolean {
+  return Object.keys(record).some((key) => !held.includes(key))
 }
 
 export function chartConfigToTable(config: unknown): ChartTableConversion {
@@ -143,6 +168,7 @@ function axisToTable(type: string, labels: unknown, datasets: unknown[], title: 
   const rows: string[][] = []
   for (const raw of datasets) {
     if (!isRecord(raw) || typeof raw.label !== 'string' || !isNumberArray(raw.data, labels.length)) return { ok: false, reason: 'lossy' }
+    if (hasExtraKeys(raw, ['label', 'data'])) return { ok: false, reason: 'styled' }
     rows.push([raw.label, ...raw.data.map(String)])
   }
   return { ok: true, table: { kind: type, options: title, header: ['', ...labels.map(String)], rows } }
@@ -153,6 +179,7 @@ function sliceToTable(labels: unknown, datasets: unknown[], title: Record<string
   const only = datasets.length === 1 ? datasets[0] : null
   if (!Array.isArray(labels) || labels.some((label) => typeof label !== 'string') || !isRecord(only) || only.label !== undefined) return { ok: false, reason: 'lossy' }
   if (!isNumberArray(only.data, labels.length)) return { ok: false, reason: 'lossy' }
+  if (hasExtraKeys(only, ['data'])) return { ok: false, reason: 'styled' }
   return { ok: true, table: { kind: type, options: title, header: ['', ''], rows: only.data.map((value, index) => [String(labels[index]), String(value)]) } }
 }
 
@@ -162,8 +189,10 @@ function scatterToTable(datasets: unknown[], title: Record<string, unknown>): Ch
     if (!isRecord(raw) || !Array.isArray(raw.data)) return { ok: false, reason: 'lossy' }
     const series = raw.label === undefined ? '' : typeof raw.label === 'string' ? raw.label : null
     if (series === null || (series === '' && datasets.length > 1)) return { ok: false, reason: 'lossy' }
+    if (hasExtraKeys(raw, ['label', 'data'])) return { ok: false, reason: 'styled' }
     for (const point of raw.data) {
       if (!isRecord(point) || typeof point.x !== 'number' || typeof point.y !== 'number') return { ok: false, reason: 'lossy' }
+      if (hasExtraKeys(point, ['x', 'y', 'r', 'name'])) return { ok: false, reason: 'styled' }
       if (point.r !== undefined && typeof point.r !== 'number') return { ok: false, reason: 'lossy' }
       points.push({ name: typeof point.name === 'string' ? point.name : '', x: point.x, y: point.y, r: point.r, series })
     }

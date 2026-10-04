@@ -134,18 +134,52 @@ describe('a chart.js config as a chart table', () => {
 
   it('declines a config a table cannot hold', () => {
     const lossy = [
-      { type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] }, options: { responsive: false } },
       { type: 'bar', data: { labels: [1], datasets: [{ label: 's', data: [1] }] } },
       { type: 'bar', data: { labels: ['A', 'B'], datasets: [{ label: 's', data: [1] }] } },
       { type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } },
       { type: 'pie', data: { labels: ['A'], datasets: [{ label: 'x', data: [1] }] } },
       { type: 'radialBar', data: { labels: [], datasets: [] } },
-      { type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] }, options: { plugins: { legend: {} } } },
       'not an object',
     ]
     for (const config of lossy) {
       expect(chartConfigToTable(config).ok).toBe(false)
     }
+  })
+
+  // The keyword cell carries arbitrary configuration, so `options` beyond a title has a table home after
+  // all — refusing it was what made an ordinary chart.js example unwritable as a table.
+  it('carries the config options through the keyword cell and back', () => {
+    const config = {
+      type: 'bar',
+      data: { labels: ['Jan', 'Feb'], datasets: [{ label: 'Revenue', data: [12, 19] }] },
+      options: { responsive: true, plugins: { legend: { position: 'top' } } },
+    }
+    const converted = chartConfigToTable(config)
+    expect(converted.ok).toBe(true)
+    if (!converted.ok) return
+    expect(converted.table.options).toEqual(config.options)
+    // The table then means the config it came from, options and all.
+    expect(tableToChartConfig(converted.table)).toEqual(config)
+  })
+
+  it('keeps a title object the cell did not write', () => {
+    const options = { plugins: { title: { display: false, text: 'x', color: 'red' } } }
+    const converted = chartConfigToTable({ type: 'bar', data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] }, options })
+    expect(converted.ok && converted.table.options).toEqual(options)
+  })
+
+  it('declines a chart whose series carry styling a table has no cell for', () => {
+    const styled = {
+      type: 'bar',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{ label: 'Revenue ($k)', data: [12, 19, 15, 25, 22, 30], backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgb(54, 162, 235)', borderWidth: 1 }],
+      },
+      options: { responsive: true, plugins: { legend: { position: 'top' } } },
+    }
+    expect(chartConfigToTable(styled)).toEqual({ ok: false, reason: 'styled' })
+    const point = { type: 'scatter', data: { datasets: [{ data: [{ x: 1, y: 2, pointStyle: 'cross' }] }] } }
+    expect(chartConfigToTable(point)).toEqual({ ok: false, reason: 'styled' })
   })
 
   it('names the reason a refusal needs the other fence for', () => {

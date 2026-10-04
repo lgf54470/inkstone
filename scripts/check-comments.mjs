@@ -8033,6 +8033,9 @@ const allowed = new Map([
     '// The control works off the body\'s shape while the annotation decides which reader draws it. On a',
     '// note whose two statements disagree that makes the press a repair: it writes the body it holds into',
     '// the other format and restates `style=` to match, so one click lands on a note that says one thing.',
+    '// Two different refusals, and the author needs the one that matches: a series that carries its own',
+    '// styling has no table cell at all, while a config whose categories are not words is not a table\'s',
+    '// data. `options` beyond a title is neither — the keyword cell carries it.',
     '/**\n * The button reaches the converter through the shared click route, which picks the converter by what\n * kind of block it is: an echarts block whose press runs the chart.js writer would look for a\n * ` ```chart ` fence at that line and decline, so the control would read as broken.\n */',
   ]],
   ['src/client/features/preview/graph-block-toolbar.ts', [
@@ -9757,6 +9760,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/chart/config.test.ts', [
     '// The keyword is matched case-insensitively, but the engine\'s name is camelCase: `:polarArea:` used to',
     '// answer unknown-kind because the lowercased spelling was looked up in a list holding the camelCase one.',
+    '// The keyword cell carries arbitrary configuration, so `options` beyond a title has a table home after',
+    '// all — refusing it was what made an ordinary chart.js example unwritable as a table.',
+    '// The table then means the config it came from, options and all.',
   ]],
   ['src/client/lib/markdown/chart/config.ts', [
     '/**\n * The pair of translations between a chart table (./table) and a chart.js config.\n *\n * Both directions are total in one direction and partial in the other: a table always means *some*\n * config, but a config means a table only when everything in it survives being written as one. So\n * {@link chartConfigToTable} refuses rather than approximating — a toggle that quietly dropped a\n * second axis would leave the note drawing a different chart than it did before the press.\n */',
@@ -9767,7 +9773,8 @@ const allowed = new Map([
     '/** The keyword cell\'s own configuration: `title` becomes the plugin, everything else is passed through. */',
     '// A scatter places its points by value, so it has no category row to carry; a pie\'s categories are',
     '// its slices, which the rows name rather than the header.',
-    '/** Only a bare title is writable as a keyword cell; anything else in `options` has no table home. */',
+    '/**\n * The config\'s `options`, written back as the keyword cell\'s own JSON.\n *\n * The cell carries arbitrary configuration — `keywordOptions` hands everything in it straight to\n * `options` — so the inverse is nearly the identity. The one thing it folds is the title, which the cell\n * writes as a bare string and `keywordOptions` turns into `plugins.title`; a title object with anything\n * beside `display` and `text` is left exactly as it is, because folding it away would be the loss this\n * file refuses everywhere else. Rejecting everything but a title, as this used to, turned `responsive`\n * into a reason a chart could not be written as a table — a key the cell would have carried without\n * complaint, and one every example in the reference docs has.\n */',
+    '/**\n * Whether a dataset or a point carries more than the name and the numbers a table row can hold.\n *\n * A table gives a series its label and its values and nothing else: a colour, a border width, a second\n * axis or a `fill` belongs to the dataset rather than to the data, and no cell of the shared syntax has\n * a home for it. Writing such a config as a table would restyle the chart under the author\'s hands, so\n * the control declines and names what is in the way.\n */',
     '// `bubble` has no keyword of its own: it is what a scatter table with a size column is drawn as, so a',
     '// config carrying it still has a table home.',
     '/** A pie\'s value column has no place in a config, so the name a hand-written table gave it is dropped. */',

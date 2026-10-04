@@ -53,6 +53,7 @@ const CONVERT_MESSAGES: Record<ChartConvertFailure, MessageKey> = {
   'table-syntax': 'markdown.chart_convert_table_syntax',
   'not-a-config': 'markdown.chart_convert_not_config',
   lossy: 'markdown.chart_convert_lossy',
+  styled: 'markdown.chart_convert_styled',
 }
 
 const GRAPH_SOURCES = '[data-mermaid], [data-chart], [data-echarts]'

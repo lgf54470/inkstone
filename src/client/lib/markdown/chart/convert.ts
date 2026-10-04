@@ -18,6 +18,7 @@ export type ChartConvertFailure =
   | 'table-syntax'
   | 'not-a-config'
   | 'unknown-kind'
+  | 'styled'
   | 'needs-echarts'
   | 'lossy'
   | 'too-narrow'

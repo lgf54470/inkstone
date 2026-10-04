@@ -46,6 +46,7 @@ export const messages = {
 'markdown.chart_convert_table_syntax': 'The table in this block cannot be read',
 'markdown.chart_convert_not_config': 'This block is not a chart configuration, so it has no table form',
 'markdown.chart_convert_lossy': 'This chart holds more than a table can carry',
+'markdown.chart_convert_styled': 'This chart gives a series its own styling (colour, border, fill), which a table cannot carry — remove those keys to rewrite it.',
 'markdown.chart_style_unknown': 'The `style=` on this block names no format. Write `style=json` or `style=table`.',
 'markdown.echarts_render_failed': 'Failed to render echarts chart',
 'markdown.echarts_option_empty': 'This block has no chart option in it',

@@ -167,14 +167,20 @@ describe('executeGraphBlockAction', () => {
   })
 
   it('leaves the note alone and says why when a table cannot hold the chart', () => {
-    const note = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1]}]},"options":{"responsive":false}}\n```'
-    const root = mount(note)
-    enhanceGraphBlockToolbarsInRoot(root)
-    const edits: string[] = []
-    const toast = vi.fn()
-    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), toast)
-    expect(edits).toEqual([])
-    expect(toast).toHaveBeenCalledWith({ title: 'This chart holds more than a table can carry', tone: 'warning' })
+    // Two different refusals, and the author needs the one that matches: a series that carries its own
+    // styling has no table cell at all, while a config whose categories are not words is not a table's
+    // data. `options` beyond a title is neither — the keyword cell carries it.
+    const styled = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1],"backgroundColor":"#36A2EB"}]}}\n```'
+    const lossy = '```chart\n{"type":"bar","data":{"labels":[1],"datasets":[{"label":"s","data":[1]}]}}\n```'
+    for (const [note, message] of [[styled, 'This chart gives a series its own styling (colour, border, fill), which a table cannot carry — remove those keys to rewrite it.'], [lossy, 'This chart holds more than a table can carry']] as const) {
+      const root = mount(note)
+      enhanceGraphBlockToolbarsInRoot(root)
+      const edits: string[] = []
+      const toast = vi.fn()
+      convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), toast)
+      expect(edits, note).toEqual([])
+      expect(toast, note).toHaveBeenCalledWith({ title: message, tone: 'warning' })
+    }
   })
 
   it('declines to write when the fence no longer sits where the block was drawn', () => {
