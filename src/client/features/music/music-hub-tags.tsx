@@ -26,7 +26,7 @@ export function MusicHubTags({ onManage }: { onManage: () => void }) {
         onCreate={() => { setDraftPrefix(''); setIsCreating(true) }}
       />
       {data.rows.length > 0 && <MusicTagsSearch query={query} onChange={setQuery} />}
-      <div className='mt-0.5 space-y-px'>
+      <div className='mt-[var(--sp-0\\.5)] space-y-px'>
         {isCreating && (
           <TagDraftRow
             initialValue={draftPrefix}
@@ -112,14 +112,14 @@ function MusicTagsList({ data, query, renamingId, onRenamingChange }: {
 
 function MusicTagsSearch({ query, onChange }: { query: string; onChange: (value: string) => void }) {
   return (
-    <div className='mt-1.5'>
+    <div className='mt-[var(--sp-1\\.5)]'>
       <Input
         aria-label={t('notes.tag_filter_search')}
         value={query}
         onChange={(event) => onChange(event.target.value)}
         placeholder={t('notes.tag_filter_search')}
         leading={<Search size={12} />}
-        className='h-7 text-[length:var(--text-12)]'
+        className='h-[var(--sp-7)] text-[length:var(--text-12)]'
       />
     </div>
   )
@@ -134,9 +134,9 @@ function MusicTagsHeader({ canToggle, allExpanded, onToggleAll, onManage, onCrea
 }) {
   const actionClass = 'opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'
   return (
-    <div className='group/head flex items-center justify-between pr-1'>
+    <div className='group/head flex items-center justify-between pr-[var(--sp-1)]'>
       <SectionLabel>{t('music.tags')}</SectionLabel>
-      <div className='flex items-center gap-0.5'>
+      <div className='flex items-center gap-[var(--sp-0\\.5)]'>
         {canToggle && (
           <Tooltip label={allExpanded ? t('tags.collapse_all') : t('tags.expand_all')} side='left'>
             <IconButton label={allExpanded ? t('tags.collapse_all') : t('tags.expand_all')} size='sm' onClick={onToggleAll} className={actionClass}>

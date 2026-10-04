@@ -60,9 +60,9 @@ function BulkToolbar({ count, actions, isBusy, onClear, isFolderPickerOpen, fold
   onSelectFolder: (folderId: string | null) => void
   onCloseFolderPicker: () => void
 }) {
-  return (<div className='pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-menu)] flex justify-center pb-3'>
-    <div className='anim-rise pointer-events-auto flex items-center gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 pl-3 shadow-[var(--shadow-pop)]'>
-    <span className="mr-1 text-[length:var(--text-11\.5)] whitespace-nowrap text-[var(--text-secondary)]">{t('notes.selected')}<span className='tabular font-medium'>{count}</span>{t('notes.notes')}</span>
+  return (<div className='pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-menu)] flex justify-center pb-[var(--sp-3)]'>
+    <div className='anim-rise pointer-events-auto flex items-center gap-[var(--sp-1)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] pl-[var(--sp-3)] shadow-[var(--shadow-pop)]'>
+    <span className="mr-[var(--sp-1)] text-[length:var(--text-11\.5)] whitespace-nowrap text-[var(--text-secondary)]">{t('notes.selected')}<span className='tabular font-medium'>{count}</span>{t('notes.notes')}</span>
     {actions.map((action) => (
       <Tooltip key={action.key} label={action.label}>
       <IconButton label={action.label} size='sm' disabled={isBusy} className={action.className} onClick={action.onClick}>
@@ -70,7 +70,7 @@ function BulkToolbar({ count, actions, isBusy, onClear, isFolderPickerOpen, fold
       </IconButton>
       </Tooltip>
     ))}
-    <span className='mx-0.5 h-4 w-px bg-[var(--border-subtle)]'/>
+    <span className='mx-[var(--sp-0\\.5)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]'/>
     <Tooltip label={t('notes.deselect')}>
       <IconButton label={t('notes.deselect')} size='sm' disabled={isBusy} onClick={onClear}>
       <X size={13}/>

@@ -48,7 +48,7 @@ export function MusicQueueList({
   const onDragEndRow = useCallback(() => setDraggedIndex(null), [])
 
   if (!rows.length) {
-    return <p className='py-6 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{emptyText ?? t('music.queue_empty')}</p>
+    return <p className='py-[var(--sp-6)] text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{emptyText ?? t('music.queue_empty')}</p>
   }
   return (
     <div className={cn('space-y-0.5', className)}>
@@ -151,7 +151,7 @@ const QueueRowItem = memo(function QueueRowItem({
   const isCurrent = row.index === currentIndex
   return (
     <div
-      className={cn('group/queue flex h-9 items-center gap-2 rounded-[var(--r-sm)] px-2', isCurrent && 'bg-[var(--accent-soft)]', isDragSource && 'opacity-40', rowClassName)}
+      className={cn('group/queue flex h-[var(--sp-9)] items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] px-[var(--sp-2)]', isCurrent && 'bg-[var(--accent-soft)]', isDragSource && 'opacity-40', rowClassName)}
       // This row's track, not the player's: the same list is drawn in the hub's queue panel and in the
       // immersive player's pane, where the surface would otherwise answer for whatever is playing while
       // the reader is pointing at something else in the queue.

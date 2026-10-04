@@ -306,14 +306,14 @@ function GraphOverlays({ data, hover, selected, hint }: {
   const shown = hover ?? selected
   return (
     <>
-      {data.meta.truncated && <div role='status' className='absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
+      {data.meta.truncated && <div role='status' className='absolute top-[var(--sp-3)] left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
         {t('graph.showing_limit', { shown: data.nodes.length, total: data.meta.totalNodes })}
       </div>}
-      {shown && <div className='pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
+      {shown && <div className='pointer-events-none absolute bottom-[var(--sp-4)] left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-[var(--sp-3\\.5)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
         <span className='max-w-[50vw] truncate'>{shown.title || t('common.untitled_note')}</span>
-        <span className='ml-2 text-[var(--text-quaternary)]'>{t('graph.direction_counts', { incoming: shown.inDegree, outgoing: shown.outDegree })}</span>
+        <span className='ml-[var(--sp-2)] text-[var(--text-quaternary)]'>{t('graph.direction_counts', { incoming: shown.inDegree, outgoing: shown.outDegree })}</span>
       </div>}
-      <div className='pointer-events-none absolute top-3 left-4 hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block'>{hint}</div>
+      <div className='pointer-events-none absolute top-[var(--sp-3)] left-[var(--sp-4)] hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block'>{hint}</div>
     </>
   )
 }

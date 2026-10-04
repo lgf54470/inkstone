@@ -33,17 +33,17 @@ export function MusicQueuePanel({ open, onClose, height, onResize }: {
       style={{ height }}
     >
       <QueueResizeHandle height={height} onResize={onResize} />
-      <div className='flex h-9 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
-        <span className='flex items-center gap-1.5 text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
+      <div className='flex h-[var(--sp-9)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-3)]'>
+        <span className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           <ListMusic size={13} />
           {t('music.queue_count', { value0: queueLength })}
         </span>
-        <div className='flex items-center gap-0.5'>
+        <div className='flex items-center gap-[var(--sp-0\\.5)]'>
           <IconButton label={t('music.clear_queue')} size='sm' onClick={() => void confirmClearQueue(queueLength, clearQueue)}><Trash2 size={13} /></IconButton>
           <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={14} /></IconButton>
         </div>
       </div>
-      <MusicQueueBrowser className='flex min-h-0 flex-1 flex-col p-1.5' />
+      <MusicQueueBrowser className='flex min-h-0 flex-1 flex-col p-[var(--sp-1\\.5)]' />
     </div>
   )
 }
@@ -61,7 +61,7 @@ function QueueResizeHandle({ height, onResize }: { height: number; onResize: (he
       aria-valuemin={QUEUE_PANEL_MIN_HEIGHT}
       aria-valuemax={QUEUE_PANEL_MAX_HEIGHT}
       tabIndex={0}
-      className='group flex h-2.5 shrink-0 cursor-row-resize items-center justify-center'
+      className='group flex h-[var(--sp-2\\.5)] shrink-0 cursor-row-resize items-center justify-center'
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId)
         dragRef.current = { pointerY: event.clientY, height }
@@ -80,7 +80,7 @@ function QueueResizeHandle({ height, onResize }: { height: number; onResize: (he
         onResize(clampQueueHeight(height + step))
       }}
     >
-      <span aria-hidden='true' className='h-0.5 w-10 rounded-[var(--r-full)] bg-[var(--border-default)]' />
+      <span aria-hidden='true' className='h-[var(--sp-0\\.5)] w-[var(--sp-10)] rounded-[var(--r-full)] bg-[var(--border-default)]' />
     </div>
   )
 }
