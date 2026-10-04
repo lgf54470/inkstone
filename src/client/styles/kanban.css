@@ -144,6 +144,11 @@
   padding: var(--sp-2);
 }
 
+.ink-prose .kanban-snapshot-board .kanban-snapshot-title,
+.ink-prose .kanban-snapshot-board .kanban-snapshot-empty {
+  font-size: var(--text-18);
+}
+
 .ink-prose .kanban-board-columns {
   display: flex;
   flex-direction: row;
@@ -163,7 +168,7 @@
 .ink-prose .kanban-board-columns .kanban-snapshot-group {
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-xs);
-  font-size: var(--text-12);
+  font-size: var(--text-18);
   font-weight: 600;
   line-height: var(--ui-line);
 }
@@ -187,13 +192,13 @@
   border-radius: var(--r-md);
   background: var(--bg-raised);
   color: var(--text-primary);
-  font-size: var(--text-13);
+  font-size: var(--text-14);
 }
 
-.ink-prose .kanban-snapshot-card-title {
+.ink-prose .kanban-snapshot-board .kanban-snapshot-card-title {
   margin: 0;
   color: var(--text-primary);
-  font-size: var(--text-14);
+  font-size: var(--text-18);
   font-weight: 600;
   line-height: var(--ui-line);
 }
@@ -214,27 +219,27 @@
   list-style: none;
 }
 
-.ink-prose .kanban-snapshot-card-tags li {
+.ink-prose .kanban-snapshot-board .kanban-snapshot-card-tags li {
   padding: var(--sp-0\.5) var(--sp-1);
   border-radius: var(--r-xs);
-  font-size: var(--text-11);
+  font-size: var(--text-14);
   font-weight: 600;
   line-height: var(--ui-line);
 }
 
-.ink-prose .kanban-snapshot-card-priority {
+.ink-prose .kanban-snapshot-board .kanban-snapshot-card-priority {
   align-self: flex-start;
   padding: var(--sp-0\.5) var(--sp-1);
   border-radius: var(--r-xs);
-  font-size: var(--text-11);
+  font-size: var(--text-14);
   font-weight: 600;
   line-height: var(--ui-line);
 }
 
-.ink-prose .kanban-snapshot-card-subtasks {
+.ink-prose .kanban-snapshot-board .kanban-snapshot-card-subtasks {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--text-11);
+  font-size: var(--text-14);
   font-variant-numeric: tabular-nums;
 }
 
@@ -247,13 +252,13 @@
 
 .ink-prose .kanban-snapshot-board [data-kanban-card-fields] dt {
   color: var(--text-tertiary);
-  font-size: var(--text-11);
+  font-size: var(--text-14);
 }
 
 .ink-prose .kanban-snapshot-board [data-kanban-card-fields] dd {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--text-11);
+  font-size: var(--text-14);
 }
 
 .kanban-canvas {

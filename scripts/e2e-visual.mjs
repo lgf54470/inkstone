@@ -767,6 +767,13 @@ const KANBAN_PROJECTOR_BOARD = {
 
 const KANBAN_PROJECTOR_DECK = `# The board on the projector\n\n\`\`\`kanban\n${JSON.stringify(KANBAN_PROJECTOR_BOARD, null, 2)}\n\`\`\`\n`
 
+// The two sizes the projected board has to be written at (L-14): the floor N-02 set for projected body
+// copy, in the canvas's own design pixels — its `MIN_FIT_SCALE` is 18/28 for exactly that reason — and
+// the step a card's annotations may sit at. `tests/kanban-projector-type.test.ts` pins the same numbers
+// on the stylesheet; this reads what the sheet actually produced on a painted page.
+const PROJECTOR_FLOOR_PX = 18
+const BOARD_ANNOTATION_PX = 14
+
 async function openKanbanDeckNote(page) {
   await page.keyboard.down('Control')
   await page.keyboard.press('n')
@@ -800,6 +807,8 @@ async function readProjectedBoard(page) {
       coverDecoded: card.querySelector('img.kanban-cover')?.naturalWidth ?? 0,
     })))
     const title = board?.querySelector('.kanban-snapshot-card-title')
+    const sizeOf = (node) => (node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0)
+    const current = document.querySelector('[data-presentation-rail] [aria-selected="true"]')
     // The page is a design-sized box the stage scales down to fit the window, so a CSS font-size of
     // 14 px is not 14 px on the screen. Read the scale the browser actually applied and report the
     // painted size with it; the judgment below is on geometry, which the scale cannot fool.
@@ -817,6 +826,17 @@ async function readProjectedBoard(page) {
       cards,
       titlePx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
       titlePaintedPx: title ? Number.parseFloat((Number.parseFloat(getComputedStyle(title).fontSize) * scale).toFixed(1)) : 0,
+      // The two tiers the board is written at, in the canvas's own design pixels.
+      type: {
+        boardTitle: sizeOf(board?.querySelector('.kanban-snapshot-title')),
+        head: sizeOf(board?.querySelector('.kanban-snapshot-group')),
+        cardTitle: sizeOf(title),
+        chip: sizeOf(board?.querySelector('.kanban-snapshot-card-tags li')),
+        subtasks: sizeOf(board?.querySelector('.kanban-snapshot-card-subtasks')),
+      },
+      // How many pages the rail lists for the slide being shown: the board grew when it was enlarged,
+      // and a board the page can no longer hold arrives as two slides instead of one.
+      pages: [...document.querySelectorAll(`[data-presentation-rail] [data-slide-index="${current?.dataset.slideIndex ?? -1}"]`)].length,
       pageBox: boxOf(surface),
     }
   })
@@ -849,6 +869,13 @@ async function assertKanbanOnProjector(page) {
   // painted size is carried in the detail so the next reader sees what the window bought.
   const narrowest = Math.min(...board.boxes.map((box) => box.width))
   check('presentation kanban: each column keeps its share of the projected page', narrowest >= board.pageBox.width * 0.18, JSON.stringify({ narrowest, page: board.pageBox.width, titlePaintedPx: board.titlePaintedPx }))
+
+  // A board too small to read from the back of the room is not a board the projector carries, and the
+  // canvas's own floor is written in design pixels — the stage's scale is the window's business, so the
+  // painted size rides in the detail for whoever has to judge a particular room. The page count is
+  // judged here too: enlarging the board costs the page height, and a slide that no longer fits arrives
+  // as two pages, which is a different deck than the author wrote.
+  check('presentation kanban: the board is written at the readability floor and still fits its page', board.type.boardTitle >= PROJECTOR_FLOOR_PX && board.type.head >= PROJECTOR_FLOOR_PX && board.type.cardTitle >= PROJECTOR_FLOOR_PX && board.type.chip >= BOARD_ANNOTATION_PX && board.type.subtasks >= BOARD_ANNOTATION_PX && board.pages === 1, JSON.stringify({ ...board.type, painted: board.titlePaintedPx, pages: board.pages }))
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
