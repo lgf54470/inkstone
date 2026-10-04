@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { Flag, Paperclip, Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { kanbanCardCover } from '../card-fields'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import { kanbanPersonName } from '../person'
@@ -33,20 +34,8 @@ interface GalleryCardProps {
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }
 
-/**
- * The picture a tile draws across its top, if it has one. Shared with the tile's own header row, which
- * floats over that picture and only over it: the empty tile draws a 10px strip instead, and a row
- * floated on that lands on the title underneath.
- */
-function galleryCoverUrl(item: KanbanItem): string | undefined {
-  const imageFile = item.files?.find(
-    (f) => f.mime?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(f.name),
-  )
-  return item.cover || imageFile?.url
-}
-
 function GalleryCover({ item }: { item: KanbanItem }) {
-  const coverUrl = galleryCoverUrl(item)
+  const coverUrl = kanbanCardCover(item)
   const allowed = useKanbanImageAllowed(coverUrl ?? '')
 
   if (coverUrl && !allowed) {
@@ -236,7 +225,7 @@ function GalleryCard({
           isSelected={isSelected}
           tagVals={tagVals}
           tagsCol={tagsCol}
-          floatsOverCover={Boolean(galleryCoverUrl(item))}
+          floatsOverCover={Boolean(kanbanCardCover(item))}
           onToggleSelect={() => onToggleSelect(item.id)}
         />
         <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} onOpenDetail={() => onOpenDetail(item)} />

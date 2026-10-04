@@ -40,7 +40,7 @@ export function MusicTrackTags({ track, max, className }: {
   const shown = max ? pills.slice(0, max) : pills
   const hiddenCount = pills.length - shown.length
   return (
-    <div className={cn('flex min-w-0 items-center gap-1 overflow-hidden', className)}>
+    <div className={cn('flex min-w-0 items-center gap-[var(--sp-1)] overflow-hidden', className)}>
       {shown.map((tag) => (
         <TagPill
           key={tag.id}

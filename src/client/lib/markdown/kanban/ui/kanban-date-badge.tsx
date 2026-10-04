@@ -23,7 +23,7 @@ export function KanbanDateBadge({ item, variant = 'chip', className }: KanbanDat
   if (!date) return null
   const overdue = date.overdueDays > 0
   const box = variant === 'chip'
-    ? 'rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-11)]'
+    ? 'rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)]'
     : ''
   // `--danger` as text on the chip's inset measures 3.38 in the light theme, under AA at this size,
   // so the red stays on the icon, where a graphic only needs 3, and the words carry the state.
@@ -33,7 +33,7 @@ export function KanbanDateBadge({ item, variant = 'chip', className }: KanbanDat
       data-kanban-date=''
       data-kanban-overdue={overdue ? '' : undefined}
       title={overdue ? date.dateText : undefined}
-      className={`inline-flex items-center gap-1 ${box} ${tone} ${className ?? ''}`}
+      className={`inline-flex items-center gap-[var(--sp-1)] ${box} ${tone} ${className ?? ''}`}
     >
       {overdue
         ? <AlertTriangle size={11} className='text-[var(--danger)]' />

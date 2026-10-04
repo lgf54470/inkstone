@@ -35,7 +35,7 @@ const HANDLES: Array<{ key: ResizeHandle; className: string }> = [
 function RotationHandle({ onRotateStart }: { onRotateStart: (e: ReactMouseEvent) => void }) {
   return (
     <>
-      <div className='absolute left-1/2 -top-4 w-px h-4 -translate-x-1/2 bg-[var(--accent)] pointer-events-none' />
+      <div className='absolute left-1/2 -top-4 w-px h-[var(--sp-4)] -translate-x-1/2 bg-[var(--accent)] pointer-events-none' />
       <div
         onMouseDown={onRotateStart}
         onClick={(e) => e.stopPropagation()}

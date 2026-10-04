@@ -38,7 +38,7 @@ function ListTruncatedNotice() {
   return (
     <div
       role='status'
-      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-soft)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
+      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-soft)] px-[var(--sp-4)] py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
     >
       {t('share.list_truncated', { count: formatNumber(shares.length) })}
     </div>
@@ -60,11 +60,11 @@ function ListBody({
   return (
     <div className='flex-1 overflow-y-auto'>
       {loading && shares.length === 0 ? (
-        <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
+        <div className='flex h-[var(--empty-h-lg)] items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
           {t('common.loading')}
         </div>
       ) : error && shares.length === 0 ? (
-        <div className='p-5'>
+        <div className='p-[var(--sp-5)]'>
           <LoadErrorState label={t('share.list_load_failed')} onRetry={() => void loadShares()} />
         </div>
       ) : viewMode === 'table' ? (

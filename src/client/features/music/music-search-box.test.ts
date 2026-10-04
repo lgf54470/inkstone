@@ -155,7 +155,7 @@ describe('music search history combobox semantics', () => {
     mountWithHistory()
     const clear = [...document.querySelectorAll('button')]
       .find((button) => button.textContent?.trim() === t('music.search_clear_history')) as HTMLButtonElement
-    expect(clear.classList.contains('min-h-6')).toBe(true)
+    expect(clear.classList.contains('min-h-[var(--touch-floor)]')).toBe(true)
   })
 
   it('walks the entries with the arrow keys and commits the highlighted one on Enter', () => {

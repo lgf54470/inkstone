@@ -55,7 +55,7 @@ function SourceSwitchBody({ candidates, loading, failed, onRetry, onUse }: {
   if (loading) return <Notice text={t('common.loading')} />
   if (failed) {
     return (
-      <div role='status' className='flex flex-col items-center gap-2 py-3'>
+      <div role='status' className='flex flex-col items-center gap-[var(--sp-2)] py-[var(--sp-3)]'>
         <span className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{t('music.source_switch_failed')}</span>
         <Button size='sm' onClick={onRetry}>{t('music.retry')}</Button>
       </div>
@@ -72,7 +72,7 @@ function SourceSwitchBody({ candidates, loading, failed, onRetry, onUse }: {
 }
 
 function Notice({ text }: { text: string }) {
-  return <p role='status' className='py-3 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{text}</p>
+  return <p role='status' className='py-[var(--sp-3)] text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{text}</p>
 }
 
 // The candidate is named the way the search rows name a hit — catalogue, song, artist and album —
@@ -80,7 +80,7 @@ function Notice({ text }: { text: string }) {
 function SourceCandidateRow({ hit, onUse }: { hit: MusicProviderTrack; onUse: () => void }) {
   const subtitle = [hit.artist, hit.album].filter(Boolean).join(' · ')
   return (
-    <li className='flex min-h-11 items-center gap-2 rounded-[var(--r-md)] px-1 hover:bg-[var(--bg-hover)]'>
+    <li className='flex min-h-[var(--touch-h)] items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-1)] hover:bg-[var(--bg-hover)]'>
       <SourceCandidateArtwork hit={hit} />
       <span className='min-w-0 flex-1'>
         <span className='block truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{hit.title}</span>

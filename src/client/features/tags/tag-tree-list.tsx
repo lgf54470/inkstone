@@ -88,7 +88,7 @@ export function TagTreeList({
 
 export function TagTreeListEmpty({ title }: { title?: string }) {
   return (
-    <p className='px-2 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+    <p className='px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
       {title ?? t('tags.no_match')}
     </p>
   )

@@ -43,10 +43,10 @@ export function TagSection() {
   const search = useTagSearch(sortedTags, tree.nodes.length)
   const draft = useTagDraft()
   return (
-    <section className='mt-4'>
+    <section className='mt-[var(--sp-4)]'>
       <TagSectionHeader canToggleTags={tree.canToggle} allTagsExpanded={tree.allExpanded} onToggleAll={tree.toggleAll} onCreate={draft.startRoot} onManage={() => openPanel('tags')} />
       {sortedTags.length > 0 && <TagSearchBox query={search.query} setQuery={search.setQuery} setActiveIndex={search.setActiveIndex} searching={search.searching} visibleTags={search.visibleTags} highlightedIndex={search.highlightedIndex} />}
-      <div className='mt-0.5 space-y-px'>
+      <div className='mt-[var(--sp-0\\.5)] space-y-px'>
         {draft.isCreating && (
           <TagDraftRow initialValue={draft.draftPrefix} onFinish={draft.finish} onCancel={draft.cancel} />
         )}
@@ -110,9 +110,9 @@ function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreat
 }) {
   const actionClass = 'opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'
   return (
-    <div className='group/head flex items-center justify-between pr-1'>
+    <div className='group/head flex items-center justify-between pr-[var(--sp-1)]'>
       <SectionLabel>{t('navigation.tag')}</SectionLabel>
-      <div className='flex items-center gap-0.5'>
+      <div className='flex items-center gap-[var(--sp-0\\.5)]'>
         {canToggleTags && (
           <Tooltip label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')} side='left'>
             <IconButton label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')} size='sm' onClick={onToggleAll} className={actionClass}>
@@ -144,8 +144,8 @@ function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags,
   highlightedIndex: number
 }) {
   return (
-    <div className='relative mt-1.5'>
-      <Search size={12} className='pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]' />
+    <div className='relative mt-[var(--sp-1\\.5)]'>
+      <Search size={12} className='pointer-events-none absolute top-1/2 left-[var(--sp-2)] -translate-y-1/2 text-[var(--text-quaternary)]' />
       <input
         aria-label={t('notes.tag_filter_search')}
         title={t('sidebar.tag_search_select_all')}
@@ -153,10 +153,10 @@ function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags,
         onChange={(event) => { setQuery(event.target.value); setActiveIndex(0) }}
         onKeyDown={(event) => handleTagSearchKeyDown(event, { searching, visibleTags, highlightedIndex, setQuery, setActiveIndex })}
         placeholder={t('notes.tag_filter_search')}
-        className='h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-7 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'
+        className='h-[var(--sp-7)] w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-[var(--sp-7)] pl-[var(--sp-6)] text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'
       />
       {searching && (
-        <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+        <span className="pointer-events-none absolute top-1/2 right-[var(--sp-2)] -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
           {visibleTags.length}
         </span>
       )}
@@ -217,9 +217,9 @@ function UntaggedRow({ onOpen }: { onOpen: () => void }) {
       type='button'
       aria-current={view === 'untagged' ? 'page' : undefined}
       onClick={onOpen}
-      className={cn('group flex h-10 w-full items-center justify-between rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12)] font-medium transition-colors md:h-[var(--sp-7)]', view === 'untagged' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]')}
+      className={cn('group flex h-[var(--sp-10)] w-full items-center justify-between rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-12)] font-medium transition-colors md:h-[var(--sp-7)]', view === 'untagged' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]')}
     >
-      <div className='flex min-w-0 items-center gap-2'>
+      <div className='flex min-w-0 items-center gap-[var(--sp-2)]'>
         <TagIcon size={12} className={cn('shrink-0', view === 'untagged' ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')} />
         <span className='truncate'>{t('tags.untagged')}</span>
       </div>
@@ -230,7 +230,7 @@ function UntaggedRow({ onOpen }: { onOpen: () => void }) {
 
 function CreateFirstTagButton({ onCreate }: { onCreate: () => void }) {
   return (
-    <button type='button' onClick={onCreate} className="flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5">
+    <button type='button' onClick={onCreate} className="flex h-[var(--sp-10)] w-full items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5">
       <Plus size={13} />{t('tags.create_first')}
     </button>
   )
@@ -238,7 +238,7 @@ function CreateFirstTagButton({ onCreate }: { onCreate: () => void }) {
 
 function TagSearchEmpty({ onClear }: { onClear: () => void }) {
   return (
-    <div className='mt-1 flex flex-col items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-inset)] px-2 py-3 text-center'>
+    <div className='mt-[var(--sp-1)] flex flex-col items-center gap-[var(--sp-1)] rounded-[var(--r-md)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-3)] text-center'>
       <SearchX size={14} className='text-[var(--text-quaternary)]' />
       <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t('notes.no_matching_tags')}</span>
       <button type='button' onClick={onClear} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">
@@ -250,7 +250,7 @@ function TagSearchEmpty({ onClear }: { onClear: () => void }) {
 
 function ShowMoreTagsButton({ isExpanded, count, onToggle }: { isExpanded: boolean; count: number; onToggle: () => void }) {
   return (
-    <button type='button' onClick={onToggle} className="h-10 w-full rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5">
+    <button type='button' onClick={onToggle} className="h-[var(--sp-10)] w-full rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5">
       {isExpanded ? t('common.collapse') : t('sidebar.show_all_value0_tags', { value0: count })}
     </button>
   )
@@ -262,12 +262,12 @@ function SelectedTagsBar() {
   const openPanel = useUi((s) => s.openPanel)
   if (selectedTags.length === 0) return null
   return (
-    <div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-2 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-      <div className='flex h-5 items-center justify-between gap-2'>
+    <div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+      <div className='flex h-[var(--sp-5)] items-center justify-between gap-[var(--sp-2)]'>
         <span className='truncate'>{t('sidebar.tags_selected', { value0: selectedTags.length })}</span>
-        <div className='flex shrink-0 items-center gap-2'>
+        <div className='flex shrink-0 items-center gap-[var(--sp-2)]'>
           <Tooltip label={t('sidebar.jump_to_graph')}>
-            <button type='button' onClick={() => openPanel('graph')} className='inline-flex items-center gap-1 font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] hover:underline'>
+            <button type='button' onClick={() => openPanel('graph')} className='inline-flex items-center gap-[var(--sp-1)] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)] hover:underline'>
               <Waypoints size={9} />{t('common.graph')}
             </button>
           </Tooltip>
@@ -276,18 +276,18 @@ function SelectedTagsBar() {
           </button>
         </div>
       </div>
-      <div className="mt-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t('sidebar.tags_selected_hint')}</div>
+      <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t('sidebar.tags_selected_hint')}</div>
       {selectedTags.length >= LIMITS.tagSelectionMax && (
-        <div className="mt-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</div>
+        <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</div>
       )}
-      <div className='mt-1 flex flex-wrap gap-1'>
+      <div className='mt-[var(--sp-1)] flex flex-wrap gap-[var(--sp-1)]'>
         {selectedTags.map((name) => (
           <button
             key={name}
             type='button'
             aria-label={t('sidebar.remove_selected_tag', { value0: name })}
             onClick={() => toggleTagSelection(name)}
-            className='inline-flex h-5 max-w-full items-center gap-1 rounded-full bg-[var(--bg-overlay)] px-2 text-[length:var(--text-11)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
+            className='inline-flex h-[var(--sp-5)] max-w-full items-center gap-[var(--sp-1)] rounded-full bg-[var(--bg-overlay)] px-[var(--sp-2)] text-[length:var(--text-11)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
           >
             <Hash size={9} className='shrink-0 text-[var(--text-quaternary)]' />
             <span className='truncate'>{name}</span>

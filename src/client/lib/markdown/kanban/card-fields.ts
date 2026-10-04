@@ -158,3 +158,16 @@ export function readKanbanCardFields(
   }
   return read
 }
+
+/**
+ * The picture a card is known by: the cover the reader set, else the first attachment that is an
+ * image. Read here rather than at each surface, so the gallery tile, its floating header row and a
+ * still of the board on a slide all answer "which picture is this card's" the same way — the third
+ * of those had no answer at all until the projector asked for one (N-36).
+ */
+export function kanbanCardCover(item: KanbanItem): string | undefined {
+  const imageFile = item.files?.find(
+    (file) => file.mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name),
+  )
+  return item.cover || imageFile?.url
+}

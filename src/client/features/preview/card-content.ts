@@ -149,6 +149,7 @@ async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ ma
         kanban: 'snapshot',
         // A chart on a card is the picture the fence drew, not a second live instance.
         echarts: 'snapshot',
+        slides: 'snapshot',
         // What the blocks on this staging element were rendered from. A fence body no longer rides in
         // the markup, so drawing the card without it would read every board as empty (P-01).
         fences: rendered.fences,

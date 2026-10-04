@@ -30,7 +30,7 @@ export const Preview = memo(function Preview(props: PreviewProps) {
         event.preventDefault()
         onContextMenu?.(event, event.target as HTMLElement)
       }}
-      className={cn('h-full overflow-y-auto overscroll-contain px-4 py-3', className)}
+      className={cn('h-full overflow-y-auto overscroll-contain px-[var(--sp-4)] py-[var(--sp-3)]', className)}
       data-preview-scroller
     >
       <div className='ink-preview-container' data-font={b.proseFont}>

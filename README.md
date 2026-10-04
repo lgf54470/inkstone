@@ -28,7 +28,7 @@ Every new account automatically receives two standard starter notes, one in Chin
 
 | Area | Included |
 | --- | --- |
-| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on `---`, fullscreen playback, slide list, live follow with a freeze switch, PDF export) |
+| Writing | CodeMirror 6 editor, independently editable note titles, **two-note editor groups**, per-group editor/split/preview layouts, synchronized scrolling, outline, **focus mode**, **typewriter mode**, **autosave**, **version history**, and **presentation mode** (decks split on horizontal rules or on headings, fullscreen playback, slide list, live follow with a freeze switch, PDF export) |
 | Markdown | GFM tables and task lists, footnotes, Obsidian-style comments, WikiLinks, embeds, block IDs, callouts, details blocks, tabs, **`:::` layout blocks** (text alignment, multi-column, timeline, and a fenced spelling of callouts and tabs), **math**, **Mermaid diagrams**, **interactive mind maps** (`mindmap`, two-way synced with a full screen editor), **PrismJS syntax highlighting**, and **Front Matter** |
 | Organization | Nested folders with drag-and-drop ordering, inline tags, favorites, pinning, archive, trash, **wiki links**, backlinks, block references, note embeds, and a relationship graph |
 | Search | D1 FTS5 **full-text search** with Chinese indexing, filters, recent notes, command-palette navigation, and optional private **semantic/hybrid search** powered by Workers AI |
@@ -40,21 +40,32 @@ Every new account automatically receives two standard starter notes, one in Chin
 
 ## Presentation mode
 
-Note bodies split into slides on `---` rules. A block that is too tall is scaled down to fit; content that still does not fit continues on the next slide, and the counter reads `3 / 14` with a `1/2` badge while a slide is split further.
+Note bodies split into slides on horizontal rules, and the deck divides on every spelling the preview draws as one: `---`, `***`, `___`, or the same mark spaced out (`- - -`). Up to three spaces of indent, extra marks and trailing spaces all still divide; four spaces of indent is a code block, and a rule inside a fenced block stays code. What a rule must not sit directly under is a paragraph: there a run of dashes is a setext heading underline — the preview folds the paragraph into a heading, and the deck reads the same heading — so a separator wants a blank line, a heading, a list, a table row, a quote, or a closed fence above it. Rules and headings divide together, so a note that carries both gets a slide at every rule and at every heading of the level in force; a heading that falls on the slide a rule already opened — written directly under it, or under nothing but blank lines and a `<!-- layout: … -->` switch — does not cut a second time. A note written without any rule splits on its headings alone: each `#` section becomes a slide, or, when the note carries a single top-level title, each `##` section does — so an ordinary long note turns into a deck without being rewritten. `slide-level: 1` or `slide-level: 2` in the front matter names the heading level explicitly, and `slide-level: none` turns heading division off and leaves only the authored rules. A block that is too tall is scaled down to fit; content that still does not fit continues on the next slide, and the counter reads `3 / 14` with a `1/2` badge while a slide is split further.
 
 A show follows the note it was started from, so an edit — including one arriving from another tab, another device, or an MCP write — lands on the projector. "Freeze this snapshot" pins the deck to what is on screen for the actual talk.
 
+A private cue stays off the projector. A line beginning with `<!-- note: ` or `<!-- speaker: ` (up to three spaces of indent) is read as that slide's speaker note, and every line the cue spans until its `-->` is removed from what the show paints; the note belongs to the slide the cue sits in, and the deck carries it next to the slide. A cue nobody closed stays private to the end of the note, the way the reader already drops an unclosed comment. A cue inside a fenced block is left as written, because a block that demos the syntax is there to be seen.
+
+A slide can ask for a layout. A line of its own reading `<!-- layout: cover -->` centres that slide as a title page, and `<!-- layout: split -->` (also spelled `<!-- layout: two-columns -->`) sets it in two balanced columns. Up to three spaces of indent are allowed, only the first switch on a slide is read, a switch inside a fenced block is left as written, and the switch itself never reaches the projector. A cover slide too tall for the canvas continues onto the next page like any other; a split slide does not continue — two columns have no page order to break — so a slide whose balanced columns still exceed the page has its switch refused and is laid out as a single column, which paginates. Whichever layout the show ends up measuring is the one its thumbnails, overview grid and exported pages draw, so no surface shows a geometry the projector never used.
+
 | Key | Action |
 | --- | --- |
+| `Ctrl/Cmd+Alt+P` | Start the show on the note you are editing, from anywhere — including inside the editor, where the caret decides which slide opens |
 | `→` `↓` `PageDown` `Space` | Next slide (`Space` and `Enter` yield to a focused control) |
 | `←` `↑` `PageUp` | Previous slide |
 | `Home` / `End` | First / last slide |
 | `F` | Enter or leave fullscreen |
 | `S` | Show or hide the slide list |
+| `G` / `O` | Lay the whole deck out as a grid of page cards on top of the slide. The arrows walk the matrix — up and down by a row, `Home`/`End` to either end — and a card is opened by clicking it or by `Enter`; `G`/`O` again puts the grid away |
 | `L` | Switch between following the note and the frozen snapshot |
-| `Esc` | Exit the show and return focus to the button that started it |
+| `C` | Point with a red laser dot that follows the cursor; the system cursor goes away while it is on |
+| `T` / `K` | Focus attention with a spotlight aperture that dims the background and illuminates the area under the pointer |
+| `P` | Open presenter console in an independent second window with current slide, next slide preview, speaker notes, and timer |
+| `B` / `.` | Black screen for a pause; a plain key or a click brings the slide back |
+| `W` / `,` | White screen for a pause, same way back |
+| `Esc` | Puts the deck overview away first, then the spotlight or laser pointer; while the show is fullscreen, leave fullscreen only — a further `Esc` exits the show and returns focus to the button that started it |
 
-The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press.
+The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press. The overview grid is the same page list laid across the whole screen, and its cards are numbered the same way, so a jump from either lands on the same page; it is also the grid button in the control pill.
 
 There are two exports:
 

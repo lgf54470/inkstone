@@ -75,7 +75,7 @@ function WeekHeatColumn({
       aria-label={t('sidebar.calendar_expand_week_value0', { value0: week[0]?.key.slice(5), value1: week[6]?.key.slice(5) })}
       onClick={(event) => onStripWeekClick(event, weekIndex)}
       className={cn(
-        'flex min-w-0 flex-1 flex-col gap-0.5 rounded-[var(--r-3)] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
+        'flex min-w-0 flex-1 flex-col gap-[var(--sp-0\\.5)] rounded-[var(--r-3)] p-px transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
         expandedWeek === weekIndex && 'bg-[var(--accent-soft)]',
       )}
     >
@@ -114,10 +114,10 @@ function WeekHeatStrip({
 }) {
   return (
     <>
-      <div className='px-0.5 pb-1 text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]'>
+      <div className='px-[var(--sp-0\\.5)] pb-[var(--sp-1)] text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]'>
         {t('sidebar.calendar_week_strip_value0', { value0: stripWeeks.length })}
       </div>
-      <div className='flex gap-0.5'>
+      <div className='flex gap-[var(--sp-0\\.5)]'>
         {stripWeeks.map((week, weekIndex) => (
           <WeekHeatColumn
             key={weekIndex}
@@ -154,7 +154,7 @@ function WeekNotesList({
         type='button'
         aria-label={t('sidebar.calendar_jump_to_day')}
         onClick={() => onJumpToDay(cell.key)}
-        className="flex w-full items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.5 text-left text-[length:var(--text-9\\.5)] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+        className="flex w-full items-center gap-[var(--sp-1)] rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-left text-[length:var(--text-9\\.5)] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
       >
         <span>{weekdayLabel}</span>
         <span className='tabular'>{dayNumber}</span>
@@ -165,7 +165,7 @@ function WeekNotesList({
           key={note.id}
           type='button'
           onClick={() => onNoteClick(note.id)}
-          className='flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] py-0.5 pr-1.5 pl-5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
+          className='flex h-[var(--sp-6)] w-full items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] py-[var(--sp-0\\.5)] pr-[var(--sp-1\\.5)] pl-[var(--sp-5)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
         >
           <FileText size={9} className='shrink-0 text-[var(--text-quaternary)]' />
           <span className="min-w-0 flex-1 truncate text-[length:var(--text-10\\.5)] text-[var(--text-secondary)]">{note.title}</span>
@@ -194,13 +194,13 @@ function WeekNotesBlock({
 }) {
   return (
     <>
-      <div className='my-0.5 border-t border-[var(--border-subtle)]' />
+      <div className='my-[var(--sp-0\\.5)] border-t border-[var(--border-subtle)]' />
       <button
         type='button'
         aria-expanded={isExpandedWeekNotes}
         aria-label={t('sidebar.calendar_week_notes_value0', { value0: weekCellsTotal })}
         onClick={onToggleWeekNotes}
-        className='flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
+        className='flex h-[var(--sp-6)] min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
       >
         <FileText size={10} className='shrink-0 text-[var(--text-quaternary)]' />
         <span className="text-[length:var(--text-10\\.5)] text-[var(--text-secondary)]">
@@ -209,7 +209,7 @@ function WeekNotesBlock({
         <ChevronDown size={10} className={cn('ml-auto text-[var(--text-quaternary)] transition-transform duration-[var(--dur-fast)]', isExpandedWeekNotes && 'rotate-180')} />
       </button>
       <Reveal open={isExpandedWeekNotes}>
-        <div className='space-y-1 py-0.5'>
+        <div className='space-y-1 py-[var(--sp-0\\.5)]'>
           {weekCells.map((cell, dayIndex) =>
             cell.notes.length > 0 ? (
               <WeekNotesList
@@ -231,14 +231,14 @@ function WeekNotesBlock({
 function DayNotesList({ cell, ix }: { cell: WeekCell; ix: DayInteractions }) {
   return (
     <Reveal open={ix.expandedDay === cell.key}>
-      <div className='space-y-px py-0.5 pl-3.5 pr-1'>
+      <div className='space-y-px py-[var(--sp-0\\.5)] pl-[var(--sp-3\\.5)] pr-[var(--sp-1)]'>
         {ix.shownDay === cell.key &&
           cell.notes.map((note) => (
             <button
               key={note.id}
               type='button'
               onClick={() => ix.onNoteClick(note.id)}
-              className='flex h-6 w-full items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
+              className='flex h-[var(--sp-6)] w-full items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'
             >
               <FileText size={9} className='shrink-0 text-[var(--text-quaternary)]' />
               <span className="min-w-0 flex-1 truncate text-[length:var(--text-10\\.5)] text-[var(--text-secondary)]">{note.title}</span>
@@ -255,23 +255,23 @@ function DayHeaderRow({ cell, dayIndex, weekdayLabels, ix }: { cell: WeekCell; d
   const expanded = ix.expandedDay === cell.key
   return (
     <>
-      <div className='flex items-center gap-0.5'>
+      <div className='flex items-center gap-[var(--sp-0\\.5)]'>
         <button
           type='button'
           aria-label={ix.gapLabel(cell.key)}
           onClick={() => ix.onActivateDay(cell.key, cell.diaryId)}
           className={cn(
-            'flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
+            'flex h-[var(--sp-6)] min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]',
             cell.selected && 'bg-[var(--accent-soft)]',
             isLatest && 'border border-dashed border-[var(--accent)]/80',
           )}
         >
-          <span className="w-3 shrink-0 text-center text-[length:var(--text-9\\.5)] font-medium text-[var(--text-quaternary)]">{weekdayLabels[dayIndex]}</span>
+          <span className="w-[var(--sp-3)] shrink-0 text-center text-[length:var(--text-9\\.5)] font-medium text-[var(--text-quaternary)]">{weekdayLabels[dayIndex]}</span>
           <span className="shrink-0 text-[length:var(--text-10\\.5)] tabular text-[var(--text-secondary)]">{cell.key.slice(5)}</span>
           {cell.today && <span aria-hidden='true' className='size-1.25 shrink-0 rounded-full bg-[var(--accent)]' />}
-          <span className='ml-auto flex min-w-0 shrink-0 items-center gap-1.5'>
+          <span className='ml-auto flex min-w-0 shrink-0 items-center gap-[var(--sp-1\\.5)]'>
             {cell.diaryId && (
-              <span className='inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]'>
+              <span className='inline-flex items-center gap-[var(--sp-1)] rounded-full bg-[var(--accent-soft)] px-[var(--sp-1\\.5)] py-px text-[length:var(--text-9)] font-medium text-[var(--accent)]'>
                 <span aria-hidden='true' className='size-0.75 rounded-full bg-[var(--accent)]' />
                 {t('sidebar.diary_tag')}
               </span>
@@ -320,7 +320,7 @@ function ExpandedWeekPanel(props: WeeksStripProps) {
   }
   return (
     <Reveal open={props.expandedWeek !== null}>
-      <div className='mt-1.5 space-y-px rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-1'>
+      <div className='mt-[var(--sp-1\\.5)] space-y-px rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-[var(--sp-1)]'>
         {shownCells && (
           <div>
             {shownCells.map((cell, dayIndex) => (
@@ -346,7 +346,7 @@ function ExpandedWeekPanel(props: WeeksStripProps) {
 
 export function WeeksStrip(props: WeeksStripProps): JSX.Element {
   return (
-    <div ref={props.flashRef} className='mt-1.5 px-0.5'>
+    <div ref={props.flashRef} className='mt-[var(--sp-1\\.5)] px-[var(--sp-0\\.5)]'>
       <WeekHeatStrip
         stripWeeks={props.stripWeeks}
         expandedWeek={props.expandedWeek}

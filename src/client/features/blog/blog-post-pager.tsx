@@ -17,9 +17,9 @@ export function BlogPostPager() {
   if (totalPages <= 1) return null
 
   return (
-    <div className='flex shrink-0 items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+    <div className='flex shrink-0 items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)] py-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
       <span>{t('blog.posts_page_info', { page, totalPages, total })}</span>
-      <div className='flex items-center gap-1'>
+      <div className='flex items-center gap-[var(--sp-1)]'>
         <Button
           size='sm'
           variant='secondary'

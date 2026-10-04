@@ -31,7 +31,7 @@ function OfflineIndicator({ label }: { label: string }) {
       <span
         role='img'
         aria-label={label}
-        className='flex h-6 items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 text-[length:var(--text-11)] text-[var(--warning)]'
+        className='flex h-[var(--sp-6)] items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] text-[length:var(--text-11)] text-[var(--warning)]'
       >
         <CloudOff size={13} />
         <span aria-hidden='true' className='hidden md:inline'>

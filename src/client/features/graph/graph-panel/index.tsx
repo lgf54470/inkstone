@@ -178,7 +178,7 @@ function GraphSearchBox({ search, onSearchChange }: {
             </IconButton>
           ) : undefined
         }
-        className='h-8 text-[length:var(--text-12)]'
+        className='h-[var(--sp-8)] text-[length:var(--text-12)]'
       />
     </div>
   )
@@ -196,7 +196,7 @@ function GraphSearchFeedback({ state, onToggleOnlyMatching, onJumpToFirstMatch }
 }) {
   const firstHitId = state.firstHitId
   return (
-    <div className='flex items-center gap-1'>
+    <div className='flex items-center gap-[var(--sp-1)]'>
       <span role='status' data-graph-search-status='' className='whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]'>
         {state.hits > 0 ? t('graph.matching_notes', { count: state.hits }) : t('graph.no_matching_notes')}
       </span>
@@ -225,7 +225,7 @@ function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
   const { hasGraph, isSettingsOpen, isExporting, settingsId, settingsButtonRef, onZoomOut, onFit, onZoomIn, onExportPng, onExportSvg, onToggleSettings, onClose } = actions
   const drawerIsDialog = useBreakpoint() === 'mobile'
   return (
-    <div className='ml-auto flex items-center gap-1'>
+    <div className='ml-auto flex items-center gap-[var(--sp-1)]'>
       <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!hasGraph} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.fit')}><IconButton label={t('graph.fit')} size='sm' disabled={!hasGraph} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
       <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!hasGraph} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
@@ -234,7 +234,7 @@ function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
       {/* Beside the canvas the drawer is a column of this panel, so claiming a popup dialog there was a
           claim about something this control does not open (G-25). */}
       <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' ref={settingsButtonRef} aria-controls={settingsId} aria-haspopup={drawerIsDialog ? 'dialog' : undefined} aria-expanded={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-1'><X size={16}/></IconButton></Tooltip>
+      <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-[var(--sp-1)]'><X size={16}/></IconButton></Tooltip>
     </div>
   )
 }
@@ -294,8 +294,8 @@ function useSettingsDisclosureFocus(isOpen: boolean): RefObject<HTMLButtonElemen
 
 function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, searchState, onToggleOnlyMatching, onJumpToFirstMatch, actions }: GraphHeaderProps) {
   return (
-    <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
-      <div className='mr-1 flex min-w-0 items-baseline gap-2.5'>
+    <header className='flex min-h-[var(--sp-12)] shrink-0 flex-wrap items-center gap-[var(--sp-2)] border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] md:px-4'>
+      <div className='mr-[var(--sp-1)] flex min-w-0 items-baseline gap-2.5'>
         <h2 id={titleId} className={`text-[length:var(--text-14)] font-semibold ${TRACKING_TITLE}`}>{t('common.graph')}</h2>
         {data && <GraphStats data={data}/>}
       </div>
@@ -333,7 +333,7 @@ function GraphBody({ data, loadError, isNarrowed, onRetry, onClearFilters, child
 function GraphRefreshBadge({ visible }: { visible: boolean }) {
   if (!visible) return null
   return (
-    <div role='status' data-graph-refreshing='' className='pointer-events-none absolute top-3 right-4 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
+    <div role='status' data-graph-refreshing='' className='pointer-events-none absolute top-[var(--sp-3)] right-[var(--sp-4)] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
       {t('graph.building_graph')}
     </div>
   )

@@ -38,11 +38,11 @@ export function FolderSection() {
     }
   }
   return (<>
-    <section id='sidebar-folders' className={cn('mt-4 rounded-[var(--r-md)]', isRootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => handleSectionDragOver(event, setIsRootDropping)} onDragLeave={(event) => { if (leftDropTarget(event)) setIsRootDropping(false); }} onDrop={(event) => handleSectionDrop(event, setIsRootDropping, move)}>
+    <section id='sidebar-folders' className={cn('mt-[var(--sp-4)] rounded-[var(--r-md)]', isRootDropping && 'ring-1 ring-[var(--accent)]')} onDragOver={(event) => handleSectionDragOver(event, setIsRootDropping)} onDragLeave={(event) => { if (leftDropTarget(event)) setIsRootDropping(false); }} onDrop={(event) => handleSectionDrop(event, setIsRootDropping, move)}>
     <FolderSectionHeader parentFolderIds={parentFolderIds} allExpanded={allExpanded} isCreating={isCreating} onToggleAll={toggleAllExpanded} onCreate={() => void create(null)}/>
     <CalendarTree />
     <TodoTree />
-    {tree.length === 0 ? <CreateFirstFolderButton isCreating={isCreating} onCreate={() => void create(null)}/> : (<div role='tree' aria-label={t('navigation.folder')} className='mt-0.5 space-y-px'>
+    {tree.length === 0 ? <CreateFirstFolderButton isCreating={isCreating} onCreate={() => void create(null)}/> : (<div role='tree' aria-label={t('navigation.folder')} className='mt-[var(--sp-0\\.5)] space-y-px'>
       {tree.map((node, index) => (<FolderRow key={node.id} node={node} siblings={tree} index={index} parentNode={null} parentSiblings={[]} onCreateChild={create} onMove={move} onChooseParent={setMovingId} createdFolderId={createdFolderId} renamingId={renamingId} onStartRename={setRenamingId} onFinishRename={() => setRenamingId(null)}/>))}
       </div>)}
     </section>
@@ -161,9 +161,9 @@ function FolderSectionHeader({ parentFolderIds, allExpanded, isCreating, onToggl
   onCreate: () => void
 }) {
   const openPanel = useUi((s) => s.openPanel)
-  return (<div className='group/head flex items-center justify-between pr-1'>
+  return (<div className='group/head flex items-center justify-between pr-[var(--sp-1)]'>
     <SectionLabel>{t('navigation.folder')}</SectionLabel>
-    <div className='flex items-center gap-0.5'>
+    <div className='flex items-center gap-[var(--sp-0\\.5)]'>
       {parentFolderIds.length > 0 && (
       <Tooltip label={allExpanded ? t('folders.collapse_all') : t('folders.expand_all')} side='left'>
         <IconButton label={allExpanded ? t('folders.collapse_all') : t('folders.expand_all')} size='sm' onClick={onToggleAll} className='opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'>
@@ -189,7 +189,7 @@ function CreateFirstFolderButton({ isCreating, onCreate }: {
   isCreating: boolean
   onCreate: () => void
 }) {
-  return (<button type='button' disabled={isCreating} onClick={onCreate} className='mt-0.5 flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-7.5'>
+  return (<button type='button' disabled={isCreating} onClick={onCreate} className='mt-[var(--sp-0\\.5)] flex h-[var(--sp-10)] w-full items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] disabled:pointer-events-none disabled:opacity-45 md:h-7.5'>
     <FolderPlus size={13}/>{t('sidebar.create_first_folder')}
     </button>)
 }

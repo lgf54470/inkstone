@@ -72,7 +72,7 @@ function SizeFieldset({
       <legend className={FIELD_LEGEND}>
         {t('slides.settings_size')}
       </legend>
-      <div className='flex flex-wrap gap-2'>
+      <div className='flex flex-wrap gap-[var(--sp-2)]'>
         {SIZE_PRESETS.map((preset) => {
           const active = size.width === preset.width && size.height === preset.height
           return (
@@ -88,7 +88,7 @@ function SizeFieldset({
           )
         })}
       </div>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('slides.settings_width')}>
           <Input
             type='number'
@@ -142,7 +142,7 @@ function ThemeFieldset({
           ))}
         </Select>
       </Field>
-      <div className='grid grid-cols-3 gap-3'>
+      <div className='grid grid-cols-3 gap-[var(--sp-3)]'>
         {colors.map((color) => (
           <Field key={color.key} label={color.label}>
             <Input

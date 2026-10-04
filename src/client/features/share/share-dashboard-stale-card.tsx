@@ -21,7 +21,7 @@ export function StaleLinksCard({ bundle }: { bundle: DashboardBundle }) {
   if (!analytics || thresholdDays === 0) return null
   const total = staleLinks?.total ?? 0
   return (
-    <div className='mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
+    <div className='mt-[var(--sp-4)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <CardHeader
         icon={<MoonStar size={15} className='text-[var(--accent)]' />}
         title={t('share.stale_links_title')}
@@ -31,17 +31,17 @@ export function StaleLinksCard({ bundle }: { bundle: DashboardBundle }) {
         <EmptyRow label={t('share.stale_links_empty', { days: thresholdDays })} />
       ) : (
         <>
-          <p className='pt-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+          <p className='pt-[var(--sp-3)] text-[length:var(--text-12)] text-[var(--text-secondary)]'>
             {t('share.stale_links_summary', { count: total, never: staleLinks?.neverViewed ?? 0 })}
           </p>
-          <div className='divide-y divide-[var(--border-subtle)] pt-1'>
+          <div className='divide-y divide-[var(--border-subtle)] pt-[var(--sp-1)]'>
             {(staleLinks?.items ?? []).map((item) => (
               <StaleLinkRow key={item.noteId} item={item} />
             ))}
           </div>
           {/* The list is what gets paused, and it is a page of the total: saying "these" keeps the
               button from standing in for links that are not on screen. */}
-          <div className='flex items-center justify-between gap-3 pt-3 border-t border-[var(--border-subtle)]'>
+          <div className='flex items-center justify-between gap-[var(--sp-3)] pt-[var(--sp-3)] border-t border-[var(--border-subtle)]'>
             <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
               {t('share.stale_pause_scope', { count: staleLinks?.items.length ?? 0 })}
             </span>
@@ -64,11 +64,11 @@ export function StaleLinksCard({ bundle }: { bundle: DashboardBundle }) {
 function StaleLinkRow({ item }: { item: ShareStaleLink }) {
   const days = daysSinceVisit(item.lastViewedAt)
   return (
-    <div className='flex flex-wrap items-center justify-between gap-2 py-2 text-[length:var(--text-12)]'>
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-2)] py-[var(--sp-2)] text-[length:var(--text-12)]'>
       <span className='truncate font-medium text-[var(--text-primary)]'>
         {item.noteTitle || t('common.untitled_note')}
       </span>
-      <span className='flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <span className='flex items-center gap-[var(--sp-3)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         <span className='font-mono'>{`/s/${item.slug}`}</span>
         <span>
           {days === null ? t('share.stale_never_viewed') : t('share.stale_last_viewed', { days })}

@@ -47,6 +47,7 @@ import { useSession } from '../../../store/session'
 import { createContextualNote } from '../../../store/notes'
 import { generateKanbanFromOutline, generateMindmapFromOutline, generateSlidesFromOutline, getActiveEditorView, insertNoteTemplate } from '../../../editor/commands'
 import { useMusic } from '../../music'
+import { startPresentationFromNote } from '../../presentation'
 import type { Item } from './types'
 import type { ViewKind } from '@shared/types'
 
@@ -94,7 +95,7 @@ function creationCommands(deps: { openPanel: (panel: PanelName) => void; createF
   ]
 }
 
-function currentNoteCommands(activeNote: { id: string; isStarred: boolean; isArchived: boolean }, deps: { setStarred: (id: string, starred: boolean) => void; setArchived: (id: string, archived: boolean) => void; openPanel: (panel: PanelName) => void; deleteNote: (id: string) => void }): CommandItem[] {
+export function currentNoteCommands(activeNote: { id: string; isStarred: boolean; isArchived: boolean }, deps: { setStarred: (id: string, starred: boolean) => void; setArchived: (id: string, archived: boolean) => void; openPanel: (panel: PanelName) => void; deleteNote: (id: string) => void }): CommandItem[] {
   const currentNoteGroup = t('common.current_note')
   return [
     { id: 'cmd-star', kind: 'command', label: activeNote.isStarred ? t('command.remove_current_note_from_favorites') : t('command.add_current_note_to_favorites'), icon: <Star size={14} />, combo: 'mod+d', group: currentNoteGroup, run: () => void deps.setStarred(activeNote.id, !activeNote.isStarred) },
@@ -103,6 +104,7 @@ function currentNoteCommands(activeNote: { id: string; isStarred: boolean; isArc
     { id: 'cmd-mindmap-from-outline', kind: 'command', label: t('workspace.mindmap_from_outline'), icon: <Network size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateMindmapFromOutline(view) } },
     { id: 'cmd-kanban-from-outline', kind: 'command', label: t('workspace.kanban_from_outline'), icon: <Kanban size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateKanbanFromOutline(view) } },
     { id: 'cmd-slides-from-outline', kind: 'command', label: t('workspace.slides_from_outline'), icon: <Presentation size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateSlidesFromOutline(view) } },
+    { id: 'cmd-presentation-mode', kind: 'command', label: t('workspace.presentation_mode'), icon: <Play size={14} />, combo: 'mod+alt+p', group: currentNoteGroup, run: () => void startPresentationFromNote(activeNote.id) },
     { id: 'cmd-share', kind: 'command', label: t('command.share_current_note'), icon: <Share2 size={14} />, group: currentNoteGroup, run: () => deps.openPanel('share') },
     { id: 'cmd-blog-publish', kind: 'command', label: t('blog.publish_to_blog'), icon: <Globe size={14} />, group: currentNoteGroup, run: () => deps.openPanel('blog-publish') },
     { id: 'cmd-delete', kind: 'command', label: t('command.move_the_current_note_to_trash'), icon: <Trash2 size={14} />, combo: 'mod+backspace', group: currentNoteGroup, run: () => void deps.deleteNote(activeNote.id) },

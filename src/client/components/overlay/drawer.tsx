@@ -43,7 +43,7 @@ export function Drawer({ open, onClose, side = 'right', width = 380, children, t
       width: Math.min(width, window.innerWidth < DRAWER_FIT_BREAKPOINT ? window.innerWidth : window.innerWidth - DRAWER_SIDE_GAP),
       animation: `ink-slide-in-${side} var(--dur-slow) var(--ease-out) both`,
     }}>
-    {title && (<div className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
+    {title && (<div className='flex h-[var(--band-h)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-3)]'>
       <span id={titleId} className='text-[length:var(--text-13)] font-semibold'>{title}</span>
       <Tooltip label={t('common.close')} combo='escape' side='left'>
         <IconButton label={t('common.close')} size='sm' onClick={onClose}>

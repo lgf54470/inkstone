@@ -30,24 +30,24 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
   const location = 'bucket' in target.config
     ? `${String(target.config.bucket ?? '')}${target.config.prefix ? `/${target.config.prefix}` : ''}`
     : String(target.config.url ?? '')
-  return (<div className={cn('rounded-[var(--r-lg)] border bg-[var(--bg-base)] p-3 transition-colors', target.enabled ? 'border-[var(--border-subtle)]' : 'border-[var(--border-subtle)] opacity-60')}>
-    <div className='flex items-start gap-3'>
-    <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>
+  return (<div className={cn('rounded-[var(--r-lg)] border bg-[var(--bg-base)] p-[var(--sp-3)] transition-colors', target.enabled ? 'border-[var(--border-subtle)]' : 'border-[var(--border-subtle)] opacity-60')}>
+    <div className='flex items-start gap-[var(--sp-3)]'>
+    <span className={cn('mt-[var(--sp-0\\.5)] flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>
       {target.type === 's3' ? <HardDrive size={15}/> : <Server size={15}/>}
     </span>
 
     <div className='min-w-0 flex-1'>
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
       <span className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
         {target.name}
       </span>
       <Badge tone='neutral'>{target.type === 's3' ? 'S3' : 'WebDAV'}</Badge>
       </div>
-      <div className="mt-0.5 truncate text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{location}</div>
+      <div className="mt-[var(--sp-0\\.5)] truncate text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{location}</div>
       <TargetStatus target={target} lastRunTime={lastRunTime} result={result}/>
     </div>
 
-    <div className='flex shrink-0 items-center gap-1'>
+    <div className='flex shrink-0 items-center gap-[var(--sp-1)]'>
       <Switch checked={target.enabled} disabled={busy} label={t('settings.enabled')} onChange={(enabled) => void toggleEnabledFlow({ actionRef, target, enabled, setIsUpdating, onPatch, onChanged, toast })}/>
       <Button size='sm' variant='ghost' loading={isTesting} disabled={isUpdating || isDeleting} onClick={() => void testTargetFlow({ actionRef, target, setIsTesting, setResult })}>
       {isTesting ? <Loader2 size={12} className='animate-[ink-spin_.7s_linear_infinite]'/> : t('settings.test')}
@@ -70,13 +70,13 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
 function TargetStatus({ target, lastRunTime, result }: { target: BackupTarget; lastRunTime: string; result: TestConnectionResult | null }) {
   return (
     <>
-      {target.lastRunAt && (<div className={cn('mt-1.5 flex items-center gap-1.5 text-[length:var(--text-11)]', target.lastStatus === 'success' ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>
+      {target.lastRunAt && (<div className={cn('mt-[var(--sp-1\\.5)] flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)]', target.lastStatus === 'success' ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>
         {target.lastStatus === 'success' ? (<CheckCircle2 size={11}/>) : (<AlertCircle size={11}/>)}
         {target.lastStatus === 'success' ? t('settings.last_backup_succeeded') : translateServiceMessage(target.lastError) || t('settings.last_backup_failed')}
         <span className='text-[var(--text-quaternary)]'>· {lastRunTime}</span>
       </div>)}
 
-      {result && (<div className={cn('mt-1.5 flex items-start gap-1.5 rounded-[var(--r-sm)] px-2 py-1.5 text-[length:var(--text-11)]', result.ok
+      {result && (<div className={cn('mt-[var(--sp-1\\.5)] flex items-start gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-11)]', result.ok
         ? 'bg-[color-mix(in_oklab,var(--success)_12%,transparent)] text-[var(--success)]'
         : 'bg-[color-mix(in_oklab,var(--danger)_11%,transparent)] text-[var(--danger)]')}>
         {result.ok ? <CheckCircle2 size={11} className='mt-px'/> : <AlertCircle size={11} className='mt-px'/>}

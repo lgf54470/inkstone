@@ -118,7 +118,7 @@ function BatchEditsMenu({ edits }: { edits: KanbanBatchEdits }) {
         aria-haspopup='menu'
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        className='flex items-center gap-[var(--sp-1)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <SlidersHorizontal size={13} aria-hidden />
         <span>{t('preview.kanban_batch_edits')}</span>
@@ -151,7 +151,7 @@ function BatchGroupSelect({ groupColumn, onBatchGroupChange }: BatchGroupSelectP
           e.target.value = ''
         }
       }}
-      className={`${PANEL_FIELD} h-8 md:h-8 text-[length:var(--text-12)]`}
+      className={`${PANEL_FIELD} h-[var(--sp-8)] md:h-8 text-[length:var(--text-12)]`}
     >
       <option value='' disabled>
         {t('preview.kanban_batch_change_group')}
@@ -178,7 +178,7 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
   if (selectedCount === 0) return null
 
   return (
-    <div className='absolute bottom-6 left-1/2 z-[var(--z-float)] flex -translate-x-1/2 items-center gap-3 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)] px-4 py-2.5 shadow-[var(--shadow-modal)]'>
+    <div className='absolute bottom-[var(--sp-6)] left-1/2 z-[var(--z-float)] flex -translate-x-1/2 items-center gap-[var(--sp-3)] rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)] px-[var(--sp-4)] py-2.5 shadow-[var(--shadow-modal)]'>
       <span className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {t('preview.kanban_batch_selected_count', { count: selectedCount })}
       </span>
@@ -196,7 +196,7 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
         type='button'
         data-kanban-batch-archive
         onClick={onBatchArchive}
-        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        className='flex items-center gap-[var(--sp-1)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <Archive size={13} aria-hidden />
         <span>{t('preview.kanban_archive_item')}</span>
@@ -205,7 +205,7 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
       <button
         type='button'
         onClick={onBatchDelete}
-        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--danger)] hover:bg-[var(--bg-hover)]'
+        className='flex items-center gap-[var(--sp-1)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--danger)] hover:bg-[var(--bg-hover)]'
       >
         <Trash2 size={13} />
         <span>{t('preview.kanban_batch_delete')}</span>

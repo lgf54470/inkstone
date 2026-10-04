@@ -154,7 +154,7 @@ export interface KanbanDependencyLink {
   arrow: string
 }
 
-/** Both time views draw their rows at this height (`h-10`); the arrow's y is the row's middle. */
+/** Both time views draw their rows at this height (`h-[var(--sp-10)]`); the arrow's y is the row's middle. */
 const LINK_ROW_HEIGHT = 40
 /** How far the elbow bows past both bar edges when the arrow has to reach backwards. */
 const LINK_BOW = 12

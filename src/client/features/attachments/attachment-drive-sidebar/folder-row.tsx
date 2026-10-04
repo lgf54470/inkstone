@@ -188,7 +188,7 @@ function FolderRowBody(props: FolderRowBodyProps) {
       onDrop={handleDrop}
       style={{ paddingLeft: `${node.depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
-        'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[length:var(--text-12)] font-medium transition-colors',
+        'group flex h-7.5 w-full items-center gap-[var(--sp-1)] rounded-[var(--r-md)] pr-[var(--sp-1)] text-left text-[length:var(--text-12)] font-medium transition-colors',
         active ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
         isDragOver && 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]',
       )}
@@ -222,12 +222,12 @@ function FolderNameCell({ node, expanded, isRenaming, nameInput, inputRef, onNam
           if (e.key === 'Enter') onFinishRename(node.id, nameInput.trim() || node.name)
           if (e.key === 'Escape') onFinishRename(node.id, node.name)
         }}
-        className='flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
+        className='flex-1 bg-[var(--bg-surface)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
       />
     )
   }
   return (
-    <button type='button' onClick={() => onSelectFolder(node.id)} className='flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left'>
+    <button type='button' onClick={() => onSelectFolder(node.id)} className='flex min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] py-[var(--sp-1)] text-left'>
       <span style={{ color: node.color ?? undefined }} className={cn('shrink-0', !node.color && 'text-[var(--text-quaternary)]')}>
         {node.icon ? <span className='text-xs'>{node.icon}</span> : expanded ? <FolderOpen size={13} /> : <FolderClosed size={13} />}
       </span>
@@ -247,7 +247,7 @@ function FolderToggle({ expanded, hasChildren, onToggleExpand }: { expanded: boo
         onToggleExpand()
       }}
       className={cn(
-        'flex h-4 w-4 shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-transform',
+        'flex h-[var(--sp-4)] w-[var(--sp-4)] shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-transform',
         !hasChildren && 'invisible',
         expanded && 'rotate-90',
       )}
@@ -267,7 +267,7 @@ function FolderMoreButton({ moreButtonRef, onMoreClick }: { moreButtonRef: React
         e.stopPropagation()
         onMoreClick()
       }}
-      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
+      className='opacity-0 group-hover:opacity-100 p-[var(--sp-0\\.5)] rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
     >
       <MoreHorizontal size={12} />
     </button>

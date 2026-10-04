@@ -79,15 +79,15 @@ export function AttachmentDashboardView(props: AttachmentDashboardViewProps) {
   const topExtensions = useMemo(() => topExtensionsOf(stats), [stats?.extensionBreakdown])
 
   return (
-    <div className='h-full overflow-y-auto p-6 space-y-6 select-none'>
+    <div className='h-full overflow-y-auto p-[var(--sp-6)] space-y-6 select-none'>
       <StatCardsGrid stats={stats} totalBytes={totalBytes} totalQuota={totalQuota} onPrune={onPrune} />
 
-      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
-        <div className='lg:col-span-5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] flex flex-col justify-between'>
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-[var(--sp-6)]'>
+        <div className='lg:col-span-5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-5)] shadow-[var(--shadow-xs)] flex flex-col justify-between'>
           <CardHeader icon={<Database size={15} className='text-[var(--accent)]' />} title={t('attachments.storage_donut_title')} side={formatFileSize(totalQuota)} />
           <StorageDonut usedPercentage={usedPercentage} usedRatio={usedRatio} freeBytes={freeBytes} />
-          <div className='rounded-[var(--r-md)] bg-[var(--bg-subtle)] p-3 text-[length:var(--text-12)] flex items-center justify-between'>
-            <div className='flex items-center gap-2 text-[var(--text-secondary)]'>
+          <div className='rounded-[var(--r-md)] bg-[var(--bg-subtle)] p-[var(--sp-3)] text-[length:var(--text-12)] flex items-center justify-between'>
+            <div className='flex items-center gap-[var(--sp-2)] text-[var(--text-secondary)]'>
               <Sparkles size={14} className='text-amber-500 shrink-0' />
               <span>{t('attachments.quota_info')}</span>
             </div>
@@ -95,9 +95,9 @@ export function AttachmentDashboardView(props: AttachmentDashboardViewProps) {
           </div>
         </div>
 
-        <div className='lg:col-span-7 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] flex flex-col justify-between'>
+        <div className='lg:col-span-7 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-5)] shadow-[var(--shadow-xs)] flex flex-col justify-between'>
           <CardHeader icon={<Images size={15} className='text-[var(--accent)]' />} title={t('attachments.category_breakdown')} side={`${stats?.totalCount ?? 0} ${t('attachments.all_files')}`} />
-          <div className='space-y-3.5 py-3'>
+          <div className='space-y-3.5 py-[var(--sp-3)]'>
             {categories.map((cat) => (
               <CategoryRow key={cat.id} cat={cat} onSelectCategory={onSelectCategory} />
             ))}
@@ -118,17 +118,17 @@ function StatCardsGrid({ stats, totalBytes, totalQuota, onPrune }: {
   onPrune: () => void
 }) {
   return (
-    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[var(--sp-4)]'>
       <StatCard icon={<HardDrive size={20} />} iconClass='bg-blue-500/10 text-blue-500' label={t('attachments.total_files')} value={stats?.totalCount ?? 0} />
       <StatCard icon={<Database size={20} />} iconClass='bg-purple-500/10 text-purple-500' label={t('attachments.stats_title')}>
-        <div className='mt-0.5 text-xl font-bold text-[var(--text-primary)] truncate'>
+        <div className='mt-[var(--sp-0\\.5)] text-xl font-bold text-[var(--text-primary)] truncate'>
           {formatFileSize(totalBytes)}
-          <span className='text-xs font-normal text-[var(--text-quaternary)] ml-1'>/ {formatFileSize(totalQuota)}</span>
+          <span className='text-xs font-normal text-[var(--text-quaternary)] ml-[var(--sp-1)]'>/ {formatFileSize(totalQuota)}</span>
         </div>
       </StatCard>
       <UnreferencedCard count={stats?.unreferencedCount ?? 0} onPrune={onPrune} />
       <StatCard icon={<FolderTree size={20} />} iconClass='bg-emerald-500/10 text-emerald-500' label={t('attachments.structure')}>
-        <div className='mt-0.5 text-sm font-semibold text-[var(--text-primary)]'>
+        <div className='mt-[var(--sp-0\\.5)] text-sm font-semibold text-[var(--text-primary)]'>
           {stats?.folderCount ?? 0} {t('navigation.folder')} · {stats?.tagCount ?? 0} {t('navigation.tag')}
         </div>
       </StatCard>
@@ -144,15 +144,15 @@ function StatCard({ icon, iconClass, label, value, children }: {
   children?: ReactNode
 }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-[var(--shadow-xs)]'>
-      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)]', iconClass)}>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] flex items-center gap-3.5 shadow-[var(--shadow-xs)]'>
+      <div className={cn('flex h-[var(--sp-10)] w-[var(--sp-10)] shrink-0 items-center justify-center rounded-[var(--r-md)]', iconClass)}>
         {icon}
       </div>
       <div className='min-w-0 flex-1'>
         <div className="text-[length:var(--text-11\\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
           {label}
         </div>
-        {value !== undefined ? <div className='mt-0.5 text-xl font-bold text-[var(--text-primary)]'>{value}</div> : children}
+        {value !== undefined ? <div className='mt-[var(--sp-0\\.5)] text-xl font-bold text-[var(--text-primary)]'>{value}</div> : children}
       </div>
     </div>
   )
@@ -160,15 +160,15 @@ function StatCard({ icon, iconClass, label, value, children }: {
 
 function UnreferencedCard({ count, onPrune }: { count: number; onPrune: () => void }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center gap-3.5 shadow-[var(--shadow-xs)]'>
-      <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)] bg-amber-500/10 text-amber-500'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] flex items-center gap-3.5 shadow-[var(--shadow-xs)]'>
+      <div className='flex h-[var(--sp-10)] w-[var(--sp-10)] shrink-0 items-center justify-center rounded-[var(--r-md)] bg-amber-500/10 text-amber-500'>
         <Link2Off size={20} />
       </div>
       <div className='min-w-0 flex-1'>
         <div className="text-[length:var(--text-11\\.5)] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
           {t('attachments.unreferenced')}
         </div>
-        <div className='mt-0.5 text-xl font-bold text-[var(--text-primary)] flex items-baseline gap-2'>
+        <div className='mt-[var(--sp-0\\.5)] text-xl font-bold text-[var(--text-primary)] flex items-baseline gap-[var(--sp-2)]'>
           <span>{count}</span>
           {count > 0 && (
             <button type='button' onClick={onPrune} className='text-xs font-medium text-[var(--warning)] hover:underline cursor-pointer'>
@@ -183,8 +183,8 @@ function UnreferencedCard({ count, onPrune }: { count: number; onPrune: () => vo
 
 function CardHeader({ icon, title, side }: { icon: ReactNode; title: string; side: string }) {
   return (
-    <div className='flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]'>
-      <h3 className="font-semibold text-[length:var(--text-13\\.5)] text-[var(--text-primary)] flex items-center gap-2">
+    <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
+      <h3 className='font-semibold text-[length:var(--text-13\\\\.5)] text-[var(--text-primary)] flex items-center gap-[var(--sp-2)]'>
         {icon}
         {title}
       </h3>
@@ -200,7 +200,7 @@ function StorageDonut({ usedPercentage, usedRatio, freeBytes }: { usedPercentage
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - usedRatio * circumference
   return (
-    <div className='flex flex-col items-center justify-center py-6'>
+    <div className='flex flex-col items-center justify-center py-[var(--sp-6)]'>
       <div className='relative flex items-center justify-center'>
         <svg width={DONUT_SIZE} height={DONUT_SIZE} className='-rotate-90 transform'>
           <circle cx='90' cy='90' r={radius} stroke='currentColor' strokeWidth='14' fill='transparent' className='text-[var(--bg-hover)]' />
@@ -217,12 +217,12 @@ function StorageDonut({ usedPercentage, usedRatio, freeBytes }: { usedPercentage
             className='text-[var(--accent)] transition-all duration-[var(--dur-slow)] ease-[var(--ease-out)]'
           />
         </svg>
-        <div className='absolute flex flex-col items-center text-center px-4'>
+        <div className='absolute flex flex-col items-center text-center px-[var(--sp-4)]'>
           <span className='text-2xl font-black tracking-tight text-[var(--text-primary)]'>{usedPercentage}%</span>
-          <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] mt-0.5'>{t('attachments.used')}</span>
+          <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)] mt-[var(--sp-0\\.5)]'>{t('attachments.used')}</span>
         </div>
       </div>
-      <div className='mt-4 text-center'>
+      <div className='mt-[var(--sp-4)] text-center'>
         <div className='text-xs text-[var(--text-secondary)]'>
           {t('attachments.remaining_space', { value0: formatFileSize(freeBytes) })}
         </div>
@@ -236,19 +236,19 @@ function CategoryRow({ cat, onSelectCategory }: { cat: CategoryBreakdown; onSele
   return (
     <div
       onClick={() => onSelectCategory(cat.id)}
-      className='group cursor-pointer rounded-[var(--r-md)] p-2 hover:bg-[var(--bg-hover)] transition-colors'
+      className='group cursor-pointer rounded-[var(--r-md)] p-[var(--sp-2)] hover:bg-[var(--bg-hover)] transition-colors'
     >
       <div className="flex items-center justify-between text-[length:var(--text-12\\.5)] mb-1.5">
-        <div className='flex items-center gap-2 font-medium text-[var(--text-primary)]'>
+        <div className='flex items-center gap-[var(--sp-2)] font-medium text-[var(--text-primary)]'>
           {cat.icon}
           <span>{cat.label}</span>
         </div>
-        <div className="flex items-center gap-3 text-[var(--text-secondary)] font-mono text-[length:var(--text-11\\.5)]">
+        <div className='flex items-center gap-[var(--sp-3)] text-[var(--text-secondary)] font-mono text-[length:var(--text-11\\\\.5)]'>
           <span>{formatFileSize(cat.bytes)}</span>
-          <span className='w-12 text-right font-semibold text-[var(--text-primary)]'>{pct}%</span>
+          <span className='w-[var(--sp-12)] text-right font-semibold text-[var(--text-primary)]'>{pct}%</span>
         </div>
       </div>
-      <div className='h-2 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]'>
+      <div className='h-[var(--sp-2)] w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]'>
         <div className={cn('h-full rounded-full transition-all duration-[var(--dur-slow)]', cat.barColor)} style={{ width: `${Math.max(cat.bytes > 0 ? MIN_BAR_PCT : 0, Number(pct))}%` }} />
       </div>
     </div>
@@ -257,8 +257,8 @@ function CategoryRow({ cat, onSelectCategory }: { cat: CategoryBreakdown; onSele
 
 function TopExtensions({ items, onSelectExtension }: { items: { ext: string; count: number }[]; onSelectExtension: (ext: string) => void }) {
   return (
-    <div className='pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-2 items-center'>
-      <span className="text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)] font-medium mr-1 flex items-center gap-1">
+    <div className='pt-[var(--sp-3)] border-t border-[var(--border-subtle)] flex flex-wrap gap-[var(--sp-2)] items-center'>
+      <span className='text-[length:var(--text-11\\\\.5)] text-[var(--text-tertiary)] font-medium mr-[var(--sp-1)] flex items-center gap-[var(--sp-1)]'>
         <Tag size={12} />
         {t('attachments.top_extensions')}:
       </span>
@@ -267,7 +267,7 @@ function TopExtensions({ items, onSelectExtension }: { items: { ext: string; cou
           key={item.ext}
           type='button'
           onClick={() => onSelectExtension(item.ext)}
-          className='inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2.5 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer'
+          className='inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2.5 py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer'
         >
           <span className='uppercase font-semibold'>{item.ext}</span>
           <span className='text-[var(--text-quaternary)]'>({item.count})</span>
@@ -285,9 +285,9 @@ function LargestFilesCard({ stats, onPreviewFile, onDownloadFile, onDeleteFile }
 }) {
   const files = stats?.largestFiles ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-xs)] space-y-4'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-5)] shadow-[var(--shadow-xs)] space-y-4'>
       <div className='flex items-center justify-between'>
-        <h3 className="font-semibold text-[length:var(--text-13\\.5)] text-[var(--text-primary)] flex items-center gap-2">
+        <h3 className='font-semibold text-[length:var(--text-13\\\\.5)] text-[var(--text-primary)] flex items-center gap-[var(--sp-2)]'>
           <HardDrive size={15} className='text-[var(--accent)]' />
           {t('attachments.largest_files')}
         </h3>
@@ -301,7 +301,7 @@ function LargestFilesCard({ stats, onPreviewFile, onDownloadFile, onDeleteFile }
           ))}
         </div>
       ) : (
-        <div className='py-8 text-center text-xs text-[var(--text-tertiary)]'>
+        <div className='py-[var(--sp-8)] text-center text-xs text-[var(--text-tertiary)]'>
           {t('attachments.empty')}
         </div>
       )}
@@ -321,8 +321,8 @@ function LargestFileRow({ file, onPreviewFile, onDownloadFile, onDeleteFile }: {
 
   return (
     <div className="flex items-center justify-between px-3.5 py-2.5 text-[length:var(--text-12\\.5)] hover:bg-[var(--bg-hover)] transition-colors">
-      <div className='flex items-center gap-3 min-w-0 flex-1'>
-        <span className={cn('flex h-7 w-9 shrink-0 items-center justify-center rounded text-[length:var(--text-10)] font-bold tracking-wider', badge.bg, badge.text)}>
+      <div className='flex items-center gap-[var(--sp-3)] min-w-0 flex-1'>
+        <span className={cn('flex h-[var(--sp-7)] w-[var(--sp-9)] shrink-0 items-center justify-center rounded text-[length:var(--text-10)] font-bold tracking-wider', badge.bg, badge.text)}>
           {badge.label}
         </span>
         <div className='min-w-0 flex-1'>
@@ -333,9 +333,9 @@ function LargestFileRow({ file, onPreviewFile, onDownloadFile, onDeleteFile }: {
         </div>
       </div>
 
-      <div className='flex items-center gap-4 shrink-0 pl-3'>
+      <div className='flex items-center gap-[var(--sp-4)] shrink-0 pl-[var(--sp-3)]'>
         <span className='font-mono text-xs font-semibold text-[var(--text-secondary)]'>{formatFileSize(file.size)}</span>
-        <div className='flex items-center gap-1'>
+        <div className='flex items-center gap-[var(--sp-1)]'>
           <IconButton label={t('common.preview')} size='sm' onClick={() => onPreviewFile(file)}>
             <Eye size={13} />
           </IconButton>

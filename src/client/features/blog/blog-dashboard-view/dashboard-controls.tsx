@@ -30,7 +30,7 @@ export function DashboardControls({
     { value: 'all', label: t('blog.range_all') },
   ]
   return (
-    <div className='flex flex-wrap items-center justify-between gap-3'>
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-3)]'>
       <div>
         <h3 className='text-[length:var(--text-15)] font-bold text-[var(--text-primary)]'>
           {t('blog.analytics_dashboard_title')}
@@ -40,7 +40,7 @@ export function DashboardControls({
         </p>
       </div>
 
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Segmented
           label={t('blog.range_label')}
           options={RANGE_OPTIONS}
@@ -78,7 +78,7 @@ function RealVisitorsToggle({ excludeBots, onToggleBots }: { excludeBots: boolea
     <button
       type='button'
       onClick={onToggleBots}
-      className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[length:var(--text-11\\.5)] font-medium transition-colors ${
+      className={`inline-flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-11\\.5)] font-medium transition-colors ${
         excludeBots
           ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
           : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'

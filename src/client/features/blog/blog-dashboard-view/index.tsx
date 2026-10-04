@@ -28,7 +28,7 @@ export function BlogDashboardView({
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[length:var(--text-12\.5)]">
+    <div className='flex-1 overflow-y-auto bg-[var(--bg-base)] p-[var(--sp-5)] space-y-5 text-[length:var(--text-12\\.5)]'>
       <DashboardWelcomeBanner
         siteName={view.settings?.siteName}
         subtitle={view.settings?.subtitle}
@@ -92,12 +92,12 @@ function DashboardAnalytics({
         timeline={view.timelinePoints}
       />
 
-      <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-4)] lg:grid-cols-2'>
         <TopPostsCard posts={view.analytics?.topPosts ?? []} frontendBase={view.frontendBase} onSelectPost={onSelectPost} />
         <AudienceCards analytics={view.analytics} locale={view.locale} />
       </div>
 
-      <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-4)] lg:grid-cols-2'>
         <VisitLogsCard visits={view.analytics?.recentVisits ?? []} locale={view.locale} />
         <PendingCommentsCard pendingComments={view.pendingComments} totalComments={view.comments.length} totalPosts={view.stats?.totalPosts ?? 0} onSwitchTab={onSwitchTab} updateCommentStatus={view.updateCommentStatus} />
       </div>
@@ -117,12 +117,12 @@ function DashboardWelcomeBanner({
   onOpenNewPost: () => void
 }) {
   return (
-    <div className='flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-[var(--r-xl)] border border-[var(--border-default)] bg-gradient-to-r from-[var(--bg-surface)] to-[var(--bg-sunken)] p-5 shadow-[var(--shadow-soft)]'>
+    <div className='flex flex-col md:flex-row items-start md:items-center justify-between gap-[var(--sp-4)] rounded-[var(--r-xl)] border border-[var(--border-default)] bg-gradient-to-r from-[var(--bg-surface)] to-[var(--bg-sunken)] p-[var(--sp-5)] shadow-[var(--shadow-soft)]'>
       <div>
         <h2 className='text-[length:var(--text-18)] font-bold text-[var(--text-primary)]'>
           {siteName || t('blog.hub_title')}
         </h2>
-        <p className="mt-1 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
+        <p className='mt-[var(--sp-1)] text-[length:var(--text-12\\.5)] text-[var(--text-tertiary)]'>
           {subtitle || t('blog.default_subtitle')}
         </p>
       </div>
@@ -132,7 +132,7 @@ function DashboardWelcomeBanner({
           href={frontendBase}
           target='_blank'
           rel='noopener noreferrer'
-          className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 py-1.5 font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
+          className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-[var(--sp-3)] py-1.5 font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
         >
           <ExternalLink size={13} />
           <span>{t('blog.visit_frontend')}</span>
@@ -152,9 +152,9 @@ function DashboardWelcomeBanner({
  */
 function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; owner: number }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
-      <div className='flex items-center gap-2'>
-        <span className='flex h-2 w-2 rounded-full bg-[var(--success)]' />
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
+        <span className='flex h-[var(--sp-2)] w-[var(--sp-2)] rounded-full bg-[var(--success)]' />
         <span>
           {t('blog.filter_stats_summary', {
             bots,
@@ -179,7 +179,7 @@ function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; o
 function DashboardKpis({ stats, analytics }: { stats: BlogStats | null; analytics: BlogGlobalAnalytics | null }) {
   const notCollected = analytics ? undefined : t('blog.not_collected')
   return (
-    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+    <div className='grid grid-cols-1 gap-[var(--sp-3)] sm:grid-cols-2 lg:grid-cols-4'>
       <KpiCard
         icon={<MousePointerClick size={16} className='text-[var(--accent)]' />}
         label={t('blog.total_views_pv')}
@@ -224,14 +224,14 @@ function PublishedPostsCard({ published, total }: { published: number; total: nu
         <span className='text-[length:var(--text-12)] font-medium'>{t('blog.active_posts_count')}</span>
         <FileText size={16} className='text-[var(--accent)]' />
       </div>
-      <div className='pt-2'>
+      <div className='pt-[var(--sp-2)]'>
         <div className='text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)] font-mono'>
           {published}
           <span className='ml-1.5 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] font-sans'>
             / {total} {t('blog.posts_unit')}
           </span>
         </div>
-        <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-1'>
+        <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-[var(--sp-1)]'>
           {t('blog.active_posts_hint')}
         </p>
       </div>

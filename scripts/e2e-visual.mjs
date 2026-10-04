@@ -45,6 +45,7 @@ import {
 } from './e2e-harness.mjs'
 
 import { PROVIDER_STUB_FULL_PAGE, PROVIDER_STUB_HITS, installMusicProviderStub } from './lib/music-provider-stub.mjs'
+import { contrastRatio } from './lib/contrast.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:7712'
 // Credentials of an existing account to sign in as. CI runs this gate right
@@ -80,7 +81,12 @@ const NOTE_MARKDOWN = [
 
 let pass = 0
 let fail = 0
+// Which assertion the run was at when something was collected. A resource error gathered three hundred
+// checks after the scenario that provoked it is only findable by that trail, and L-15's 409 has been
+// reported exactly that way — named by URL, with no way back to the writer.
+let lastScene = ''
 function check(name, cond, extra = '') {
+  lastScene = name
   if (cond) {
     pass++
     console.log(`  ✓ ${name}`)
@@ -136,11 +142,26 @@ const LABELS = {
   presentExit: localeLabel('workspace.presentation_exit'),
   presentExport: localeLabel('workspace.presentation_export'),
   presentExportImages: localeLabel('workspace.presentation_export_images'),
+  presentExportHandout: localeLabel('workspace.presentation_export_handout'),
+  presentExportHtml: localeLabel('workspace.presentation_export_html'),
   slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
   slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
+  kanbanPriorityHigh: localeLabel('preview.kanban_priority_high'),
+  presentOverview: localeLabel('workspace.presentation_show_overview', 'workspace.presentation_hide_overview'),
+  overviewGrid: localeLabel('workspace.presentation_overview'),
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
+  presentFollowLost: localeLabel('workspace.presentation_follow_lost'),
+  editorSection: localeLabel('settings.editor'),
+  diagramToggle: localeLabel('settings.diagram'),
+  moveToTrash: localeLabel('common.move_to_trash'),
+  deletePermanently: localeLabel('notes.delete_permanently'),
+  trashView: localeLabel('navigation.trash'),
+  presentAudience: localeLabel('workspace.presentation_audience_follow', 'workspace.presentation_audience_stop'),
+  audienceFollowing: localeLabel('workspace.presentation_audience_following'),
+  audienceBrowsing: localeLabel('workspace.presentation_audience_browsing'),
+  audienceEnded: localeLabel('workspace.presentation_audience_ended'),
   outline: localeLabel('common.outline', 'preview.mindmap_mode_outline'),
   insert: localeLabel('contextmenu.insert'),
   mindMap: localeLabel('contextmenu.convert_to_mindmap', 'preview.mindmap', 'preview.mindmap_untitled', 'workspace.mind_map'),
@@ -265,6 +286,22 @@ const LABELS = {
   kanbanFilterRow: localeLabel('preview.kanban_filter'),
   kanbanSortRow: localeLabel('music.sort', 'preview.kanban_sort'),
   kanbanShortcuts: localeLabel('command.keyboard_shortcuts_021cf9', 'music.keyboard_help', 'preview.kanban_shortcuts', 'templates.keyboard_shortcuts'),
+  // R2-3's close: the console window, the panel that stands in for it, and the words each one is
+  // recognised by. The two panes are read by their own labels because the deck text they carry is the
+  // assertion, and which pane said it is the thing being asked.
+  presentPresenter: localeLabel('workspace.presentation_presenter'),
+  presenterPanel: localeLabel('workspace.presentation_presenter_panel'),
+  presenterConnected: localeLabel('workspace.presentation_connected'),
+  presenterDisconnected: localeLabel('workspace.presentation_disconnected'),
+  presenterCurrentSlide: localeLabel('workspace.presentation_current_slide'),
+  presenterNextSlide: localeLabel('workspace.presentation_next_slide'),
+  presenterSpeakerNotes: localeLabel('workspace.presentation_speaker_notes'),
+  presenterPopupBlocked: localeLabel('workspace.presentation_popup_blocked'),
+  // N-14: the cover's own name, and the two things it says when it goes on and comes off.
+  presentationBlackout: localeLabel('workspace.presentation_blackout'),
+  presentationWhiteout: localeLabel('workspace.presentation_whiteout'),
+  presentationCoverOff: localeLabel('workspace.presentation_cover_off'),
+  consoleClose: localeLabel('common.close'),
 }
 
 /**
@@ -414,19 +451,37 @@ async function assertPresentation(page) {
     const host = canvas.querySelector('[data-slide-page]')
     const visible = [...host.children].filter((el) => el.style.visibility !== 'hidden')
     return {
-      fills: box.width >= stage.width - 1 && box.height >= stage.height - 1,
+      // The canvas is a 16:9 design sheet scaled to fit, so it fills the stage along one axis and is
+      // letterboxed along the other: demanding both at once only holds at a 16:9 window, which is why
+      // this reddened on a 16:10 one while the projector was drawing correctly. What the contract
+      // actually promises is that the sheet reaches an edge, never crosses one, and keeps its ratio.
+      fills: (box.width >= stage.width - 1 || box.height >= stage.height - 1)
+        && box.width <= stage.width + 1 && box.height <= stage.height + 1
+        && Math.abs(box.width / box.height - 1280 / 720) < 0.01,
+      // The two numbers this comparison is made of, printed when it fails: a `fills` red without them
+      // cannot tell a canvas that did not scale from a stage that was never measured.
+      size: { stage: `${Math.round(stage.width)}x${Math.round(stage.height)}`, canvas: `${Math.round(box.width)}x${Math.round(box.height)}` },
       contentFills: host.getBoundingClientRect().width > box.width * 0.85,
       fontSize: Number.parseFloat(getComputedStyle(host).fontSize),
       slides: document.querySelectorAll('[data-presentation-rail] [data-slide-index]').length,
       overflow: visible.some((el) => el.getBoundingClientRect().bottom > box.bottom + 2),
+      positions: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+      announced: [...document.querySelectorAll('[data-presentation-chrome] [aria-live="polite"]')].map((item) => item.textContent?.trim() ?? ''),
+      digitsHidden: document.querySelector('[data-presentation-chrome] [data-deck-position]')?.getAttribute('aria-hidden') === 'true',
     }
   })
 
-  check('presentation: canvas fills the stage', deck.fills)
+  check('presentation: canvas fills the stage', deck.fills, JSON.stringify(deck.size))
   check('presentation: prose column fills the canvas', deck.contentFills)
   check('presentation: type is enlarged for the projector', deck.fontSize >= 24, `fontSize=${deck.fontSize}px`)
   check('presentation: slide list lists the deck', deck.slides >= 2, `slides=${deck.slides}`)
   check('presentation: no block overflows the canvas', !deck.overflow)
+  // N-11: the deck position is written by one derivation, so the pill and the corner chip cannot print
+  // two different accounts of the same page — which is what four hand-written spellings allowed.
+  check('presentation: the pill and the corner chip print one position', deck.positions.length === 2 && deck.positions[0] === deck.positions[1], JSON.stringify(deck.positions))
+  // N-13: one announcement says it in words; the digits it duplicates are the ones nobody should have to
+  // parse out loud.
+  check('presentation: the position is announced once, in a sentence', deck.announced.length === 1 && /\d/.test(deck.announced[0]) && deck.digitsHidden, JSON.stringify({ announced: deck.announced, digitsHidden: deck.digitsHidden }))
 
   await clickButton(page, LABELS.presentExit)
   await sleep(600)
@@ -438,6 +493,9 @@ async function assertPresentation(page) {
 // projector), freezing pins what is on screen, and the show outlives the layout
 // switch that unmounts the workspace it started from.
 async function assertPresentationSession(page) {
+  // Parked while the note is still reachable: the show's focus trap keeps the editor from taking focus
+  // once it is up, and the two live edits below are pastes, so their landing point has to be set now.
+  await parkCaretAtNoteEnd(page)
   const started = await page.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find((item) => /演示模式|Presentation mode/.test(item.getAttribute('aria-label') ?? ''))
     button.focus()
@@ -451,13 +509,25 @@ async function assertPresentationSession(page) {
   const before = await presentationSession(page)
   check('presentation session: starts following the note', LABELS.presentFreeze.includes(before.followLabel), `label=${before.followLabel}`)
 
+  // N-15 measured the report's premise wrong: the opened show keeps the keyboard on the projector
+  // itself, so the sideways turn works before anything is touched. Pinned anyway, because that is the
+  // whole promise of the default state and a focus change would silently take it back.
+  const opened = await presentationFocus(page)
+  check('presentation keys: the opened show keeps the keyboard on the projector', opened.region === 'dialog', `region=${opened.region} label=${opened.label}`)
+  await page.keyboard.press('ArrowRight')
+  await sleep(500)
+  const firstTurn = await presentationSession(page)
+  check('presentation keys: the first sideways turn lands without touching anything', firstTurn.position !== before.position && firstTurn.position.startsWith('2') && firstTurn.total === before.total, `before=${before.position} after=${firstTurn.position}`)
+  await page.keyboard.press('ArrowLeft')
+  await sleep(500)
+
   // The deck length is read from the page counter, not from the slide list: the rail
   // mounts thumbnails lazily, so a deck that grows past the fold lists fewer items
   // than it has pages.
   await appendToNote(page, LIVE_EDIT_ONE)
   await sleep(2_000)
   const followed = await presentationSession(page)
-  check('presentation session: an edit lands on the projector while following', followed.total === before.total + 1, `before=${before.position} after=${followed.position}`)
+  check('presentation session: an edit lands on the projector while following', followed.total === before.total + 1, `before=${before.position} after=${followed.position} deck=${followed.deck}`)
 
   await clickPresentationControl(page, LABELS.presentFreeze)
   await sleep(800)
@@ -472,7 +542,7 @@ async function assertPresentationSession(page) {
   await clickPresentationControl(page, LABELS.presentFollow)
   await sleep(2_000)
   const resumed = await presentationSession(page)
-  check('presentation session: unfreezing catches up with the note', resumed.total === before.total + 2, `position=${resumed.position}`)
+  check('presentation session: unfreezing catches up with the note', resumed.total === before.total + 2, `position=${resumed.position} deck=${resumed.deck}`)
 
   // Crossing the mobile breakpoint rebuilds the whole shell subtree, which used to
   // take the workspace (and the show with it) down mid-talk.
@@ -484,7 +554,38 @@ async function assertPresentationSession(page) {
   await sleep(1_500)
   const desktop = await presentationSession(page)
   check('presentation session: the show survives switching back', desktop.open && desktop.position === resumed.position, `position=${desktop.position}`)
-  check('presentation session: the canvas refills the stage', desktop.filled)
+  check('presentation session: the canvas refills the stage', desktop.filled, JSON.stringify(desktop.size))
+
+  // A press in the slide list moves the ring there, and the list walks its column with the vertical
+  // keys only: the sideways turn has to stay with the show at that point too, or the keyboard dies
+  // exactly where the presenter is looking — which is what N-15 measured. The chrome fades on idle and
+  // takes the list `inert` with it, so the drive disturbs the pointer first the way a presenter would;
+  // pressing a faded list measures a surface the app is deliberately holding out of reach.
+  await page.mouse.move(20, 20)
+  await sleep(400)
+  const thumbnail = await page.evaluate(() => {
+    const rail = document.querySelector('[data-presentation-rail]')
+    const tab = rail?.querySelector('[data-slide-index]')
+    const box = tab?.getBoundingClientRect()
+    if (!box || box.width < 1) return null
+    return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2), faded: rail?.hasAttribute('inert') === true }
+  })
+  check('presentation keys: the slide list is reachable and has a thumbnail to press', Boolean(thumbnail) && thumbnail?.faded === false, JSON.stringify(thumbnail))
+  if (thumbnail) await page.mouse.click(thumbnail.x, thumbnail.y)
+  await sleep(400)
+  const inList = await presentationFocus(page)
+  check('presentation keys: pressing a thumbnail moves the ring into the list', inList.region === 'rail', `region=${inList.region} ring=${inList.ring}`)
+  const atRing = await presentationSession(page)
+  await page.keyboard.press('ArrowRight')
+  await sleep(500)
+  const turnedFromList = await presentationSession(page)
+  const ringHeld = await presentationFocus(page)
+  check('presentation keys: the sideways turn still turns the page from the list', turnedFromList.position !== atRing.position, `before=${atRing.position} after=${turnedFromList.position}`)
+  check('presentation keys: the turn leaves the ring on the pressed thumbnail', ringHeld.region === 'rail' && ringHeld.ring === inList.ring, JSON.stringify({ from: inList.ring, to: ringHeld.ring }))
+  await page.keyboard.press('ArrowDown')
+  await sleep(500)
+  const walked = await presentationFocus(page)
+  check('presentation keys: the list keeps the vertical walk for itself', walked.region === 'rail' && walked.ring !== ringHeld.ring, JSON.stringify({ from: ringHeld.ring, to: walked.ring }))
 
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(800)
@@ -520,6 +621,17 @@ async function readChartBox(page) {
   })
 }
 
+// The bar under the projector and the page the list says is current, read together: the two are only
+// comparable if they come from the same drive, so one evaluate reads both from one paint.
+async function readProgressBar(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const entries = [...panel.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
+    const width = panel.querySelector('[data-slide-progress]')?.style.width ?? ''
+    return { entries: entries.length, at: entries.findIndex((entry) => entry.getAttribute('aria-selected') === 'true'), width, percent: Number.parseFloat(width) || 0 }
+  })
+}
+
 async function assertPresentationPages(page) {
   // The flip this scenario is about can only be observed from the "system" setting, and the account
   // arrives on whatever ran before this gate (scripts/e2e.mjs leaves it dark), so the setting is
@@ -538,12 +650,12 @@ async function assertPresentationPages(page) {
     const entries = [...panel.querySelectorAll('[data-presentation-rail] [data-entry-index]')]
     const counts = {}
     for (const entry of entries) counts[entry.dataset.slideIndex] = (counts[entry.dataset.slideIndex] ?? 0) + 1
-    const current = entries.find((entry) => entry.getAttribute('aria-current') === 'true')
+    const current = entries.find((entry) => entry.getAttribute('aria-selected') === 'true')
     const openedOn = Number(current?.dataset.slideIndex ?? 0)
     const widest = Object.keys(counts).reduce((best, slide) => (counts[slide] > counts[best] ? slide : best), Object.keys(counts)[0])
     return {
       entries: entries.length,
-      slides: Number.parseInt((panel.querySelector('[aria-live="polite"]')?.textContent ?? '').split('/')[1] ?? '', 10) || 0,
+      slides: Number.parseInt((panel.querySelector('[data-deck-position]')?.textContent ?? '').split('/')[1] ?? '', 10) || 0,
       counts,
       openedOn,
       aheadEntries: counts[String(openedOn + 1)] ?? 0,
@@ -559,25 +671,47 @@ async function assertPresentationPages(page) {
   check('presentation pages: every slide lists exactly the pages the canvas measures', !mismatch, mismatch ? `slide=${mismatch.slide} entries=${mismatch.entries} pages=${mismatch.pages}` : `${counts.length} slides agree`)
 
   const second = await clickPageEntry(page, deck.widestSlide, 1)
-  check('presentation pages: clicking a page entry lands on that page', second.numerator === 2, `chip=${second.numerator}/${second.denominator}`)
+  check('presentation pages: clicking a page entry lands on that page', second.sub === 2 && second.pages > 1, `position=${second.printed}`)
 
-  // The list renders the same prepared markup the projector shows — diagrams and math included —
-  // and keeps doing so when the theme changes mid-talk, which is what happens to anyone on the
-  // "system" setting when the OS flips. The deck is re-prepared for the new theme, so this polls
-  // for the list to catch up instead of asserting on the frame right after the flip.
+  // N-21: the bar has to count the page list the rail walks, not the slides the author wrote. Those two
+  // readings differ only *inside* a slide, so the drive below is the discriminating one: a bar that
+  // counted slides would sit still while the presenter walks a long slide's pages.
+  await clickPageEntry(page, deck.widestSlide, 0)
+  const barFirst = await readProgressBar(page)
+  await clickPageEntry(page, deck.widestSlide, 1)
+  const barSecond = await readProgressBar(page)
+  const expectBar = (read) => (read.entries > 0 && read.at >= 0 ? Math.round(((read.at + 1) / read.entries) * 100) : -1)
+  check('presentation pages: the bar measures the same page list the rail walks', Math.abs(barFirst.percent - expectBar(barFirst)) <= 1 && Math.abs(barSecond.percent - expectBar(barSecond)) <= 1, JSON.stringify({ first: barFirst, second: barSecond }))
+  check('presentation pages: two pages of one slide move the bar', barFirst.percent !== barSecond.percent && barSecond.percent > barFirst.percent, JSON.stringify({ first: barFirst.percent, second: barSecond.percent }))
+
+  // The list renders the same prepared markup the projector shows — diagrams and math included — and
+  // keeps doing so when the theme changes mid-talk, which is what happens to anyone on the "system"
+  // setting when the OS flips. The deck is re-prepared for the new theme, so this polls for the list to
+  // catch up instead of asserting on the frame right after the flip. The comparison is page against
+  // page (L-1): the projector keeps a slide's other pages in the DOM behind `visibility: hidden` so
+  // chart.js never re-measures them, while a card holds one page of sliced markup, so the two can only
+  // ever agree about the page the show is standing on.
   await jumpToFirstPage(page)
-  const prepared = await waitForRenderedMarkup(page)
-  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
+  const prepared = await waitForDeckArtifacts(page)
+  check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `drawn=${prepared.drawn} stage=${describeArtifacts(prepared.stagePage)} thumb=${describeArtifacts(prepared.thumb)}`)
   check('presentation pages: the projector draws the chart on its own canvas', prepared.stage.live && prepared.stage.painted > 0, describeArtifacts(prepared.stage))
-  check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, describeArtifacts(prepared.thumb))
+  // The chart and the math of this slide land on the page the show is not looking at, so the picture the
+  // list owes the reader is asked of the card that carries them — walked to, then read the same way.
+  const chartCard = prepared.cards.find((entry) => entry.art.charts > 0)
+  check('presentation pages: the page that carries the chart is listed beside the others', Boolean(chartCard), JSON.stringify(prepared.cards.map((entry) => ({ sub: entry.sub, drawn: entry.drawn, charts: entry.art.charts, still: entry.art.still }))))
+  const onChart = await waitForPageArtifacts(page, prepared.slide, chartCard?.sub ?? 0)
+  check('presentation pages: the slide list shows the chart as a picture', onChart.thumb.still > 0, `drawn=${onChart.drawn} ${describeArtifacts(onChart.thumb)}`)
   const stillPixels = await readStillPixels(page)
-  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels}`)
+  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels} drawn=${onChart.drawn}`)
+  check('presentation pages: the card of that page agrees with the projector on it', sameArtifacts(onChart), `drawn=${onChart.drawn} stage=${describeArtifacts(onChart.stagePage)} thumb=${describeArtifacts(onChart.thumb)}`)
+  await clickPageEntry(page, prepared.slide, 0)
 
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
   await sleep(400)
   check('presentation pages: the system theme flip reaches the show', (await readRenderedMarkup(page)).theme === 'dark')
-  const flipped = await waitForRenderedMarkup(page)
-  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped), `stage=${describeArtifacts(flipped.stage)} thumb=${describeArtifacts(flipped.thumb)}`)
+  const flipped = await waitForDeckArtifacts(page)
+  const flippedChart = flipped.cards.find((entry) => entry.art.charts > 0)
+  check('presentation pages: a theme flip re-prepares the list instead of leaving placeholders', sameArtifacts(flipped) && Boolean(flippedChart) && flippedChart.art.still > 0, `drawn=${flipped.drawn} stage=${describeArtifacts(flipped.stagePage)} thumb=${describeArtifacts(flipped.thumb)} cards=${JSON.stringify(flipped.cards.map((entry) => `${entry.sub}:${entry.drawn}/${entry.art.charts}/${entry.art.still}`))}`)
   await page.emulateMediaFeatures([])
 
   // The slide canvas is scaled with a CSS transform, so a chart must not measure through it: the
@@ -608,6 +742,2185 @@ async function assertPresentationPages(page) {
   await sleep(600)
   // Hand the run back on the light palette the later scenarios measure on.
   await setAppTheme(page, 'light')
+}
+
+// The board a projector has to carry (N-36). A still of a board used to be its cards in a bulleted
+// list, which is fine for a hover card and useless three metres from a screen: what the board says is
+// which column each card sits in, and what the card itself carries. This is the board from the two
+// screenshots that opened the review — three columns, one card with tags, a priority, subtasks and a
+// cover — read back off the real projector, in the pixels it paints.
+const KANBAN_PROJECTOR_BOARD = {
+  title: 'Release plan',
+  activeViewId: 'view-board',
+  columns: [
+    { id: 'title', name: 'Title', type: 'title' },
+    {
+      id: 'status',
+      name: 'Status',
+      type: 'select',
+      options: [
+        { id: 'todo', label: 'To Do', color: 'gray' },
+        { id: 'doing', label: 'In Progress', color: 'blue' },
+        { id: 'done', label: 'Done', color: 'green' },
+      ],
+    },
+    { id: 'priority', name: 'Priority', type: 'select', options: [{ id: 'high', label: 'High', color: 'red' }] },
+    { id: 'tags', name: 'Tags', type: 'multi-select', options: [{ id: 'design', label: 'Design', color: 'purple' }] },
+    { id: 'estimate', name: 'Estimate', type: 'text' },
+  ],
+  views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status', cardFields: ['estimate'] }],
+  items: [
+    {
+      id: 'i1',
+      title: 'Draw the board',
+      cover: '/pwa-192x192.png',
+      properties: { status: 'todo', priority: 'high', tags: ['design'], estimate: '3d' },
+      subtasks: [
+        { id: 's1', title: 'Columns', completed: true },
+        { id: 's2', title: 'Tints', completed: true },
+        { id: 's3', title: 'Cards', completed: false },
+      ],
+    },
+    { id: 'i2', title: 'Tag the build', properties: { status: 'doing' } },
+    { id: 'i3', title: 'Ship the deck', properties: { status: 'done' } },
+  ],
+}
+
+const KANBAN_PROJECTOR_DECK = `# The board on the projector\n\n\`\`\`kanban\n${JSON.stringify(KANBAN_PROJECTOR_BOARD, null, 2)}\n\`\`\`\n`
+
+// The two sizes the projected board has to be written at (L-14): the floor N-02 set for projected body
+// copy, in the canvas's own design pixels — its `MIN_FIT_SCALE` is 18/28 for exactly that reason — and
+// the step a card's annotations may sit at. `tests/kanban-projector-type.test.ts` pins the same numbers
+// on the stylesheet; this reads what the sheet actually produced on a painted page.
+const PROJECTOR_FLOOR_PX = 18
+const BOARD_ANNOTATION_PX = 14
+
+async function openKanbanDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${KANBAN_PROJECTOR_DECK}\n`, 'presentation kanban')
+  await sleep(1_500)
+}
+
+async function readProjectedBoard(page) {
+  return page.evaluate(() => {
+    const surface = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const board = surface?.querySelector('.kanban-snapshot-board')
+    const columns = [...(board?.querySelectorAll('.kanban-board-column') ?? [])]
+    const boxOf = (node) => {
+      const rect = node?.getBoundingClientRect()
+      return rect ? { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) } : null
+    }
+    const cards = columns.map((column) => [...column.querySelectorAll(':scope .kanban-snapshot-cards > .kanban-snapshot-card')].map((card) => ({
+      title: card.querySelector('.kanban-snapshot-card-title')?.textContent?.trim() ?? '',
+      tags: [...card.querySelectorAll('.kanban-snapshot-card-tags li')].map((chip) => chip.textContent?.trim() ?? ''),
+      tagColour: (() => {
+        const chip = card.querySelector('.kanban-snapshot-card-tags li')
+        return chip ? getComputedStyle(chip).backgroundColor : ''
+      })(),
+      priority: card.querySelector('.kanban-snapshot-card-priority')?.textContent?.trim() ?? '',
+      subtasks: card.querySelector('.kanban-snapshot-card-subtasks')?.textContent?.trim() ?? '',
+      fields: card.querySelector('[data-kanban-card-fields]')?.textContent?.trim() ?? '',
+      cover: card.querySelector('img.kanban-cover')?.getAttribute('src') ?? '',
+      coverDecoded: card.querySelector('img.kanban-cover')?.naturalWidth ?? 0,
+    })))
+    const title = board?.querySelector('.kanban-snapshot-card-title')
+    const sizeOf = (node) => (node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0)
+    const current = document.querySelector('[data-presentation-rail] [aria-selected="true"]')
+    // The page is a design-sized box the stage scales down to fit the window, so a CSS font-size of
+    // 14 px is not 14 px on the screen. Read the scale the browser actually applied and report the
+    // painted size with it; the judgment below is on geometry, which the scale cannot fool.
+    const scale = surface && surface.offsetWidth ? surface.getBoundingClientRect().width / surface.offsetWidth : 1
+    return {
+      drawn: Boolean(board),
+      isList: Boolean(surface?.querySelector('.kanban-snapshot-groups:not(.kanban-board-columns)')),
+      columns: columns.length,
+      boxes: columns.map(boxOf),
+      headColours: columns.map((column) => {
+        const head = column.querySelector('.kanban-snapshot-group')
+        return head ? getComputedStyle(head).backgroundColor : ''
+      }),
+      headText: columns.map((column) => column.querySelector('.kanban-snapshot-group')?.textContent?.trim() ?? ''),
+      cards,
+      titlePx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
+      titlePaintedPx: title ? Number.parseFloat((Number.parseFloat(getComputedStyle(title).fontSize) * scale).toFixed(1)) : 0,
+      // The two tiers the board is written at, in the canvas's own design pixels.
+      type: {
+        boardTitle: sizeOf(board?.querySelector('.kanban-snapshot-title')),
+        head: sizeOf(board?.querySelector('.kanban-snapshot-group')),
+        cardTitle: sizeOf(title),
+        chip: sizeOf(board?.querySelector('.kanban-snapshot-card-tags li')),
+        subtasks: sizeOf(board?.querySelector('.kanban-snapshot-card-subtasks')),
+      },
+      // How many pages the rail lists for the slide being shown: the board grew when it was enlarged,
+      // and a board the page can no longer hold arrives as two slides instead of one.
+      pages: [...document.querySelectorAll(`[data-presentation-rail] [data-slide-index="${current?.dataset.slideIndex ?? -1}"]`)].length,
+      pageBox: boxOf(surface),
+    }
+  })
+}
+
+async function assertKanbanOnProjector(page) {
+  await openKanbanDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // The board is drawn by the same off-DOM enhancement the rest of the page travels through, so the
+  // projector can open on the list-shaped fallback and catch up a beat later.
+  let board = await readProjectedBoard(page)
+  for (let attempt = 0; attempt < 30 && !board.drawn; attempt += 1) {
+    await sleep(500)
+    board = await readProjectedBoard(page)
+  }
+
+  check('presentation kanban: the projector draws the board, not a bulleted list', board.drawn && !board.isList, JSON.stringify({ drawn: board.drawn, isList: board.isList }))
+  check('presentation kanban: every column the board has is drawn beside the others', board.columns === 3 && board.boxes.every((box) => box !== null && box.width > 0) && board.boxes[0].left < board.boxes[1].left && board.boxes[1].left < board.boxes[2].left, JSON.stringify(board.boxes))
+  check('presentation kanban: the columns hold only their own cards', JSON.stringify(board.cards.map((cards) => cards.map((card) => card.title))) === JSON.stringify([['Draw the board'], ['Tag the build'], ['Ship the deck']]), JSON.stringify(board.cards.map((cards) => cards.map((card) => card.title))))
+  check('presentation kanban: each column is painted with its own colour', new Set(board.headColours).size === 3 && board.headColours.every((colour) => colour !== '' && !colour.endsWith(', 0)')), JSON.stringify({ colours: board.headColours, heads: board.headText }))
+  // The tag id the fence wrote stays the fence's own text; the priority is a built-in option, so it
+  // arrives in whatever language the account reads in — the same pair of spellings the gate looks its
+  // controls up by.
+  check('presentation kanban: a card says what the live board says about it', board.cards[0][0].tags.join() === 'Design' && LABELS.kanbanPriorityHigh.includes(board.cards[0][0].priority) && board.cards[0][0].subtasks === '2/3' && board.cards[0][0].fields.includes('3d'), JSON.stringify(board.cards[0][0]))
+  check('presentation kanban: the tag chip wears the colour the board gave that tag', board.cards[0][0].tagColour !== '' && board.cards[0][0].tagColour !== board.headColours[0], JSON.stringify({ tag: board.cards[0][0].tagColour, heads: board.headColours }))
+  check('presentation kanban: the card keeps its cover picture, and the browser decodes it', board.cards[0][0].cover === '/pwa-192x192.png' && board.cards[0][0].coverDecoded > 0, JSON.stringify({ src: board.cards[0][0].cover, decoded: board.cards[0][0].coverDecoded }))
+  // Three columns only read as a board if each keeps its own third of the page: a squeezed column
+  // still reports its colour and its cards, and a bullet list would report none of the geometry. The
+  // painted size is carried in the detail so the next reader sees what the window bought.
+  const narrowest = Math.min(...board.boxes.map((box) => box.width))
+  check('presentation kanban: each column keeps its share of the projected page', narrowest >= board.pageBox.width * 0.18, JSON.stringify({ narrowest, page: board.pageBox.width, titlePaintedPx: board.titlePaintedPx }))
+
+  // A board too small to read from the back of the room is not a board the projector carries, and the
+  // canvas's own floor is written in design pixels — the stage's scale is the window's business, so the
+  // painted size rides in the detail for whoever has to judge a particular room. The page count is
+  // judged here too: enlarging the board costs the page height, and a slide that no longer fits arrives
+  // as two pages, which is a different deck than the author wrote.
+  check('presentation kanban: the board is written at the readability floor and still fits its page', board.type.boardTitle >= PROJECTOR_FLOOR_PX && board.type.head >= PROJECTOR_FLOOR_PX && board.type.cardTitle >= PROJECTOR_FLOOR_PX && board.type.chip >= BOARD_ANNOTATION_PX && board.type.subtasks >= BOARD_ANNOTATION_PX && board.pages === 1, JSON.stringify({ ...board.type, painted: board.titlePaintedPx, pages: board.pages }))
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read: they walk the slide list, print the deck and
+  // export it as images, all of which measure a deck that paginates. Leaving this one-slide board open
+  // makes the next reader report `sheet=1 rail=1` and call it a regression.
+  await openDeckNote(page)
+}
+
+// N-31's own scene. A slide that arrives block by block has to say so where the room looks and where
+// the speaker looks: the plan, the strings and the panes all have unit cases, but only a browser walks
+// the reveals, reads the digits off the projector, and asks whether the console previewed the state the
+// next press actually produced.
+//
+// The deck's first line is a heading on purpose. The deck divides on headings as well as on rules, so a
+// switch written *above* the heading lands in the slide before it — measured here, it produced an empty
+// slide one and left the page under the switch unstepped. That is the author's side of the same rule the
+// layout switch follows, and the scene is written against it.
+const STEPPED_DECK = [
+  '## Reveal in stages\n\n<!-- steps -->\n\nFirst point.\n\nSecond point.\n\nThird point.',
+  '## Whole at once\n\nThis slide carries no switch, so nothing on it waits.',
+].join('\n\n---\n\n')
+
+async function openSteppedNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${STEPPED_DECK}\n`, 'stepped slide')
+  await sleep(1_500)
+}
+
+/** How far the show has arrived, read off the blocks the browser painted and the digits it printed: the
+ * plan is invisible, the `visibility` the canvas wrote from it is not. */
+async function readSteppedShow(page, labels) {
+  return page.evaluate((names) => {
+    const blocks = [...document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *')]
+    const button = (label) => [...document.querySelectorAll('[data-presentation-chrome] button')]
+      .find((item) => item.getAttribute('aria-label') === label)
+    return {
+      blocks: blocks.length,
+      hidden: blocks.filter((block) => getComputedStyle(block).visibility === 'hidden').length,
+      printed: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+      spoken: document.querySelector('[data-presentation-chrome] [aria-live]')?.textContent?.trim() ?? '',
+      prevDisabled: Boolean(button(names.prev)?.disabled),
+      nextDisabled: Boolean(button(names.next)?.disabled),
+    }
+  }, { prev: labels.prev[0], next: labels.next[0] })
+}
+
+async function readSteppedConsole(presenter) {
+  return presenter.evaluate(() => {
+    const hidden = (selector) => [...document.querySelectorAll(`${selector} [data-slide-page] > *`)]
+      .filter((block) => getComputedStyle(block).visibility === 'hidden').length
+    return {
+      positions: [...document.querySelectorAll('[data-presenter-position]')].map((item) => item.textContent?.trim() ?? ''),
+      currentHidden: hidden('[data-presenter-current-pane]'),
+      nextHidden: hidden('[data-presenter-next-pane]'),
+      nextBlocks: document.querySelectorAll('[data-presenter-next-pane] [data-slide-page] > *').length,
+    }
+  })
+}
+
+const digitsOf = (text) => text.match(/\d+/g) ?? []
+
+async function assertPresentationStepping(browser, page) {
+  const controlLabels = { prev: localeLabel('workspace.presentation_prev'), next: localeLabel('workspace.presentation_next') }
+  // The scene reads a page that has to hold four blocks, so it asks for the room it was written for
+  // rather than inheriting whichever window the scenario before it left behind.
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openSteppedNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+
+  // Walk to the stepped page rather than assuming where the deck put it: what sits before it is the
+  // note's own front matter and the heading rule, not anything this scene is about.
+  let opened = await readSteppedShow(page, controlLabels)
+  for (let press = 0; press < 4 && opened.blocks !== 4; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    opened = await readSteppedShow(page, controlLabels)
+  }
+  const here = opened.printed[0]?.split(' · ').slice(0, -1).join(' · ') ?? ''
+  check('stepped: the scene found the page that arrives in stages', opened.blocks === 4 && opened.printed[0] === `${here} · 1/4`, JSON.stringify(opened))
+  check('stepped: only the first block is on the projector at the opening reveal', opened.hidden === 3, JSON.stringify(opened))
+  check('stepped: the chip and the pill print one string, reveal included', new Set(opened.printed).size === 1 && opened.printed.length === 2, JSON.stringify(opened.printed))
+  check('stepped: the opening reveal is the top of the show, the next one is not',
+    opened.prevDisabled && !opened.nextDisabled, JSON.stringify(opened))
+  check('stepped: the announcement carries the numbers the digits show',
+    digitsOf(opened.spoken).join(',') === digitsOf(opened.printed[0]).join(','), `${opened.spoken} vs ${opened.printed[0]}`)
+
+  const walked = []
+  for (let press = 0; press < 2; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    walked.push(await readSteppedShow(page, controlLabels))
+  }
+  check('stepped: each press brings one more block onto the projector', walked.map((item) => item.hidden).join(',') === '2,1', JSON.stringify(walked.map((item) => item.hidden)))
+  check('stepped: the printed reveal advances with the blocks', walked.map((item) => item.printed[0]).join(' ') === `${here} · 2/4 ${here} · 3/4`, JSON.stringify(walked.map((item) => item.printed[0])))
+  check('stepped: a page still arriving has a press behind it', walked[0].prevDisabled === false && walked[0].nextDisabled === false, JSON.stringify(walked[0]))
+
+  // The console is opened mid-page on purpose: what the speaker needs before the room sees it is the
+  // next state, and on this page the next state is one block, not one slide.
+  const midPage = walked.at(-1)
+  let presenter = null
+  if (await pressPresenterControl(page)) {
+    presenter = await waitForPresenterPage(browser)
+    check('stepped: the console opens beside a show that is mid-page', Boolean(presenter))
+  }
+  if (presenter) {
+    // Both windows are separate boots of the same app: wait for the console to have drawn its panes,
+    // not for a fixed slice of time, or the scene reads an empty frame as a broken preview.
+    await presenter.waitForFunction(() => document.querySelectorAll('[data-presenter-position]').length > 0
+      && document.querySelectorAll('[data-presenter-next-pane] [data-slide-page] > *').length > 0
+      && document.querySelectorAll('[data-presenter-current-pane] [data-slide-page] > *').length > 0, { timeout: 20_000 })
+    await sleep(900)
+    const consoleRead = await readSteppedConsole(presenter)
+    check('stepped: the console prints the position the projector prints',
+      consoleRead.positions.length === 2 && consoleRead.positions.every((item) => item === midPage.printed[0]), JSON.stringify(consoleRead.positions))
+    check(`stepped: the console's own page is the state the room is looking at`, consoleRead.currentHidden === midPage.hidden, JSON.stringify({ console: consoleRead.currentHidden, room: midPage.hidden }))
+    check('stepped: the next pane previews the block the next press brings',
+      consoleRead.nextBlocks === 4 && consoleRead.nextHidden === midPage.hidden - 1, JSON.stringify(consoleRead))
+  }
+
+  await page.keyboard.press('ArrowRight')
+  await sleep(450)
+  const finished = await readSteppedShow(page, controlLabels)
+  check('stepped: the last block arrives on the last press', finished.hidden === 0 && finished.printed[0] === `${here} · 4/4`, JSON.stringify(finished))
+  await page.keyboard.press('ArrowRight')
+  await sleep(450)
+  const turned = await readSteppedShow(page, controlLabels)
+  check('stepped: one more press leaves the slide rather than the page', turned.blocks === 2 && turned.printed[0] !== finished.printed[0] && turned.hidden === 0, JSON.stringify(turned))
+  // Back across a slide re-enters it at its top — the page case is the one that keeps its end (both are
+  // unit-tested); this reads what the room actually gets, including the reveal number it prints.
+  await page.keyboard.press('ArrowLeft')
+  await sleep(450)
+  const back = await readSteppedShow(page, controlLabels)
+  check('stepped: stepping back re-enters the slide at its first reveal', back.blocks === 4 && back.printed[0] === `${here} · 1/4` && back.hidden === 3, JSON.stringify(back))
+  await page.keyboard.press('ArrowRight')
+  await sleep(450)
+  await page.keyboard.press('ArrowLeft')
+  await sleep(450)
+  const rehidden = await readSteppedShow(page, controlLabels)
+  check('stepped: one press back hides the block the last one showed', rehidden.hidden === 3 && rehidden.printed[0] === `${here} · 1/4`, JSON.stringify(rehidden))
+
+  await presenter?.close().catch(() => {})
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Same handback as every scenario that brings its own note: the readers below measure a deck that
+  // paginates, and a one-page stepped slide would be read as a regression.
+  await openDeckNote(page)
+}
+
+// The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
+// missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
+// injected into the live page (its own browser build, evaluated rather than added as a script
+// tag so the app's CSP stays untouched) and run over the whole overlay with the slide list open.
+async function assertPresentationAccessibility(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForRailFilled(page)
+  // axe measures what is painted, and two things in this overlay paint at less than full opacity for
+  // a moment: the dialog's own entrance animation, and the control pill, which fades itself out while
+  // the show sits idle. A counter read mid-fade composites towards the page under it and comes back
+  // as a 1.08:1 violation that no token can explain. The pointer brings the pill back and both waits
+  // hold until the painted opacity is 1, rather than until the elements merely exist.
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  await page.mouse.move(Math.round(viewport.width / 2), Math.round(viewport.height / 2))
+  await waitForPanelSettled(page, '[role="dialog"]')
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
+  await ensureAxe(page)
+  const report = await runAxe(page, '[role="dialog"]')
+  check('a11y: the presentation overlay has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('a11y: no unexpected axe review items', unexpected.length === 0, JSON.stringify(unexpected))
+  check('a11y: axe actually inspected the slide surface', report.passes >= 10, `passes=${report.passes}`)
+
+  // The key card belongs to this surface, and the mind map's reference taught the gate to read a card in
+  // the state it is measured in: put the keystroke that opens it on the dialog itself (a control holding
+  // it would keep the key), open the card, then ask axe about the same dialog again.
+  await page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+  await page.keyboard.press('?')
+  await page.waitForSelector('[data-presentation-key-guide]', { timeout: 10_000 })
+  await sleep(400)
+  await waitForPanelSettled(page, '[data-presentation-key-guide]')
+  const cardReport = await runAxe(page, '[role="dialog"]')
+  check('a11y: the presentation key card adds no axe violations', cardReport.violations.length === 0, JSON.stringify(cardReport.violations.slice(0, 3)))
+  const cardIncomplete = cardReport.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('a11y: the key card leaves no unexpected review item', cardIncomplete.length === 0, JSON.stringify(cardIncomplete))
+  // Closed with ? rather than Escape: this pass may be reading the show in real fullscreen, where the
+  // browser keeps Escape for itself and the page never sees the keystroke.
+  await page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+  await page.keyboard.press('?')
+  await page.waitForFunction(() => !document.querySelector('[data-presentation-key-guide]'), { timeout: 10_000 })
+
+  // Keyboard path next to the automated rules: the slide list walks its own pages with the
+  // arrows, and the counter follows it there.
+  const walked = await page.evaluate(async () => {
+    const rail = document.querySelector('[data-presentation-rail]')
+    const active = () => rail.querySelector('[data-entry-index][aria-selected="true"]')
+    active()?.focus()
+    const before = active()?.dataset.entryIndex ?? ''
+    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    const after = active()
+    return { before, after: after?.dataset.entryIndex ?? '', chip: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '' }
+  })
+  check('a11y: the slide list walks its pages from the keyboard', walked.after !== '' && walked.after !== walked.before, JSON.stringify(walked))
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
+// The pointer the show draws itself. A unit test can prove the mode turns on and the coordinates are
+// written; only a real browser can show what a talk actually needs — the dot landing under the cursor
+// at the size it paints, the layer never eating the click the slide was going to receive, the slide
+// giving up its own cursor while the pointer is on, and the dot carrying the theme's red rather than
+// a colour frozen at build time. The escape ladder is measured in the windowed state on purpose: in
+// real fullscreen the browser takes `Esc` for itself and the page never sees the key.
+async function assertPresentationLaser(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[role="dialog"]')
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  const point = { x: Math.round(viewport.width * 0.62), y: Math.round(viewport.height * 0.45) }
+
+  // N-20: the laser hides the operating system's cursor, so turning it on from the keyboard has to
+  // leave a mark on the projector all the same — the dot needs somewhere to be before a hand moves.
+  await page.keyboard.press('c')
+  await sleep(150)
+  const resting = await page.evaluate(() => {
+    const dot = document.querySelector('[data-laser-pointer] .laser-dot')
+    const box = dot?.getBoundingClientRect()
+    return {
+      layer: Boolean(dot),
+      center: box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null,
+      vp: { width: window.innerWidth, height: window.innerHeight },
+    }
+  })
+  check(
+    'laser: the marker is on screen before anything points at it',
+    Boolean(resting.layer && resting.center) &&
+      resting.center.x > 0 && resting.center.x < resting.vp.width &&
+      resting.center.y > 0 && resting.center.y < resting.vp.height,
+    JSON.stringify(resting),
+  )
+  check(
+    'laser: a pointer turned on by key sits in the middle of the frame',
+    Boolean(resting.center) && Math.abs(resting.center.x - Math.round(resting.vp.width / 2)) <= 1 && Math.abs(resting.center.y - Math.round(resting.vp.height / 2)) <= 1,
+    JSON.stringify(resting),
+  )
+
+  await page.mouse.move(point.x, point.y)
+  await sleep(200)
+
+  const painted = await page.evaluate(({ x, y }) => {
+    const layer = document.querySelector('[data-laser-pointer]')
+    const dot = layer?.querySelector('.laser-dot')
+    const box = dot?.getBoundingClientRect()
+    // The tokens are authored in oklch and Chrome hands a computed colour back in that same
+    // notation, so the two are compared as the pixels a reader gets: a canvas decodes whichever
+    // notation each string is in, which is also what makes "is it red" a question about the paint
+    // rather than about the spelling of the token.
+    const decode = (value) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1
+      canvas.height = 1
+      const context = canvas.getContext('2d')
+      context.fillStyle = value
+      context.fillRect(0, 0, 1, 1)
+      const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+      return [r, g, b]
+    }
+    const colour = dot ? getComputedStyle(dot).backgroundColor : ''
+    // Read on the dot, not on the root: that is the element whose `background` the token feeds, so
+    // a theme that is pinned further up the tree still resolves to the red it is actually drawing.
+    const token = dot ? getComputedStyle(dot).getPropertyValue('--danger').trim() : ''
+    // While pointing, the dot is the only cursor on the screen, which makes it a graphic the reader
+    // has to be able to see, so it is measured against the panel it is drawn on at 3:1 — the surface
+    // the show paints its slides onto, read as the browser resolves it rather than as a token name.
+    const surface = getComputedStyle(document.querySelector('[role="dialog"]')).backgroundColor
+    return {
+      on: Boolean(layer),
+      tracked: layer ? layer.style.getPropertyValue('--laser-x') : '',
+      center: box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : null,
+      box: box ? { width: Math.round(box.width), height: Math.round(box.height) } : null,
+      hitIsLaser: Boolean(layer && document.elementFromPoint(x, y) && layer.contains(document.elementFromPoint(x, y))),
+      cursor: getComputedStyle(document.querySelector('[data-slide-canvas]')).cursor,
+      dotRgb: colour ? decode(colour) : [],
+      tokenRgb: token ? decode(token) : [],
+      surfaceRgb: decode(surface),
+      trails: layer ? layer.querySelectorAll('.laser-trail').length : 0,
+      named: layer ? layer.getAttribute('aria-hidden') : '',
+    }
+  }, point)
+
+  check('laser: C puts a pointer on the projector', painted.on && painted.trails === 3 && painted.named === 'true', JSON.stringify(painted))
+  check('laser: the layer holds the pointer position', painted.tracked === `${point.x}px`, `tracked=${painted.tracked} pointer=${point.x}`)
+  check(
+    'laser: the dot paints under the cursor',
+    Boolean(painted.center) && Math.abs(painted.center.x - point.x) <= 2 && Math.abs(painted.center.y - point.y) <= 2,
+    JSON.stringify({ dot: painted.center, pointer: point, box: painted.box }),
+  )
+  check('laser: the layer never takes a click the slide was to receive', !painted.hitIsLaser, `hit=${painted.hitIsLaser}`)
+  check('laser: the slide gives up its own cursor while pointing', painted.cursor === 'none', `cursor=${painted.cursor}`)
+  const sameAsTheme = painted.dotRgb.length === 3 && painted.dotRgb.join(',') === painted.tokenRgb.join(',')
+  const redDominant = painted.dotRgb[0] > painted.dotRgb[1] && painted.dotRgb[0] > painted.dotRgb[2]
+  check('laser: the dot is drawn in the red the theme carries', sameAsTheme && redDominant, JSON.stringify({ dot: painted.dotRgb, token: painted.tokenRgb }))
+  const dotContrast = contrastRatio(painted.dotRgb, painted.surfaceRgb)
+  check('laser: the pointer is a graphic a reader can see', dotContrast >= 3, `ratio=${dotContrast.toFixed(2)} ${JSON.stringify({ dot: painted.dotRgb, surface: painted.surfaceRgb })}`)
+
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await sleep(150)
+  const calmed = await page.evaluate(() => {
+    const dot = document.querySelector('[data-laser-pointer] .laser-dot')
+    const trail = document.querySelector('[data-laser-pointer] .laser-trail')
+    return {
+      still: Boolean(dot),
+      pulse: dot ? getComputedStyle(dot).animationName : '',
+      smear: trail ? Number.parseFloat(getComputedStyle(trail).transitionDuration) : Number.POSITIVE_INFINITY,
+    }
+  })
+  check('laser: reduced motion keeps the dot and stops the pulse', calmed.still && calmed.pulse === 'none', JSON.stringify(calmed))
+  check('laser: reduced motion collapses the smear onto the dot', calmed.smear <= 0.002, `duration=${calmed.smear}s`)
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+
+  await page.keyboard.press('c')
+  await sleep(150)
+  const off = await page.evaluate(() => ({
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    cursor: getComputedStyle(document.querySelector('[data-slide-canvas]')).cursor,
+  }))
+  check('laser: a second C puts it out and gives the cursor back', !off.layer && off.cursor !== 'none', JSON.stringify(off))
+
+  await page.keyboard.press('c')
+  await page.mouse.move(point.x + 40, point.y + 40)
+  await sleep(150)
+  await page.keyboard.press('Escape')
+  await sleep(500)
+  const rung = await page.evaluate(() => ({
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    full: Boolean(document.fullscreenElement),
+    toggle: [...(document.querySelectorAll('[data-presentation-chrome] button') ?? [])].map((item) => item.getAttribute('aria-label')),
+  }))
+  check('laser: Esc puts the pointer out before it costs the show', !rung.layer && rung.open, JSON.stringify(rung))
+
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  const closed = await page.evaluate(() => ({
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    full: Boolean(document.fullscreenElement),
+    active: document.activeElement?.tagName?.toLowerCase() ?? 'nothing',
+    toggle: [...(document.querySelectorAll('[data-presentation-chrome] button') ?? [])].map((item) => item.getAttribute('aria-label')),
+  }))
+  check('laser: the show still ends on the next Esc, and leaves no dot on the note', !closed.open && !closed.layer, JSON.stringify(closed))
+}
+
+/**
+ * Get the projector into browser fullscreen, and prove the browser is still there when this returns.
+ *
+ * L-13's measurement: in a headless shell the browser can drop native fullscreen on its own about a
+ * second after the app asked for it, and the app follows the browser rather than its own wish — so a
+ * scene that reads a fullscreen-only behaviour without re-checking is reading a surface that was never
+ * active. A real key press re-arms it, which is why this presses `f` rather than clicking the control.
+ */
+async function enterProjectorFullscreen(page) {
+  let rePressed = 0
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+      await sleep(1_500)
+      if (await page.evaluate(() => Boolean(document.fullscreenElement))) return { entered: true, rePressed }
+    }
+    rePressed++
+    await page.keyboard.press('f')
+    const held = await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5_000 }).then(() => true, () => false)
+    if (held) return { entered: true, rePressed }
+  }
+  return { entered: false, rePressed }
+}
+
+// The chrome is the projector's own thing to get out of the way: while the room is looking at the slide,
+// the bar and the pointer must not be part of the picture. This has only ever been *reported* by the
+// gates (N-15's `faded` was a value in a detail, never a verdict), so nothing in CI proved the fade
+// works, let alone that it comes back. Both halves are judged here, on the browser's own word about
+// fullscreen.
+async function assertPresentationChromeAutoHide(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
+
+  const { entered, rePressed } = await enterProjectorFullscreen(page)
+  check('chrome fade: the room is really in browser fullscreen before the fade is read', entered, `rePressed=${rePressed}`)
+  if (!entered) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    return
+  }
+
+  const read = () => page.evaluate(() => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const style = chrome ? getComputedStyle(chrome) : null
+    return {
+      present: Boolean(chrome),
+      inert: chrome?.hasAttribute('inert') === true,
+      opacity: Number.parseFloat(style?.opacity ?? '1'),
+      pointer: style?.pointerEvents ?? '',
+    }
+  })
+
+  const idleMs = Number(/CHROME_IDLE_MS = (\d+)/.exec(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/client/features/presentation/use-chrome-auto-hide.ts'), 'utf8'))?.[1] ?? '0')
+  check('chrome fade: the idle window is read from the app rather than guessed', idleMs > 0, `CHROME_IDLE_MS=${idleMs}`)
+
+  const before = await read()
+  await sleep(idleMs + 900)
+  const faded = await read()
+  check('chrome fade: the controls step out of the way while nothing happens',
+    before.opacity > 0.9 && faded.inert && faded.opacity === 0 && faded.pointer === 'none', JSON.stringify({ before, faded }))
+
+  const box = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-slide-canvas]')?.getBoundingClientRect()
+    return canvas ? { x: Math.round(canvas.x + canvas.width / 2), y: Math.round(canvas.y + canvas.height / 2) } : null
+  })
+  if (box) await page.mouse.move(box.x, box.y)
+  await sleep(700)
+  const awake = await read()
+  check('chrome fade: a pointer move brings the controls back without a click', !awake.inert && awake.opacity > 0.9, JSON.stringify(awake))
+
+  // Two presses, because that is what the show does with them: the first leaves browser fullscreen and
+  // the next one ends the show — the laser scene steps through the same order.
+  for (let press = 0; press < 3; press++) {
+    await page.keyboard.press('Escape')
+    await sleep(600)
+    if (!(await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]'))))) break
+  }
+  const down = await page.evaluate(() => ({ open: Boolean(document.querySelector('[data-slide-canvas]')), full: Boolean(document.fullscreenElement) }))
+  check('chrome fade: the scene puts its show and its fullscreen down', !down.open && !down.full, JSON.stringify({ ...down, rePressed }))
+}
+
+/**
+ * Wraps a keystroke in two recorders so a red cover check can say whether the key ever arrived. L-4 has
+ * been sampling this for thirty runs on the same bytes and its detail (`insideDialog:false, hitIsCover:false`)
+ * cannot tell a keystroke the show never received from one it received and ignored, so the press is read
+ * from both sides of the window plus the page's own focus state. Recorded, never judged.
+ */
+async function armKeyRecorder(page) {
+  await page.evaluate(() => {
+    window.__gateKeys = { capture: [], bubble: [] }
+    if (window.__gateKeysArmed) return
+    window.__gateKeysArmed = true
+    const note = (bucket) => (event) => window.__gateKeys[bucket].push({
+      key: event.key,
+      on: event.target instanceof Element ? event.target.tagName.toLowerCase() : 'other',
+      inDialog: event.target instanceof Element && Boolean(event.target.closest('[role="dialog"]')),
+    })
+    window.addEventListener('keydown', note('capture'), true)
+    window.addEventListener('keydown', note('bubble'), false)
+  })
+}
+
+async function readKeyRecorder(page) {
+  return page.evaluate(() => {
+    const active = document.activeElement instanceof Element ? document.activeElement : null
+    const seen = window.__gateKeys ?? { capture: [], bubble: [] }
+    return {
+      hasFocus: document.hasFocus(),
+      visibility: document.visibilityState,
+      active: active ? `${active.tagName.toLowerCase()}${active.getAttribute('aria-label') ? `[${active.getAttribute('aria-label')}]` : ''}` : 'nothing',
+      capture: seen.capture,
+      bubble: seen.bubble,
+    }
+  })
+}
+
+async function assertPresentationScreenCover(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[role="dialog"]')
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  const point = { x: Math.round(viewport.width * 0.5), y: Math.round(viewport.height * 0.5) }
+
+  await armKeyRecorder(page)
+  await page.keyboard.press('b')
+  await sleep(200)
+  const blackout = await page.evaluate(({ x, y, names }) => {
+    const cover = document.querySelector('[data-screen-cover]')
+    const dialog = document.querySelector('[role="dialog"]')
+    const hit = document.elementFromPoint(x, y)
+    // The cover's own hook, not the dialog's first status region: the slide list announces its
+    // measuring pass from one of those, and an empty text there would read as silence either way.
+    const said = document.querySelector('[role="dialog"] [data-cover-status]')?.textContent ?? ''
+    return {
+      active: cover?.getAttribute('data-screen-cover'),
+      insideDialog: Boolean(dialog && cover && dialog.contains(cover)),
+      hitIsCover: hit === cover,
+      bg: cover ? getComputedStyle(cover).backgroundColor : '',
+      isButton: cover?.tagName === 'BUTTON',
+      isButtonType: cover?.getAttribute('type') === 'button',
+      named: names.blackout.includes(cover?.getAttribute('aria-label') ?? ''),
+      focused: Boolean(cover) && document.activeElement === cover,
+      saysCover: names.blackout.some((label) => said.includes(label)),
+    }
+  }, { ...point, names: { blackout: LABELS.presentationBlackout } })
+  const toBlack = await readKeyRecorder(page)
+  check('cover: the blackout is a control the keyboard is standing on', blackout.isButton && blackout.isButtonType && blackout.named && blackout.focused, JSON.stringify({ ...blackout, keys: toBlack }))
+  check('cover: the blackout says itself out loud', blackout.saysCover, JSON.stringify(blackout))
+  check('cover: B covers the projector in black', blackout.active === 'black' && blackout.insideDialog && blackout.hitIsCover, JSON.stringify({ ...blackout, keys: toBlack }))
+
+  await armKeyRecorder(page)
+  await page.keyboard.press(' ')
+  await sleep(200)
+  const dismissedBlack = await page.evaluate((names) => ({
+    lifted: !document.querySelector('[data-screen-cover]'),
+    saysLifted: names.off.some((label) => (document.querySelector('[role="dialog"] [data-cover-status]')?.textContent ?? '').includes(label)),
+  }), { off: LABELS.presentationCoverOff })
+  const toLift = await readKeyRecorder(page)
+  check('cover: pressing a key lifts the blackout', dismissedBlack.lifted, JSON.stringify({ ...dismissedBlack, keys: toLift }))
+  // L-4 has been red on identical bytes for thirty runs without saying which half failed, so the
+  // keystroke's arrival is now asserted in its own right. A capture-phase listener on the window sees a
+  // key before any handler could stop it: an empty list here means the show never received the press,
+  // which is a different bug from the show receiving it and ignoring it — and the detail says which.
+  check('cover: the keystroke that lifts the blackout reaches the page', toLift.capture.some((entry) => entry.key === ' '), JSON.stringify({ ...dismissedBlack, keys: toLift }))
+  check('cover: lifting the blackout is said too', dismissedBlack.saysLifted, JSON.stringify(dismissedBlack))
+
+  await armKeyRecorder(page)
+  await page.keyboard.press('w')
+  await sleep(200)
+  const whiteout = await page.evaluate(({ x, y }) => {
+    const cover = document.querySelector('[data-screen-cover]')
+    const dialog = document.querySelector('[role="dialog"]')
+    const hit = document.elementFromPoint(x, y)
+    return {
+      active: cover?.getAttribute('data-screen-cover'),
+      insideDialog: Boolean(dialog && cover && dialog.contains(cover)),
+      hitIsCover: hit === cover,
+      bg: cover ? getComputedStyle(cover).backgroundColor : '',
+    }
+  }, point)
+  const toWhite = await readKeyRecorder(page)
+  check('cover: W covers the projector in white', whiteout.active === 'white' && whiteout.insideDialog && whiteout.hitIsCover, JSON.stringify({ ...whiteout, keys: toWhite }))
+  // The same question for the other half of L-4, which has always gone red with the first one.
+  check('cover: the keystroke that covers in white reaches the page', toWhite.capture.some((entry) => entry.key === 'w'), JSON.stringify({ ...whiteout, keys: toWhite }))
+
+  await page.mouse.click(point.x, point.y)
+  await sleep(200)
+  const dismissedWhite = await page.evaluate(() => !document.querySelector('[data-screen-cover]'))
+  check('cover: clicking lifts the whiteout', dismissedWhite)
+
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  if (await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]')))) {
+    await page.keyboard.press('Escape')
+    await sleep(600)
+  }
+  const closed = await page.evaluate(() => !document.querySelector('[data-slide-canvas]'))
+  check('cover: show ends cleanly after covers are dismissed', closed)
+}
+
+// Exporting the deck runs through the browser's print pipeline, so this asserts what the promise
+// rests on: the sheet it prints holds one page box per deck page (built from the same measured
+// plans the show walks), the pages are the slide at the stage's own scale rather than the reader's
+// prose scale (a page sliced against the slide layout reflows against any other), the charts are
+// drawn live onto the sheet's canvases instead of printing the picture the cache carries, and the
+// PDF Chrome actually renders from it has that many pages. The PDF is counted by its page objects,
+// which is what "the pages match the show" means.
+async function assertDeckExport(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const entries = await waitForRailFilled(page)
+  const stageFont = await page.evaluate(() => getComputedStyle(document.querySelector('[data-slide-canvas] [data-slide-page]')).fontSize)
+  await clickPresentationControl(page, LABELS.presentExport)
+  // The sheet prints once it has drawn what the show draws, so its own readiness marker is what
+  // makes the reads below land on a finished sheet rather than a half-drawn one.
+  await page.waitForSelector('[data-deck-print][data-deck-print-ready="true"]', { timeout: 20_000 })
+  const sheet = await page.evaluate(() => {
+    const pages = [...document.querySelectorAll('[data-deck-print] .deck-print-page')]
+    const painted = () => {
+      const canvas = document.querySelector('[data-deck-print] [data-chart] canvas')
+      if (!canvas) return 0
+      try {
+        const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+        let drawn = 0
+        for (let index = 3; index < data.length; index += 400) if (data[index] > 0) drawn++
+        return drawn
+      } catch {
+        return -1
+      }
+    }
+    const blocks = [...document.querySelectorAll('[data-deck-print] [data-chart]')]
+    return {
+      pages: pages.length,
+      withContent: pages.filter((box) => box.querySelector('.ink-prose')?.children.length ?? 0 > 0).length,
+      pageRule: [...document.styleSheets]
+        .flatMap((sheet) => { try { return [...sheet.cssRules] } catch { return [] } })
+        .filter((rule) => rule.constructor.name === 'CSSPageRule')
+        .map((rule) => rule.cssText)
+        .find((text) => /size:/.test(text)) ?? '',
+      live: blocks.filter((block) => block.__chartInstance && block.querySelector('canvas')?.width > 0).length,
+      stills: document.querySelectorAll('[data-deck-print] [data-chart] img.chartjs-still').length,
+      painted: painted(),
+      font: getComputedStyle(document.querySelector('[data-deck-print] .deck-print-body [data-slide-page]')).fontSize,
+    }
+  })
+  check('export: the print sheet holds one page per deck page', sheet.pages > 1 && sheet.pages === entries, `sheet=${sheet.pages} rail=${entries}`)
+  check('export: every printed page carries its own content', sheet.withContent === sheet.pages, `content=${sheet.withContent}/${sheet.pages}`)
+  check('export: the print page size follows the design canvas', /size: \d+px \d+px/.test(sheet.pageRule), sheet.pageRule.slice(0, 60))
+  check('export: the printed deck draws its charts live', sheet.live > 0 && sheet.painted > 0, `live=${sheet.live} painted=${sheet.painted}`)
+  check('export: the printed deck prints no chart stills left over', sheet.stills === 0, `stills=${sheet.stills}`)
+  check('export: a printed page uses the slide type scale', sheet.font === stageFont, `sheet=${sheet.font} stage=${stageFont}`)
+
+  const pdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
+  const printed = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+  check('export: the printed PDF has the deck page count', printed === sheet.pages, `pdf=${printed} sheet=${sheet.pages}`)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
+// The handout (N-32): one printed page per slide, the slide's own picture beside what the speaker
+// wrote for it. The fixture is three slides, two of them with notes and one without, so the sheet has
+// to answer all three cases — a note printed, a slide named by its number, and an empty note said out
+// loud rather than left as a blank half-page. The PDF is the evidence: it is what the browser prints,
+// not what the DOM holds.
+const HANDOUT_DECK = [
+  '# Opening\n\n<!-- note: Say why we are here. -->\n\nThree plans, one decision.',
+  '# Middle\n\nTwo of them fit the budget.',
+  '# Close\n\n<!-- note: Ask for the decision. -->\n\nWhich one, and by when.',
+].join('\n\n---\n\n')
+
+async function openHandoutNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${HANDOUT_DECK}\n`, 'deck handout')
+  await sleep(1_500)
+}
+
+// The controls a slide cannot answer (N-37). A block ships a head with it — full screen, fit, run,
+// copy — and those belong to the note, where they act on a live root. On the projector they arrived
+// dead, and worse: the show turns the page by a click anywhere on it, and its first rule is to leave
+// a click on an interactive element alone, so a press on one of them was a press into nothing.
+const SLIDE_CONTROL_SCENE = JSON.stringify({
+  type: 'excalidraw',
+  version: 2,
+  source: 'inkstone',
+  elements: [{ type: 'rectangle', id: 'r1', x: 10, y: 10, width: 80, height: 50 }],
+  appState: {},
+  files: {},
+})
+
+// Two slides, each short enough to stay one page: the press below has to land on the half of the
+// projector that means "next", and a deck that paginates would answer a page-within-slide instead.
+const SLIDE_CONTROL_DECK = JSON.stringify({
+  format: 'bento-slides',
+  version: 1,
+  title: 'Gate deck',
+  slides: [
+    { id: 'a', title: 'Why now', elements: [{ id: 'e1', type: 'text', html: 'The deadline is Friday.', x: 0, y: 0, w: 10, h: 10 }] },
+    { id: 'b', title: 'What next', elements: [{ id: 'e2', type: 'text', html: 'Two of three plans fit.', x: 0, y: 0, w: 10, h: 10 }] },
+  ],
+})
+
+const CONTROL_FREE_DECK = [
+  '# A title worth pressing',
+  '',
+  '```bento-slides',
+  SLIDE_CONTROL_DECK,
+  '```',
+  '',
+  '```js-example',
+  'console.log(1)',
+  '```',
+  '',
+  '```typescript',
+  'const answer = 42',
+  '```',
+  '',
+  '---',
+  '',
+  '# The next page',
+  '',
+  'Reached by the press that used to be swallowed.',
+  '',
+  '```excalidraw',
+  SLIDE_CONTROL_SCENE,
+  '```',
+].join('\n')
+
+async function openControlFreeNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${CONTROL_FREE_DECK}\n`, 'slide controls')
+  await sleep(1_500)
+}
+
+async function readProjectedControls(page) {
+  return page.evaluate(() => {
+    const surface = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const controls = [...(surface?.querySelectorAll('button, a[href], input, select, textarea, [contenteditable="true"]') ?? [])]
+    const head = surface?.querySelector('.code-block-head')
+    const box = head?.getBoundingClientRect()
+    return {
+      controls: controls.length,
+      labels: controls.map((node) => (node.getAttribute('aria-label') ?? node.textContent ?? node.tagName).trim().slice(0, 24)),
+      // Where the copy button used to sit: the right end of the code block's head, which is on the
+      // half of the projector that means "next" — a press there is the one that used to be eaten.
+      pressBox: box ? { x: Math.round(box.right - 20), y: Math.round(box.top + 10) } : null,
+      picture: Boolean(surface?.querySelector('[data-excalidraw] svg, [data-excalidraw] img, [data-excalidraw] canvas')),
+      deckCards: surface?.querySelectorAll('[data-bento-slides] .bento-slides-fallback-card').length ?? 0,
+      deckWaiting: (surface?.querySelector('[data-bento-slides]')?.textContent ?? '').includes('Loading slides'),
+      code: (surface?.textContent ?? '').includes('const answer = 42'),
+      example: (surface?.textContent ?? '').includes('console.log(1)'),
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+    }
+  })
+}
+
+async function assertSlideCarriesNoControls(page) {
+  await openControlFreeNote(page)
+  // The note reads the same markup and keeps every control, because there they answer to a live root.
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slide controls: the note preview never became visible')
+  const inNote = await page.evaluate(() => {
+    const prose = document.querySelector('.ink-prose')
+    return {
+      controls: prose?.querySelectorAll('button').length ?? 0,
+      anchors: prose?.querySelectorAll('a.heading-anchor').length ?? 0,
+    }
+  })
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // Wait for the board to be drawn, not merely for the page to exist: the picture is the proof that
+  // the strip took the head away and left the block.
+  // Wait for the page to carry both the code head (the press target) and no controls, rather than
+  // asserting on the frame right after the show opened.
+  let read = await readProjectedControls(page)
+  for (let attempt = 0; attempt < 24 && !read.pressBox; attempt += 1) {
+    await sleep(500)
+    read = await readProjectedControls(page)
+  }
+
+  check('presentation controls: the projected page holds nothing to press', read.controls === 0, JSON.stringify({ controls: read.controls, labels: read.labels }))
+  check('presentation controls: the slide still shows what its blocks are about', read.code && read.example, JSON.stringify({ code: read.code, example: read.example, controls: read.controls }))
+  // The deck is the N-38 case: the projector's canvas drew it, the printed sheet did not, and the
+  // page that came out read "Loading slides…" where the deck should have been.
+  check('presentation controls: the slide shows the deck as cards, not as its loading promise', read.deckCards === 2 && !read.deckWaiting, JSON.stringify({ deckCards: read.deckCards, waiting: read.deckWaiting }))
+
+  const before = read.position
+  if (read.pressBox) await page.mouse.click(read.pressBox.x, read.pressBox.y)
+  await sleep(1_000)
+  const after = await readProjectedControls(page)
+  check('presentation controls: a press where the copy button was turns the page', before !== '' && read.pressBox !== null && after.position !== before, JSON.stringify({ before, after: after.position, press: read.pressBox }))
+  check('presentation controls: the note keeps what the slide gives up', inNote.controls > 0 && inNote.anchors > 0, JSON.stringify(inNote))
+
+  // The board on the second slide keeps its picture, which is what the head used to hang on.
+  await page.keyboard.press('ArrowRight')
+  await sleep(1_500)
+  const second = await readProjectedControls(page)
+  for (let attempt = 0; attempt < 24 && !second.picture && second.controls === 0; attempt += 1) {
+    await sleep(500)
+  }
+  const drawn = await readProjectedControls(page)
+  check('presentation controls: the next slide keeps its picture and drops its head too', drawn.picture && drawn.controls === 0, JSON.stringify({ picture: drawn.picture, controls: drawn.controls, position: drawn.position }))
+
+  await page.keyboard.press('ArrowLeft')
+  await sleep(1_200)
+  await clickPresentationControl(page, LABELS.presentExport)
+  await page.waitForSelector('[data-deck-print][data-deck-print-ready="true"]', { timeout: 20_000 })
+  const printed = await page.evaluate(() => ({
+    cards: document.querySelectorAll('[data-deck-print] .bento-slides-fallback-card').length,
+    waiting: [...document.querySelectorAll('[data-deck-print] [data-bento-slides]')].some((node) => node.textContent.includes('Loading slides')),
+    ready: [...document.querySelectorAll('[data-deck-print] [data-bento-slides]')].every((node) => node.getAttribute('aria-busy') === 'false'),
+  }))
+  check('export: the printed sheet carries the deck rather than its loading promise', printed.cards === 2 && !printed.waiting && printed.ready, JSON.stringify(printed))
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read (the same handback every scenario that
+  // brings its own note owes the rest of the gate).
+  await openDeckNote(page)
+}
+
+async function assertDeckHandout(page) {
+  await openHandoutNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await clickPresentationControl(page, LABELS.presentExportHandout)
+  await page.waitForSelector('[data-deck-handout][data-deck-print-ready="true"]', { timeout: 20_000 })
+  const handout = await page.evaluate(() => {
+    const pages = [...document.querySelectorAll('[data-deck-handout] .deck-handout-page')]
+    return {
+      pages: pages.length,
+      figures: pages.map((page) => page.querySelectorAll('.deck-handout-slide').length),
+      positions: pages.map((page) => page.querySelector('.deck-handout-position')?.textContent?.trim() ?? ''),
+      notes: pages.map((page) => page.querySelector('.deck-handout-notes')?.textContent?.trim() ?? ''),
+      numbered: pages.filter((page) => page.querySelector('.deck-handout-slide .deck-print-page-number')?.textContent?.trim()).length,
+    }
+  })
+  const handoutPdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
+  const printedPages = (handoutPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+
+  check('handout: one printed page per slide, not per deck page', handout.pages === 3, `pages=${handout.pages} positions=${JSON.stringify(handout.positions)}`)
+  check('handout: every handout page carries its slide as a picture', handout.figures.every((count) => count === 1), JSON.stringify(handout.figures))
+  check('handout: the notes travel with the slide they belong to', handout.notes[0] === 'Say why we are here.' && handout.notes[2] === 'Ask for the decision.', JSON.stringify(handout.notes))
+  check('handout: a slide without notes says so instead of printing nothing', handout.notes[1] === localeLabel('workspace.presentation_no_notes')[0] || handout.notes[1] === localeLabel('workspace.presentation_no_notes')[1], JSON.stringify(handout.notes[1]))
+  check('handout: the picture keeps the number the room read', handout.numbered === 3, `numbered=${handout.numbered}`)
+  check('handout: the browser prints three pages of handout', printedPages === 3, `pdf=${printedPages} sheet=${handout.pages}`)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read, as every scenario that brings its own note
+  // has to (the same handback the board scenario learned).
+  await openDeckNote(page)
+}
+
+// N-17: the show carries over twenty bindings and used to print none of them where a presenter could
+// look. The card is where they live now, so the gate checks the four things a unit test cannot see: that
+// the card is painted rather than merely in the tree, that it left the capsule exactly where the pointer
+// put it down (the rule the mind map's card follows), that the key a button shows under a real pointer is
+// the key the card shows beside the same words, and that Escape puts the card away before it costs the
+// talk its show. Windowed on purpose: in real fullscreen the browser keeps Escape for itself.
+async function assertPresentationKeyGuide(page) {
+  await openDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+  const chromeBox = () => page.evaluate(() => {
+    const box = document.querySelector('[data-presentation-chrome]')?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null
+  })
+  const readCard = () => page.evaluate(() => {
+    const node = document.querySelector('[data-presentation-key-guide]')
+    if (!node) return null
+    const box = node.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+    return {
+      rows: node.querySelectorAll('li').length,
+      caps: [...node.querySelectorAll('kbd')].map((cap) => cap.textContent?.trim() ?? ''),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      aboveProjector: Boolean(hit && node.contains(hit)),
+      name: node.getAttribute('aria-label') ?? '',
+      inDialog: Boolean(node.closest('[role="dialog"]')),
+      inChrome: Boolean(node.closest('[data-presentation-chrome]')),
+    }
+  })
+  // The keystroke means what it says only with nothing holding it: focus goes to the dialog, the way a
+  // presenter who reached the show by keyboard already is.
+  const holdShow = () => page.evaluate(() => document.querySelector('[role="dialog"]')?.focus())
+
+  const before = await chromeBox()
+  check('keys: nothing is painted before the show is asked for it', (await readCard()) === null && before !== null, JSON.stringify(before))
+
+  await holdShow()
+  await page.keyboard.press('?')
+  await sleep(500)
+  const card = await readCard()
+  check('keys: ? paints the card over the projector', Boolean(card) && card.inDialog && !card.inChrome && card.aboveProjector && card.width > 240, JSON.stringify(card))
+  // One dialog only: the app binds shift+? to its own keyboard panel, and a modal over the talk would
+  // both cover the projector and take the keystroke before the show could answer it.
+  const dialogs = await page.evaluate(() => document.querySelectorAll('[role="dialog"]').length)
+  check('keys: the projector keeps ? away from the app panel', dialogs === 1, `dialogs=${dialogs}`)
+  check('keys: the card lists every binding the map answers with', card?.rows === 15 && card.caps.includes('\u2192') && card.caps.includes('Space') && card.caps.includes('?'), JSON.stringify({ rows: card?.rows, caps: card?.caps }))
+  check('keys: the card speaks the language of the room', [localeLabel('workspace.presentation_keys')[0], localeLabel('workspace.presentation_keys')[1]].includes(card?.name ?? ''), `name=${card?.name}`)
+
+  const after = await chromeBox()
+  check('keys: the card did not move the capsule the presenter is aiming at', JSON.stringify(before) === JSON.stringify(after), JSON.stringify({ before, after }))
+
+  // Escape is read as one moment: whether the card was up, what the keystroke left behind, and whether
+  // the show itself survived. A red line here has to say which of those it is about, rather than
+  // leaving the next reader to guess whether the card closed on its own a beat earlier.
+  const openBefore = await readCard()
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  const escaped = await page.evaluate(() => ({
+    card: Boolean(document.querySelector('[data-presentation-key-guide]')),
+    dialog: Boolean(document.querySelector('[role="dialog"]')),
+    dialogs: document.querySelectorAll('[role="dialog"]').length,
+    position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+  }))
+  check('keys: Escape puts the card away and keeps the show', openBefore !== null && escaped.card === false && escaped.dialog, JSON.stringify({ openBefore: openBefore !== null, ...escaped }))
+
+  await holdShow()
+  await page.mouse.click(400, 300, { button: 'right' })
+  await sleep(500)
+  // The menu is the third rendering of the same map (the capsule's hint is a hover, and headless shell
+  // reports `(hover: none)`, so a pointer never summons it here) — its rows carry the key caps too.
+  const menuKeys = await page.evaluate((labels) => {
+    const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => labels.some((label) => item.textContent?.includes(label)))
+    if (!row) return null
+    return { label: row.textContent?.replace(row.querySelector('kbd')?.textContent ?? '', '').trim() ?? '', key: row.querySelector('kbd')?.textContent?.trim() ?? '' }
+  }, localeLabel('workspace.presentation_next'))
+  check('keys: the right-click row spells the turn the way the card does', menuKeys?.key === '\u2192', JSON.stringify({ menuKeys, card: card?.caps?.slice(0, 1) }))
+
+  const openedFromMenu = await page.evaluate((label) => {
+    const row = [...document.querySelectorAll('[role="menu"] button')].find((item) => item.textContent?.includes(label))
+    if (!row) return null
+    row.click()
+    return label
+  }, localeLabel('workspace.presentation_keys')[0])
+  await sleep(500)
+  const menuCard = await readCard()
+  check('keys: the right-click row that names the card opens it', openedFromMenu !== null && menuCard !== null, JSON.stringify({ row: openedFromMenu, card: menuCard === null ? null : { rows: menuCard.rows } }))
+
+  await holdShow()
+  await page.keyboard.press('?')
+  await sleep(400)
+  check('keys: ? closes the card it opened, however it was opened', (await readCard()) === null)
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below read, as every scenario that brings its own note has
+  // to (the same handback the board and handout scenarios learned).
+  await openDeckNote(page)
+}
+
+// N-18 + N-35: measured at 390×844 the wide bar is 453px — it hangs off both edges, and its × control
+// lands at x=385..417, outside the screen with nothing to scroll it into view. A touch phone has no
+// right-click and no letters either, so the four tools were unreachable twice over. The gate puts the
+// show in a phone window and asks what a thumb actually needs: can I leave, does the door open, is the
+// list it opens painted on the projector rather than under it, and does that list hand me the tools.
+async function assertPresentationOnTouch(page) {
+  const labels = {
+    exit: localeLabel('workspace.presentation_exit'),
+    overview: localeLabel('workspace.presentation_show_overview', 'workspace.presentation_hide_overview'),
+    laser: localeLabel('workspace.presentation_laser'),
+    blackout: localeLabel('workspace.presentation_blackout'),
+  }
+  const readBar = () => page.evaluate((names) => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    if (!chrome) return null
+    const box = chrome.getBoundingClientRect()
+    const buttons = [...chrome.querySelectorAll('button')]
+    const exit = buttons.find((b) => names.exit.includes(b.getAttribute('aria-label')))
+    const exitBox = exit?.getBoundingClientRect()
+    const under = exitBox ? document.elementFromPoint(exitBox.x + exitBox.width / 2, exitBox.y + exitBox.height / 2) : null
+    return {
+      viewport: window.innerWidth,
+      left: Math.round(box.x),
+      right: Math.round(box.right),
+      fits: box.x >= 0 && box.right <= window.innerWidth,
+      exitFound: Boolean(exit),
+      exitInside: Boolean(exitBox) && exitBox.x >= 0 && exitBox.right <= window.innerWidth,
+      exitHittable: Boolean(under && exit && (under === exit || exit.contains(under))),
+      door: Boolean(chrome.querySelector('[data-presentation-overflow]')),
+      inlineOverview: buttons.some((b) => names.overview.includes(b.getAttribute('aria-label'))),
+    }
+  }, labels)
+  const doorBox = () => page.evaluate(() => {
+    const box = document.querySelector('[data-presentation-overflow]')?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  })
+  const readDoor = () => page.evaluate((names) => {
+    const menu = document.querySelector('[role="dialog"] [role="menu"]')
+    if (!menu) return null
+    const rows = [...menu.querySelectorAll('button')]
+    const rowTexts = rows.map((row) => row.textContent?.trim() ?? '')
+    const laser = rows.find((row) => names.laser.some((label) => row.textContent?.includes(label)))
+    const box = laser?.getBoundingClientRect()
+    const under = box ? document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) : null
+    return {
+      rows: rowTexts,
+      laserOnTop: Boolean(under && laser && (under === laser || laser.contains(under))),
+    }
+  }, labels)
+
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openDeckNote(page)
+  await page.setViewport(MOBILE_VIEWPORT)
+  await sleep(900)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+
+  const bar = await readBar()
+  check('touch: the bar fits the phone window it is drawn in', Boolean(bar?.fits) && bar.exitFound && !bar.inlineOverview, JSON.stringify(bar))
+  check('touch: the way out is on the screen and answers the press', Boolean(bar?.exitInside && bar?.exitHittable), JSON.stringify({ viewport: bar?.viewport, right: bar?.right, exitHittable: bar?.exitHittable }))
+  check('touch: what no longer fits went behind one door', Boolean(bar?.door), JSON.stringify({ door: bar?.door }))
+
+  const press = await doorBox()
+  if (press) await page.mouse.click(press.x, press.y)
+  await sleep(700)
+  const door = await readDoor()
+  check('touch: the door opens a list painted on the projector', Boolean(door) && door.laserOnTop, JSON.stringify({ opened: Boolean(door), laserOnTop: door?.laserOnTop }))
+  const tools = door?.rows ?? []
+  const wants = [localeLabel('workspace.presentation_laser'), localeLabel('workspace.presentation_spotlight'), localeLabel('workspace.presentation_blackout'), localeLabel('workspace.presentation_whiteout')]
+  check('touch: the list hands over the four tools no key on this screen reaches', wants.every((pair) => tools.some((row) => row.includes(pair[0]) || row.includes(pair[1]))), JSON.stringify(tools))
+
+  const laserRow = await page.evaluate((pair) => {
+    const row = [...document.querySelectorAll('[role="dialog"] [role="menu"] button')].find((item) => item.textContent?.includes(pair[0]) || item.textContent?.includes(pair[1]))
+    const box = row?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  }, localeLabel('workspace.presentation_laser'))
+  if (laserRow) await page.mouse.click(laserRow.x, laserRow.y)
+  await sleep(700)
+  check('touch: pressing the laser row draws the dot', await page.evaluate(() => Boolean(document.querySelector('[data-laser-pointer] .laser-dot'))))
+
+  const pressAgain = await doorBox()
+  if (pressAgain) await page.mouse.click(pressAgain.x, pressAgain.y)
+  await sleep(600)
+  const coverRow = await page.evaluate((pair) => {
+    const row = [...document.querySelectorAll('[role="dialog"] [role="menu"] button')].find((item) => item.textContent?.includes(pair[0]) || item.textContent?.includes(pair[1]))
+    const box = row?.getBoundingClientRect()
+    return box ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) } : null
+  }, localeLabel('workspace.presentation_blackout'))
+  if (coverRow) await page.mouse.click(coverRow.x, coverRow.y)
+  await sleep(700)
+  check('touch: pressing the blackout row covers the screen', await page.evaluate(() => document.querySelector('[data-screen-cover]')?.getAttribute('data-screen-cover') === 'black'))
+
+  await page.evaluate(() => document.querySelector('[data-screen-cover]')?.click())
+  await sleep(500)
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  // Hand the run back the deck on the desk the scenarios below read, at the width they expect it.
+  await openDeckNote(page)
+}
+
+// The image export is the same deck through a different renderer, so what it has to prove is that a
+// file came out of it: every page rasterized (the sheet reports that itself, and it only reports it
+// after the archive was handed to the browser) and the browser then wrote the archive somewhere.
+// Its pages are the page boxes the PDF export uses, built from the same measured plans.
+// The sheet is torn down as soon as it has handed the archive over, so it is watched rather than
+// polled: a readiness marker written in the moment before the teardown, and the page boxes that
+// only exist while the export runs, are both gone before a wait from Node can read them.
+async function assertDeckImageExport(page) {
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-images-'))
+  const client = await page.createCDPSession()
+  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir })
+
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const entries = await waitForRailFilled(page)
+  // Armed before the press, because the sheet's whole life can fit between two polls. Every
+  // mutation re-reads the sheet it is watching and keeps the largest picture it has been shown, so
+  // the read describes the export at its fullest rather than at whatever moment Node looked.
+  const watching = page.evaluate(() => new Promise((resolve) => {
+    const seen = { mounts: 0, teardowns: 0, pages: 0, charts: 0, outcome: '', busy: 'never mounted', progressSeen: false, progressInsideDialog: false, progressPainted: false, progressOpacity: 0, progressZ: 0, toastZ: 0, spinnerSeen: false, countMax: 0 }
+    const sampleFeedback = () => {
+      const pill = document.querySelector('[data-export-progress]')
+      if (!pill) return
+      const box = pill.getBoundingClientRect()
+      const style = getComputedStyle(pill)
+      seen.progressSeen = true
+      seen.progressInsideDialog = Boolean(pill.closest('[role="dialog"]'))
+      seen.progressPainted = box.width > 0 && box.height > 0 && box.top >= 0 && box.bottom <= window.innerHeight
+      seen.progressOpacity = Number(style.opacity)
+      seen.progressZ = Number.parseInt(style.zIndex, 10) || 0
+      seen.toastZ = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--z-toast'), 10) || 0
+      // The first number in the message is how many pages are written: a count that never leaves zero
+      // is a reporter that never got wired to the sheet.
+      seen.countMax = Math.max(seen.countMax, Number.parseInt(pill.textContent?.match(/\d+/)?.[0] ?? '0', 10) || 0)
+      seen.spinnerSeen = seen.spinnerSeen || Boolean(document.querySelector('[data-export-spinner]'))
+    }
+    const isSheet = (node) => node?.nodeType === 1 && node.hasAttribute?.('data-deck-print')
+    const record = (sheet) => {
+      if (!sheet) return
+      seen.pages = Math.max(seen.pages, sheet.querySelectorAll('.deck-print-page').length)
+      seen.charts = Math.max(seen.charts, sheet.querySelectorAll('[data-chart] canvas').length)
+      if (sheet.dataset.deckImageReady) seen.outcome = sheet.dataset.deckImageReady
+    }
+    const done = () => {
+      observer.disconnect()
+      seen.busy = document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? 'absent'
+      resolve(seen)
+    }
+    const observer = new MutationObserver((mutations) => {
+      sampleFeedback()
+      for (const mutation of mutations) {
+        if (isSheet(mutation.target)) record(mutation.target)
+        for (const node of mutation.addedNodes) { if (isSheet(node)) { seen.mounts += 1; record(node) } }
+        for (const node of mutation.removedNodes) { if (isSheet(node)) { seen.teardowns += 1; record(node) } }
+      }
+      record(document.querySelector('[data-deck-print]'))
+      if (seen.outcome && !document.querySelector('[data-deck-print]')) done()
+    })
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-deck-image-ready'] })
+    // Bounded, and it resolves rather than hangs: an export that never mounts has to come back as a
+    // row saying so, not as a gate that stopped at its own timeout.
+    setTimeout(done, 60_000)
+  }))
+  await clickPresentationControl(page, LABELS.presentExportImages)
+  const images = await watching
+  check('export: the image export mounts one sheet and takes it down again', images.mounts === 1 && images.teardowns === 1 && images.outcome === 'true', JSON.stringify(images))
+  check('export: the image export carries one page per deck page', images.pages > 1 && images.pages === entries, `images=${images.pages} rail=${entries}`)
+  check('export: the image export draws its charts on the sheet', images.charts > 0, `charts=${images.charts}`)
+  // N-12: the count the show keeps has to be painted by the show. A status layer mounted beside the
+  // off-screen sheet sits under the projector whatever it says, so what is asserted here is where it
+  // is, that something drew it, and that it rides above the surface it reports on.
+  check('export: the running count is painted inside the projector, not under it', images.progressSeen && images.progressInsideDialog && images.progressPainted && images.progressOpacity === 1 && images.progressZ >= images.toastZ, JSON.stringify(images))
+  check('export: the control that started the write says so on itself', images.spinnerSeen === true, JSON.stringify({ spinnerSeen: images.spinnerSeen }))
+  check('export: the running count counts pages as they are written', images.countMax > 0, JSON.stringify({ countMax: images.countMax }))
+
+  await sleep(2000)
+  const saved = fs.readdirSync(downloadDir)
+  check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
+  // The show being busy with an export is a state the presenter can leave; a sheet that outlives the
+  // archive keeps the whole deck laid out off-screen and the dialog announcing itself as busy for
+  // the rest of the talk — and it starves the slide list's own idle pass behind it.
+  const handedBack = await page.waitForFunction(() => document.querySelector('[data-deck-print]') === null
+    && document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') === null, { timeout: 5_000, polling: 200 })
+    .then(() => true)
+    .catch(() => false)
+  check('export: the image export hands the deck back to the show', handedBack, await page.evaluate(() => JSON.stringify({
+    sheets: document.querySelectorAll('[data-deck-print]').length,
+    busy: document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? 'absent',
+  })))
+  // The count is a sign of work in progress, so it belongs to the work: a note left on screen after
+  // the archive is the same class of bug as the one that never appeared — the show saying something
+  // about an export that is over.
+  check('export: the running count goes away with the export', await page.evaluate(() => document.querySelector('[data-export-progress]') === null))
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+}
+
+// N-33: the third export is the show itself, handed over as one file. The two above export pictures of
+// the deck; this one has to be *playable* by someone who has never opened this app, so the scene does
+// what that person does — double-click the file, and turn pages.
+const DECK_HTML_SCENARIO = '# Standalone deck\n\nThe first state of the talk.\n\nAnd the second.\n\n---\n\n## With an attachment\n\n![the mark](/inkstone-logo.svg)\n\n---\n\n## Closing\n\nThe last page of the deck.'
+
+async function openStandaloneDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${DECK_HTML_SCENARIO}\n`, 'standalone deck')
+  await sleep(1_500)
+}
+
+async function waitForSavedFile(dir, extension, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = fs.readdirSync(dir).find((name) => name.endsWith(extension))
+    if (found) return path.join(dir, found)
+    if (Date.now() > deadline) return null
+    await sleep(250)
+  }
+}
+
+async function assertDeckHtmlExport(browser, page) {
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-html-'))
+  const client = await page.createCDPSession()
+  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir })
+
+  await openStandaloneDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  // What the show walks, counted off the list the idle pass filled: the file has to hold exactly this.
+  const pages = await waitForRailFilled(page)
+  const position = await page.evaluate(() => document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '')
+
+  await clickPresentationControl(page, LABELS.presentExportHtml)
+  const saved = await waitForSavedFile(downloadDir, '.html')
+  check('standalone deck: one html file is written', Boolean(saved), saved ?? `nothing in ${downloadDir}`)
+  if (!saved) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    await openDeckNote(page)
+    fs.rmSync(downloadDir, { recursive: true, force: true })
+    return
+  }
+
+  const file = fs.readFileSync(saved, 'utf8')
+  const states = [...file.matchAll(/<section class="deck-print-page"[^>]*data-position="([^"]*)"/g)].map((match) => match[1] ?? '')
+  const viewer = await browser.newPage()
+  try {
+    check('standalone deck: the file holds every page the show walks', states.length === pages, `file=${states.length} show=${pages} positions=${JSON.stringify(states)}`)
+    check('standalone deck: each page is numbered the way the room read it', states[0] === position, `${JSON.stringify(states[0])} vs ${JSON.stringify(position)}`)
+    // The file carries the app's own stylesheets, and every colour token of this app is declared under
+    // `:root[data-theme=…]` — stylesheets without those attributes are rules with no colours.
+    const rootTag = /<html[^>]*>/.exec(file)?.[0] ?? 'no html tag'
+    check('standalone deck: the file is wearing the theme it was exported in', /<html [^>]*lang="[A-Za-z-]+"[^>]*data-theme=/.test(file), rootTag)
+    check('standalone deck: the printed page box comes along too', file.includes('@page { size: 1280px 720px'), `head=${file.slice(0, 60)}`)
+    check('standalone deck: an attachment leaves as a whole URL', file.includes(`${BASE}/inkstone-logo.svg`) && !file.includes('src="/'), `srcs=${JSON.stringify([...file.matchAll(/src="([^"]{0,60})/g)].map((m) => m[1]))}`)
+
+    await viewer.setViewport({ width: 1_000, height: 700 })
+    await viewer.goto(pathToFileURL(saved).href, { waitUntil: 'load' })
+    await sleep(900)
+    const readViewer = () => viewer.evaluate(() => {
+      const shown = [...document.querySelectorAll('.deck-print-page')].filter((sheet) => getComputedStyle(sheet).display !== 'none')
+      const image = [...document.querySelectorAll('.deck-print-page img')].find((item) => item.complete)
+      return {
+        shown: shown.length,
+        heading: shown[0]?.querySelector('h1, h2')?.textContent?.trim() ?? '',
+        position: document.querySelector('[data-deck-html-position]')?.textContent?.trim() ?? '',
+        scale: shown[0] ? getComputedStyle(shown[0]).transform : 'none',
+        box: shown[0] ? Math.round(shown[0].getBoundingClientRect().width) : 0,
+        previous: document.querySelector('[data-deck-html-prev]')?.disabled ?? null,
+        next: document.querySelector('[data-deck-html-next]')?.disabled ?? null,
+        // The window is 1000px wide and a page box is 1280, so the fit has to be a real shrink.
+        background: getComputedStyle(document.body).backgroundColor,
+        picture: image ? { natural: image.naturalWidth, source: image.getAttribute('src') ?? '' } : null,
+      }
+    })
+    const opened = await readViewer()
+    check('standalone deck: the file opens on one page at a time', opened.shown === 1 && opened.previous === true && opened.next === false, JSON.stringify(opened))
+    check('standalone deck: the page is drawn to fit the window it was opened in', opened.scale.startsWith('matrix(0.7') && opened.box > 700 && opened.box < 1000, JSON.stringify({ scale: opened.scale, box: opened.box }))
+    check('standalone deck: the colours the deck was read in come with it', opened.background !== 'rgba(0, 0, 0, 0)', opened.background)
+    check('standalone deck: the bar names the position the page carries', opened.position === states[0], JSON.stringify({ said: opened.position, written: states[0] }))
+
+    await viewer.keyboard.press('ArrowRight')
+    await sleep(400)
+    const turned = await readViewer()
+    check('standalone deck: an arrow turns the file', turned.position === states[1] && turned.previous === false, JSON.stringify({ said: turned.position, previous: turned.previous }))
+
+    await viewer.keyboard.press('End')
+    await sleep(400)
+    const last = await readViewer()
+    check('standalone deck: the file knows where it ends', last.position === states.at(-1) && last.next === true, JSON.stringify({ said: last.position, next: last.next }))
+
+    await viewer.keyboard.press('Home')
+    await viewer.keyboard.press('ArrowRight')
+    await sleep(400)
+    const attached = await readViewer()
+    check('standalone deck: a picture in the deck arrives with the file', attached.picture !== null && attached.picture.natural > 0, JSON.stringify(attached.picture))
+    check('standalone deck: the file reports the press that saved it', await page.evaluate((labels) => [...document.querySelectorAll('[role="status"], .toast, [data-toast]')].some((node) => labels.some((label) => (node.textContent ?? '').includes(label))), [localeLabel('workspace.presentation_html_saved')[0], localeLabel('workspace.presentation_html_saved')[1]]))
+  } finally {
+    await viewer.close().catch(() => {})
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(600)
+    // The handback every scenario that brings its own note owes the run.
+    await openDeckNote(page)
+    fs.rmSync(downloadDir, { recursive: true, force: true })
+  }
+}
+
+// The deck at a glance is a layer over the slide rather than a re-arrangement of it, and only a
+// browser can say so: the matrix has to cover the canvas, take the slide and the pill out of reach
+// while it is up, land the presenter on the page they pressed, roam by measured rows instead of by
+// the arrow keys' old meaning, and hand the keyboard back to the control that opened it. It runs on
+// its own deck note because the read needs more cards than a projector row holds: the pagination
+// note is the wrong shape for a matrix, and its chart is what the two exports above still measure.
+async function assertPresentationOverview(page) {
+  await openOverviewDeck(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+  // Read the deck before waiting on its list: a show that was left open by the scenario above would
+  // otherwise answer here as a 60s timeout on a list that never stops growing, and a failing row that
+  // names the deck the matrix opened on is what makes the next run readable.
+  const before = await readDeckSize(page)
+  check('overview: the matrix opens on the deck it was written for', before.slides === OVERVIEW_SLIDES, `slides=${before.slides} position=${before.position} deck=${before.deck}`)
+  let deckPages
+  try {
+    deckPages = await waitForRailFilled(page)
+  } catch (error) {
+    // Every read below counts cards against the page list, so the scenario cannot run without a
+    // filled one. Report it on its own row and let the rest of the gate continue instead of ending
+    // the run at the first line of a scene that has not started asserting yet — which means putting
+    // the show back down first, since a show left open swallows every scene after this one.
+    check('overview: the slide list finishes filling the deck', false, String(error?.message ?? error).slice(0, 500))
+    if (await page.evaluate(() => Boolean(document.querySelector('[role="dialog"]')))) {
+      await clickPresentationControl(page, LABELS.presentExit)
+      await sleep(600)
+    }
+    return
+  }
+  await waitForPanelSettled(page, '[role="dialog"]')
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
+
+  await clickButton(page, LABELS.presentOverview)
+  await page.waitForSelector('[data-presentation-overview]', { timeout: 15_000 })
+  await sleep(800)
+
+  const grid = await page.evaluate((pages) => {
+    const overlay = document.querySelector('[data-presentation-overview]')
+    const canvas = document.querySelector('[data-slide-canvas]')
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const cards = [...overlay.querySelectorAll('[data-overview-index]')]
+    const box = overlay.getBoundingClientRect()
+    const slide = canvas.getBoundingClientRect()
+    const pill = chrome.getBoundingClientRect()
+    const firstRow = cards[0]?.offsetTop ?? -1
+    // A card that never got near the viewport keeps its placeholder, so "the matrix paints the
+    // deck" is counted off the pages a presenter can actually see rather than off the deck.
+    const painted = cards.filter((card) => (card.querySelector('.ink-slide-thumb [data-slide-page]')?.children.length ?? 0) > 0)
+    return {
+      cards: cards.length,
+      pages,
+      columns: cards.filter((card) => card.offsetTop === firstRow).length,
+      rows: new Set(cards.map((card) => card.offsetTop)).size,
+      painted: painted.length,
+      named: overlay.getAttribute('aria-label') ?? '',
+      unnamed: cards.filter((card) => !(card.getAttribute('aria-label') ?? '').trim()).length,
+      currents: cards.filter((card) => card.getAttribute('aria-current') === 'true').length,
+      inDialog: Boolean(overlay.closest('[role="dialog"]')),
+      covers: box.top <= slide.top + 1 && box.bottom >= slide.bottom - 1 && box.left <= slide.left + 1 && box.right >= slide.right - 1,
+      slideInert: Boolean(canvas.closest('[inert]')),
+      chromeInert: chrome.hasAttribute('inert'),
+      // What a pointer would actually hit over the pill. This is the reachability read, not an
+      // attribute read: the pill is under the matrix, so the grid — not the pill — owns that point.
+      pillOwnedByGrid: Boolean(document.elementFromPoint(pill.x + pill.width / 2, pill.y + pill.height / 2)?.closest('[data-presentation-overview]')),
+      focusIsCard: document.activeElement?.closest('[data-presentation-overview]') === overlay,
+    }
+  }, deckPages)
+
+  check('overview: the matrix is a layer inside the show', grid.inDialog)
+  check('overview: the matrix covers the slide it is put over', grid.covers)
+  check('overview: the matrix lists every page of the deck, not only its slides',
+    grid.cards === grid.pages && grid.pages > before.slides, `cards=${grid.cards} pages=${grid.pages} slides=${before.slides}`)
+  check('overview: the deck is laid out in rows and columns', grid.columns >= 2 && grid.rows >= 2, `columns=${grid.columns} rows=${grid.rows}`)
+  check('overview: a visible card paints the page it stands for', grid.painted >= grid.columns, `painted=${grid.painted}/${grid.cards}`)
+  check('overview: the matrix names itself and every card', LABELS.overviewGrid.includes(grid.named) && grid.unnamed === 0, JSON.stringify({ named: grid.named, unnamed: grid.unnamed }))
+  check('overview: the page on the projector is the one marked in the matrix', grid.currents === 1, `currents=${grid.currents}`)
+  check('overview: the slide and the pill are out of reach behind the matrix',
+    grid.slideInert && grid.chromeInert && grid.pillOwnedByGrid, JSON.stringify(grid))
+  check('overview: the keyboard arrives inside the matrix', grid.focusIsCard)
+
+  await ensureAxe(page)
+  const report = await runAxe(page, '[data-presentation-overview]')
+  check('overview: the matrix has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('overview: no unexpected axe review items in the matrix', unexpected.length === 0, JSON.stringify(unexpected))
+
+  const start = await readFocusCard(page)
+  await page.keyboard.press('ArrowRight')
+  await sleep(300)
+  const sideways = await readFocusCard(page)
+  check('overview: the arrows roam the matrix along its row instead of turning the page',
+    sideways.index === start.index + 1 && sideways.top === start.top && sideways.position === before.position,
+    JSON.stringify({ start, sideways }))
+
+  await page.keyboard.press('ArrowDown')
+  await sleep(300)
+  const downwards = await readFocusCard(page)
+  check('overview: a row down roams to the row below it', downwards.index > sideways.index && downwards.top > sideways.top, JSON.stringify({ sideways, downwards }))
+
+  // The show is still a show: a page turn from the projector's own key moves the deck while the
+  // presenter's place in the matrix stays where they left it. That is what the roam being its own
+  // state — rather than a mirror of the deck — is for.
+  await page.keyboard.press('PageDown')
+  await sleep(700)
+  const turned = await readFocusCard(page)
+  check('overview: the deck can move underneath while the keyboard stays put',
+    turned.position !== before.position && turned.index === downwards.index && turned.current !== turned.index,
+    JSON.stringify({ before: before.position, turned }))
+
+  await page.keyboard.press('g')
+  await sleep(500)
+  const handed = await page.evaluate((labels) => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const toggle = [...(chrome?.querySelectorAll('button') ?? [])].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    return {
+      grid: Boolean(document.querySelector('[data-presentation-overview]')),
+      open: Boolean(document.querySelector('[data-slide-canvas]')),
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+      chromeInert: Boolean(chrome?.hasAttribute('inert')),
+      backOnToggle: document.activeElement === toggle,
+      active: document.activeElement?.tagName?.toLowerCase() ?? 'nothing',
+    }
+  }, LABELS.presentOverview)
+  check('overview: the key that opened the matrix closes it from a card without moving the show',
+    !handed.grid && handed.open && handed.position === turned.position, JSON.stringify(handed))
+  check('overview: the closed matrix hands the keyboard back to the control that opened it',
+    handed.backOnToggle && !handed.chromeInert, JSON.stringify(handed))
+
+  const last = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('[data-presentation-rail] [data-entry-index]')].at(-1)
+    card?.scrollIntoView({ block: 'center' })
+    return card?.getAttribute('data-slide-index') ?? ''
+  })
+  await clickButton(page, LABELS.presentOverview)
+  await page.waitForSelector('[data-presentation-overview]', { timeout: 15_000 })
+  await sleep(800)
+  const pressed = await page.evaluate((slide) => {
+    const card = [...document.querySelectorAll('[data-presentation-overview] [data-overview-index]')]
+      .find((item) => item.getAttribute('data-slide-index') === slide)
+    if (!card) return null
+    card.scrollIntoView({ block: 'center' })
+    const box = card.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2), slide: Number(slide) }
+  }, last)
+  if (!pressed) throw new Error('overview: the matrix never listed the last slide of the deck')
+  await sleep(300)
+  await page.mouse.click(pressed.x, pressed.y)
+  await sleep(800)
+  const jumped = await readDeckSize(page)
+  check('overview: pressing a card lands on that page and puts the matrix away',
+    jumped.current === pressed.slide + 1 && (await page.evaluate(() => !document.querySelector('[data-presentation-overview]'))),
+    `position=${jumped.position} wanted=${pressed.slide + 1}`)
+
+  // The letter is the other half of the control: either key a presenter reaches for opens the same
+  // screen. The pill's toggle holds the focus after the press above, and a letter typed into a
+  // focused control belongs to that control, so the keyboard is set down first.
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+  await sleep(200)
+  await page.keyboard.press('o')
+  await sleep(500)
+  check('overview: O opens the matrix from the deck', await page.evaluate(() => Boolean(document.querySelector('[data-presentation-overview]'))))
+
+  await page.keyboard.press('Escape')
+  await sleep(500)
+  const rung = await page.evaluate(() => ({
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+  }))
+  check('overview: Esc puts the matrix away before it costs the show', !rung.grid && rung.open, JSON.stringify(rung))
+
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  check('overview: the show still ends on the next Esc', await page.evaluate(() => !document.querySelector('[data-slide-canvas]')))
+}
+
+// What the projector is drawing for one slide, next to what the list drew for its card. The two are
+// read together on purpose: a template only counts as shipped if the card and the page agree, and a
+// switch that survived into the markup would show up as a stray comment on the projector.
+// `pageFraction` is the slide's own box against the canvas it is drawn on, so a cover that never got
+// its page height and a column slide that overflowed it both fail visibly rather than quietly.
+async function readSlideLayout(page, slide) {
+  const clicked = await page.evaluate((target) => {
+    const entry = document.querySelector(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"][data-slide-page="0"]`)
+    entry?.click()
+    return Boolean(entry)
+  }, slide)
+  if (!clicked) throw new Error(`layout: the list has no first page for slide ${slide + 1}`)
+  await sleep(900)
+  return page.evaluate((target) => {
+    const host = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const style = getComputedStyle(host)
+    const box = host.getBoundingClientRect()
+    const canvas = document.querySelector('[data-slide-canvas]').getBoundingClientRect()
+    const rects = [...host.children].map((child) => child.getBoundingClientRect())
+    const last = rects[rects.length - 1]
+    const card = document.querySelector(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"][data-slide-page="0"] .ink-slide-thumb [data-slide-page]`)
+    return {
+      marked: host.className,
+      columnCount: style.columnCount,
+      centredColumn: style.display === 'flex' && style.flexDirection === 'column' && style.justifyContent === 'center' && style.textAlign === 'center',
+      gapTop: rects[0] ? Math.round(rects[0].top - box.top) : -1,
+      gapBottom: last ? Math.round(box.bottom - last.bottom) : -1,
+      // Buckets of 4px, because a browser lays a column out on fractions and two columns still have
+      // to read as two edges rather than as forty of them.
+      lefts: new Set(rects.map((rect) => Math.round(rect.left / 4))).size,
+      straySwitch: host.innerHTML.includes('layout:') || [...host.childNodes].some((node) => node.nodeType === 8),
+      pageFraction: Number((box.height / canvas.height).toFixed(3)),
+      cardMarked: card?.className ?? '',
+      cardBlocks: card?.children.length ?? -1,
+      pages: document.querySelectorAll(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"]`).length,
+    }
+  }, slide)
+}
+
+// The console the speaker asks for with the toolbar's second-to-last control is the other half of the
+// presenter surface, and until this scene no browser had ever opened one. N-04 draws its media, N-05
+// starts its clock with the show rather than with the app, N-06 hands the console to the show's own
+// column when the window is refused, N-26 decides when the show speaks at all — and all four were only
+// ever asserted in jsdom, where the two windows are one document and `window.open` is a stub. Here they
+// are two documents, a real `BroadcastChannel` between them, and a real browser deciding whether a
+// popup is allowed.
+const PRESENTER_OPENING_CUE = 'cue for the page the projector starts on'
+const PRESENTER_DIAGRAM_CUE = 'cue for the page that carries the diagram'
+const PRESENTER_DECK = [
+  `<!-- note: ${PRESENTER_OPENING_CUE} -->\n\n## Presenter opening\n\nThe page the projector starts on.`,
+  '## Presenter diagram\n\n```mermaid\nflowchart LR\n  Deck[The note] --> Console[The console]\n```\n\n' + `<!-- note: ${PRESENTER_DIAGRAM_CUE} -->`,
+  '## Presenter closing\n\nThe page after the diagram, so the next pane has something to show.',
+].join('\n\n---\n\n')
+
+async function openPresenterDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${PRESENTER_DECK}\n`, 'presenter console')
+  await sleep(1_500)
+}
+
+/** Counts what the show puts on the channel. The prototype is wrapped rather than the app's own binding,
+ * so a channel the app had already constructed is counted too, and only `sync` is: the handshake and the
+ * commands are the traffic the fix was never about. */
+async function installSyncTally(page) {
+  await page.evaluate(() => {
+    window.__presenterSyncPosts = 0
+    const proto = window.BroadcastChannel.prototype
+    if (proto.__presenterTally) return
+    const original = proto.postMessage
+    proto.__presenterTally = original
+    proto.postMessage = function (data) {
+      if (data && data.type === 'sync') window.__presenterSyncPosts += 1
+      return original.call(this, data)
+    }
+  })
+}
+
+async function readSyncTally(page) {
+  return page.evaluate(() => window.__presenterSyncPosts ?? -1)
+}
+
+async function removeSyncTally(page) {
+  await page.evaluate(() => {
+    const proto = window.BroadcastChannel.prototype
+    if (!proto.__presenterTally) return
+    proto.postMessage = proto.__presenterTally
+    delete proto.__presenterTally
+  })
+}
+
+async function findPresenterPage(browser) {
+  const pages = await browser.pages().catch(() => [])
+  return pages.find((item) => item.url().includes('presenter=')) ?? null
+}
+
+async function waitForPresenterPage(browser, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = await findPresenterPage(browser)
+    if (found) return found
+    if (Date.now() > deadline) return null
+    await sleep(250)
+  }
+}
+
+/** The console control, pressed with the pointer. Every other presentation control in this gate is
+ * clicked through `element.click()`, and that is exactly wrong here: `window.open` is only honoured on
+ * a user-activated click, so a synthetic one would open nothing and the scene would read the browser's
+ * own popup blocker as the app's fallback. */
+async function pressPresenterControl(page) {
+  const box = await page.evaluate((labels) => {
+    const button = [...document.querySelectorAll('[data-presentation-chrome] button')]
+      .find((item) => labels.includes(item.getAttribute('aria-label')))
+    if (!button) return null
+    const rect = button.getBoundingClientRect()
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+  }, LABELS.presentPresenter)
+  if (!box) return false
+  await page.mouse.click(box.x, box.y)
+  return true
+}
+
+async function readPresenterSurface(presenter) {
+  return presenter.evaluate((disconnected) => {
+    const text = (selector) => document.querySelector(selector)?.innerText?.trim() ?? ''
+    const header = text('header')
+    return {
+      clock: text('[data-presenter-clock]'),
+      current: text('[data-presenter-current-pane]'),
+      next: text('[data-presenter-next-pane]'),
+      notes: text('[data-speaker-notes]'),
+      header,
+      svg: document.querySelector('[data-presenter-current-pane]')?.querySelectorAll('svg').length ?? 0,
+      waiting: disconnected.some((label) => header.includes(label)),
+    }
+  }, LABELS.presenterDisconnected)
+}
+
+/** `mm:ss`, or `h:mm:ss` past an hour. -1 is a clock the scene could not read, so it fails every bound
+ * instead of passing a comparison against nothing. */
+function clockToSeconds(text) {
+  const parts = text.split(':').map((part) => Number.parseInt(part, 10))
+  if (parts.length < 2 || parts.length > 3 || parts.some((part) => Number.isNaN(part))) return -1
+  return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1]
+}
+
+// The room on the other side of the link (N-34 / ADR-0006): a stranger who has never signed in opens the
+// audience URL, is put on the page the speaker is standing on, and stays there once they turn a page of
+// their own. Two tabs, one position — the numbers each side prints have to agree, and the reveal has to
+// travel with them. That is only measurable in a browser, because both halves paginate by layout.
+async function assertAudienceFollow(browser, page, consoleErrors) {
+  const controlLabels = { prev: localeLabel('workspace.presentation_prev'), next: localeLabel('workspace.presentation_next') }
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await openSteppedNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(900)
+  let show = await readSteppedShow(page, controlLabels)
+  for (let press = 0; press < 4 && show.blocks !== 4; press++) {
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    show = await readSteppedShow(page, controlLabels)
+  }
+
+  // The first press is allowed to fail: the note the show runs on is shared by the id the door itself
+  // asked with, so the scene never has to guess which of the account's notes is on the projector. A
+  // refusal is read as an answer rather than as a broken channel — the check below names the status.
+  let mint = await pressAudienceDoor(page)
+  let shared = null
+  if (mint.answer && mint.answer.status() !== 200) {
+    const noteId = decodeURIComponent(new URL(mint.answer.url()).pathname.split('/')[3] ?? '')
+    shared = await apiCall(page, 'POST', `/api/share/${noteId}`, {})
+    mint = await pressAudienceDoor(page)
+  }
+  check('audience: the note the show runs on is shared', shared === null || shared.status === 200 || shared.status === 201,
+    JSON.stringify({ status: shared?.status ?? 'already shared', slug: shared?.data?.share?.slug ?? null }))
+  const session = mint.session
+  const slug = session?.slug ?? ''
+  check('audience: the door mints a show whose link is the one a viewer opens', mint.answer?.status() === 200 && Boolean(session?.token) && Boolean(slug),
+    JSON.stringify({ asked: Boolean(mint.answer), status: mint.answer?.status() ?? null, slug, hasToken: Boolean(session?.token) }))
+  if (!session?.token || !slug) {
+    await handAudienceSceneBack(page)
+    return
+  }
+
+  const context = await browser.createBrowserContext()
+  const viewer = await context.newPage()
+  viewer.on('pageerror', (error) => consoleErrors.push({ text: `[audience] ${String(error)}`, url: '' }))
+  try {
+    await viewer.setViewport(DESKTOP_VIEWPORT)
+    await viewer.setUserAgent(REAL_VISITOR_UA)
+    await viewer.goto(`${BASE}/s/${slug}?present=${encodeURIComponent(session.token)}`, { waitUntil: 'networkidle2' })
+    const seated = await viewer.waitForSelector('[data-audience-bar] [data-slide-canvas], [data-audience-bar]', { timeout: 20_000 }).then(() => true, () => false)
+    check('audience: the link seats a stranger who has never signed in', seated)
+    if (!seated) return
+    await viewer.waitForFunction(() => document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *').length > 0, { timeout: 20_000 }).catch(() => null)
+
+    const landed = await viewer.waitForFunction((wanted) => [...document.querySelectorAll('[data-deck-position]')].every((item) => item.textContent?.trim() === wanted), { timeout: 15_000 }, show.printed[0]).then(() => true, () => false)
+    const joined = await readAudience(viewer)
+    check('audience: the viewer opens on the page the speaker is standing on',
+      landed && joined.blocks === 4 && joined.hidden === show.hidden, JSON.stringify({ landed, room: [show.printed[0], show.hidden], viewer: [joined.printed, joined.hidden] }))
+    check('audience: the seat is taken, and said out loud',
+      joined.following === 'true' && LABELS.audienceFollowing.includes(joined.state), JSON.stringify(joined))
+
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    const moved = await readSteppedShow(page, controlLabels)
+    const caught = await viewer.waitForFunction((wanted) => document.querySelector('[data-deck-position]')?.textContent?.trim() === wanted, { timeout: 12_000 }, moved.printed[0]).then(() => true, () => false)
+    const followed = await readAudience(viewer)
+    check('audience: one press in the room brings one more block to the viewer within a beat',
+      caught && followed.blocks === 4 && followed.hidden === moved.hidden, JSON.stringify({ caught, room: [moved.printed[0], moved.hidden], viewer: [followed.printed, followed.hidden] }))
+
+    // Two presses, so the two sides are unambiguously apart: one press would leave the viewer on the
+    // very page the room reaches on its next step, and "not dragged" would then be unreadable.
+    await clickAudienceControl(viewer, controlLabels.next)
+    await clickAudienceControl(viewer, controlLabels.next)
+    await sleep(500)
+    const own = await readAudience(viewer)
+    check('audience: a press of their own hands the show back',
+      own.following === 'false' && LABELS.audienceBrowsing.includes(own.state), JSON.stringify(own))
+
+    // The room keeps talking. A viewer who left to look at something else is not dragged after it.
+    await page.keyboard.press('ArrowRight')
+    await sleep(450)
+    const ahead = await readSteppedShow(page, controlLabels)
+    await sleep(3_200)
+    const held = await readAudience(viewer)
+    check('audience: the talk moving on does not drag a viewer who left it',
+      held.printed[0] === own.printed[0] && held.printed[0] !== ahead.printed[0], JSON.stringify({ held: held.printed[0], own: own.printed[0], room: ahead.printed[0] }))
+
+    await viewer.click('[data-audience-bar] [role="switch"]')
+    const returned = await viewer.waitForFunction((wanted) => document.querySelector('[data-deck-position]')?.textContent?.trim() === wanted, { timeout: 12_000 }, ahead.printed[0]).then(() => true, () => false)
+    const back = await readAudience(viewer)
+    check('audience: handing the show back returns the viewer to where the talk stands now',
+      returned && back.following === 'true' && LABELS.audienceFollowing.includes(back.state), JSON.stringify({ returned, printed: back.printed, room: ahead.printed[0], state: back.state }))
+
+    await clickPresentationControl(page, LABELS.presentAudience)
+    const ended = await viewer.waitForFunction((words) => words.includes(document.querySelector('[data-audience-state]')?.textContent?.trim() ?? ''), { timeout: 15_000 }, LABELS.audienceEnded).then(() => true, () => false)
+    const after = await readAudience(viewer)
+    check('audience: the room emptying is said out loud, and the last page stays up',
+      ended && after.blocks > 0 && after.printed[0] !== '', JSON.stringify({ ended, state: after.state, printed: after.printed }))
+  } finally {
+    await context.close().catch(() => {})
+  }
+
+  await handAudienceSceneBack(page)
+}
+
+/** One press of the audience door, and the answer it got — a refusal is data, not a missing control. */
+async function pressAudienceDoor(page) {
+  const waiting = page.waitForResponse((response) => response.url().includes('/present/start'), { timeout: 15_000 }).catch(() => null)
+  await clickPresentationControl(page, LABELS.presentAudience)
+  const answer = await waiting
+  return { answer, session: answer ? await answer.json().catch(() => null) : null }
+}
+
+/**
+ * Where a scene that brought its own stepped note has to leave the app for the readers below it.
+ *
+ * The show is put down with its own exit control rather than with `Escape`, and the scene says out loud
+ * whether it came off: a show left open swallows every scenario after this one, and the failure then
+ * surfaces two scenes later as somebody else's red.
+ */
+async function handAudienceSceneBack(page) {
+  if (await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]')))) {
+    await clickPresentationControl(page, LABELS.presentExit)
+    await sleep(700)
+  }
+  const down = await page.evaluate(() => !document.querySelector('[data-slide-canvas]'))
+  check('audience: the scene puts its show down', down)
+  await openDeckNote(page)
+}
+
+async function readAudience(viewer) {
+  return viewer.evaluate(() => ({
+    printed: [...document.querySelectorAll('[data-deck-position]')].map((item) => item.textContent?.trim() ?? ''),
+    blocks: document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *').length,
+    hidden: [...document.querySelectorAll('[data-slide-canvas] [data-slide-page] > *')].filter((item) => getComputedStyle(item).visibility === 'hidden').length,
+    state: document.querySelector('[data-audience-state]')?.textContent?.trim() ?? '',
+    following: document.querySelector('[data-audience-bar] [role="switch"]')?.getAttribute('aria-checked') ?? '',
+  }))
+}
+
+// The bar's buttons are found by name, in whichever language the visitor's browser asked for.
+async function clickAudienceControl(viewer, labels) {
+  for (const label of labels) {
+    const selector = `[data-audience-bar] button[aria-label="${label}"]`
+    if (await viewer.$(selector)) {
+      await viewer.click(selector)
+      return label
+    }
+  }
+  throw new Error(`audience control missing: ${labels.join('/')}`)
+}
+
+
+async function assertPresenterConsole(browser, page) {
+  await openPresenterDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(1_500)
+  await waitForRailFilled(page)
+  await installSyncTally(page)
+
+  let presenter = null
+  try {
+    // Nobody has asked for a window: the deck is on screen and two turns have happened. This is the case
+    // the fix is about — the show used to recite the deck here, to a channel nothing had ever named.
+    await page.keyboard.press('ArrowRight')
+    await sleep(600)
+    await page.keyboard.press('ArrowLeft')
+    await sleep(600)
+    const idle = await readSyncTally(page)
+    check('presenter console: nothing is spoken before a window asks', idle === 0, `posts=${idle}`)
+
+    check('presenter console: the console control is on the toolbar', await pressPresenterControl(page))
+    presenter = await waitForPresenterPage(browser)
+    check('presenter console: a real press opens a second window', Boolean(presenter))
+    if (!presenter) return
+
+    await presenter.setViewport({ width: 1_100, height: 700 })
+    await presenter.waitForSelector('[data-presenter-current-pane]', { timeout: 15_000 })
+    await sleep(800)
+
+    const opened = await readPresenterSurface(presenter)
+    const arriving = await readSyncTally(page)
+    check('presenter console: the window is handed the page it landed on', opened.current.includes('Presenter opening') && opened.next.includes('Presenter diagram'), `current=${opened.current.slice(0, 40)} next=${opened.next.slice(0, 40)}`)
+    // Arrival is answered, and answered in a bounded number of messages. The bound is not pedantry: the
+    // deck's own measurement can still be landing when the window does, and a plan arriving really is a
+    // state change. What the fix forbids is the unbounded kind — the same page recited again.
+    check('presenter console: arriving is answered', arriving >= 1 && arriving <= 4, `posts=${arriving}`)
+    await sleep(1_500)
+    const settled = await readSyncTally(page)
+    check('presenter console: a settled window hears nothing until the deck moves', settled === arriving, `posts=${settled} arriving=${arriving}`)
+    check('presenter console: the window stops waiting once it has the state', !opened.waiting && LABELS.presenterConnected.some((label) => opened.header.includes(label)), `header=${opened.header.slice(0, 60)}`)
+    // The notes are the private half of the payload, and they are the reason the traffic count above is
+    // worth measuring at all: what leaks on an idle channel is what nobody on stage is meant to read.
+    check('presenter console: the cue for this page arrives with it', opened.notes.includes(PRESENTER_OPENING_CUE), `notes=${opened.notes.slice(0, 60)}`)
+    // The app has been signed in and working for minutes by this point in the run; a clock that counted
+    // from app start would be in four figures here, and that is exactly what N-05 replaced.
+    const elapsed = clockToSeconds(opened.clock)
+    check('presenter console: the clock counts this show, not the app', elapsed >= 0 && elapsed < 120, `clock=${opened.clock}`)
+
+    // One turn in the show: the page, the cue and the next pane all have to move, and the channel owes
+    // exactly one message for it.
+    await page.keyboard.press('ArrowRight')
+    await sleep(2_500)
+    const turned = await readPresenterSurface(presenter)
+    const afterTurn = await readSyncTally(page)
+    check('presenter console: a turn in the show lands in the window', turned.current.includes('Presenter diagram') && turned.next.includes('Presenter closing'), `current=${turned.current.slice(0, 40)} next=${turned.next.slice(0, 40)}`)
+    check('presenter console: the cue follows the page it belongs to', turned.notes.includes(PRESENTER_DIAGRAM_CUE), `notes=${turned.notes.slice(0, 60)}`)
+    check('presenter console: one turn is one broadcast', afterTurn === settled + 1, `posts=${afterTurn} before=${settled}`)
+    // N-04 in pixels: the diagram the console previews is drawn by this window's own enhancement chain,
+    // so there is an svg where the fence was and no fence text left to read.
+    check('presenter console: the diagram is drawn rather than pasted', turned.svg >= 1 && !turned.current.includes('flowchart'), `svg=${turned.svg}`)
+
+    // A chrome redraw is the case the old code could not tell from a page turn: the slide list opening
+    // and closing re-renders the session twice and moves nothing the console reads.
+    await clickPresentationControl(page, LABELS.presentRail)
+    await sleep(700)
+    await clickPresentationControl(page, LABELS.presentRail)
+    await sleep(700)
+    const afterChrome = await readSyncTally(page)
+    check('presenter console: a chrome redraw is not a page turn', afterChrome === afterTurn, `posts=${afterChrome} before=${afterTurn}`)
+
+    // The other direction, over the real channel: the console's own arrow moves the projector. This is
+    // the cross-window link N-07 built and no gate had yet walked.
+    const before = await readDeckSize(page)
+    await presenter.bringToFront()
+    await presenter.keyboard.press('ArrowRight')
+    await sleep(1_000)
+    const driven = await readDeckSize(page)
+    check('presenter console: a turn in the window moves the projector', driven.current === before.current + 1, `before=${before.position} after=${driven.position}`)
+
+    await presenter.evaluate(() => window.close())
+    await page.bringToFront()
+    await sleep(1_000)
+    check('presenter console: the window is really gone', (await findPresenterPage(browser)) === null)
+    // What a closed window leaves behind, asserted rather than narrated (L-7). React's cleanup never runs
+    // when the browser throws a document away, so the goodbye lives on `pagehide`, which the browser does
+    // promise: two real turns after the close must cost no further broadcast. N-26's bound is what keeps
+    // the case `pagehide` cannot cover — a killed renderer — at one message per turn rather than one per
+    // render, so this reads "nobody is being recited to", not "the channel was never opened".
+    const afterClose = await readSyncTally(page)
+    await page.keyboard.press('ArrowRight')
+    await sleep(900)
+    await page.keyboard.press('ArrowLeft')
+    await sleep(900)
+    const recital = await readSyncTally(page)
+    check('presenter console: a closed window ends the recital', recital === afterClose, `posts=${recital} after the close, was ${afterClose}`)
+
+    // The refused window. `window.open` returning null is what a blocker does to the app, and the app's
+    // answer is a column in the show itself plus one toast saying why. Overriding the call proves the
+    // fallback renders in a real browser; which browsers refuse, and when, is not something a gate can
+    // decide, so that half stays a measurement question rather than an assertion.
+    await page.keyboard.press('Home')
+    await sleep(700)
+    await page.evaluate(() => {
+      if (!window.__presenterOpenOriginal) window.__presenterOpenOriginal = window.open
+      window.open = () => null
+    })
+    check('presenter console: the console control answers again', await pressPresenterControl(page))
+    await sleep(700)
+    const refused = await page.evaluate((names) => {
+      const root = document.querySelector('[data-presenter-panel]')
+      const text = (selector) => root?.querySelector(selector)?.innerText?.trim() ?? ''
+      return {
+        open: Boolean(root),
+        labelled: names.presenterPanel.includes(root?.getAttribute('aria-label') ?? ''),
+        toast: document.querySelector('[role="status"]')?.textContent?.trim() ?? '',
+        notes: text('[data-speaker-notes]'),
+        next: text('[data-presenter-next-pane]'),
+        clock: text('[data-presenter-clock]'),
+        blockedNames: names.popupBlocked,
+      }
+    }, { presenterPanel: LABELS.presenterPanel, popupBlocked: LABELS.presenterPopupBlocked })
+    const blockedToast = refused.blockedNames.some((label) => refused.toast.includes(label))
+    check('presenter console: a refused window is said out loud', blockedToast, `toast=${refused.toast.slice(0, 80)}`)
+    check('presenter console: a refused window leaves the console in this window', refused.open && refused.labelled, `open=${refused.open} label=${refused.labelled}`)
+    check('presenter console: the panel carries the page, the cue and the clock', refused.notes.includes(PRESENTER_OPENING_CUE) && refused.next.includes('Presenter diagram') && clockToSeconds(refused.clock) >= 0, `notes=${refused.notes.slice(0, 40)} next=${refused.next.slice(0, 40)} clock=${refused.clock}`)
+    const refusedPosts = await readSyncTally(page)
+    check('presenter console: a refused window opens no second document', (await findPresenterPage(browser)) === null, 'a presenter document appeared for a window that was never opened')
+    await page.keyboard.press('ArrowRight')
+    await sleep(800)
+    const panelTurned = await page.evaluate(() => document.querySelector('[data-presenter-panel] [data-speaker-notes]')?.innerText?.trim() ?? '')
+    check('presenter console: with nobody to hear, the show still says nothing', (await readSyncTally(page)) === refusedPosts, `posts=${await readSyncTally(page)} before=${refusedPosts}`)
+    check('presenter console: a turn still moves the panel', panelTurned.includes(PRESENTER_DIAGRAM_CUE), `notes=${panelTurned.slice(0, 60)}`)
+
+    const panelClosed = await page.evaluate((labels) => {
+      const panel = document.querySelector('[data-presenter-panel]')
+      const button = [...(panel?.querySelectorAll('button') ?? [])]
+        .find((item) => labels.includes(item.getAttribute('aria-label')))
+      if (!button) return false
+      button.click()
+      return true
+    }, LABELS.consoleClose)
+    await sleep(500)
+    const closedPanel = await page.evaluate(() => document.querySelector('[data-presenter-panel]') === null)
+    check('presenter console: the panel has a close control', panelClosed)
+    check('presenter console: the panel is gone once dismissed', closedPanel)
+  } finally {
+    await page.evaluate(() => {
+      if (window.__presenterOpenOriginal) window.open = window.__presenterOpenOriginal
+    })
+    if (presenter && !presenter.isClosed()) await presenter.close().catch(() => {})
+    await removeSyncTally(page)
+    await page.bringToFront()
+    await clickButton(page, LABELS.presentExit)
+    await sleep(700)
+  }
+}
+
+// L-16 asked whether a switch the account turns during a show reaches the pages already measured, and
+// its own entry said the browser had no way in — true of the show's page, where the settings dialog is
+// out of reach, and false of a second tab of the same account, which is exactly what L-10 needed to
+// delete a note. So this is the direct face of that judgement: another tab turns the diagram switch,
+// and both surfaces of the running show have to answer for it, back to front and then front to back.
+async function assertSettingsReachTheShow(browser, page) {
+  await openDiagramNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  const drawn = await waitForDiagramSurfaces(page, 'on')
+  check('presentation settings: the show draws the diagram the account asked for', drawn.agrees, JSON.stringify(drawn))
+
+  const other = await browser.newPage()
+  try {
+    await other.setViewport(DESKTOP_VIEWPORT)
+    await other.goto(BASE, { waitUntil: 'networkidle2' })
+    await dismissUpdatePrompt(other)
+    await sleep(2_000)
+    const off = await toggleSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    check('presentation settings: another tab can reach the diagram switch', off.arrived && off.clicked !== '', JSON.stringify(off))
+    try {
+      const dropped = await waitForDiagramSurfaces(page, 'off')
+      const relisted = await waitForCardMarker(page, 'drawn')
+      // Both halves are judged: the card must stop showing the picture, and the same card must then be
+      // listed from a capture taken *after* the flip. Read together they are not vacuous — a `drawn` card
+      // holding zero diagrams is the new settings' page, while the lag this scenario first measured left
+      // the card `undrawn` for the whole wait because the pass only read the cache during render and
+      // never noticed the projector's re-prepare (L-17).
+      check('presentation settings: the projector and the slide list both drop a diagram the account turned off',
+        dropped.agrees && relisted.marker === 'drawn', JSON.stringify({ ...dropped, relisted }))
+    } finally {
+      // Whatever the reading said, the account goes back the way it was found: every scenario after
+      // this one measures a show whose diagrams are drawn.
+      await restoreSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    }
+    const back = await toggleSwitchInSettings(other, LABELS.editorSection, LABELS.diagramToggle)
+    const drawnAgain = await waitForDiagramSurfaces(page, 'on')
+    check('presentation settings: turning the switch back draws the picture on both surfaces again', back.clicked !== '' && drawnAgain.agrees, JSON.stringify({ back, ...drawnAgain }))
+  } finally {
+    await other.close()
+  }
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  await openDeckNote(page)
+}
+
+const DIAGRAM_NOTE = '# Diagrams on the projector\n\n```mermaid\nflowchart LR\n  A[Source] --> B[Screen]\n```\n'
+
+async function openDiagramNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, DIAGRAM_NOTE, 'presentation settings')
+  await sleep(1_500)
+}
+
+// Both surfaces read the same cache, so the pair is what a flipped switch has to move: the stage shows
+// the block it measured, and the card shows the page the rail says is current.
+async function readDiagramSurfaces(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
+    const stageBlock = stage?.querySelector('[data-mermaid]')
+    const card = panel?.querySelector('[data-presentation-rail] [aria-selected="true"] [data-slide-thumb-draw]')
+    const cardBlock = card?.closest('.ink-slide-thumb')?.querySelector('[data-mermaid]')
+    return {
+      stage: { svg: stage ? stage.querySelectorAll('[data-mermaid] svg').length : -1, source: /flowchart/.test(stageBlock?.textContent ?? '') },
+      card: { drawn: card?.getAttribute('data-slide-thumb-draw') ?? 'absent', svg: cardBlock ? cardBlock.querySelectorAll('svg').length : -1 },
+    }
+  })
+}
+
+async function waitForDiagramSurfaces(page, want) {
+  const agreesOn = (read) => read.stage.svg >= 1 && read.card.svg >= 1
+  // What a flip must take away on *both* surfaces is the picture itself; the card's marker is left in
+  // the detail rather than judged, because the background pass does not restart on a settings change
+  // and so keeps that page's capture as `undrawn` until the next show — a lag L-17 records, not a
+  // stale picture this scenario should bless by asserting it.
+  const agreesOff = (read) => read.stage.svg === 0 && read.stage.source && read.card.svg === 0
+  const agrees = want === 'on' ? agreesOn : agreesOff
+  let read = await readDiagramSurfaces(page)
+  for (let attempt = 0; attempt < 30 && !agrees(read); attempt += 1) {
+    await sleep(500)
+    read = await readDiagramSurfaces(page)
+  }
+  return { ...read, agrees: agrees(read) }
+}
+
+/** Reads the selected card's source marker and its diagram count, waiting for the marker to answer. */
+async function waitForCardMarker(page, wanted) {
+  const read = async () => page.evaluate(() => {
+    const card = document.querySelector('[role="dialog"] [data-presentation-rail] [aria-selected="true"] [data-slide-thumb-draw]')
+    const block = card?.closest('.ink-slide-thumb')?.querySelector('[data-mermaid]')
+    return { marker: card?.getAttribute('data-slide-thumb-draw') ?? 'absent', svg: block ? block.querySelectorAll('svg').length : -1 }
+  })
+  let seen = await read()
+  for (let attempt = 0; attempt < 30 && seen.marker !== wanted; attempt += 1) {
+    await sleep(500)
+    seen = await read()
+  }
+  return seen
+}
+
+/** Opens the settings dialog in this tab, finds one switch by its accessible name, and presses it. */
+async function toggleSwitchInSettings(page, sectionLabels, switchLabels) {
+  await pressCombo(page, ['Control', ','])
+  const arrived = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="dialog"] nav button')]
+    .some((button) => labels.includes((button.textContent ?? '').trim())), { timeout: 20_000 }, sectionLabels)
+    .then(() => true, () => false)
+  await page.evaluate((labels) => {
+    const button = [...document.querySelectorAll('[role="dialog"] nav button')].find((entry) => labels.includes((entry.textContent ?? '').trim()))
+    button?.click()
+  }, sectionLabels)
+  const switchFound = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="switch"]')]
+    .some((entry) => labels.includes(entry.getAttribute('aria-label') ?? '')), { timeout: 20_000 }, switchLabels)
+    .then(() => true, () => false)
+  const pressed = await page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!entry) return { clicked: '', checked: null }
+    entry.click()
+    return { clicked: entry.getAttribute('aria-label') ?? '', checked: entry.getAttribute('aria-checked') }
+  }, switchLabels)
+  await sleep(1_200)
+  const state = await readSwitchState(page, switchLabels)
+  await page.keyboard.press('Escape')
+  await sleep(900)
+  return { arrived, switchFound, ...pressed, state }
+}
+
+async function readSwitchState(page, switchLabels) {
+  return page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    return entry?.getAttribute('aria-checked') ?? null
+  }, switchLabels)
 }
 
 /**
@@ -850,136 +3163,216 @@ async function assertGraphKeyboardWalk(page) {
   await page.waitForFunction(() => !document.querySelector('[data-surface="graph"]'), { timeout: 10_000 })
 }
 
-// The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
-// missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
-// injected into the live page (its own browser build, evaluated rather than added as a script
-// tag so the app's CSP stays untouched) and run over the whole overlay with the slide list open.
-async function assertPresentationAccessibility(page) {
+
+// The settings section is lazy, so this reopens the dialog rather than assuming it is still on screen,
+// and presses the switch only if the account is left with the setting this scenario turned off.
+async function restoreSwitchInSettings(page, sectionLabels, switchLabels) {
+  await pressCombo(page, ['Control', ','])
+  const arrived = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="switch"]')]
+    .some((entry) => labels.includes(entry.getAttribute('aria-label') ?? '')), { timeout: 20_000 }, switchLabels)
+    .then(() => true, () => false)
+  const pressed = arrived ? await page.evaluate((labels) => {
+    const entry = [...document.querySelectorAll('[role="switch"]')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!entry || entry.getAttribute('aria-checked') !== 'false') return { clicked: '', checked: entry?.getAttribute('aria-checked') ?? null }
+    entry.click()
+    return { clicked: entry.getAttribute('aria-label') ?? '', checked: 'false' }
+  }, switchLabels) : { clicked: '', checked: null }
+  await sleep(1_200)
+  await page.keyboard.press('Escape')
+  await sleep(900)
+  return { arrived, ...pressed }
+}
+
+// N-19 promised what a show says when the note behind it disappears. Its jsdom suite reached that
+// state by editing the store, which left the browser question open (L-10): can a gate reach it at all,
+// and which of the app's two deletes breaks a follow? Both halves are pinned here through a second tab
+// of the same account and the note row's own menu — no store writing, no API call behind the client's
+// back. The measured answer shaped the assertions: moving the note to the trash changes nothing in the
+// show (the note still exists and can be restored), and only the permanent deletion breaks the follow,
+// one second after the other tab confirms it.
+async function assertFollowLost(browser, page) {
+  const title = `Follow loss probe ${Date.now().toString(36)}`
+  await openFollowLossNote(page, title)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(800)
+  const opened = await readFollowControl(page)
+  check('presentation follow: the show follows the note it opened on', [...LABELS.presentFollow, ...LABELS.presentFreeze].includes(opened.label) && !opened.disabled, JSON.stringify(opened))
+
+  const other = await browser.newPage()
+  try {
+    await other.setViewport(DESKTOP_VIEWPORT)
+    await other.goto(BASE, { waitUntil: 'networkidle2' })
+    await dismissUpdatePrompt(other)
+    await sleep(2_000)
+    const trashed = await clickRowMenu(other, title, LABELS.moveToTrash)
+    check('presentation follow: another tab reaches the note the show is following', trashed.clicked !== '', JSON.stringify(trashed))
+    // The break needs the other tab's write to arrive, and four seconds of waiting is what proves the
+    // show is not merely being told about a deletion it has already swallowed.
+    await sleep(4_000)
+    const afterTrash = await readFollowControl(page)
+    check('presentation follow: a note moved to the trash keeps the show following it, because it can come back', afterTrash.label === opened.label && !afterTrash.disabled && afterTrash.announcements === 0, JSON.stringify(afterTrash))
+
+    const purged = await purgeFromTrash(other, title)
+    check('presentation follow: the second tab deleted the note for good', purged.gone && purged.confirmed !== '', JSON.stringify(purged))
+    const broken = await waitForFollowLoss(page)
+    check('presentation follow: a deleted note names the break on the control and stops the toggle', LABELS.presentFollowLost.includes(broken.label) && broken.disabled, JSON.stringify(broken))
+    check('presentation follow: the break is announced, and never as two notices at once', broken.announcements === 1, JSON.stringify(broken))
+  } finally {
+    await other.close()
+  }
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below measure, as the kanban scene has to.
+  await openDeckNote(page)
+}
+
+async function openFollowLossNote(page, title) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `# ${title}\n\nOne line of talk, deleted from another tab while the room watches.\n`, 'presentation follow')
+  await sleep(1_500)
+}
+
+// The follow control, read by the three names it can wear. A substring match would find the audience
+// control instead, since the invitation to an audience is worded with the same verb of following, and
+// a second reading would then call a live show a broken one.
+async function readFollowControl(page) {
+  return page.evaluate((wanted) => {
+    const panel = document.querySelector('[role="dialog"]')
+    const button = [...(panel?.querySelectorAll('button') ?? [])].find((entry) => wanted.control.includes((entry.getAttribute('aria-label') ?? '').trim()))
+    const announcements = [...document.querySelectorAll('body *')].filter((node) => node.children.length === 0 && wanted.lost.includes((node.textContent ?? '').trim())).length
+    return { label: button?.getAttribute('aria-label') ?? '', disabled: Boolean(button?.disabled), announcements }
+  }, { control: [...LABELS.presentFollow, ...LABELS.presentFreeze, ...LABELS.presentFollowLost], lost: [...LABELS.presentFollowLost] })
+}
+
+// The note row's own menu, opened with a real pointer on a title this scenario wrote — so it can only
+// ever find its own note.
+async function clickRowMenu(page, title, labels) {
+  const marked = await page.evaluate((text) => {
+    const row = [...document.querySelectorAll('[data-note-id]')].find((node) => node.textContent?.includes(text))
+    if (!row) return false
+    row.setAttribute('data-gate-target', '1')
+    return true
+  }, title)
+  if (!marked) return { clicked: '', reason: 'the note is not listed in this tab' }
+  const handle = await page.$('[data-gate-target]')
+  await handle.click({ button: 'right' })
+  await sleep(700)
+  const clicked = await page.evaluate((wanted) => {
+    const items = [...document.querySelectorAll('[role="menu"] button, [role="menuitem"]')]
+    const textOf = (item) => (item.textContent ?? '').trim()
+    const hit = items.find((item) => wanted.some((label) => textOf(item) === label || textOf(item).startsWith(label)))
+    if (!hit) return { clicked: '', items: items.map(textOf) }
+    hit.click()
+    return { clicked: textOf(hit), items: [] }
+  }, labels)
+  await page.evaluate(() => document.querySelector('[data-gate-target]')?.removeAttribute('data-gate-target'))
+  await sleep(1_200)
+  return clicked
+}
+
+async function purgeFromTrash(page, title) {
+  const opened = await page.evaluate((labels) => {
+    const named = (node) => `${node.textContent ?? ''}|${node.getAttribute('aria-label') ?? ''}|${node.getAttribute('title') ?? ''}`
+    const nav = [...document.querySelectorAll('button, [role="button"], a')].find((node) => labels.some((label) => named(node).includes(label)))
+    if (!nav) return false
+    nav.click()
+    return true
+  }, LABELS.trashView)
+  await sleep(1_500)
+  const menu = await clickRowMenu(page, title, LABELS.deletePermanently)
+  const confirmed = await page.evaluate((labels) => {
+    const dialog = document.querySelector('[role="dialog"]')
+    const buttons = [...(dialog?.querySelectorAll('button') ?? [])]
+    const hit = buttons.find((button) => labels.some((label) => (button.textContent ?? '').trim() === label))
+    if (!hit) return ''
+    hit.click()
+    return (hit.textContent ?? '').trim()
+  }, LABELS.deletePermanently)
+  await sleep(2_000)
+  const gone = await page.evaluate((text) => ![...document.querySelectorAll('[data-note-id]')].some((row) => row.textContent?.includes(text)), title)
+  return { opened, tried: menu.clicked, confirmed, gone }
+}
+
+// The other tab's write reaches this one through the app's own broadcast and pull, so the wait is on
+// the news arriving rather than on a fixed beat. The largest number of notices seen at one time is
+// kept because a single reading cannot tell a second announcement apart from the first still standing.
+async function waitForFollowLoss(page) {
+  let seen = await readFollowControl(page)
+  let announcements = seen.announcements
+  for (let attempt = 0; attempt < 20 && !([...LABELS.presentFollowLost].includes(seen.label) && seen.disabled); attempt += 1) {
+    await sleep(500)
+    seen = await readFollowControl(page)
+    announcements = Math.max(announcements, seen.announcements)
+  }
+  return { ...seen, announcements }
+}
+
+async function assertSlideLayouts(page) {
+  await openLayoutDeckNote(page)
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
   await waitForRailFilled(page)
-  // axe measures what is painted, and two things in this overlay paint at less than full opacity for
-  // a moment: the dialog's own entrance animation, and the control pill, which fades itself out while
-  // the show sits idle. A counter read mid-fade composites towards the page under it and comes back
-  // as a 1.08:1 violation that no token can explain. The pointer brings the pill back and both waits
-  // hold until the painted opacity is 1, rather than until the elements merely exist.
-  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
-  await page.mouse.move(Math.round(viewport.width / 2), Math.round(viewport.height / 2))
-  await waitForPanelSettled(page, '[role="dialog"]')
-  await waitForPanelSettled(page, '[data-presentation-chrome]')
-  await ensureAxe(page)
-  const report = await runAxe(page, '[role="dialog"]')
-  check('a11y: the presentation overlay has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
-  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
-  check('a11y: no unexpected axe review items', unexpected.length === 0, JSON.stringify(unexpected))
-  check('a11y: axe actually inspected the slide surface', report.passes >= 10, `passes=${report.passes}`)
+  await jumpToFirstPage(page)
 
-  // Keyboard path next to the automated rules: the slide list walks its own pages with the
-  // arrows, and the counter follows it there.
-  const walked = await page.evaluate(async () => {
-    const rail = document.querySelector('[data-presentation-rail]')
-    const active = () => rail.querySelector('[data-entry-index][aria-current="true"]')
-    active()?.focus()
-    const before = active()?.dataset.entryIndex ?? ''
-    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    const after = active()
-    return { before, after: after?.dataset.entryIndex ?? '', chip: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '' }
-  })
-  check('a11y: the slide list walks its pages from the keyboard', walked.after !== '' && walked.after !== walked.before, JSON.stringify(walked))
-  await clickPresentationControl(page, LABELS.presentExit)
+  const cover = await readSlideLayout(page, 0)
+  const fitted = await readSlideLayout(page, 1)
+  const overflowed = await readSlideLayout(page, 2)
+  const plain = await readSlideLayout(page, 3)
+  // Read the slide the columns could not hold a second time: the geometry it is drawn in comes out of
+  // its own measurement, so the answer must not depend on what the previous commit left on the host.
+  // While it did, this slide traded a column plan for a flow plan frame after frame and the background
+  // pass never reported the deck finished — it sat on that slide for the whole 20s the probe sampled.
+  const refound = await readSlideLayout(page, 2)
+
+  check('layout: the switch stays out of the markup every slide renders',
+    ![cover, fitted, overflowed, plain].some((read) => read.straySwitch),
+    JSON.stringify({ cover: cover.straySwitch, fitted: fitted.straySwitch, overflowed: overflowed.straySwitch, plain: plain.straySwitch }))
+  check('layout: a cover slide is a centred column', cover.marked.includes('ink-slide-cover') && cover.centredColumn, JSON.stringify(cover))
+  check('layout: a cover slide is given the page to centre in', cover.pageFraction >= 0.85 && cover.pageFraction <= 0.92, JSON.stringify(cover))
+  check('layout: the cover slide’s blocks sit in the middle of that page',
+    Math.abs(cover.gapTop - cover.gapBottom) <= 2, JSON.stringify({ gapTop: cover.gapTop, gapBottom: cover.gapBottom }))
+  check('layout: a split slide reads in two columns of equal width',
+    fitted.marked.includes('ink-slide-split') && fitted.columnCount === '2' && fitted.lefts === 2, JSON.stringify(fitted))
+  check('layout: the columns keep that slide on the one page it was measured with',
+    fitted.pages === 1 && fitted.pageFraction <= 0.9, JSON.stringify(fitted))
+  check('layout: a slide whose columns overflow the page goes back to the flow layout',
+    !overflowed.marked.includes('ink-slide-split') && overflowed.columnCount !== '2' && overflowed.pageFraction > 1,
+    JSON.stringify(overflowed))
+  check('layout: the slide the columns could not hold is paged instead of cut off',
+    overflowed.pages >= 2, JSON.stringify({ pages: overflowed.pages }))
+  check('layout: that slide settles on one geometry instead of trading two',
+    refound.marked === overflowed.marked && refound.pages === overflowed.pages && refound.pageFraction === overflowed.pageFraction,
+    JSON.stringify({ first: { marked: overflowed.marked, pages: overflowed.pages, fraction: overflowed.pageFraction }, second: { marked: refound.marked, pages: refound.pages, fraction: refound.pageFraction } }))
+  check('layout: the slide list draws the layout the projector drew',
+    cover.cardMarked.includes('ink-slide-cover') && fitted.cardMarked.includes('ink-slide-split')
+      && !overflowed.cardMarked.includes('ink-slide-split') && !plain.cardMarked.includes('ink-slide-cover'),
+    JSON.stringify({ cover: cover.cardMarked, fitted: fitted.cardMarked, overflowed: overflowed.cardMarked, plain: plain.cardMarked }))
+  check('layout: a slide that asked for nothing is drawn as it was',
+    !plain.marked.includes('ink-slide-split') && !plain.marked.includes('ink-slide-cover') && plain.columnCount !== '2' && plain.pages === 1,
+    JSON.stringify(plain))
+
+  // Put the show away and assert it went: presenting takes native fullscreen, so the first Escape only
+  // hands the browser back its chrome and leaves the panel covering the app. With one key press here,
+  // every scenario after this one reads the DOM fine (the panel is beside the note, not instead of it)
+  // and then finds its first real pointer click swallowed — which is how the mind map's palette menu
+  // stopped opening.
+  await page.keyboard.press('Escape')
   await sleep(600)
-}
-
-// Exporting the deck runs through the browser's print pipeline, so this asserts what the promise
-// rests on: the sheet it prints holds one page box per deck page (built from the same measured
-// plans the show walks), the pages are the slide at the stage's own scale rather than the reader's
-// prose scale (a page sliced against the slide layout reflows against any other), the charts are
-// drawn live onto the sheet's canvases instead of printing the picture the cache carries, and the
-// PDF Chrome actually renders from it has that many pages. The PDF is counted by its page objects,
-// which is what "the pages match the show" means.
-async function assertDeckExport(page) {
-  await clickButton(page, LABELS.present)
-  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
-  const entries = await waitForRailFilled(page)
-  const stageFont = await page.evaluate(() => getComputedStyle(document.querySelector('[data-slide-canvas] [data-slide-page]')).fontSize)
-  await clickPresentationControl(page, LABELS.presentExport)
-  // The sheet prints once it has drawn what the show draws, so its own readiness marker is what
-  // makes the reads below land on a finished sheet rather than a half-drawn one.
-  await page.waitForSelector('[data-deck-print][data-deck-print-ready="true"]', { timeout: 20_000 })
-  const sheet = await page.evaluate(() => {
-    const pages = [...document.querySelectorAll('[data-deck-print] .deck-print-page')]
-    const painted = () => {
-      const canvas = document.querySelector('[data-deck-print] [data-chart] canvas')
-      if (!canvas) return 0
-      try {
-        const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
-        let drawn = 0
-        for (let index = 3; index < data.length; index += 400) if (data[index] > 0) drawn++
-        return drawn
-      } catch {
-        return -1
-      }
-    }
-    const blocks = [...document.querySelectorAll('[data-deck-print] [data-chart]')]
-    return {
-      pages: pages.length,
-      withContent: pages.filter((box) => box.querySelector('.ink-prose')?.children.length ?? 0 > 0).length,
-      pageRule: [...document.styleSheets]
-        .flatMap((sheet) => { try { return [...sheet.cssRules] } catch { return [] } })
-        .filter((rule) => rule.constructor.name === 'CSSPageRule')
-        .map((rule) => rule.cssText)
-        .find((text) => /size:/.test(text)) ?? '',
-      live: blocks.filter((block) => block.__chartInstance && block.querySelector('canvas')?.width > 0).length,
-      stills: document.querySelectorAll('[data-deck-print] [data-chart] img.chartjs-still').length,
-      painted: painted(),
-      font: getComputedStyle(document.querySelector('[data-deck-print] .deck-print-body [data-slide-page]')).fontSize,
-    }
-  })
-  check('export: the print sheet holds one page per deck page', sheet.pages > 1 && sheet.pages === entries, `sheet=${sheet.pages} rail=${entries}`)
-  check('export: every printed page carries its own content', sheet.withContent === sheet.pages, `content=${sheet.withContent}/${sheet.pages}`)
-  check('export: the print page size follows the design canvas', /size: \d+px \d+px/.test(sheet.pageRule), sheet.pageRule.slice(0, 60))
-  check('export: the printed deck draws its charts live', sheet.live > 0 && sheet.painted > 0, `live=${sheet.live} painted=${sheet.painted}`)
-  check('export: the printed deck prints no chart stills left over', sheet.stills === 0, `stills=${sheet.stills}`)
-  check('export: a printed page uses the slide type scale', sheet.font === stageFont, `sheet=${sheet.font} stage=${stageFont}`)
-
-  const pdf = Buffer.from(await page.pdf({ printBackground: true, preferCSSPageSize: true }))
-  const printed = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
-  check('export: the printed PDF has the deck page count', printed === sheet.pages, `pdf=${printed} sheet=${sheet.pages}`)
-
-  await clickPresentationControl(page, LABELS.presentExit)
+  await page.keyboard.press('Escape')
   await sleep(600)
-}
-
-// The image export is the same deck through a different renderer, so what it has to prove is that a
-// file came out of it: every page rasterized (the sheet reports that itself, and it only reports it
-// after the archive was handed to the browser) and the browser then wrote the archive somewhere.
-// Its pages are the page boxes the PDF export uses, built from the same measured plans.
-async function assertDeckImageExport(page) {
-  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inkstone-deck-images-'))
-  const client = await page.createCDPSession()
-  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir })
-
-  await clickButton(page, LABELS.present)
-  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
-  const entries = await waitForRailFilled(page)
-  await clickPresentationControl(page, LABELS.presentExportImages)
-  await page.waitForSelector('[data-deck-print][data-deck-image-ready="true"]', { timeout: 60_000 })
-  const images = await page.evaluate(() => {
-    const sheet = document.querySelector('[data-deck-print][data-deck-image-ready]')
-    return {
-      pages: sheet?.querySelectorAll('.deck-print-page').length ?? 0,
-      charts: sheet?.querySelectorAll('[data-chart] canvas').length ?? 0,
-    }
-  })
-  check('export: the image export carries one page per deck page', images.pages > 1 && images.pages === entries, `images=${images.pages} rail=${entries}`)
-  check('export: the image export draws its charts on the sheet', images.charts > 0, `charts=${images.charts}`)
-
-  await sleep(2000)
-  const saved = fs.readdirSync(downloadDir)
-  check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
-  await clickPresentationControl(page, LABELS.presentExit)
-  await sleep(600)
+  const left = await page.evaluate(() => ({
+    canvas: Boolean(document.querySelector('[data-slide-canvas]')),
+    dialog: document.querySelector('[role="dialog"]')?.getAttribute('aria-label') ?? null,
+    fullscreen: document.fullscreenElement ? document.fullscreenElement.tagName : null,
+  }))
+  check('layout: the show is put away before the next scenario reaches for the pointer',
+    !left.canvas && !left.fullscreen, JSON.stringify(left))
 }
 
 // The note export writes a document instead of printing one, and it turns every chart canvas in that
@@ -1246,12 +3639,16 @@ async function assertMindmapBlock(page) {
   await page.click('.mindmap-fullscreen-canvas me-tpc')
   await page.keyboard.press('Tab')
   await page.keyboard.press('Enter')
-  const written = await page.waitForFunction(
-    (names) => names.some((name) => (document.querySelector('.cm-content')?.textContent ?? '').includes(name)),
-    { timeout: 15_000 },
-    ['New node', '新节点'],
-  ).then(() => true, () => false)
-  check('mindmap: a node added from the keyboard reaches the note source', written)
+  // Read on either surface the note can answer with: the editor holds only the lines inside its
+  // viewport, so a fence line scrolled off it reads as "the note never got it" — the shape L-3 has been
+  // reddening in. `fenceAnswered` is kept for the detail, which says which of the two said it.
+  const names = ['New node', '新节点']
+  let written = { editor: false, fence: false }
+  for (let beat = 0; beat < 75 && !(written.editor || written.fence); beat++) {
+    written = await mapWriteAny(page, '.ink-prose', names)
+    if (!(written.editor || written.fence)) await sleep(200)
+  }
+  check('mindmap: a node added from the keyboard reaches the note source', written.editor || written.fence, JSON.stringify(written))
   const nodes = await page.evaluate(() => document.querySelectorAll('.mindmap-fullscreen-canvas me-tpc').length)
   check('mindmap: the added node is on the map too', nodes === full.nodes + 1, `before=${full.nodes} after=${nodes}`)
 
@@ -1277,7 +3674,9 @@ async function assertMindmapBlock(page) {
   const afterSibling = await page.evaluate(() => ({
     full: Boolean(document.querySelector('.mindmap-fullscreen')),
     hosted: Boolean(document.querySelector('.mindmap-fullscreen-canvas .mindmap-canvas')),
-    written: (document.querySelector('.cm-content')?.textContent ?? '').includes('Keyboard sibling'),
+    // Two surfaces answer for one write: the editor holds only the lines inside its viewport, so a
+    // fence line scrolled off it reads as "the note never got it" (L-3's shape).
+    written: ['Keyboard sibling', '键盘同级节点'].some((name) => [...document.querySelectorAll('.cm-content')].map((node) => node.textContent ?? '').join(' ').includes(name)),
   }))
   check('mindmap: the sibling reaches the note with full screen still open', afterSibling.full && afterSibling.hosted && afterSibling.written, JSON.stringify(afterSibling))
 
@@ -1420,6 +3819,31 @@ async function readNoteBody(page, scope) {
   return page.evaluate(readBlockBody, { scope, block: '.mindmap-block[data-mindmap]', family: 'mindmap', indexAttribute: 'data-mindmap-index' })
 }
 
+/**
+ * The two places a map edit can be read back from, asked at once.
+ *
+ * The editor only renders the lines inside its viewport (L-3's red shape: the node was on the map and
+ * in the note, but the fence line was scrolled out of what `.cm-content` holds), while the committed
+ * fence body is not there at all while full screen owns the instance. Neither surface alone is a safe
+ * read, so the pair is read together and both halves go into the detail — which also says, on any run,
+ * which of the two answered.
+ */
+async function mapWriteAny(page, scope, names) {
+  return page.evaluate(({ scope: where, wanted }) => {
+    const node = document.querySelector(`${where} .mindmap-block[data-mindmap]`)
+    let fence = ''
+    for (let current = node; node && current !== null; current = current.parentElement) {
+      const bodies = current.inkstoneFenceBodies
+      if (bodies) {
+        fence = bodies.mindmap?.[Number(node.getAttribute('data-mindmap-index'))] ?? ''
+        break
+      }
+    }
+    const editor = [...document.querySelectorAll('.cm-content')].map((item) => item.textContent ?? '').join(' ')
+    return { editor: wanted.some((name) => editor.includes(name)), fence: wanted.some((name) => fence.includes(name)) }
+  }, { scope, wanted: names })
+}
+
 // The write is debounced and the preview re-renders after it, so an assertion on the frame right
 // after a keypress would race both — this polls the committed body from here, where the predicate
 // stays readable, until it says what it should or the deadline passes.
@@ -1516,8 +3940,13 @@ async function assertMindmapSplitEditing(page) {
   await page.keyboard.down('Alt')
   await page.keyboard.press('ArrowUp')
   await page.keyboard.up('Alt')
-  await sleep(1_200)
-  const afterMove = await orderOf()
+  // Polled like every other mind-map write in this file: the reorder travels through the same
+  // debounce, and a fixed wait reads whichever frame happened to land first (L-11's shape).
+  let afterMove = await orderOf()
+  for (let beat = 0; beat < 75 && afterMove.join(' > ') === beforeMove.join(' > '); beat++) {
+    await sleep(200)
+    afterMove = await orderOf()
+  }
   const reordered = await page.evaluate(() => ({
     nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
     same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
@@ -1540,11 +3969,17 @@ async function jumpToFirstPage(page) {
 // `painted` samples the chart's canvas for non-transparent pixels: a chart block whose canvas was
 // never drawn (the cached-markup path used to trust a serialized "already rendered" marker) has
 // the right box and no drawing, which is exactly the failure this reads out.
+// The stage and a card are only comparable page against page. The projector keeps a slide's other
+// pages in the DOM behind `visibility: hidden` — a diagram that was only hidden keeps the canvas it
+// drew — while a card holds one page of sliced markup, so `stage` reads everything the canvas holds
+// (that is what the projector's own live chart is found in) and `stagePage` reads the blocks this page
+// reveals, which is what the card of this page must match. `cards` lists every page of the slide the
+// list is on, since the chart and the math can belong to a page the show has not walked to.
 async function readRenderedMarkup(page) {
   return page.evaluate(() => {
-    const count = (root, selector) => root?.querySelectorAll(selector).length ?? 0
-    const painted = (root) => {
-      const canvas = root?.querySelector('[data-chart] canvas')
+    const count = (roots, selector) => roots.reduce((total, root) => total + root.querySelectorAll(selector).length, 0)
+    const painted = (roots) => {
+      const canvas = roots.map((root) => root.querySelector('[data-chart] canvas')).find(Boolean)
       if (!canvas) return 0
       try {
         const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
@@ -1555,23 +3990,38 @@ async function readRenderedMarkup(page) {
         return -1
       }
     }
-    const artifacts = (root) => ({
-      svg: count(root, 'svg'),
-      katex: count(root, '.katex'),
+    const artifacts = (roots) => ({
+      svg: count(roots, 'svg'),
+      katex: count(roots, '.katex'),
       // The projector draws a chart live; the list and the printed page show the still the cache
       // holds, so a chart counts as present either way and `painted` tells the two apart.
-      charts: count(root, '[data-chart] canvas') + count(root, '[data-chart] img.chartjs-still'),
-      still: count(root, '[data-chart] img.chartjs-still'),
-      live: Boolean(root?.querySelector('[data-chart]')?.__chartInstance),
-      painted: painted(root),
+      charts: count(roots, '[data-chart] canvas') + count(roots, '[data-chart] img.chartjs-still'),
+      still: count(roots, '[data-chart] img.chartjs-still'),
+      live: roots.some((root) => Boolean(root.querySelector('[data-chart]')?.__chartInstance)),
+      painted: painted(roots),
     })
+    const only = (root) => (root ? [root] : [])
+    const revealed = (root) => (root ? [...root.children].filter((child) => child.style?.visibility !== 'hidden') : [])
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
-    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-rail-thumb .ink-prose')
+    const card = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-selected="true"]')
+    const prose = (entry) => entry?.querySelector('.ink-slide-thumb .ink-prose')
+    const slide = Number(card?.dataset.slideIndex ?? 0)
+    const cards = [...(panel?.querySelectorAll(`[data-presentation-rail] [data-slide-index="${slide}"]`) ?? [])].map((entry) => ({
+      sub: Number(entry.dataset.slidePage ?? 0),
+      drawn: entry.querySelector('[data-slide-thumb-draw]')?.dataset.slideThumbDraw ?? 'absent',
+      art: artifacts(only(prose(entry))),
+    }))
     return {
       theme: document.documentElement.dataset.theme ?? '',
-      stage: artifacts(stage),
-      thumb: artifacts(active),
+      slide,
+      // Where the card's markup came from: the only reading that tells "the cache never held this
+      // page" from "the cache holds it un-prepared" from "that page genuinely failed to enhance".
+      drawn: card?.querySelector('[data-slide-thumb-draw]')?.dataset.slideThumbDraw ?? 'absent',
+      stage: artifacts(only(stage)),
+      stagePage: artifacts(revealed(stage)),
+      thumb: artifacts(only(prose(card))),
+      cards,
     }
   })
 }
@@ -1585,7 +4035,7 @@ async function readRenderedMarkup(page) {
 // byte, like the sheet's own painted read: this asks whether the frame holds a chart at all.
 async function readStillPixels(page) {
   return page.evaluate(async () => {
-    const still = document.querySelector('[data-presentation-rail] [aria-current="true"] img.chartjs-still')
+    const still = document.querySelector('[data-presentation-rail] [aria-selected="true"] img.chartjs-still')
     if (!still) return -1
     try {
       const image = new Image()
@@ -1607,16 +4057,32 @@ async function readStillPixels(page) {
   })
 }
 
+// The card of the page the show stands on carries exactly what that page reveals on the projector —
+// and the page has to reveal something, or the two readings agree by being equally empty.
 function sameArtifacts(markup) {
-  return markup.stage.svg > 0 && markup.thumb.svg === markup.stage.svg && markup.thumb.katex === markup.stage.katex && markup.thumb.charts === markup.stage.charts
+  const page = markup.stagePage
+  return page.svg + page.katex + page.charts > 0 && markup.thumb.svg === page.svg && markup.thumb.katex === page.katex && markup.thumb.charts === page.charts
 }
 
 function describeArtifacts(artifacts) {
   return `svg=${artifacts.svg},katex=${artifacts.katex},charts=${artifacts.charts},live=${artifacts.live},painted=${artifacts.painted}`
 }
 
-// The deck is re-prepared one slide per idle slice, so the list catches up asynchronously.
-async function waitForRenderedMarkup(page) {
+// The deck is re-prepared one slide per idle slice, so the list catches up asynchronously. Both halves
+// have to arrive before the picture is asked about: this page's card agrees with what the projector
+// reveals on it, and some page of the slide has been drawn far enough to carry the chart.
+async function waitForDeckArtifacts(page) {
+  let markup = await readRenderedMarkup(page)
+  for (let attempt = 0; attempt < 40 && !(sameArtifacts(markup) && markup.cards.some((entry) => entry.art.charts > 0)); attempt++) {
+    await sleep(500)
+    markup = await readRenderedMarkup(page)
+  }
+  return markup
+}
+
+// Walks to one page of a slide and waits for that page's card to agree with the projector on it.
+async function waitForPageArtifacts(page, slide, sub) {
+  await clickPageEntry(page, slide, sub)
   let markup = await readRenderedMarkup(page)
   for (let attempt = 0; attempt < 30 && !sameArtifacts(markup); attempt++) {
     await sleep(500)
@@ -1633,16 +4099,85 @@ async function openDeckNote(page) {
   await page.keyboard.up('Control')
   await sleep(1_500)
   await page.waitForSelector('.cm-content', { timeout: 20_000 })
-  await appendToNote(page, `${PAGINATED_DECK}\n`)
+  await writeAtEndOfNote(page, `${PAGINATED_DECK}\n`, 'presentation pages')
+  await sleep(1_500)
+}
+
+// The deck the overview is measured on: nine slides, one of which cannot fit a page. Nine is more
+// cards than the matrix holds in a row at the gate's window, so "rows and columns" is a layout the
+// browser has to produce, and the paginating slide makes the card count differ from the slide
+// count — which is what separates "the grid is the page list" from "the grid is the slide list".
+const OVERVIEW_SLIDES = 9
+const OVERVIEW_DECK = [
+  ...Array.from({ length: 4 }, (_, index) => `## Overview opening ${index + 1}\n\nThe line that tells this slide from its neighbours.`),
+  `## Overview slide that paginates\n\n${Array.from({ length: 20 }, (_, index) => `Paragraph ${index + 1} of a slide that has to paginate.`).join('\n\n')}`,
+  ...Array.from({ length: OVERVIEW_SLIDES - 5 }, (_, index) => `## Overview closing ${index + 1}\n\nThe line after the long slide, number ${index + 1}.`),
+].join('\n\n---\n\n')
+
+async function openOverviewDeck(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${OVERVIEW_DECK}\n`, 'overview')
+  await sleep(1_500)
+}
+
+// The deck the layout switches are measured on: a cover, a two-column slide the columns hold, the
+// same switch on a slide the columns cannot hold, and a plain slide that asked for nothing.
+// The third is what decides the shape of the template's rule: two columns are a way of fitting one
+// page, not a way of overflowing it more slowly, so past the page the slide has to go back to the
+// flow layout the page walk reads — and the list has to page it the way the projector did.
+const LAYOUT_FIT_BODY = Array.from(
+  { length: 8 },
+  (_, index) => `Column paragraph ${index + 1}: two columns are what a comparison slide asks for, and this one is short enough to fit the page in them.`,
+).join('\n\n')
+const LAYOUT_TALL_BODY = Array.from(
+  { length: 26 },
+  (_, index) => `Overflow paragraph ${index + 1} of a slide that is too long for its columns, which is the case the template has to hand back to the flow layout.`,
+).join('\n\n')
+const LAYOUT_DECK = [
+  '<!-- layout: cover -->\n\n# Inkstone Layout Cover\n\nA subtitle under a title, on a slide that asked to be centred.',
+  `<!-- layout: split -->\n\n## Layout two columns\n\n${LAYOUT_FIT_BODY}`,
+  `<!-- layout: split -->\n\n## Layout columns that overflow\n\n${LAYOUT_TALL_BODY}`,
+  '## Layout plain slide\n\nNothing was asked for on this slide.',
+].join('\n\n---\n\n')
+
+async function openLayoutDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `${LAYOUT_DECK}\n`, 'layout')
   await sleep(1_500)
 }
 
 // The deck the show is on, as the controls report it.
 async function readDeckSize(page) {
   return page.evaluate(() => {
-    const position = document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? ''
+    const position = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? ''
     const [current, total] = position.split('/').map((part) => Number.parseInt(part.trim(), 10))
-    return { position, current, slides: total || 0 }
+    const deck = [...document.querySelectorAll('[data-presentation-rail] [data-slide-index]')].map((item) => `${Number(item.dataset.slideIndex) + 1}.${Number(item.dataset.slidePage ?? 0) + 1}`).join(' ')
+    return { position, current, slides: total || 0, deck }
+  })
+}
+
+// Where the presenter's cursor is inside the matrix, next to the page the projector is holding. The
+// two are separate states on purpose, so a read that only ever sees them agree proves nothing about
+// either of them.
+async function readFocusCard(page) {
+  return page.evaluate(() => {
+    const card = document.activeElement
+    const inGrid = Boolean(card?.closest('[data-presentation-overview]'))
+    const current = document.querySelector('[data-presentation-overview] [aria-current="true"]')
+    return {
+      index: inGrid ? Number(card.getAttribute('data-overview-index')) : -1,
+      top: card?.offsetTop ?? -1,
+      current: current ? Number(current.getAttribute('data-overview-index')) : -1,
+      position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+    }
   })
 }
 
@@ -1651,10 +4186,31 @@ async function readDeckSize(page) {
 // reading "the count has not changed lately" — a slice that is still measuring looks like that,
 // and the page assertions then ran against a list that had barely started.
 async function waitForRailFilled(page) {
-  await page.waitForFunction(
-    () => document.querySelector('[data-slide-list-complete="true"]') !== null,
-    { timeout: 60_000 },
-  )
+  const stalled = async () => page.evaluate(() => ({
+    complete: document.querySelector('[role="dialog"]')?.getAttribute('data-slide-list-complete') ?? 'absent',
+    busy: document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? '-',
+    preflight: Boolean(document.querySelector('[data-slide-preflight]')),
+    measuring: document.querySelector('[data-slide-list-measuring]')?.textContent?.trim() ?? '-',
+    entries: document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length,
+    position: document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? '',
+    rail: Boolean(document.querySelector('[data-presentation-rail]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    editor: (document.querySelector('.cm-content')?.textContent ?? '').length,
+  }))
+  const first = await stalled()
+  try {
+    await page.waitForFunction(
+      () => document.querySelector('[data-slide-list-complete="true"]') !== null,
+      { timeout: 60_000 },
+    )
+  } catch {
+    // Read the pass twice, two seconds apart: a count that has gone backwards means the deck is
+    // being restarted under the show (a fingerprint that will not settle), while a count frozen
+    // short of the deck means one slide stopped reporting. The two need different fixes, and a
+    // bare "60000ms exceeded" names neither.
+    await sleep(2_000)
+    throw new Error(`slide list never finished {"before":${JSON.stringify(first)},"after":${JSON.stringify(await stalled())}}`)
+  }
   return page.evaluate(() => document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length)
 }
 
@@ -1671,9 +4227,11 @@ async function readPageCountsPerSlide(page, expected) {
     if (!clicked) continue
     await sleep(800)
     const pages = await page.evaluate(() => {
-      const panel = document.querySelector('[role="dialog"]')
-      const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
-      return chip ? Number(chip.textContent.split('/')[1]) : 1
+      // N-11 put the sub-page inside the one position string the controls print: `3 / 14 · 2/4`, whose
+      // fourth number is how many pages that slide has. A slide with two numbers only has one page.
+      const printed = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent ?? ''
+      const numbers = (printed.match(/\d+/g) ?? []).map((value) => Number.parseInt(value, 10))
+      return numbers[3] ?? 1
     })
     results.push({ slide, entries: expected[slide], pages })
   }
@@ -1693,32 +4251,64 @@ async function clickPageEntry(browser, slide, pageOffset) {
   if (!clicked) throw new Error(`slide list has no page ${pageOffset + 1} on slide ${slide}`)
   await sleep(900)
   return browser.evaluate(() => {
-    const panel = document.querySelector('[role="dialog"]')
-    const chip = [...panel.querySelectorAll('span')].find((item) => /^\d+\/\d+$/.test(item.textContent ?? ''))
-    const [numerator, denominator] = (chip?.textContent ?? '').split('/')
-    return { numerator: Number(numerator), denominator: Number(denominator) }
+    const printed = document.querySelector('[role="dialog"] [data-deck-position]')?.textContent?.trim() ?? ''
+    const numbers = (printed.match(/\d+/g) ?? []).map((value) => Number.parseInt(value, 10))
+    return { sub: numbers[2] ?? 1, pages: numbers[3] ?? 1, printed }
+  })
+}
+
+// Where the keyboard actually is: the projector, the slide list, or the control pill — plus which
+// thumbnail of the list holds it, counted by position rather than by name because the accessible
+// name of every one of them says the same thing about the deck.
+async function presentationFocus(page) {
+  return page.evaluate(() => {
+    const active = document.activeElement
+    const tabs = [...document.querySelectorAll('[data-presentation-rail] [data-slide-index]')]
+    const ring = active?.closest?.('[data-presentation-rail] [data-slide-index]')
+      ? String(tabs.indexOf(active.closest('[data-presentation-rail] [data-slide-index]')))
+      : ''
+    const region = ring
+      ? 'rail'
+      : active?.closest?.('[data-presentation-chrome]') ? 'chrome'
+        : active?.closest?.('[role="dialog"]') ? 'dialog' : 'outside'
+    return { region, ring, label: active?.getAttribute?.('aria-label') ?? '', tag: active?.tagName?.toLowerCase() ?? '' }
   })
 }
 
 async function presentationSession(page) {
-  return page.evaluate(() => {
+  // The follow control is found by the two names it goes by, not by a substring: the audience door
+  // speaks of following too, and a regex that matches both reads the wrong button's label.
+  const names = [...LABELS.presentFollow, ...LABELS.presentFreeze, ...LABELS.presentFollowLost]
+  return page.evaluate((labels) => {
     const panel = document.querySelector('[role="dialog"]')
     const canvas = document.querySelector('[data-slide-canvas]')
     const stage = canvas?.parentElement?.getBoundingClientRect()
     const box = canvas?.getBoundingClientRect()
     const follow = [...(panel?.querySelectorAll('[data-presentation-chrome] button') ?? [])]
-      .find((item) => /跟随|冻结|Follow|Freeze/.test(item.getAttribute('aria-label') ?? ''))
-    const position = panel?.querySelector('[aria-live="polite"]')?.textContent?.trim() ?? ''
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    const position = panel?.querySelector('[data-deck-position]')?.textContent?.trim() ?? ''
     return {
       open: Boolean(canvas),
       position,
       total: Number.parseInt(position.split('/')[1] ?? '', 10) || 0,
       slides: panel?.querySelectorAll('[data-presentation-rail] [data-slide-index]').length ?? 0,
+      // The counter says how many pages the deck has; which page of which slide each of them is,
+      // is what tells a deck that grew by a slide from one whose slide grew by a page.
+      deck: [...(panel?.querySelectorAll('[data-presentation-rail] [data-slide-index]') ?? [])]
+        .map((item) => `${Number(item.dataset.slideIndex) + 1}.${Number(item.dataset.slidePage ?? 0) + 1}`)
+        .join(' '),
       followLabel: follow?.getAttribute('aria-label') ?? '',
       inDialog: Boolean(document.activeElement?.closest?.('[role="dialog"]')),
-      filled: Boolean(box && stage) && box.height >= stage.height - 1 && box.width >= stage.width - 1,
+      // The letterbox contract, stated the same way as in `assertPresentation`: reach one edge, cross
+      // neither, keep the ratio. A breakpoint round trip that leaves the sheet at the old size still
+      // fails this, and now says so with the two measurements beside it.
+      filled: Boolean(box && stage)
+        && (box.width >= stage.width - 1 || box.height >= stage.height - 1)
+        && box.width <= stage.width + 1 && box.height <= stage.height + 1
+        && Math.abs(box.width / box.height - 1280 / 720) < 0.01,
+      size: { stage: `${Math.round(stage?.width ?? -1)}x${Math.round(stage?.height ?? -1)}`, canvas: `${Math.round(box?.width ?? -1)}x${Math.round(box?.height ?? -1)}` },
     }
-  })
+  }, names)
 }
 
 // Presentation controls carry a locale-dependent aria-label; match either locale the
@@ -1735,9 +4325,8 @@ async function clickPresentationControl(page, labels) {
   if (!clicked) throw new Error(`presentation control missing: ${labels[0]}`)
 }
 
-// Each remote edit opens its own slide and ends on a blank line, so it adds exactly
-// one page wherever the editor's caret happens to sit when the text arrives — a
-// break is honoured both by the note that follows it and the deck that ends there.
+// Each remote edit opens its own slide, so with the cursor where `parkCaretAtNoteEnd` put it the
+// paste adds exactly one slide to the deck wherever the note ends.
 const LIVE_EDIT_ONE = '\n\n---\n\n## Editorial addition\n\nAdded from another writer.\n\n'
 const LIVE_EDIT_TWO = '\n\n---\n\n## Ignored\n\nWritten after the freeze.\n\n'
 // A two-slide deck whose second slide cannot fit one canvas: the show opens on slide 1,
@@ -1787,6 +4376,31 @@ async function appendToNote(page, markdown) {
   }, markdown)
   if (!appended) throw new Error('appendToNote: the editor is not mounted')
   await sleep(1_200) // autosave debounce, then the show's own follow debounce
+}
+
+// The live edits of the session scenario are pastes, and a paste lands wherever the editor's own cursor
+// sits — which, for a note that a pane switch has just re-mounted, is offset 0. That is the one place an
+// insert can do something no author can do to a note: it pushes the note's own title-and-createdAt block
+// off the head of the file, after which its two rules are deck separators and the deck gains a slide
+// made of metadata. Park the cursor at the end, where the next thing a presenter types would land, while
+// the note is still focusable; `writeAtEndOfNote` reaches the same position by typing when it can.
+async function parkCaretAtNoteEnd(page) {
+  const focused = await page.evaluate(() => {
+    const content = document.querySelector('.cm-content')
+    if (!content) throw new Error('parkCaretAtNoteEnd: the editor is not mounted')
+    content.focus()
+    return document.activeElement === content
+  })
+  if (!focused) throw new Error('parkCaretAtNoteEnd: the editor does not take focus')
+  await page.keyboard.down('Control')
+  await page.keyboard.press('End')
+  await page.keyboard.up('Control')
+  const atEnd = await page.evaluate(() => {
+    const lines = document.querySelectorAll('.cm-content .cm-line')
+    const last = lines[lines.length - 1]
+    return Boolean(last?.contains(window.getSelection()?.anchorNode ?? null))
+  })
+  if (!atEnd) throw new Error('parkCaretAtNoteEnd: the cursor did not reach the end of the note')
 }
 
 // A toolbar is one row: expanding a panel inside it must not change its height, or the control that
@@ -2422,7 +5036,12 @@ async function clickToggle(page, toolbar, index, skipped = []) {
 async function dismissTransientLayers(page, root) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const layers = await page.evaluate((selector) => [...document.querySelectorAll('[role="dialog"], [role="menu"]')]
-      .filter((element) => !element.matches(selector) && !element.closest(selector)).length, root)
+      .filter((element) => !element.matches(selector) && !element.closest(selector)).length
+      // The show's overview is not a dialog but a layer inside it, and it makes the pill inert:
+      // left up, the sweep's next pointer press is swallowed by that layer and reports a toolbar
+      // that held still, which is the quiet no-op this helper exists to prevent. `Esc` is the app's
+      // own key for putting the matrix away (asserted in `assertPresentationOverview`).
+      + document.querySelectorAll('[data-presentation-overview]').length, root)
     if (layers === 0) return
     await page.keyboard.press('Escape')
     await sleep(240)
@@ -4851,6 +7470,32 @@ async function readSweepContent(page, surface) {
   return loaded
 }
 
+/**
+ * Watches where focus comes to rest instead of reading it once. L-8's red says `active: body`, which fits
+ * both "never handed back" and "handed back, then taken" — those need different fixes, and one sample
+ * cannot tell them apart. So the half second after the surface closes is watched and only the changes are
+ * kept, together with whether the control that was marked before pressing is still in the document.
+ * Recorded, never judged: the assertion below answers the same question it always did.
+ */
+async function readFocusTrail(page) {
+  const trail = []
+  for (let hop = 0; hop < 14; hop++) {
+    const state = await page.evaluate(() => {
+      const active = document.activeElement instanceof Element ? document.activeElement : null
+      const marked = (window.__gateOpeners ?? []).at(-1) ?? null
+      return {
+        on: active ? `${active.tagName.toLowerCase()}${active.getAttribute('aria-label') ? `[${active.getAttribute('aria-label')}]` : ''}` : 'nothing',
+        openerConnected: marked ? marked.isConnected : null,
+        hasFocus: document.hasFocus(),
+      }
+    })
+    const last = trail.at(-1)
+    if (!last || last.on !== state.on || last.openerConnected !== state.openerConnected || last.hasFocus !== state.hasFocus) trail.push(state)
+    await sleep(30)
+  }
+  return trail
+}
+
 async function assertFullscreenToolbars(page) {
   // The hotkeys below are the app's own, and half of them are refused while a text field has the
   // keyboard: each surface starts from no focus at all rather than from wherever the last scenario
@@ -4920,7 +7565,8 @@ async function assertFullscreenToolbars(page) {
         returned: (connected !== null && active === connected) || inherited,
       }
     }, surface.successorAttributes ?? [])
-    check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify(focus))
+    const trail = await readFocusTrail(page)
+    check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify({ ...focus, trail }))
   }
   // The drawer's entry is the one that changed the window: the run leaves the app as it found it.
   await page.setViewport(DESKTOP_VIEWPORT)
@@ -8785,14 +11431,23 @@ async function main() {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
   const consoleErrors = []
+  // The other half of L-15's question: a 409 on a note is the server doing optimistic locking right,
+  // so what the gate needs is who wrote and when — the method, the route, the status, and the assertion
+  // the run was standing on. Recorded, never judged: a failed request is not an assertion.
+  const httpWrites = []
   try {
     const page = await browser.newPage()
     page.on('console', (message) => {
       // The failing resource's own URL travels with the message: a failed load is judged by what was
       // loaded and not only by what Chrome said about it.
-      if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location()?.url ?? '' })
+      if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location()?.url ?? '', after: lastScene })
     })
-    page.on('pageerror', (error) => consoleErrors.push({ text: String(error), url: '' }))
+    page.on('pageerror', (error) => consoleErrors.push({ text: String(error), url: '', after: lastScene }))
+    page.on('response', (response) => {
+      const method = response.request().method()
+      if (method === 'GET' || response.status() < 400) return
+      httpWrites.push({ method, status: response.status(), url: response.url(), after: lastScene })
+    })
 
     await page.setViewport(MOBILE_VIEWPORT)
     await page.goto(BASE, { waitUntil: 'networkidle2' })
@@ -8811,11 +11466,27 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertPresentationStepping(browser, page)
+    await assertKanbanOnProjector(page)
     await assertGraphThemeFollow(page)
     await assertGraphKeyboardWalk(page)
     await assertPresentationAccessibility(page)
+    await assertPresentationLaser(page)
+    await assertPresentationChromeAutoHide(page)
+    await assertPresentationScreenCover(page)
     await assertDeckExport(page)
+    await assertSlideCarriesNoControls(page)
+    await assertDeckHandout(page)
+    await assertPresentationKeyGuide(page)
+    await assertPresentationOnTouch(page)
     await assertDeckImageExport(page)
+    await assertDeckHtmlExport(browser, page)
+    await assertPresentationOverview(page)
+    await assertAudienceFollow(browser, page, consoleErrors)
+    await assertPresenterConsole(browser, page)
+    await assertFollowLost(browser, page)
+    await assertSettingsReachTheShow(browser, page)
+    await assertSlideLayouts(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
@@ -8856,7 +11527,10 @@ async function main() {
     ]
     const fatal = consoleErrors.filter((entry) => !ALLOWED_PAGE_ERRORS.some((allowed) =>
       allowed.text.test(entry.text) && (!allowed.url || allowed.url.test(entry.url))))
-    check('console: no page errors', fatal.length === 0, JSON.stringify(fatal.slice(0, 3)))
+    // The trail travels with the error: which assertion the run was standing on when it arrived, and
+    // every write that was refused since the page opened. Without it a 409 is an accusation with no
+    // scene of the crime (L-15).
+    check('console: no page errors', fatal.length === 0, JSON.stringify({ fatal: fatal.slice(0, 3), writes: httpWrites.slice(-8) }))
   } finally {
     await browser.close()
   }

@@ -2,6 +2,7 @@ import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
 import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS, BLOG_POSTS_TRASH_INDEX_STATEMENTS } from './blog-posts'
 import { BLOG_REVISIONS_INDEX_STATEMENTS, BLOG_REVISIONS_TABLE_STATEMENT } from './blog-revisions'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
+import { SHARE_PRESENCE_TABLE_STATEMENTS } from './share-presence'
 import { BLOG_ORDER_INDEX_STATEMENTS } from './indexes'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
 import type { SchemaMigration } from './types'
@@ -903,5 +904,12 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
              ELSE blog_fts_queue.created_at + 1
            END`,
     ],
+  },
+  // N-34 / ADR-0006: the audience-side show position. One row per shared note that is being presented,
+  // keyed by the slug a viewer already has, holding a hashed capability token and a lease — never a
+  // viewer identifier, and never a history of where the talk had been.
+  {
+    version: 60,
+    statements: SHARE_PRESENCE_TABLE_STATEMENTS,
   },
 ]

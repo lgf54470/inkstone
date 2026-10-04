@@ -91,11 +91,11 @@ async function runExportEnhancements(container: HTMLDivElement, note: { title: s
       math: true,
       mermaid: true,
       instantCharts: true,
-      // The exported document is standalone, so a map travels as a drawn image.
+      // The exported document is standalone: a map, a whiteboard and a deck of slides all travel as
+      // drawn stills, and a kanban's cards as the list its fence describes.
       mindmap: 'snapshot',
-      // The same for a whiteboard: a board cannot draw itself inside a document.
       excalidraw: 'snapshot',
-      // And for a kanban, whose cards travel as the list the fence describes.
+      slides: 'snapshot',
       kanban: 'snapshot',
       // And for a chart: the exported document carries the drawn image, not the library.
       echarts: 'snapshot',

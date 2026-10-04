@@ -37,9 +37,9 @@ export function KanbanCardPeek({ onClose, header, content, footer }: DetailShell
       ariaLabel={t('preview.kanban_card_details')}
     >
       <div className='flex h-full flex-col'>
-        <div className='shrink-0 border-b border-[var(--border-subtle)] px-4 py-3'>{header}</div>
-        <div className='min-h-0 flex-1 overflow-y-auto px-4 py-3'>{content}</div>
-        <div className='shrink-0 border-t border-[var(--border-subtle)] px-4 py-3'>{footer}</div>
+        <div className='shrink-0 border-b border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3)]'>{header}</div>
+        <div className='min-h-0 flex-1 overflow-y-auto px-[var(--sp-4)] py-[var(--sp-3)]'>{content}</div>
+        <div className='shrink-0 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3)]'>{footer}</div>
       </div>
     </Drawer>
   )

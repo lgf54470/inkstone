@@ -27,7 +27,7 @@ function CardTagItem({
   return (
     <span
       style={getKanbanTagStyle(color)}
-      className={`group/tag inline-flex items-center gap-0.5 rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-semibold transition-all ${
+      className={`group/tag inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-semibold transition-all ${
         isSelected ? 'ring-2 ring-[var(--accent)]' : ''
       }`}
     >
@@ -54,7 +54,7 @@ function CardTagItem({
           // reveal at once, and both variants carry the same specificity as `group-hover/card` —
           // Tailwind emits them in its own order, so without the flag which one wins is whichever rule
           // it happened to write last. Neither class reaches past this element.
-          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 pointer-coarse:!opacity-100 hover:text-[var(--text-primary)]'
+          className='ml-[var(--sp-0\\.5)] rounded-[var(--r-xs)] p-[var(--sp-0\\.5)] opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 pointer-coarse:!opacity-100 hover:text-[var(--text-primary)]'
           aria-label={t('preview.kanban_remove_tag_named', { name })}
         >
           <X size={10} />
@@ -95,7 +95,7 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
           e.preventDefault()
           setOpen((prev) => !prev)
         }}
-        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+        className='inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
         title={t('preview.kanban_new_tag')}
         aria-haspopup='dialog'
@@ -153,8 +153,8 @@ export function CardHeader({
     : undefined
 
   return (
-    <div className='flex items-center justify-between gap-1.5'>
-      <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
+    <div className='flex items-center justify-between gap-[var(--sp-1\\.5)]'>
+      <div className='flex min-w-0 flex-wrap items-center gap-[var(--sp-1\\.5)]'>
         <input
           type='checkbox'
           checked={isSelected}

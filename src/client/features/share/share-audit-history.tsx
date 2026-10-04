@@ -16,14 +16,14 @@ const AUDIT_READ_LIMIT = 50
 export function ShareAuditHistory({ noteId }: { noteId: string }) {
   const { entries, isLoading, error, reload } = useShareAuditLog(noteId)
   return (
-    <section className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3' aria-label={t('share.audit_history_title')}>
-      <p className='flex items-center gap-1.5 text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
+    <section className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]' aria-label={t('share.audit_history_title')}>
+      <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
         <History size={12} aria-hidden />
         {t('share.audit_history_title')}
       </p>
       {error ? (
         <>
-          <p role='alert' className='pt-2 text-[length:var(--text-11)] text-[var(--danger)]'>{t('share.audit_load_failed')}</p>
+          <p role='alert' className='pt-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--danger)]'>{t('share.audit_load_failed')}</p>
           <button
             type='button'
             onClick={reload}
@@ -33,16 +33,16 @@ export function ShareAuditHistory({ noteId }: { noteId: string }) {
           </button>
         </>
       ) : isLoading ? (
-        <div className='space-y-1.5 pt-2' aria-busy='true'>
-          {[0, 1, 2].map((row) => <Skeleton key={row} className='h-4' />)}
+        <div className='space-y-1.5 pt-[var(--sp-2)]' aria-busy='true'>
+          {[0, 1, 2].map((row) => <Skeleton key={row} className='h-[var(--sp-4)]' />)}
         </div>
       ) : entries.length === 0 ? (
-        <p className='pt-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.audit_empty')}</p>
+        <p className='pt-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.audit_empty')}</p>
       ) : (
         <AuditEntryList entries={entries} />
       )}
       {!error && !isLoading && entries.length >= AUDIT_READ_LIMIT && (
-        <p className='pt-2 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('share.audit_truncated', { count: AUDIT_READ_LIMIT })}</p>
+        <p className='pt-[var(--sp-2)] text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('share.audit_truncated', { count: AUDIT_READ_LIMIT })}</p>
       )}
       {!error && !isLoading && <ReloadRow onReload={reload} />}
     </section>
@@ -51,17 +51,17 @@ export function ShareAuditHistory({ noteId }: { noteId: string }) {
 
 function AuditEntryList({ entries }: { entries: ShareAuditLogEntry[] }) {
   return (
-    <ul className='space-y-2 pt-2'>
+    <ul className='space-y-2 pt-[var(--sp-2)]'>
       {entries.map((entry) => (
         <li key={entry.id} className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-          <div className='flex items-baseline justify-between gap-2'>
+          <div className='flex items-baseline justify-between gap-[var(--sp-2)]'>
             <span className='font-medium text-[var(--text-primary)]'>{auditActionLabel(entry.action)}</span>
             <time dateTime={new Date(entry.createdAt).toISOString()} title={fullTime(entry.createdAt)}>
               {relativeTime(entry.createdAt)}
             </time>
           </div>
           {entry.changed.length > 0 && (
-            <ul className='mt-0.5 space-y-0.5'>
+            <ul className='mt-[var(--sp-0\\.5)] space-y-0.5'>
               {entry.changed.map((change) => (
                 <li key={change.field} className='text-[var(--text-tertiary)]'>{auditChangeLine(change)}</li>
               ))}
@@ -78,7 +78,7 @@ function ReloadRow({ onReload }: { onReload: () => void }) {
     <button
       type='button'
       onClick={onReload}
-      className='mt-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline'
+      className='mt-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-tertiary)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline'
     >
       {t('common.refresh')}
     </button>

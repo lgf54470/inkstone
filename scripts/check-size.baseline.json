@@ -75,6 +75,21 @@
   "src/client/features/music/music-track-table.test.ts": {
     "lines": 532
   },
+  "src/client/features/presentation/deck-print.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/presentation-controls.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/slide-overview-grid.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/slides.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/use-presentation-keys.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/code-block-toolbar.test.ts": {
     "longFns": 1
   },
@@ -155,7 +170,7 @@
     "longFns": 1
   },
   "src/client/lib/markdown/enhance.test.ts": {
-    "lines": 639,
+    "lines": 699,
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
@@ -235,6 +250,9 @@
   "src/client/styles/prose/blocks.css": {
     "lines": 658
   },
+  "src/client/styles/tokens.css": {
+    "lines": 502
+  },
   "src/shared/locales/en-US/music.ts": {
     "lines": 557
   },
@@ -248,7 +266,7 @@
     "lines": 659
   },
   "src/worker/db/schema/migrations.ts": {
-    "lines": 908
+    "lines": 916
   },
   "src/worker/middleware/security-headers.ts": {
     "longFns": 2

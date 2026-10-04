@@ -75,3 +75,25 @@ describe('useDialogFocus focus return', () => {
     expect(document.activeElement).toBe(document.body)
   })
 })
+
+// A dialog can put part of itself out of reach while it stays open — the presentation overlay does
+// this to the slide surface under its overview grid, and to the control pill when it fades. Those
+// controls cannot be focused, so the trap must not offer them: the first element on its list is the
+// one the dialog opens on.
+describe('useDialogFocus with an inert part of the panel', () => {
+  function InertPanel() {
+    const panelRef = useRef<HTMLDivElement>(null)
+    useDialogFocus(true, panelRef)
+    return createElement(
+      'div',
+      { ref: panelRef, role: 'dialog' },
+      createElement('div', { inert: true }, createElement('button', { id: 'parked' }, 'parked')),
+      createElement('button', { id: 'reaching' }, 'reaching'),
+    )
+  }
+
+  it('opens on the control it can actually reach', () => {
+    renderElement(createElement(InertPanel))
+    expect(document.activeElement?.id).toBe('reaching')
+  })
+})

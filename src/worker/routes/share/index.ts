@@ -8,6 +8,7 @@ import { registerShareCollectionPublicRoutes } from './collection-public'
 import { registerShareCollectionRoutes } from './collections'
 import { registerShareNoteRoutes } from './note'
 import { registerShareOrganizerRoutes } from './organizer'
+import { registerSharePresenceRoutes, registerSharePublicPresenceRoutes } from './presence'
 import { registerSharePageRoutes } from './page'
 import { registerSharePublicRoutes } from './public'
 import { registerShareSessionRoutes } from './sessions'
@@ -33,8 +34,12 @@ registerShareSessionRoutes(shareManageRoutes)
 // it, which is why the collection routes sit here rather than with the public ones.
 registerShareCollectionRoutes(shareManageRoutes)
 registerShareNoteRoutes(shareManageRoutes)
+// Two-segment paths (`/:noteId/present…`), so they cannot be swallowed by the single-segment
+// `/:noteId` routes above — and they must stay registered on the manage side, where `requireAuth` runs.
+registerSharePresenceRoutes(shareManageRoutes)
 registerSharePublicRoutes(shareRoutes)
 registerShareCollectionPublicRoutes(shareRoutes)
+registerSharePublicPresenceRoutes(shareRoutes)
 registerSharePageRoutes(sharePageRoutes)
 registerCollectionPageRoutes(collectionPageRoutes)
 

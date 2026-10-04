@@ -38,7 +38,7 @@ export function MusicSelectionBar({ visibleIds }: { visibleIds: string[] }) {
     <div
       role='toolbar'
       aria-label={t('music.selection')}
-      className='flex flex-wrap items-center gap-1.5 border-b border-[var(--border-subtle)] bg-[var(--accent-softer)] px-3 py-2'
+      className='flex flex-wrap items-center gap-[var(--sp-1\\.5)] border-b border-[var(--border-subtle)] bg-[var(--accent-softer)] px-[var(--sp-3)] py-[var(--sp-2)]'
     >
       <SelectionScope count={selectedIds.length} visibleIds={visibleIds} />
       <span className='flex-1' />
@@ -55,7 +55,7 @@ function SelectionScope({ count, visibleIds }: { count: number; visibleIds: stri
     <>
       <span className='text-[length:var(--text-12)] font-medium text-[var(--accent)]'>{t('music.selected_count', { value0: count })}</span>
       <span className='hidden text-[length:var(--text-10)] text-[var(--text-quaternary)] md:inline'>{t('music.selection_hint')}</span>
-      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Button size='sm' onClick={() => selectAll(visibleIds)}>{t('music.select_all')}</Button>
       <Button size='sm' onClick={() => invertSelection(visibleIds)}>{t('music.invert_selection')}</Button>
       <Button size='sm' onClick={clearSelection}>{t('music.clear_selection')}</Button>

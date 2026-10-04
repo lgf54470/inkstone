@@ -1,5 +1,6 @@
 import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { vi } from 'vitest'
 
 /** Idempotent jsdom shims needed to render React components in unit tests. */
 export function installTestGlobals(): void {
@@ -14,6 +15,36 @@ export function installTestGlobals(): void {
   }
 }
 
+
+// jsdom answers every media query with `false`, which the app reads as a phone, so a case written
+// about what a wide window draws has to say which room it is describing. Only width queries answer the
+// call: a stub that also claimed `prefers-reduced-motion` or `(hover: hover)` would change what
+// unrelated readers of `matchMedia` see. Teardown is `vi.unstubAllGlobals()`.
+export function stubBreakpoint(wide: boolean): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: wide && query.includes('min-width'),
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }))
+}
+
+// The show as a wide window draws it: `useBreakpoint` reads desktop (jsdom answers every media query
+// with false, which is the phone layout — one door and no controls), and the two browser objects the
+// slide rail needs once it opens are stood up, the same way the rail's own cases do it. Teardown is
+// `vi.unstubAllGlobals()`.
+export function stubWideShow(): void {
+  stubBreakpoint(true)
+  // jsdom defines no `scrollIntoView` at all, so it is assigned rather than spied — the same
+  // stand-in the rail's own cases use.
+  window.HTMLElement.prototype.scrollIntoView = vi.fn()
+  class ObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal('IntersectionObserver', ObserverStub)
+}
 
 export interface RenderedElement {
   container: HTMLElement

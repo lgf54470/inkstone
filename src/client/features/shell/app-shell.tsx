@@ -10,11 +10,12 @@ import { InlineErrorBoundary } from '../../components/error-boundary'
 import { EditorSkeleton } from '../../components/feedback'
 import { PANEL_WIDTHS, useUi } from '../../store/ui'
 import { createContextualNote } from '../../store/notes'
+import { usePresentation } from '../../store/presentation'
 import { useNotes } from '../../store/notes'
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands'
 import { useSession } from '../../store/session'
 import { useUpdate } from '../../store/update'
-import { PresentationOverlay } from '../presentation'
+import { PRESENTATION_HOTKEYS, PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
 import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync, MusicTrackMenuHost } from '../music'
@@ -213,7 +214,7 @@ function MobileShell() {
 
     <PinnedWindowsLayer />
     <nav aria-label={t('shell.mobile_navigation')} className='flex h-[calc(56px+env(safe-area-inset-bottom))] shrink-0 items-stretch justify-around border-t border-[var(--border-subtle)] bg-[var(--bg-sunken)] pb-[env(safe-area-inset-bottom)]'>
-    {tabs.map((tab) => (<button key={tab.id} type='button' aria-current={pane === tab.id ? 'page' : undefined} onClick={() => setPane(tab.id)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[length:var(--text-10)] transition-colors active:bg-[var(--bg-active)]', pane === tab.id ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
+    {tabs.map((tab) => (<button key={tab.id} type='button' aria-current={pane === tab.id ? 'page' : undefined} onClick={() => setPane(tab.id)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-[var(--sp-0\\.5)] text-[length:var(--text-10)] transition-colors active:bg-[var(--bg-active)]', pane === tab.id ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
       <span className={cn('mobile-tab-icon', pane === tab.id && 'is-active')}>{tab.icon}</span>
       {tab.label}
       </button>))}
@@ -284,10 +285,10 @@ function OverlayHost() {
 }
 
 function useGlobalHotkeys(): void {
-  useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS]), [])
+  useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS, ...PRESENTATION_HOTKEYS]), [])
 }
 
-const GLOBAL_HOTKEYS: Hotkey[] = [
+export const GLOBAL_HOTKEYS: Hotkey[] = [
   {
     id: 'command',
     combo: 'mod+k',
@@ -371,6 +372,10 @@ const GLOBAL_HOTKEYS: Hotkey[] = [
     combo: 'shift+?',
     description: () => t('shell.keyboard_shortcuts'),
     group: () => t('shell.global'),
+    // While a show is up, `?` belongs to the projector: it opens the show's own key card there, and an
+    // app-wide modal stacked over the talk would be the third thing on the screen. The registry runs
+    // before the overlay's own listener and swallows the keystroke it answers, so this is the gate.
+    when: () => !usePresentation.getState().open,
     handler: () => uiState().togglePanel('shortcuts'),
   },
   {

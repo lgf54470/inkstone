@@ -31,14 +31,14 @@ export function KanbanDueNotice({
     <div
       role='status'
       data-kanban-due-notice
-      className='flex items-center gap-2 px-4 pt-2 text-[length:var(--text-12)] text-[var(--text-secondary)]'
+      className='flex items-center gap-[var(--sp-2)] px-[var(--sp-4)] pt-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)]'
     >
       <AlarmClock size={14} aria-hidden />
       {notice.overdue.length > 0 && (
         <button
           type='button'
           onClick={() => onApplyFilters([{ propertyId: notice.propertyId, operator: 'is_overdue' }])}
-          className='rounded-[var(--r-sm)] px-1.5 py-0.5 font-medium text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]'
+          className='rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]'
         >
           {t('preview.kanban_due_overdue', { count: notice.overdue.length })}
         </button>
@@ -47,7 +47,7 @@ export function KanbanDueNotice({
         <button
           type='button'
           onClick={() => onApplyFilters([{ propertyId: notice.propertyId, operator: 'equals', value: dateKey(new Date()) }])}
-          className='rounded-[var(--r-sm)] px-1.5 py-0.5 font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
+          className='rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
         >
           {t('preview.kanban_due_today', { count: notice.dueToday.length })}
         </button>
@@ -56,7 +56,7 @@ export function KanbanDueNotice({
         type='button'
         aria-label={t('preview.kanban_due_dismiss')}
         onClick={() => setDismissed(true)}
-        className='ml-auto rounded-[var(--r-sm)] p-1 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        className='ml-auto rounded-[var(--r-sm)] p-[var(--sp-1)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <X size={13} aria-hidden />
       </button>

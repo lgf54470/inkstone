@@ -60,7 +60,7 @@ function ListRowTagBadges({
               onToggleTag?.(tag)
             }}
             style={getKanbanTagStyle(color)}
-            className={`hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold transition-all ${
+            className={`hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)] font-semibold transition-all ${
               isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-bold' : ''
             }`}
           >
@@ -100,7 +100,7 @@ function ListRowLeading({
   const hasSubtasks = (item.subtasks?.length ?? 0) > 0
 
   return (
-    <div className='flex min-w-0 flex-1 items-center gap-2'>
+    <div className='flex min-w-0 flex-1 items-center gap-[var(--sp-2)]'>
       {hasSubtasks && (
         <button
           type='button'
@@ -158,7 +158,7 @@ function ListRowSubtasksAndDate({
   return (
     <>
       {subtasks.length > 0 && (
-        <span className='hidden sm:inline-flex items-center gap-1 rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[var(--text-tertiary)]'>
+        <span className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[var(--text-tertiary)]'>
           <CheckSquare size={11} />
           <span>{completedCount}/{subtasks.length}</span>
         </span>
@@ -182,12 +182,12 @@ function ListRowTrailing({
   const assignee = kanbanPersonName(item.properties.assignee)
 
   return (
-    <div className='flex shrink-0 items-center gap-2 text-[length:var(--text-11)]'>
+    <div className='flex shrink-0 items-center gap-[var(--sp-2)] text-[length:var(--text-11)]'>
       <ListRowSubtasksAndDate item={item} subtasks={subtasks} />
       {statusOpt && (
         <span
           style={getKanbanTagStyle(statusOpt.color)}
-          className='inline-flex items-center rounded-[var(--r-xs)] px-2 py-0.5 font-medium'
+          className='inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] font-medium'
         >
           {formatKanbanOptionLabel(statusOpt, 'status')}
         </span>
@@ -195,14 +195,14 @@ function ListRowTrailing({
       {priorityOpt && (
         <span
           style={getKanbanTagStyle(priorityOpt.color)}
-          className='hidden sm:inline-flex items-center gap-1 rounded-[var(--r-xs)] px-1.5 py-0.5 font-medium'
+          className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium'
         >
           <Flag size={11} />
           <span>{formatKanbanOptionLabel(priorityOpt, 'priority')}</span>
         </span>
       )}
       {filesCount > 0 && (
-        <span className='hidden sm:inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
+        <span className='hidden sm:inline-flex items-center gap-[var(--sp-0\\.5)] text-[var(--text-tertiary)]'>
           <Paperclip size={11} />
           <span>{filesCount}</span>
         </span>
@@ -214,9 +214,9 @@ function ListRowTrailing({
 
 function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
   return (
-    <div className='flex flex-col gap-1 border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 py-2 pl-12 pr-4'>
+    <div className='flex flex-col gap-[var(--sp-1)] border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 py-[var(--sp-2)] pl-[var(--sp-12)] pr-[var(--sp-4)]'>
       {subtasks.map((st) => (
-        <div key={st.id} className='flex items-center gap-2 text-[length:var(--text-12)]'>
+        <div key={st.id} className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-12)]'>
           <span
             className={`flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border ${
               st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]' : 'border-[var(--border-default)]'
@@ -269,7 +269,7 @@ function KanbanListRow({
       {/* The row is the board's card stretched sideways (SH-107): a container, and the title it leads
           with is the button that opens the detail. */}
       <div
-        className={`flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
+        className={`flex items-center justify-between gap-[var(--sp-3)] px-[var(--sp-3)] py-[var(--sp-2\\.5)] transition-colors hover:bg-[var(--bg-hover)] ${
           isSelected ? 'bg-[var(--accent-softer)]' : ''
         }`}
       >
@@ -314,7 +314,7 @@ export const KanbanListView = memo(function KanbanListView({
   const tagsCol = kanbanTagsColumn(data.columns)
 
   return (
-    <div className='flex h-full w-full flex-col overflow-y-auto p-4'>
+    <div className='flex h-full w-full flex-col overflow-y-auto p-[var(--sp-4)]'>
       <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         {visible.map((item) => (
           <KanbanListRow
@@ -333,11 +333,11 @@ export const KanbanListView = memo(function KanbanListView({
 
         <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
 
-        <div className='p-2'>
+        <div className='p-[var(--sp-2)]'>
           <button
             type='button'
             onClick={onAddItem}
-            className='flex items-center gap-1.5 rounded-[var(--r-md)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+            className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           >
             <Plus size={13} />
             <span>{t('preview.kanban_new_item')}</span>

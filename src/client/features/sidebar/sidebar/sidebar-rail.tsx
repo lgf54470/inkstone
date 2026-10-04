@@ -23,7 +23,7 @@ export function SidebarRail({ onExpand }: {
     const panel = useUi((s) => s.panel)
     const openView = useUi((s) => s.openView)
     return (<aside className='flex h-full min-h-0 flex-col items-center bg-[var(--bg-sunken)]'>
-      <div className='flex h-11 w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]'>
+      <div className='flex h-[var(--band-h)] w-full shrink-0 items-center justify-center border-b border-[var(--border-subtle)]'>
         <Tooltip label={t('sidebar.expand_navigation')} side='right'>
           <IconButton label={t('sidebar.expand_navigation')} onClick={onExpand}>
             <PanelLeft size={16}/>
@@ -31,22 +31,22 @@ export function SidebarRail({ onExpand }: {
         </Tooltip>
       </div>
 
-      <div className='flex w-full flex-col items-center gap-1 py-2'>
+      <div className='flex w-full flex-col items-center gap-[var(--sp-1)] py-[var(--sp-2)]'>
         <SearchButton variant='icon' />
         <RailButton label={t('navigation.pinned')} active={view === 'pinned' && !panel} icon={<Pin size={16}/>} onClick={() => openView('pinned')}/>
         <RailButton label={t('navigation.favorites')} active={view === 'starred' && !panel} icon={<Star size={16}/>} onClick={() => openView('starred')}/>
         <RailButton label={t('navigation.share')} active={(view === 'shared' || panel === 'share-hub')} icon={<Share2 size={16}/>} onClick={() => openView('shared')}/>
         <RailButton label={t('navigation.published')} active={(view === 'published' || panel === 'blog-hub')} icon={<Globe size={16}/>} onClick={() => openView('published')}/>
-        <div className='my-1 h-px w-6 bg-[var(--border-subtle)]'/>
+        <div className='my-[var(--sp-1)] h-px w-[var(--sp-6)] bg-[var(--border-subtle)]'/>
         <RailButton label={t('navigation.all_notes')} active={view === 'all' && !panel} icon={<FileText size={16}/>} onClick={() => openView('all')}/>
         <RailButton label={t('navigation.trash')} active={view === 'trash' && !panel} icon={<Trash2 size={16}/>} onClick={() => openView('trash')}/>
-        <div className='my-1 h-px w-6 bg-[var(--border-subtle)]'/>
+        <div className='my-[var(--sp-1)] h-px w-[var(--sp-6)] bg-[var(--border-subtle)]'/>
         <RailButton label={t('common.new_note')} combo='mod+n' accent icon={<FilePlus2 size={16}/>} onClick={() => void createContextualNote()}/>
       </div>
 
       <span className='flex-1'/>
 
-      <div className='flex w-full shrink-0 justify-center border-t border-[var(--border-subtle)] py-2'>
+      <div className='flex w-full shrink-0 justify-center border-t border-[var(--border-subtle)] py-[var(--sp-2)]'>
         <SidebarAccount rail/>
       </div>
     </aside>)

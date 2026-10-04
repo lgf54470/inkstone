@@ -24,7 +24,7 @@ export function LinkEditModal(props: LinkEditModalProps) {
 
   return (
     <Modal open={props.open} onClose={props.onClose} title={props.link ? t('blog.edit_link') : t('blog.add_link')} width={MODAL_WIDTH}>
-      <form onSubmit={form.handleSubmit} className='space-y-4 py-1'>
+      <form onSubmit={form.handleSubmit} className='space-y-4 py-[var(--sp-1)]'>
         <LinkBasicFields
           name={form.name}
           setName={form.setName}
@@ -49,7 +49,7 @@ export function LinkEditModal(props: LinkEditModalProps) {
           setIsFavorite={form.setIsFavorite}
           categoryOptions={categoryOptions}
         />
-        <div className='flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]'>
+        <div className='flex justify-end gap-[var(--sp-2)] pt-[var(--sp-3)] border-t border-[var(--border-subtle)]'>
           <Button type='button' variant='ghost' onClick={props.onClose}>
             {t('common.cancel')}
           </Button>
@@ -148,7 +148,7 @@ function LinkBasicFields({
       </Field>
       <Field label={t('blog.link_avatar')}>
         <div className='space-y-2'>
-          <div className='flex gap-2 items-center'>
+          <div className='flex gap-[var(--sp-2)] items-center'>
             <div className='size-8 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--bg-sunken)] border border-[var(--border-subtle)] shrink-0 overflow-hidden'>
               <LinkDynamicIcon icon={avatar} name={name} url={url} size={18} />
             </div>
@@ -190,7 +190,7 @@ function LinkMetaFields({
 }) {
   return (
     <>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('blog.link_category')}>
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             {categoryOptions.map((opt) => (
@@ -211,7 +211,7 @@ function LinkMetaFields({
       <Field label={t('blog.link_email')}>
         <Input value={email} onChange={(e) => setEmail(e.target.value)} type='email' placeholder={t('blog.link_email_placeholder')} />
       </Field>
-      <div className='flex items-center gap-4 pt-1'>
+      <div className='flex items-center gap-[var(--sp-4)] pt-[var(--sp-1)]'>
         <Checkbox checked={isPinned} onChange={setIsPinned} label={t('blog.link_pin')} />
         <Checkbox checked={isFavorite} onChange={setIsFavorite} label={t('blog.link_favorite')} />
       </div>

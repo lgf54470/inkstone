@@ -49,9 +49,9 @@ const VARIANTS: Record<Variant, string> = {
 }
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-9 px-3 text-[length:var(--text-12)] gap-1.5 rounded-[var(--r-sm)] md:h-7 md:px-2.5',
-  md: 'h-10 px-3.5 text-[length:var(--text-13)] gap-1.5 rounded-[var(--r-md)] md:h-8 md:px-3',
-  lg: 'h-11 px-4 text-[length:var(--text-14)] gap-2 rounded-[var(--r-md)] md:h-10',
+  sm: 'h-[var(--btn-h-sm)] px-[var(--sp-3)] text-[length:var(--text-12)] gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] md:h-[var(--btn-h-sm-compact)] md:px-[var(--sp-2\\.5)]',
+  md: 'h-[var(--btn-h-md)] px-[var(--sp-3\\.5)] text-[length:var(--text-13)] gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] md:h-[var(--btn-h-md-compact)] md:px-[var(--sp-3)]',
+  lg: 'h-[var(--btn-h-lg)] px-[var(--sp-4)] text-[length:var(--text-14)] gap-[var(--sp-2)] rounded-[var(--r-md)] md:h-[var(--btn-h-lg-compact)]',
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -171,7 +171,7 @@ export function Spinner({ size = 14, className }: { size?: number; className?: s
 export function Kbd({ combo, keys }: { combo?: string; keys?: string[] }) {
   const parts = keys ?? (combo ? prettyCombo(combo) : [])
   return (
-    <span className='inline-flex shrink-0 items-center gap-0.75'>
+    <span className='inline-flex shrink-0 items-center gap-[var(--sp-0\\.75)]'>
       {parts.map((key, i) => (
         <kbd
           key={`${key}-${i}`}
@@ -263,7 +263,7 @@ export function Divider({ className, vertical }: { className?: string; vertical?
       role='separator'
       className={cn(
         'shrink-0 bg-[var(--border-subtle)]',
-        vertical ? 'h-4 w-px' : 'h-px w-full',
+        vertical ? 'h-[var(--sp-4)] w-px' : 'h-px w-full',
         className,
       )}
     />
@@ -275,7 +275,7 @@ export function SectionLabel({ children, className }: { children: ReactNode; cla
   return (
     <div
       className={cn(
-        `px-2 pt-1 pb-1 text-[length:var(--text-10\\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
+        `px-[var(--sp-2)] pt-[var(--sp-1)] pb-[var(--sp-1)] text-[length:var(--text-10\\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
         className,
       )}
     >

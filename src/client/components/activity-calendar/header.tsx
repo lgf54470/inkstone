@@ -97,7 +97,7 @@ function ViewModeButton({
       type='button'
       aria-pressed={active}
       onClick={() => onSelect(view)}
-      className={`flex h-6 min-w-0 items-center gap-0.5 whitespace-nowrap border-l border-[var(--border-default)] px-1.5 text-[length:var(--text-10\\.5)] font-medium transition-colors first:border-l-0 aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]`}
+      className={`flex h-[var(--sp-6)] min-w-0 items-center gap-[var(--sp-0\\.5)] whitespace-nowrap border-l border-[var(--border-default)] px-[var(--sp-1\\.5)] text-[length:var(--text-10\\.5)] font-medium transition-colors first:border-l-0 aria-pressed:bg-[var(--accent-soft)] aria-pressed:text-[var(--accent)]`}
     >
       {icon}
       <span className='truncate'>{label}</span>
@@ -132,8 +132,8 @@ export function CalendarHeader({
   jumpToCurrentYear,
 }: CalendarHeaderProps): JSX.Element {
   return (
-    <div className='mt-1 flex items-center justify-between gap-1 px-0.5'>
-      <div className='flex items-center gap-0.5'>
+    <div className='mt-[var(--sp-1)] flex items-center justify-between gap-[var(--sp-1)] px-[var(--sp-0\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-0\\.5)]'>
         {view === 'month' && (
           <MonthNav isCurrentMonth={isCurrentMonth} shiftMonth={shiftMonth} jumpToCurrentMonth={jumpToCurrentMonth} />
         )}

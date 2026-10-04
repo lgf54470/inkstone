@@ -77,7 +77,7 @@ export function KanbanIconBadge({ icon, size = 14 }: { icon?: string | null; siz
     // misspelling — clipped in place rather than cut, so the full name survives
     // in the tooltip, to a screen reader and to the tests that read the text.
     return (
-      <span title={icon} className='inline-block max-w-16 truncate align-middle leading-none'>
+      <span title={icon} className='inline-block max-w-[var(--sp-16)] truncate align-middle leading-none'>
         {icon}
       </span>
     )

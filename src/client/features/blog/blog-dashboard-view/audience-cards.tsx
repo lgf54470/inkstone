@@ -30,21 +30,21 @@ export function AudienceCards({ analytics, locale }: AudienceCardsProps) {
 
 function AudienceCard({ icon, title, trailing, children }: { icon: ReactNode; title: string; trailing?: ReactNode; children: ReactNode }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]'>
-      <div className='flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]'>
-        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
+        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
           {icon}
           {title}
         </h3>
         {trailing !== undefined && <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{trailing}</span>}
       </div>
-      <div className='space-y-2.5 pt-3'>{children}</div>
+      <div className='space-y-2.5 pt-[var(--sp-3)]'>{children}</div>
     </div>
   )
 }
 
 function NoVisitData() {
-  return (<p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('blog.no_visit_data')}</p>)
+  return (<p className='py-[var(--sp-6)] text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('blog.no_visit_data')}</p>)
 }
 
 function GeographyCard({ analytics, locale }: { analytics: AudienceBreakdowns | null; locale: string }) {
@@ -73,14 +73,14 @@ function DevicesCard({ analytics }: { analytics: AudienceBreakdowns | null }) {
   const devices = analytics?.devices ?? []
   const osList = analytics?.osList.slice(0, 5) ?? []
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]'>
-      <div className='flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]'>
-        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-1.5'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
+        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
           <Laptop size={15} className='text-[var(--accent)]' />
           {t('blog.devices_and_os')}
         </h3>
       </div>
-      <div className='space-y-3 pt-3'>
+      <div className='space-y-3 pt-[var(--sp-3)]'>
         {devices.length === 0 && osList.length === 0 ? <NoVisitData /> : (<>
           <DeviceSubheading label={t('blog.device_type')} />
           <div className='space-y-2'>
@@ -101,7 +101,7 @@ function DevicesCard({ analytics }: { analytics: AudienceBreakdowns | null }) {
 }
 
 function DeviceSubheading({ label }: { label: string }) {
-  return (<p className='pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>{label}</p>)
+  return (<p className='pt-[var(--sp-2)] text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>{label}</p>)
 }
 
 function deviceNameOf(name: string): string {

@@ -17,12 +17,12 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
       columns={columns}
       ariaLabel={t('sidebar.calendar_year_grid_aria', { value0: cursor.year })}
       onKeyDown={onKeyDown}
-      className='mt-1.5 px-0.5'
+      className='mt-[var(--sp-1\\.5)] px-[var(--sp-0\\.5)]'
       renderMonth={(month) => {
         const inRangePreview = yearRangeAnchor !== null && yearRangeHover !== null
           && month.month >= Math.min(yearRangeAnchor.month, yearRangeHover)
           && month.month <= Math.max(yearRangeAnchor.month, yearRangeHover)
-        return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-[var(--r-xs)] px-px py-1 transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) onAnchorHover(month.month); }}>
+        return (<div key={month.month} data-month-card={month.month} className={cn('flex min-w-0 flex-col items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-px py-[var(--sp-1)] transition-colors hover:bg-[var(--bg-hover)] focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent)]', inRangePreview && 'bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]', yearRangeAnchor?.month === month.month && 'ring-1 ring-inset ring-[var(--accent)]')} onMouseEnter={() => { if (yearRangeAnchor !== null) onAnchorHover(month.month); }}>
           <span className="text-[length:var(--text-8\\.5)] font-medium text-[var(--text-quaternary)]">{monthLabels[month.month]}</span>
           <span className='grid w-full grid-cols-7 gap-px leading-none'>
             {weekdayLabels.map((label, index) => (<button key={index} type='button' data-weekday={index} tabIndex={-1} aria-label={t('sidebar.calendar_year_weekday_value0', { value0: monthLabels[month.month] ?? '', value1: label })} onClick={() => onWeekdayClick(month.month, index)} className='rounded-[var(--r-1)] py-px text-center text-[length:var(--text-6)] font-medium text-[var(--text-quaternary)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--accent)]'>
@@ -35,7 +35,7 @@ export function YearView({ cursor, weekStart, todayKey, columns, weekdayLabels, 
         </div>)
       }}
     />
-    {yearRangeAnchor !== null && (<div className='mt-1 px-0.5 text-[length:var(--text-9)] text-[var(--text-tertiary)]'>
+    {yearRangeAnchor !== null && (<div className='mt-[var(--sp-1)] px-[var(--sp-0\\.5)] text-[length:var(--text-9)] text-[var(--text-tertiary)]'>
       {t('sidebar.calendar_year_range_hint_value0', { value0: monthLabels[yearRangeAnchor.month] ?? '' })}
     </div>)}
   </>)

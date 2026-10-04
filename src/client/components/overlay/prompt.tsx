@@ -112,7 +112,7 @@ function PromptDialog({ request, finish }: {
       width={MODAL_WIDTH}
       footer={<PromptFooter options={options} canSubmit={canSubmit} onCancel={() => finish(null)} onConfirm={() => finish(submitValue)} />}
     >
-      <form onSubmit={handleSubmit} className='mt-2'>
+      <form onSubmit={handleSubmit} className='mt-[var(--sp-2)]'>
         <Input
           autoFocus
           data-autofocus

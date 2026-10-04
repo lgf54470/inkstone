@@ -47,17 +47,17 @@ export function FolderPicker({
     setQuery('')
     onClose()
   }} title={title} width={DRAWER_WIDTH}>
-    <div className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3'>
+    <div className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-3)]'>
     <label className='relative block'>
-      <Search size={14} aria-hidden='true' className='pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-quaternary)]'/>
+      <Search size={14} aria-hidden='true' className='pointer-events-none absolute top-1/2 left-[var(--sp-3)] -translate-y-1/2 text-[var(--text-quaternary)]'/>
       <span className='sr-only'>{t('folders.search')}</span>
-      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('folders.search')} className='h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'/>
+      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('folders.search')} className='h-[var(--sp-10)] w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-[var(--sp-3)] pl-[var(--sp-9)] text-[length:var(--text-13)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'/>
     </label>
     </div>
-    <div className='space-y-1 p-2'>
+    <div className='space-y-1 p-[var(--sp-2)]'>
     {allowRoot && !query.trim() && (<FolderChoice label={rootLabel ?? t('folders.top_level')} selected={currentId === null} onClick={() => choose(null)}/>)}
     {choices.map(({ folder, path }) => (<FolderChoice key={folder.id} label={path} icon={folder.icon} color={folder.color} selected={currentId === folder.id} onClick={() => choose(folder.id)}/>))}
-    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className="px-3 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t('folders.no_match')}</p>)}
+    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className='px-[var(--sp-3)] py-[var(--sp-10)] text-center text-[length:var(--text-12\\.5)] text-[var(--text-quaternary)]'>{t('folders.no_match')}</p>)}
     </div>
   </Drawer>)
 }
@@ -69,7 +69,7 @@ function FolderChoice({ label, icon, color, selected, onClick }: {
   selected: boolean
   onClick: () => void
 }) {
-  return (<button type='button' aria-pressed={selected} onClick={onClick} className={cn('flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] px-3 text-left transition-colors', selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
+  return (<button type='button' aria-pressed={selected} onClick={onClick} className={cn('flex min-h-[var(--touch-h)] w-full items-center gap-[var(--sp-3)] rounded-[var(--r-md)] px-[var(--sp-3)] text-left transition-colors', selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
     <span className='flex size-6 shrink-0 items-center justify-center' style={{ color: color ?? 'var(--text-tertiary)' }}>
     {icon
       ? <span className='text-[length:var(--text-15)] leading-none'>{icon}</span>

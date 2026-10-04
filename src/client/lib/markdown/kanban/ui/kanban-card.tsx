@@ -63,12 +63,12 @@ function CardFooter({
   const blockedWords = t('preview.kanban_card_blocks_count', { count: blockedCount ?? 0 })
 
   return (
-    <div className='flex flex-wrap items-center justify-between gap-1.5 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-      <div className='flex flex-wrap items-center gap-1.5'>
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-1\\.5)] pt-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      <div className='flex flex-wrap items-center gap-[var(--sp-1\\.5)]'>
         {priorityOpt && (
           <span
             style={getKanbanTagStyle(priorityOpt.color)}
-            className='inline-flex items-center gap-1 rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] font-medium'
+            className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium'
           >
             <Flag size={11} />
             <span>{formatKanbanOptionLabel(priorityOpt.label, 'priority')}</span>
@@ -76,7 +76,7 @@ function CardFooter({
         )}
         <KanbanDateBadge item={item} />
         {filesCount > 0 && (
-          <span className='inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
+          <span className='inline-flex items-center gap-[var(--sp-0\\.5)] text-[var(--text-tertiary)]'>
             <Paperclip size={11} />
             <span>{filesCount}</span>
           </span>
@@ -90,7 +90,7 @@ function CardFooter({
             onClick={onOpenDetail}
             aria-label={blockedWords}
             title={blockedWords}
-            className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)] outline-none hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+            className='inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium text-[var(--text-secondary)] outline-none hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
           >
             <Link2 size={11} aria-hidden='true' />
             <span aria-hidden='true'>{blockedCount}</span>
@@ -158,7 +158,7 @@ function CardFieldValues({ item, fields, columns }: { item: KanbanItem; fields?:
       className='flex flex-wrap gap-x-3 gap-y-0.5 text-[length:var(--text-11)] leading-normal'
     >
       {read.map((field) => (
-        <div key={field.id} className='flex min-w-0 items-baseline gap-1'>
+        <div key={field.id} className='flex min-w-0 items-baseline gap-[var(--sp-1)]'>
           <dt className='shrink-0 text-[var(--text-tertiary)]'>{field.label}</dt>
           {field.value !== '' && (
             field.href ? (
@@ -170,7 +170,7 @@ function CardFieldValues({ item, fields, columns }: { item: KanbanItem; fields?:
                   target='_blank'
                   rel='noopener noreferrer'
                   onClick={(e) => e.stopPropagation()}
-                  className='inline-flex min-w-0 items-center gap-0.5 truncate text-[var(--text-secondary)] underline decoration-[var(--border-strong)] underline-offset-2 hover:text-[var(--accent)]'
+                  className='inline-flex min-w-0 items-center gap-[var(--sp-0\\.5)] truncate text-[var(--text-secondary)] underline decoration-[var(--border-strong)] underline-offset-2 hover:text-[var(--accent)]'
                 >
                   <Link2 size={10} className='shrink-0' aria-hidden />
                   <span className='truncate'>{field.value}</span>
@@ -189,7 +189,7 @@ function CardFieldValues({ item, fields, columns }: { item: KanbanItem; fields?:
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
   if (!dropIndicator) return null
   const posClass = dropIndicator === 'top' ? '-top-1' : '-bottom-1'
-  return <div className={`pointer-events-none absolute ${posClass} left-0 right-0 h-0.5 rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]`} />
+  return <div className={`pointer-events-none absolute ${posClass} left-0 right-0 h-[var(--sp-0\\.5)] rounded-full bg-[var(--accent)] shadow-[var(--shadow-sm)]`} />
 }
 
 function useCardDragHandlers(
@@ -243,7 +243,7 @@ function CardBody({
         * and is loaded unlayered, so it beats any utility written on the heading itself, while a
         * wrapper is a rule prose has none for (see the hand-back block in `styles/kanban.css`).
         */}
-      <div className='flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--text-14)] font-semibold leading-snug'>
+      <div className='flex min-w-0 flex-1 flex-col gap-[var(--sp-1)] text-[length:var(--text-14)] font-semibold leading-snug'>
         <CardTitle
           title={item.title}
           icon={item.icon}
@@ -319,7 +319,7 @@ export const KanbanCard = memo(function KanbanCard({
   const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
-  const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
+  const padClass = cardSize === 'small' ? 'p-[var(--sp-2\\.5)] gap-[var(--sp-1\\.5)]' : cardSize === 'large' ? 'p-[var(--sp-4)] gap-[var(--sp-3)]' : 'p-[var(--sp-3)] gap-[var(--sp-2)]'
 
   return (
     <div

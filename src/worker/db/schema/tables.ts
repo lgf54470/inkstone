@@ -1,6 +1,7 @@
 import { BLOG_POSTS_TABLE_STATEMENT } from './blog-posts'
 import { BLOG_REVISIONS_TABLE_STATEMENT } from './blog-revisions'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
+import { SHARE_PRESENCE_TABLE_STATEMENTS } from './share-presence'
 import { MUSIC_TABLE_STATEMENTS } from './music'
 
 export const TABLE_STATEMENTS: readonly string[] = [
@@ -488,4 +489,5 @@ export const TABLE_STATEMENTS: readonly string[] = [
   BLOG_REVISIONS_TABLE_STATEMENT,
   ...MUSIC_TABLE_STATEMENTS,
   ...BOARD_LIBRARY_TABLE_STATEMENTS,
+  ...SHARE_PRESENCE_TABLE_STATEMENTS,
 ]

@@ -2,7 +2,7 @@ export { useEscape, useClickOutside, useLockScroll, useDialogFocus } from './hoo
 export { Modal } from './modal'
 export { confirm, ConfirmHost } from './confirm'
 export { prompt, PromptHost, type PromptOptions } from './prompt'
-export { Menu, useContextMenu } from './menu'
+export { Menu, useContextMenu, type MenuProps } from './menu'
 export type { MenuItem } from './use-menu'
 export { SubmenuList, submenuFor } from './submenu'
 export { Tooltip } from './tooltip'

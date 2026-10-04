@@ -251,7 +251,7 @@ export function SearchBox() {
         value={text}
         aria-label={t('music.search_placeholder')}
         placeholder={t('music.search_placeholder')}
-        className='h-8 text-[length:var(--text-12)]'
+        className='h-[var(--sp-8)] text-[length:var(--text-12)]'
         {...popup.inputProps}
         {...popup.inputHandlers}
       />
@@ -283,7 +283,7 @@ function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: st
       listId={listId}
       title={t('music.search_history')}
       action={(
-        <button type='button' onClick={popup.clearAll} className='pointer-events-auto min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
+        <button type='button' onClick={popup.clearAll} className='pointer-events-auto min-h-[var(--touch-floor)] rounded px-1.5 hover:text-[var(--text-secondary)]'>
           {t('music.search_clear_history')}
         </button>
       )}
@@ -293,7 +293,7 @@ function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: st
 
 function SearchClearButton({ onClear }: { onClear: () => void }) {
   return (
-    <span className='absolute top-1/2 right-1 -translate-y-1/2'>
+    <span className='absolute top-1/2 right-[var(--sp-1)] -translate-y-1/2'>
       <IconButton label={t('music.search_clear')} size='sm' onClick={onClear}><X size={12} /></IconButton>
     </span>
   )
@@ -318,8 +318,8 @@ function SearchPopup({
     // used to land here and vanish, because this frame counts as inside the box and so the box's
     // outside-press rule never fired. Letting the pointer through the frame is what leaves the rows (and
     // the one action on the header) as the only things this popup takes for itself.
-    <div className='pointer-events-none absolute top-full left-0 z-[var(--z-popover)] mt-1 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
-      <div className='flex items-center justify-between px-2 py-1 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+    <div className='pointer-events-none absolute top-full left-0 z-[var(--z-popover)] mt-[var(--sp-1)] w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]'>
+      <div className='flex items-center justify-between px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
         <span>{title}</span>
         {action}
       </div>
@@ -328,7 +328,7 @@ function SearchPopup({
           // FB3-F5: the row and its removal are siblings rather than nested buttons — a button inside a
           // button is not a control a browser will deliver presses to. The option keeps the whole row but
           // the removal's width, so picking an entry works exactly where it did.
-          <div key={option.key} className='flex items-center gap-1'>
+          <div key={option.key} className='flex items-center gap-[var(--sp-1)]'>
             <button
               id={`${listId}-option-${index}`}
               type='button'
@@ -337,7 +337,7 @@ function SearchPopup({
               aria-label={option.ariaLabel}
               onClick={option.pick}
               className={cn(
-                'pointer-events-auto flex min-w-0 flex-1 items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
+                'pointer-events-auto flex min-w-0 flex-1 items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] px-[var(--sp-2)] py-1.5 text-left text-[length:var(--text-12)]',
                 index === highlight
                   ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',

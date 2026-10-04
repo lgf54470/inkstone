@@ -45,7 +45,7 @@ export function ShareQrModal({
       open={open}
       onClose={onClose}
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <QrCode size={16} className='text-[var(--accent)]' />
           <span>{t('share.qr_code_title')}</span>
         </div>
@@ -53,9 +53,9 @@ export function ShareQrModal({
       description={title}
       width={MODAL_WIDTH}
     >
-      <div className='flex flex-col items-center gap-4 py-2'>
+      <div className='flex flex-col items-center gap-[var(--sp-4)] py-[var(--sp-2)]'>
         <QrCodeCard svgRef={svgRef} fullUrl={fullUrl} />
-        <div className='w-full max-w-sm rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-center'>
+        <div className='w-full max-w-sm rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-[var(--sp-3)] py-[var(--sp-2)] text-center'>
           <p className='truncate text-[length:var(--text-12)] font-mono text-[var(--text-secondary)]'>{fullUrl}</p>
         </div>
         <p className='text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs'>
@@ -138,7 +138,7 @@ function QrCodeCard({ svgRef, fullUrl }: {
       ref={svgRef}
       // The plate stays white in both themes: the QR itself renders on fixed
       // white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.
-      className='rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-[var(--swatch-white)] p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]'
+      className='rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-[var(--swatch-white)] p-[var(--sp-4)] shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]'
     >
       <QRCodeSVG
         value={fullUrl}
@@ -161,7 +161,7 @@ function QrActionsGrid({ isCopiedLink, isCopiedImage, onCopyLink, onCopyImage, o
   onDownloadSvg: () => void
 }) {
   return (
-    <div className='grid w-full grid-cols-2 gap-2 pt-1'>
+    <div className='grid w-full grid-cols-2 gap-[var(--sp-2)] pt-[var(--sp-1)]'>
       <Button
         size='sm'
         variant='secondary'
@@ -205,12 +205,12 @@ function QrOpenLink({ fullUrl }: {
   fullUrl: string
 }) {
   return (
-    <div className='w-full pt-1'>
+    <div className='w-full pt-[var(--sp-1)]'>
       <a
         href={fullUrl}
         target='_blank'
         rel='noopener noreferrer'
-        className='inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        className='inline-flex h-[var(--sp-8)] w-full items-center justify-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-3)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       >
         <ExternalLink size={13} />
         <span>{t('preview.open_in_new_tab')}</span>

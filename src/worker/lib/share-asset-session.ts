@@ -50,6 +50,18 @@ export function shareAssetCookieName(slug: string): string {
   return `inkstone_share_${slug}`
 }
 
+/**
+ * The same proof, scoped to the public API instead of to the attachment routes.
+ *
+ * A passcode buys one thing: the note behind the link. Every reader of that note has to show the proof,
+ * including the audience's heartbeat (ADR-0006), and a cookie whose path stops at `/api/files/` is not
+ * sent anywhere else. Two names rather than one widened path, so no request that does not need the
+ * capability is handed it.
+ */
+export function shareAccessCookieName(slug: string): string {
+  return `inkstone_share_access_${slug}`
+}
+
 function createOpaqueToken(): string {
   return toBase64Url(crypto.getRandomValues(new Uint8Array(32)))
 }

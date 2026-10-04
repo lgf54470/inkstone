@@ -37,7 +37,7 @@ export function MusicSeekBar({
       // ring, and a utility beats it, so suppressing it here left keyboard users scrubbing a
       // playhead with no visible caret. The shared Slider in components/form draws the same
       // control and has never suppressed it.
-      className={cn('ink-slider h-3.5 cursor-pointer appearance-none bg-transparent', region ? 'w-full' : 'min-w-0 flex-1')}
+      className={cn('ink-slider h-[var(--sp-3\\.5)] cursor-pointer appearance-none bg-transparent', region ? 'w-full' : 'min-w-0 flex-1')}
       style={{ '--pct': `${(value / max) * 100}%` } as CSSProperties}
       min={0}
       max={max}
@@ -52,12 +52,12 @@ export function MusicSeekBar({
     />
   )
   return (
-    <div className={cn('flex min-w-0 flex-1 items-center gap-2', className)}>
+    <div className={cn('flex min-w-0 flex-1 items-center gap-[var(--sp-2)]', className)}>
       {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatTimecode(value)}</span>}
       {region ? (
         // The strip paints above the track but never catches the pointer, so the
         // thumb and scrubbing keep their native behaviour underneath it.
-        <span className='relative h-3.5 min-w-0 flex-1'>
+        <span className='relative h-[var(--sp-3\\.5)] min-w-0 flex-1'>
           {input}
           <span data-loop-region aria-hidden className='pointer-events-none absolute inset-y-0 rounded-[var(--r-sm)] bg-[var(--accent-soft)]' style={region} />
         </span>

@@ -19,18 +19,18 @@ export function TotpSettings() {
   const s = useTotpSettings()
   if (s.isLoading && !s.status) {
     return (
-      <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-4 text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
+      <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-4)] py-[var(--sp-4)] text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         {t('settings.totp_loading')}
       </div>
     )
   }
   if (!s.status) {
     return (
-      <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4'>
+      <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-[var(--sp-4)]'>
         <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>
           {s.error ?? t('settings.totp_load_failed')}
         </p>
-        <Button className='mt-3' size='sm' icon={<RefreshCw size={12} />} onClick={() => void s.load()}>
+        <Button className='mt-[var(--sp-3)]' size='sm' icon={<RefreshCw size={12} />} onClick={() => void s.load()}>
           {t('common.retry')}
         </Button>
       </div>
@@ -61,11 +61,11 @@ function StatusHeader({ status, panel, onManage, onEnable }: {
       : t('settings.totp_unavailable_description')
   return (
     <SettingRow
-      className='px-4'
+      className='px-[var(--sp-4)]'
       title={t('settings.totp_title')}
       description={description}
     >
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <Badge tone={status.enabled ? 'accent' : 'neutral'}>
           {status.enabled ? t('common.on') : t('common.off')}
         </Badge>
@@ -90,7 +90,7 @@ function PanelForm({ onSubmit, children }: {
   children: React.ReactNode
 }) {
   return (
-    <form className='space-y-3 border-t border-[var(--border-subtle)] px-4 py-4' onSubmit={(event) => {
+    <form className='space-y-3 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-4)]' onSubmit={(event) => {
       event.preventDefault()
       onSubmit()
     }}>
@@ -114,19 +114,19 @@ function EnablePanel({ s }: { s: TotpSettingsState }) {
 
 function SetupPanel({ s, setup }: { s: TotpSettingsState; setup: TotpSetupInfo }) {
   return (
-    <form className='space-y-4 border-t border-[var(--border-subtle)] px-4 py-4' onSubmit={(event) => {
+    <form className='space-y-4 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-4)]' onSubmit={(event) => {
       event.preventDefault()
       s.confirmSetup()
     }}>
-      <div className={`grid gap-4 ${TOTP_GRID_COLS} md:items-start`}>
+      <div className={`grid gap-[var(--sp-4)] ${TOTP_GRID_COLS} md:items-start`}>
         <QrTile uri={setup.uri} />
         <div className='min-w-0 space-y-3'>
           <div>
-            <div className='flex items-center gap-2 text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+            <div className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
               <QrCode size={15} className='text-[var(--accent)]' />
               {t('settings.totp_scan_qr')}
             </div>
-            <p className='mt-1 text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>
+            <p className='mt-[var(--sp-1)] text-[length:var(--text-12)] leading-relaxed text-[var(--text-tertiary)]'>
               {t('settings.totp_scan_qr_description')}
             </p>
           </div>
@@ -142,7 +142,7 @@ function SetupPanel({ s, setup }: { s: TotpSettingsState; setup: TotpSetupInfo }
 
 function QrTile({ uri }: { uri: string }) {
   return (
-    <div className='mx-auto rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-2 shadow-[var(--shadow-soft)]'>
+    <div className='mx-auto rounded-[var(--r-xl)] border border-[var(--border-default)] bg-white p-[var(--sp-2)] shadow-[var(--shadow-soft)]'>
       <QRCodeSVG
         value={uri}
         size={190}
@@ -158,8 +158,8 @@ function QrTile({ uri }: { uri: string }) {
 
 function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => void }) {
   return (
-    <div className='rounded-[var(--r-md)] bg-[var(--bg-surface)] p-3'>
-      <div className='flex items-center justify-between gap-2'>
+    <div className='rounded-[var(--r-md)] bg-[var(--bg-surface)] p-[var(--sp-3)]'>
+      <div className='flex items-center justify-between gap-[var(--sp-2)]'>
         <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
           {t('settings.totp_manual_secret')}
         </span>
@@ -167,7 +167,7 @@ function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => vo
           {t('common.copy')}
         </Button>
       </div>
-      <code className={`mt-1.5 block break-all font-mono text-[length:var(--text-12)] ${TRACKING_CODE} text-[var(--text-primary)]`}>
+      <code className={`mt-[var(--sp-1\\.5)] block break-all font-mono text-[length:var(--text-12)] ${TRACKING_CODE} text-[var(--text-primary)]`}>
         {secret.match(/.{1,4}/g)?.join(' ')}
       </code>
     </div>
@@ -177,7 +177,7 @@ function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => vo
 function ConfirmCodeField({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (next: string) => void }) {
   return (
     <label className='block'>
-      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+      <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {t('settings.totp_confirm_code')}
       </span>
       <Input
@@ -196,11 +196,11 @@ function ConfirmCodeField({ value, disabled, onChange }: { value: string; disabl
 
 function RecoveryPanel({ s, codes }: { s: TotpSettingsState; codes: string[] }) {
   return (
-    <div className='space-y-4 border-t border-[var(--border-subtle)] px-4 py-4'>
+    <div className='space-y-4 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-4)]'>
       <RecoveryWarning />
       <RecoveryCodesGrid codes={codes} />
       <InlineError error={s.error} />
-      <div className='flex flex-wrap justify-end gap-2'>
+      <div className='flex flex-wrap justify-end gap-[var(--sp-2)]'>
         <Button
           size='sm'
           variant='secondary'
@@ -222,13 +222,13 @@ function RecoveryPanel({ s, codes }: { s: TotpSettingsState; codes: string[] }) 
 
 function RecoveryWarning() {
   return (
-    <div className='flex items-start gap-2.5 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--warning)_8%,transparent)] p-3'>
-      <TriangleAlert size={15} className='mt-0.5 shrink-0 text-[var(--warning)]' />
+    <div className='flex items-start gap-[var(--sp-2\\.5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--warning)_8%,transparent)] p-[var(--sp-3)]'>
+      <TriangleAlert size={15} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--warning)]' />
       <div>
         <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
           {t('settings.totp_save_recovery_codes')}
         </p>
-        <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
           {t('settings.totp_recovery_codes_once')}
         </p>
       </div>
@@ -238,13 +238,13 @@ function RecoveryWarning() {
 
 function RecoveryCodesGrid({ codes }: { codes: string[] }) {
   return (
-    <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
+    <div className='grid grid-cols-1 gap-[var(--sp-2)] sm:grid-cols-2'>
       {codes.map((recoveryCode, index) => (
         <code
           key={recoveryCode}
-          className={`select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-center font-mono text-[length:var(--text-12)] ${TRACKING_INPUT} text-[var(--text-primary)]`}
+          className={`select-all rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)] text-center font-mono text-[length:var(--text-12)] ${TRACKING_INPUT} text-[var(--text-primary)]`}
         >
-          <span className='mr-2 text-[var(--text-quaternary)]'>{index + 1}.</span>
+          <span className='mr-[var(--sp-2)] text-[var(--text-quaternary)]'>{index + 1}.</span>
           {recoveryCode}
         </code>
       ))}
@@ -255,12 +255,12 @@ function RecoveryCodesGrid({ codes }: { codes: string[] }) {
 function RegeneratePanel({ s }: { s: TotpSettingsState }) {
   return (
     <PanelForm onSubmit={s.regenerate}>
-      <div className='flex items-start justify-between gap-3'>
+      <div className='flex items-start justify-between gap-[var(--sp-3)]'>
         <div>
           <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
             {t('settings.totp_recovery_codes')}
           </p>
-          <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {t('settings.totp_regenerate_description')}
           </p>
         </div>
@@ -275,7 +275,7 @@ function RegeneratePanel({ s }: { s: TotpSettingsState }) {
           {t('settings.totp_disable')}
         </Button>
       </div>
-      <div className='grid grid-cols-1 gap-2.5 md:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-2\\.5)] md:grid-cols-2'>
         <PasswordInput value={s.password} isBusy={s.isBusy} onChange={s.setPassword} autoFocus />
         <CodeInput value={s.code} isBusy={s.isBusy} onChange={s.setCode} />
       </div>
@@ -288,21 +288,21 @@ function RegeneratePanel({ s }: { s: TotpSettingsState }) {
 function DisablePanel({ s }: { s: TotpSettingsState }) {
   return (
     <PanelForm onSubmit={s.disable}>
-      <div className='flex items-start gap-2.5 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] bg-[color-mix(in_oklab,var(--danger)_7%,transparent)] p-3'>
-        <ShieldOff size={15} className='mt-0.5 shrink-0 text-[var(--danger)]' />
+      <div className='flex items-start gap-[var(--sp-2\\.5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] bg-[color-mix(in_oklab,var(--danger)_7%,transparent)] p-[var(--sp-3)]'>
+        <ShieldOff size={15} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]' />
         <div>
           <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
             {t('settings.totp_disable_title')}
           </p>
-          <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {t('settings.totp_disable_description')}
           </p>
         </div>
       </div>
-      <div className='grid grid-cols-1 gap-2.5 md:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-2\\.5)] md:grid-cols-2'>
         <PasswordInput value={s.password} isBusy={s.isBusy} onChange={s.setPassword} autoFocus />
         <label className='block'>
-          <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+          <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
             {t('settings.totp_code_or_recovery')}
           </span>
           <Input

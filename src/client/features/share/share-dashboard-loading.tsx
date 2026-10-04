@@ -16,22 +16,22 @@ export function ShareDashboardLoading() {
       <p
         role='status'
         aria-busy='true'
-        className='pb-3 text-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'
+        className='pb-[var(--sp-3)] text-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'
       >
         {t('common.loading')}
       </p>
 
-      <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid grid-cols-1 gap-[var(--sp-3)] sm:grid-cols-2 lg:grid-cols-4'>
         {KPI_PLACEHOLDERS.map((key) => (
-          <Skeleton key={key} className='h-22 rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
+          <Skeleton key={key} className='h-[var(--skeleton-h-sm)] rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
         ))}
       </div>
 
-      <Skeleton className='mt-4 h-64 rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
+      <Skeleton className='mt-[var(--sp-4)] h-[var(--skeleton-h-lg)] rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
 
-      <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
+      <div className='mt-[var(--sp-4)] grid grid-cols-1 gap-[var(--sp-4)] lg:grid-cols-2'>
         {PANEL_PLACEHOLDERS.map((key) => (
-          <Skeleton key={key} className='h-48 rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
+          <Skeleton key={key} className='h-[var(--skeleton-h-md)] rounded-[var(--r-lg)] border border-[var(--border-subtle)]' />
         ))}
       </div>
     </div>

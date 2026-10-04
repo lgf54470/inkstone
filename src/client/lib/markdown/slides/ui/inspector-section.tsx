@@ -18,22 +18,22 @@ export const InspectorSection = memo(function InspectorSection({
 
   return (
     <div className='border-b border-[var(--border-subtle)] last:border-b-0'>
-      <div className='flex w-full items-center justify-between px-3 py-2 text-left font-semibold text-xs text-[var(--text-secondary)] select-none hover:bg-[var(--bg-hover)] transition-colors'>
+      <div className='flex w-full items-center justify-between px-[var(--sp-3)] py-[var(--sp-2)] text-left font-semibold text-xs text-[var(--text-secondary)] select-none hover:bg-[var(--bg-hover)] transition-colors'>
         <button
           type='button'
           onClick={() => setIsOpen((o) => !o)}
-          className='flex items-center gap-1.5 flex-1 text-left'
+          className='flex items-center gap-[var(--sp-1\\.5)] flex-1 text-left'
         >
           {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           <span>{title}</span>
         </button>
         {action && (
-          <div className='flex items-center gap-1 shrink-0' onClick={(e) => e.stopPropagation()}>
+          <div className='flex items-center gap-[var(--sp-1)] shrink-0' onClick={(e) => e.stopPropagation()}>
             {action}
           </div>
         )}
       </div>
-      {isOpen && <div className='px-3 pb-3 pt-1 space-y-3'>{children}</div>}
+      {isOpen && <div className='px-[var(--sp-3)] pb-[var(--sp-3)] pt-[var(--sp-1)] space-y-3'>{children}</div>}
     </div>
   )
 })

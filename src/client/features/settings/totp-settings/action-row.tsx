@@ -8,7 +8,7 @@ export function ActionRow(props: {
   danger?: boolean
 }) {
   return (
-    <div className='flex justify-end gap-2'>
+    <div className='flex justify-end gap-[var(--sp-2)]'>
       <Button type='button' size='sm' variant='ghost' disabled={props.isBusy} onClick={props.onCancel}>
         {t('common.cancel')}
       </Button>

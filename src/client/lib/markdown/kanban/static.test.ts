@@ -120,6 +120,167 @@ describe('renderStaticKanbans — the board it draws', () => {
   })
 })
 
+/**
+ * A board a projector has to carry. The list above answers a surface that only needs the cards to be
+ * readable; a slide is read from several metres, and there the thing being communicated is the
+ * *shape* — which column each card sits in, and what the card itself says (its tags, its priority,
+ * how far its subtasks got). These are the same values the live board draws, reached through the same
+ * helpers, so a card cannot read differently on the two surfaces.
+ */
+const PROJECTOR_BOARD = {
+  title: 'Release plan',
+  activeViewId: 'view-board',
+  columns: [
+    { id: 'title', name: 'Title', type: 'title' },
+    {
+      id: 'status',
+      name: 'Status',
+      type: 'select',
+      options: [
+        { id: 'todo', label: 'To Do', color: 'gray' },
+        { id: 'doing', label: 'In Progress', color: 'blue' },
+        { id: 'done', label: 'Done', color: 'green' },
+      ],
+    },
+    {
+      id: 'priority',
+      name: 'Priority',
+      type: 'select',
+      options: [{ id: 'high', label: 'High', color: 'red' }],
+    },
+    {
+      id: 'tags',
+      name: 'Tags',
+      type: 'multi-select',
+      options: [{ id: 'design', label: 'Design', color: 'purple' }],
+    },
+    { id: 'estimate', name: 'Estimate', type: 'text' },
+  ],
+  views: [{
+    id: 'view-board',
+    name: 'Board',
+    type: 'board',
+    groupBy: 'status',
+    cardFields: ['estimate'],
+    filters: [{ propertyId: 'status', operator: 'equals', value: 'todo' }],
+  }],
+  items: [
+    {
+      id: 'i1',
+      title: 'Draw the board',
+      cover: 'https://example.test/cover.png',
+      properties: { status: 'todo', priority: 'high', tags: ['design'], estimate: '3d' },
+      subtasks: [
+        { id: 's1', title: 'Columns', completed: true },
+        { id: 's2', title: 'Tints', completed: true },
+        { id: 's3', title: 'Cards', completed: false },
+      ],
+    },
+    { id: 'i2', title: 'Tag the build', properties: { status: 'doing' } },
+  ],
+}
+
+function boardChannel(body: unknown, channel: 'list' | 'board'): HTMLElement {
+  const host = kanbanHost(boardBody(body))
+  renderStaticKanbans(host, channel)
+  const node = host.querySelector<HTMLElement>('[data-kanban]')
+  if (!node) throw new Error('the renderer emitted no kanban block')
+  return node
+}
+
+describe('renderStaticKanbans — the columns a projector reads', () => {
+  it('draws one column per group, each holding only its own cards', () => {
+    const node = boardChannel(PROJECTOR_BOARD, 'board')
+    const columns = [...node.querySelectorAll('.kanban-board-column')]
+
+    expect(columns.map((column) => column.querySelector('.kanban-snapshot-group')?.textContent)).toEqual([
+      t('preview.kanban_status_todo'),
+      t('preview.kanban_status_in_progress'),
+    ])
+    expect(columns[0]?.querySelectorAll('.kanban-snapshot-card')).toHaveLength(1)
+    expect(columns[1]?.querySelector('.kanban-snapshot-card')?.textContent).toContain('Tag the build')
+    expect(columns[0]?.textContent, 'a card walked into the column beside it').not.toContain('Tag the build')
+  })
+
+  it('paints each column with the colour its own option carries', () => {
+    const node = boardChannel(PROJECTOR_BOARD, 'board')
+    const heads = [...node.querySelectorAll('.kanban-snapshot-group')] as HTMLElement[]
+
+    expect(heads[0]?.style.backgroundColor).toBe('var(--kanban-tag-gray-bg)')
+    expect(heads[1]?.style.backgroundColor).toBe('var(--kanban-tag-blue-bg)')
+  })
+
+  it('paints a column only from the colour its own option carries', () => {
+    const node = boardChannel({
+      ...PROJECTOR_BOARD,
+      columns: PROJECTOR_BOARD.columns.map((column) => column.id === 'status'
+        ? { ...column, options: [{ id: 'todo', label: 'To Do' }, { id: 'doing', label: 'In Progress', color: 'blue' }] }
+        : column),
+    }, 'board')
+    const heads = [...node.querySelectorAll('.kanban-snapshot-group')] as HTMLElement[]
+
+    expect(heads[0]?.style.backgroundColor, 'a column whose option names no colour grew a wash of its own anyway').toBe('')
+    expect(heads[1]?.style.backgroundColor).toBe('var(--kanban-tag-blue-bg)')
+  })
+})
+
+describe('renderStaticKanbans — what a card says about itself', () => {
+  it('shows the tags, the priority and how far the subtasks got', () => {
+    const card = boardChannel(PROJECTOR_BOARD, 'board').querySelector('.kanban-snapshot-card')!
+
+    expect(card.querySelector('.kanban-snapshot-card-title')?.textContent).toBe('Draw the board')
+    expect(card.querySelector('.kanban-snapshot-card-tags')?.textContent).toContain('Design')
+    expect(card.querySelector('.kanban-snapshot-card-priority')?.textContent).toContain('High')
+    expect(card.querySelector('.kanban-snapshot-card-subtasks')?.textContent).toContain('2/3')
+  })
+
+  it('wears the tag colour the live card would have picked for that tag', () => {
+    const chip = boardChannel(PROJECTOR_BOARD, 'board').querySelector('.kanban-snapshot-card-tags li') as HTMLElement
+
+    expect(chip.style.backgroundColor).toBe('var(--kanban-tag-purple-bg)')
+    expect(chip.style.color).toBe('var(--kanban-tag-purple-fg)')
+  })
+
+  it('prints the fields the view asked for, by their own names', () => {
+    const fields = boardChannel(PROJECTOR_BOARD, 'board').querySelector('[data-kanban-card-fields]')!
+
+    expect(fields.querySelector('dt')?.textContent).toBe('Estimate')
+    expect(fields.querySelector('dd')?.textContent).toBe('3d')
+  })
+
+  it('draws the cover the gallery tile draws, named by the card it belongs to', () => {
+    const cover = boardChannel(PROJECTOR_BOARD, 'board').querySelector('img.kanban-cover')
+
+    expect(cover?.getAttribute('src')).toBe('https://example.test/cover.png')
+    expect(cover?.getAttribute('alt')).toBe('Draw the board')
+  })
+
+  it('keeps a card the reader filtered out, because a still cannot say it is looking at a subset', () => {
+    const node = boardChannel(PROJECTOR_BOARD, 'board')
+
+    expect(node.textContent, 'the view filter was applied to a surface that shows no filter control').toContain('Draw the board')
+    expect(node.textContent).toContain('Tag the build')
+  })
+})
+
+describe('renderStaticKanbans — the channel a surface asks for', () => {
+  it('draws the plain list when a surface asks for a snapshot rather than a board', () => {
+    const node = boardChannel(PROJECTOR_BOARD, 'list')
+
+    expect(node.querySelector('.kanban-snapshot-board')).toBeNull()
+    expect(node.querySelectorAll('.kanban-board-column')).toHaveLength(0)
+    expect(node.querySelector('.kanban-snapshot-card')?.textContent).toBe('Draw the board')
+  })
+
+  it('keeps the list for the caller that names no channel at all', () => {
+    const host = kanbanHost(boardBody(PROJECTOR_BOARD))
+    renderStaticKanbans(host)
+
+    expect(host.querySelector('.kanban-snapshot-board')).toBeNull()
+    expect(host.querySelector('.kanban-snapshot-card')?.textContent).toBe('Draw the board')
+  })
+})
+
 describe('renderStaticKanbans — the block it leaves behind', () => {
   it('marks the block finished and drops the controls a reader cannot press', () => {
     const node = boardNode(boardBody(BOARD))

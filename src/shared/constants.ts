@@ -63,6 +63,9 @@ export const LIMITS = {
   // A plausible marker is at most 32 chars; this cap only stops a body from carrying a novel,
   // and like the referrer cap it answers 400 rather than truncating what the caller sent.
   shareChannelMaxLength: 128,
+  // The audience-follow token is minted here (64 hex chars) and only ever comes back; the cap is the
+  // same kind of body-size guard as the two above, not a validation of the token's shape.
+  sharePresentTokenMaxLength: 128,
   contentMaxBytes: 2 * 1024 * 1024,
   folderNameMaxLength: 120,
   tagNameMaxLength: 60,

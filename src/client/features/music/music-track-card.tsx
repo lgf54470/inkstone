@@ -41,7 +41,7 @@ function CardArtwork({
           picture is a background no one can measure — axe reports it as "the element contains an image
           node", which made the contrast gate's verdict about the instance's data rather than the card.
           The card's own buttons already answer with an opaque overlay; the pill does too. */}
-      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-1 text-[length:var(--text-12)] text-[var(--text-primary)]'>
+      <span className='tabular absolute right-[var(--sp-1\\.5)] bottom-[var(--sp-1\\.5)] rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--text-primary)]'>
         {durationCellText(track.durationMs)}
       </span>
     </button>
@@ -62,7 +62,7 @@ function CardActions({
   onOpenMenu: (event: React.MouseEvent<HTMLElement>) => void
 }) {
   return (
-    <div className={cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-3 right-3 flex flex-col gap-1', REVEAL_ON_COARSE_POINTER)}>
+    <div className={cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-[var(--sp-3)] right-[var(--sp-3)] flex flex-col gap-[var(--sp-1)]', REVEAL_ON_COARSE_POINTER)}>
       {/* `active` is what says the card is pinned (it is also the `aria-pressed` below). The overlay
           ground it is given here wins over the accent-soft one `active` would paint — deliberately:
           a control drawn on a cover needs a ground that reads against any artwork, while the row's
@@ -107,7 +107,7 @@ function CardSelectCheckbox({
   onSelect: TrackRowProps['handlers']['onSelect']
 }) {
   return (
-    <span className='absolute top-3 left-3 z-10 flex size-5 items-center justify-center rounded-[var(--r-xs)] bg-[var(--bg-overlay)] shadow-[var(--shadow-sm)]'>
+    <span className='absolute top-[var(--sp-3)] left-[var(--sp-3)] z-10 flex size-5 items-center justify-center rounded-[var(--r-xs)] bg-[var(--bg-overlay)] shadow-[var(--shadow-sm)]'>
       <TrackCheckbox
         checked={isSelected}
         label={t('music.select_track') + ': ' + track.title}
@@ -119,8 +119,8 @@ function CardSelectCheckbox({
 
 function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurrent: boolean }) {
   return (
-    <div className='min-w-0 px-0.5'>
-      <div className='flex items-center gap-1'>
+    <div className='min-w-0 px-[var(--sp-0\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-1)]'>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
         <span className={cn('truncate text-[length:var(--text-13)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {track.title}
@@ -135,8 +135,8 @@ function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurre
       {track.album && (
         <span className='block truncate text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{track.album}</span>
       )}
-      <MusicSourceBadge source={track.source} className='mt-1' />
-      <MusicTrackTags track={track} max={4} className='mt-1 flex-wrap' />
+      <MusicSourceBadge source={track.source} className='mt-[var(--sp-1)]' />
+      <MusicTrackTags track={track} max={4} className='mt-[var(--sp-1)] flex-wrap' />
     </div>
   )
 }
@@ -152,7 +152,7 @@ export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, i
       aria-label={track.title}
       onContextMenu={(event) => handlers.onContextMenu(event, menuTarget)}
       className={cn(
-        'group/card relative flex flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2 transition-colors',
+        'group/card relative flex flex-col gap-[var(--sp-2)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-2)] transition-colors',
         'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-soft)]',
         isCurrent && 'border-[var(--accent)] bg-[var(--accent-softer)]',
         isSelected && 'ring-1 ring-[var(--accent)]',

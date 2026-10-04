@@ -21,6 +21,9 @@ const MusicPlaylistSharePage = lazy(() =>
 const CollectionPage = lazy(() =>
   import('./features/share/collection-page').then((module) => ({ default: module.CollectionPage })),
 )
+const PresenterWindow = lazy(() =>
+  import('./features/presentation').then((module) => ({ default: module.PresenterWindow })),
+)
 
 function useShareSlug(): string | null {
   const [shareSlug] = useState(() => {
@@ -44,6 +47,21 @@ function usePlaylistShareSlug(): string | null {
     return match?.[1] ?? null
   })
   return playlistSlug
+}
+
+function useIsPresenter(): boolean {
+  const [isPresenter] = useState(() => {
+    return new URLSearchParams(location.search).has('presenter')
+  })
+  return isPresenter
+}
+
+// The audience's seat is the same shared page with one thing written on it: which show they are watching
+// (ADR-0006). The token is read once from the URL the speaker handed out and never leaves this tab — it
+// is not written into a cache key, a fingerprint, or anything the owner is told about.
+function usePresentToken(): string | null {
+  const [token] = useState(() => new URLSearchParams(location.search).get('present'))
+  return token
 }
 
 function useAppBoot(shareSlug: string | null) {
@@ -88,12 +106,12 @@ function PageFallback() {
   )
 }
 
-function ShareRoute({ slug }: { slug: string }) {
+function ShareRoute({ slug, present }: { slug: string; present: string | null }) {
   return (
     <>
       <ErrorBoundary>
         <Suspense fallback={<PageFallback />}>
-          <SharePage slug={slug} />
+          <SharePage slug={slug} present={present} />
         </Suspense>
       </ErrorBoundary>
       <Toaster />
@@ -127,6 +145,16 @@ function PlaylistShareRoute({ slug }: { slug: string }) {
   )
 }
 
+function PresenterRoute() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<PageFallback />}>
+        <PresenterWindow />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+
 function AuthedShell() {
   const status = useSession((s) => s.status)
   return (
@@ -145,14 +173,17 @@ function AuthedShell() {
 export function App() {
   useLocale()
   const shareSlug = useShareSlug()
+  const presentToken = usePresentToken()
   const playlistSlug = usePlaylistShareSlug()
   const collectionSlug = useCollectionSlug()
-  useAppBoot(shareSlug ?? playlistSlug ?? collectionSlug)
+  const isPresenter = useIsPresenter()
+  useAppBoot(shareSlug ?? playlistSlug ?? collectionSlug ?? (isPresenter ? 'presenter' : null))
 
+  if (isPresenter) return <PresenterRoute />
   if (shareSlug) {
     return (
       <>
-        <ShareRoute slug={shareSlug} />
+        <ShareRoute slug={shareSlug} present={presentToken} />
         <ConfirmHost />
         <PromptHost />
       </>

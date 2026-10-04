@@ -120,6 +120,8 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
     kanban: 'snapshot',
     // A chart in this pane is a picture too, and running a note's JavaScript belongs to the preview.
     echarts: 'snapshot',
+    // Slides travel the same way: the editor's pane shows the deck as a picture of its first page.
+    slides: 'snapshot',
     dark,
     // Collapsing is a control, and a click anywhere in the block drops the caret
     // into the source instead, so the block keeps its code unfolded.

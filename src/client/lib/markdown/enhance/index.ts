@@ -16,6 +16,7 @@ import { registerFenceBodies, type FenceBodies } from '../fence-bodies'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
 import { renderStaticExcalidraws, showExcalidrawSourceAll } from '../excalidraw'
 import { renderStaticKanbans, showKanbanSourceAll } from '../kanban'
+import { renderStaticSlides } from '../slides'
 
 interface EnhanceOptions {
   math: boolean
@@ -45,12 +46,22 @@ interface EnhanceOptions {
    */
   excalidraw?: 'live' | 'snapshot'
   /**
+   * How this surface treats ```bento-slides blocks. The deck is an editor that needs a fence to
+   * write back to, so only the preview pane runs one: `live` means the caller mounts the decks
+   * itself, `snapshot` draws the card grid the projector falls back to — for markup that gets
+   * serialized or printed, where a block left at "Loading slides…" is a promise nobody keeps.
+   * Omitted leaves the block as the renderer drew it.
+   */
+  slides?: 'live' | 'snapshot'
+  /**
    * How this surface treats ```kanban blocks. A board is a React root that needs a host to
    * write its edits back to, so only the preview pane runs one: `live` means the caller mounts
    * the boards itself, `snapshot` draws the cards as a still list for markup that gets
-   * serialized or printed, and omitted leaves the block showing its fence.
+   * serialized or printed, `board` draws the same cards laid out as the board itself — for a
+   * surface read from a distance, where which column a card is in is part of what it says —
+   * and omitted leaves the block showing its fence.
    */
-  kanban?: 'live' | 'snapshot'
+  kanban?: 'live' | 'snapshot' | 'board'
   /**
    * The box a `snapshot` mind map is drawn and fitted for. Surfaces that size
    * their blocks themselves (a note, a share page) leave it out; a slide passes
@@ -108,12 +119,14 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
     showMindmapSourceAll(root)
   if (!options.excalidraw)
     showExcalidrawSourceAll(root)
-  if (options.kanban === 'snapshot')
-    renderStaticKanbans(root)
+  if (options.kanban === 'snapshot' || options.kanban === 'board')
+    renderStaticKanbans(root, options.kanban === 'board' ? 'board' : 'list')
   else if (!options.kanban)
     showKanbanSourceAll(root)
   if (!options.echarts)
     showEchartsSource(root)
+  if (options.slides === 'snapshot')
+    renderStaticSlides(root)
   if (!options.math)
     showMathSource(root)
   await Promise.allSettled([

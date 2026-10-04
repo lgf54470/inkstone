@@ -14,6 +14,17 @@ const plan: SlidePlan = {
 const CONTENT_WIDTH = 1168
 const CONTENT_HEIGHT = 632
 
+// The plan a 1 800px-tall block gets when the walk continues it on its own units instead of
+// shrinking it below what a projector can read.
+const continued: SlidePlan = {
+  pages: [
+    { from: 0, to: 1, top: 0, clip: { top: 0, bottom: 1200 } },
+    { from: 0, to: 1, top: 600, clip: { top: 600, bottom: 600 } },
+    { from: 0, to: 1, top: 1200, clip: { top: 1200, bottom: 0 } },
+  ],
+  scales: [1],
+}
+
 describe('slicePageHtml', () => {
   it('keeps only the blocks the requested page owns', () => {
     expect(slicePageHtml(SLIDE, plan, 0, CONTENT_WIDTH, CONTENT_HEIGHT)).toBe('<p>one</p><p>two</p>')
@@ -29,6 +40,22 @@ describe('slicePageHtml', () => {
 
   it('clamps a page index past the end instead of dropping the page', () => {
     expect(slicePageHtml(SLIDE, plan, 7, CONTENT_WIDTH, CONTENT_HEIGHT)).toBe(slicePageHtml(SLIDE, plan, 1, CONTENT_WIDTH, CONTENT_HEIGHT))
+  })
+
+  // A continued block has no wrapper to translate on a slice surface: the projector moves the whole
+  // slide by the page's `top`, while a card or a printed page only ever gets this one block, which
+  // starts at the top of its own box. So the band has to travel with the block, or the page would
+  // paint its own band 600px down and cut its tail off at the box.
+  describe.each([
+    [0, 'inset(0px 0 1200px 0)', undefined],
+    [1, 'inset(600px 0 600px 0)', 'translateY(-600px)'],
+    [2, 'inset(1200px 0 0px 0)', 'translateY(-1200px)'],
+  ])('page %i of a continued table', (sub, clip, shift) => {
+    it(`cuts the block to its band${shift ? ' and lifts it to the top of the page' : ''}`, () => {
+      const html = slicePageHtml('<table>rows</table>', continued, sub, CONTENT_WIDTH, CONTENT_HEIGHT)
+      expect(html).toContain(`clip-path: ${clip}`)
+      expect(shift ? html.includes(shift) : !html.includes('transform')).toBe(true)
+    })
   })
 
   it('falls back to the whole slide when there is no plan yet', () => {

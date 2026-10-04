@@ -297,6 +297,22 @@ function boardRoot(): { root: HTMLElement, fences: FenceBodies } {
   return { root, fences }
 }
 
+// The deck a ```bento-slides fence carries, in the shape the block arrives at the enhancement in.
+const SLIDES_BODY = JSON.stringify({
+  format: 'bento-slides',
+  version: 1,
+  title: 'Gate deck',
+  slides: [{ id: 'a', title: 'Why now', elements: [{ id: 'e1', type: 'text', html: 'The deadline is Friday.', x: 0, y: 0, w: 10, h: 10 }] }],
+})
+
+function slidesRoot(): { root: HTMLElement, fences: FenceBodies } {
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'slides', SLIDES_BODY)
+  const root = document.createElement('div')
+  root.innerHTML = '<div class="bento-slides-block loading" data-bento-slides="" data-bento-slides-index="0" aria-busy="true"><div class="bento-slides-block-placeholder" data-bento-slides-placeholder>Loading slides...</div></div>'
+  return { root, fences }
+}
+
 function boardNode(root: HTMLElement): HTMLElement {
   return root.querySelector<HTMLElement>('[data-kanban]')!
 }
@@ -330,6 +346,50 @@ describe('kanban blocks — what each surface gets', () => {
     expect(node.querySelector('[data-kanban-snapshot]')?.textContent).toContain('Write the changelog')
     expect(node.getAttribute('aria-busy')).toBe('false')
     expect(node.querySelector('[data-kanban-fullscreen]')).toBeNull()
+  })
+
+  // Written after the channel it pins (the board shape itself is asserted in `kanban/static.test.ts`);
+  // its job is the routing, which no other file reads: a surface that asks for a board and is handed
+  // the fence, or the list, would still pass every test beside this one.
+  it('lays the cards out as the board when the surface is read from a distance', async () => {
+    const { root, fences } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'board', fences })
+
+    const node = boardNode(root)
+    expect(node.querySelector('.kanban-board-column')?.textContent).toContain('Write the changelog')
+    expect(node.querySelector('.kanban-snapshot-board'), 'a board channel that drew a list').not.toBeNull()
+    expect(node.getAttribute('aria-busy')).toBe('false')
+  })
+})
+
+describe('slides blocks — what each surface gets', () => {
+  it('draws the card grid when the markup is serialized or printed', async () => {
+    const { root, fences } = slidesRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, slides: 'snapshot', fences })
+
+    const node = root.querySelector<HTMLElement>('[data-bento-slides]')!
+    expect(node.querySelector('.bento-slides-fallback-card')?.textContent).toContain('Why now')
+    expect(node.textContent).not.toContain('Loading slides...')
+    expect(node.getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('leaves the deck to its host when the surface mounts decks itself', async () => {
+    const { root, fences } = slidesRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, slides: 'live', fences })
+
+    const node = root.querySelector<HTMLElement>('[data-bento-slides]')!
+    expect(node.classList.contains('loading')).toBe(true)
+    expect(node.querySelector('.bento-slides-fallback-card')).toBeNull()
+  })
+
+  it('draws the deck once, however often its markup is enhanced again', async () => {
+    // The printed sheet runs the enhancement over pages the cache already prepared; a second pass
+    // must not stack a second grid under the first.
+    const { root, fences } = slidesRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, slides: 'snapshot', fences })
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, slides: 'snapshot', fences })
+
+    expect(root.querySelectorAll('.bento-slides-fallback-grid')).toHaveLength(1)
   })
 })
 

@@ -128,6 +128,14 @@ export function prettyCombo(combo: string): string[] {
         return '↓'
       case 'arrowleft':
         return '←'
+      case 'home':
+        return 'Home'
+      case 'end':
+        return 'End'
+      case 'pageup':
+        return 'Page Up'
+      case 'pagedown':
+        return 'Page Down'
       case 'arrowright':
         return '→'
       case ',':

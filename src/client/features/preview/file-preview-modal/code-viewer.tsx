@@ -42,7 +42,7 @@ export function CodeViewer({ code, ext }: { code: string; ext: string }) {
         data-code-start='1'
         data-line-numbers='true'
       >
-        <pre className="p-3 m-0 overflow-x-auto font-mono text-[length:var(--text-12\.5)] leading-relaxed">
+        <pre className="p-[var(--sp-3)] m-0 overflow-x-auto font-mono text-[length:var(--text-12\.5)] leading-relaxed">
           <code>{code}</code>
         </pre>
       </div>

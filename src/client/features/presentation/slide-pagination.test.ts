@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planSlidePages, resolvePageIndex, type SlideBlock } from './slide-pagination'
+import { pageSteps, planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
 
 function stack(entries: [number, boolean?][]): SlideBlock[] {
   let top = 0
@@ -8,6 +8,14 @@ function stack(entries: [number, boolean?][]): SlideBlock[] {
     top += height
     return block
   })
+}
+
+// A 200-row table measured on a real show (`scripts/measure-slide-fit.mjs`, 1920×1080): 11 672 design
+// px of block on a 632 px page, its rows 58 px apart, so ten of them make a band. Shrunk to fit
+// instead, its body arrives at 1.8 px on the projector. These fixtures keep the units at a round
+// 100 px so an assertion can name the band edges; the packing rule is the same one the show ran.
+function rows(count: number, height = 100): SlideBlock {
+  return { top: 0, height: count * height, heading: false, breaks: Array.from({ length: count - 1 }, (_, index) => (index + 1) * height) }
 }
 
 describe('planSlidePages — packing', () => {
@@ -72,6 +80,126 @@ describe('planSlidePages — oversized blocks', () => {
     const plan = planSlidePages(stack([[10]]), 0)
     expect(plan.scales[0]).toBe(0.1)
     expect(plan.pages).toEqual([{ from: 0, to: 1, top: 0 }])
+  })
+})
+
+describe('planSlidePages — a block that continues over pages', () => {
+  it('continues a three-page table on its rows at full size instead of shrinking it', () => {
+    const plan = planSlidePages([rows(18)], 640)
+    expect(plan.pages).toEqual([
+      { from: 0, to: 1, top: 0, clip: { top: 0, bottom: 1200 } },
+      { from: 0, to: 1, top: 600, clip: { top: 600, bottom: 600 } },
+      { from: 0, to: 1, top: 1200, clip: { top: 1200, bottom: 0 } },
+    ])
+    expect(plan.scales).toEqual([1])
+  })
+
+  it('fills each page of a continued block to the last unit that fits', () => {
+    const block = rows(18)
+    planSlidePages([block], 640).pages.forEach((page) => {
+      // What the page paints is the block with its two insets cut away, and a page that could have
+      // taken one more unit is a page that left a row's height of the canvas empty.
+      const band = block.height - page.clip!.top - page.clip!.bottom
+      expect(band).toBeLessThanOrEqual(640)
+      expect(band).toBeGreaterThan(640 - 100)
+    })
+  })
+
+  it('takes every unit when they fill the page exactly', () => {
+    // Six rows of 100 px on a 600 px page leaves no leftover at all, and a band that stops one unit
+    // short would spend a third page on the rows it left out.
+    expect(planSlidePages([rows(12)], 600).pages).toEqual([
+      { from: 0, to: 1, top: 0, clip: { top: 0, bottom: 600 } },
+      { from: 0, to: 1, top: 600, clip: { top: 600, bottom: 0 } },
+    ])
+  })
+
+  it('continues the block that overflows among the blocks before it', () => {
+    const blocks: SlideBlock[] = [{ top: 0, height: 300, heading: true }, rows(18)]
+    blocks[1] = { ...blocks[1]!, top: 300 }
+    const plan = planSlidePages(blocks, 640)
+    expect(plan.pages).toEqual([
+      { from: 0, to: 1, top: 0 },
+      { from: 1, to: 2, top: 300, clip: { top: 0, bottom: 1200 } },
+      { from: 1, to: 2, top: 900, clip: { top: 600, bottom: 600 } },
+      { from: 1, to: 2, top: 1500, clip: { top: 1200, bottom: 0 } },
+    ])
+  })
+
+  it('counts a clip as a new plan when the page it sits on did not move', () => {
+    const continued: SlidePlan = { pages: [{ from: 0, to: 1, top: 0, clip: { top: 0, bottom: 40 } }], scales: [1] }
+    expect(samePlan(continued, { pages: [{ from: 0, to: 1, top: 0 }], scales: [1] })).toBe(false)
+    expect(samePlan(continued, { pages: [{ from: 0, to: 1, top: 0, clip: { top: 0, bottom: 40 } }], scales: [1] })).toBe(true)
+  })
+})
+
+describe('planSlidePages — a block that cannot be cut', () => {
+  it('keeps shrinking when a block sits inside the one that overflows', () => {
+    // A negative margin can drop the next block back into the tall one's box, and a horizontal cut
+    // would then pass through both at once. Only a block the page holds alone can be continued.
+    const plan = planSlidePages([rows(20), { top: 300, height: 200, heading: false }], 640)
+    expect(plan.pages).toEqual([{ from: 0, to: 2, top: 0 }])
+    expect(plan.scales[0]).toBeCloseTo(0.32)
+  })
+
+  it('keeps shrinking a block that only just exceeds the page', () => {
+    // 900 px on a 640 px page is a 0.71 factor: the body is still above the readable floor, and
+    // splitting it in two would leave two half-empty pages for a slide that reads as one table.
+    const plan = planSlidePages([{ top: 0, height: 900, heading: false, breaks: [100, 200, 300, 400, 500, 600, 700, 800] }], 640)
+    expect(plan.pages).toEqual([{ from: 0, to: 1, top: 0 }])
+    expect(plan.scales[0]).toBeCloseTo(640 / 900, 6)
+  })
+
+  it('keeps shrinking when a single unit is itself taller than the page', () => {
+    // One row of 1 200 px cannot be placed on any page, so continuing would clip it away. The shrink
+    // is the same answer the slide gave before, and losing part of a row is not an option.
+    const plan = planSlidePages([{ top: 0, height: 2000, heading: false, breaks: [1200] }], 640)
+    expect(plan.pages).toEqual([{ from: 0, to: 1, top: 0 }])
+    expect(plan.scales[0]).toBeCloseTo(0.32)
+  })
+
+  it('keeps shrinking a block that offers no break point at all', () => {
+    const plan = planSlidePages([{ top: 0, height: 8000, heading: false }], 632)
+    expect(plan.pages).toEqual([{ from: 0, to: 1, top: 0 }])
+    expect(plan.scales[0]).toBeCloseTo(0.079)
+  })
+})
+
+describe('planSlidePages — a column slide', () => {
+  it('keeps a column slide whole on one page rather than paging through its columns', () => {
+    // The same stack the flow walk splits over two pages. Two columns already put half of it
+    // beside the other half, and the tops of a column layout restart with each column, so a page
+    // picked out of them would hide blocks that sit side by side on the screen.
+    const plan = planSlidePages(stack([[300], [300], [300]]), 640, 'split')
+    expect(plan.pages).toEqual([{ from: 0, to: 3, top: 0 }])
+    expect(plan.scales).toEqual([1, 1, 1])
+  })
+
+  it('reports the layout it packed with, so every surface draws the geometry it measured', () => {
+    expect(planSlidePages(stack([[100]]), 640, 'split').layout).toBe('split')
+    expect(planSlidePages(stack([[100]]), 640, 'cover').layout).toBe('cover')
+    expect(planSlidePages([], 640, 'cover').layout).toBe('cover')
+    expect(planSlidePages(stack([[100]]), 640).layout).toBeUndefined()
+  })
+
+  it('keeps the columns of a slide whose balanced height fits the page', () => {
+    expect(slideLayoutForFit('split', 600, 640)).toBe('split')
+  })
+
+  it('refuses the columns of a slide that still overflows the page', () => {
+    expect(slideLayoutForFit('split', 641, 640)).toBeUndefined()
+  })
+
+  it('leaves a slide that asked for no columns alone however tall it is', () => {
+    expect(slideLayoutForFit('cover', 5000, 640)).toBe('cover')
+    expect(slideLayoutForFit(undefined, 5000, 640)).toBeUndefined()
+  })
+
+  it('counts a layout change as a new plan when the pages themselves did not move', () => {
+    const fitted: SlidePlan = { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1], layout: 'split' }
+    const refused: SlidePlan = { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] }
+    expect(samePlan(fitted, refused)).toBe(false)
+    expect(samePlan(fitted, { ...fitted })).toBe(true)
   })
 })
 
@@ -200,5 +328,54 @@ describe('resolvePageIndex', () => {
     expect(resolvePageIndex(plan, 5)).toBe(1)
     expect(resolvePageIndex(plan, -3)).toBe(0)
     expect(resolvePageIndex(plan, 1)).toBe(1)
+  })
+})
+
+// N-31: how many reveals a page is worth, and whether the slide asked for any at all, are properties of
+// the measured plan — the same reason the layout lives there: every surface has to agree on what the
+// projector walked through, and a thumbnail that draws the last step must not change what the page
+// count says.
+const STEP_BLOCKS: SlideBlock[] = [
+  { top: 0, height: 100, heading: true },
+  { top: 100, height: 100, heading: false },
+  { top: 200, height: 100, heading: false },
+  { top: 300, height: 100, heading: false },
+]
+
+describe('the step count a plan carries', () => {
+  it('counts one step for every block after the first on the page', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220, undefined, true)
+    expect(plan.steps).toBe(true)
+    expect(plan.pages.length).toBe(2)
+    expect(plan.pages.map((page) => pageSteps(plan, page))).toEqual([1, 1])
+  })
+
+  it('asks nothing of a slide that did not switch steps on', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220)
+    expect(plan.steps).toBeUndefined()
+    expect(pageSteps(plan, plan.pages[0]!)).toBe(0)
+  })
+
+  // Two columns are one page either way, and the blocks in them still arrive one after another: the
+  // reason a column slide is not walked page by page is geometry, not a reason to stop revealing it.
+  it('reveals a two-column slide block by block as well', () => {
+    const plan = planSlidePages(STEP_BLOCKS, 220, 'split', true)
+    expect(plan.pages.length).toBe(1)
+    expect(pageSteps(plan, plan.pages[0]!)).toBe(STEP_BLOCKS.length - 1)
+  })
+
+  // A page with one block on it has nothing left to reveal, even when the slide asked for steps.
+  it('counts no step for a page that holds a single block', () => {
+    const tall: SlideBlock[] = [{ top: 0, height: 100, heading: true }, { top: 100, height: 300, heading: false }]
+    const plan = planSlidePages(tall, 220, undefined, true)
+    expect(plan.pages.length).toBe(2)
+    expect(plan.pages.map((page) => pageSteps(plan, page))).toEqual([0, 0])
+  })
+
+  it('is part of the value of a plan, so a slide that gained its switch republishes', () => {
+    const plain = planSlidePages(STEP_BLOCKS, 220)
+    const stepped = planSlidePages(STEP_BLOCKS, 220, undefined, true)
+    expect(samePlan(plain, stepped)).toBe(false)
+    expect(samePlan(stepped, planSlidePages(STEP_BLOCKS, 220, undefined, true))).toBe(true)
   })
 })

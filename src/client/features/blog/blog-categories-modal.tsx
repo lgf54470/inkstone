@@ -38,7 +38,7 @@ export function BlogCategoriesModal({
     >
       <CategoriesModalHeader onClose={onClose} />
 
-      <div className="max-h-[70vh] overflow-y-auto p-5 space-y-5 text-[length:var(--text-12\.5)]">
+      <div className="max-h-[70vh] overflow-y-auto p-[var(--sp-5)] space-y-5 text-[length:var(--text-12\.5)]">
         <CategoriesForm
           bundle={{
             ...form,
@@ -101,8 +101,8 @@ function useCategoryForm(
 
 function CategoriesModalHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className='flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
-      <div className='flex items-center gap-2'>
+    <div className='flex h-[var(--sp-12)] items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-4)] bg-[var(--bg-surface)]'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <FolderPlus size={16} className='text-[var(--accent)]' />
         <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {t('blog.categories')}
@@ -133,7 +133,7 @@ interface CategoryFormBundle {
 
 function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
   return (
-    <form onSubmit={bundle.onSubmit} className='rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 space-y-3'>
+    <form onSubmit={bundle.onSubmit} className='rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-4)] space-y-3'>
       <div className='flex items-center justify-between'>
         <span className='font-semibold text-[var(--text-primary)]'>
           {bundle.editingId ? t('blog.edit_category') : t('blog.add_category')}
@@ -149,7 +149,7 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
         )}
       </div>
 
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
         <Field label={t('blog.category_name')}>
           <Input
             value={bundle.name}
@@ -169,7 +169,7 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
 
       <CategoryColorField selected={bundle.selectedColor} onSelect={bundle.setSelectedColor} />
 
-      <div className='flex justify-end pt-1'>
+      <div className='flex justify-end pt-[var(--sp-1)]'>
         <Button variant='primary' size='sm' type='submit' loading={bundle.isSaving}>
           {bundle.editingId ? t('common.save') : t('blog.add_tag')}
         </Button>
@@ -183,7 +183,7 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
 function CategoryColorField({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
   return (
     <fieldset>
-      <legend className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
+      <legend className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
         {t('blog.category_color')}
       </legend>
       <CategoryColorPicker selected={selected} onSelect={onSelect} />
@@ -193,7 +193,7 @@ function CategoryColorField({ selected, onSelect }: { selected: string; onSelect
 
 function CategoryColorPicker({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
   return (
-    <div className='flex items-center gap-2'>
+    <div className='flex items-center gap-[var(--sp-2)]'>
       {BLOG_CATEGORY_COLORS.map((c) => (
         <button
           key={c}
@@ -228,7 +228,7 @@ function CategoriesList({ bundle }: { bundle: CategoryListBundle }) {
 
       <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-base)] overflow-hidden'>
         {bundle.categories.length === 0 ? (
-          <div className='p-6 text-center text-[var(--text-quaternary)]'>
+          <div className='p-[var(--sp-6)] text-center text-[var(--text-quaternary)]'>
             {t('blog.no_categories_hint')}
           </div>
         ) : (
@@ -256,22 +256,22 @@ function CategoryListItem({
   onDelete: (cat: BlogCategory) => void
 }) {
   return (
-    <div className='flex items-center justify-between p-3 transition-colors hover:bg-[var(--bg-hover)]'>
-      <div className='flex items-center gap-2.5'>
+    <div className='flex items-center justify-between p-[var(--sp-3)] transition-colors hover:bg-[var(--bg-hover)]'>
+      <div className='flex items-center gap-[var(--sp-2\\.5)]'>
         <span
           className='size-3 rounded-full'
           style={{ backgroundColor: cat.color || 'var(--accent)' }}
         />
         <div>
           <span className='font-medium text-[var(--text-primary)]'>{cat.name}</span>
-          <span className='ml-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          <span className='ml-[var(--sp-2)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             /{cat.slug}
           </span>
         </div>
       </div>
 
-      <div className='flex items-center gap-3'>
-        <span className='rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      <div className='flex items-center gap-[var(--sp-3)]'>
+        <span className='rounded-full bg-[var(--bg-sunken)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           {cat.postsCount ?? 0} {t('blog.posts_count_unit')}
         </span>
         <IconButton label={t('common.edit')} size='sm' onClick={() => onEdit(cat)}>

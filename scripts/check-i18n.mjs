@@ -40,6 +40,9 @@ const localizedFixtureFiles = new Set([
   path.resolve('scripts/e2e-harness.mjs'),
   path.resolve('scripts/measure-kanban.mjs'),
   path.resolve('scripts/measure-music.mjs'),
+  // The slide fit measurement walks the show itself, so it names the start and next-page controls by
+  // their two locale spellings and writes its fixture in the table/code/list markup a reader writes.
+  path.resolve('scripts/measure-slide-fit.mjs'),
 ])
 const failures = []
 const usedKeys = new Set()

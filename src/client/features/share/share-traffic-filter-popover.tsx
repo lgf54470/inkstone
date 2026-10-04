@@ -83,7 +83,7 @@ function FilterTrigger({ buttonRef, isOpen, isFilteringBots, tone, label, onTogg
       aria-label={t('share.filter_traffic_title')}
       aria-haspopup='dialog'
       aria-expanded={isOpen}
-      className={cn('h-7 gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium', tone)}
+      className={cn('h-[var(--sp-7)] gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border px-[var(--sp-2)] text-[length:var(--text-12)] font-medium', tone)}
     >
       <span className='hidden sm:inline'>{label}</span>
     </Button>
@@ -104,7 +104,7 @@ function FilterPanelSurface({ panelRef, placement }: { panelRef: RefObject<HTMLD
         width: PANEL_WIDTH,
         transformOrigin: placement?.origin,
       }}
-      className={cn('anim-pop fixed z-[var(--z-popover)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-4 shadow-[var(--shadow-float)] outline-none', !placement && 'invisible')}
+      className={cn('anim-pop fixed z-[var(--z-popover)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-4)] shadow-[var(--shadow-float)] outline-none', !placement && 'invisible')}
     >
       <TrafficFilterPanel />
     </div>,
@@ -168,8 +168,8 @@ function TrafficFilterPanel() {
 
   return (
     <>
-      <div className='flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]'>
-        <div className='flex items-center gap-2'>
+      <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <ShieldCheck size={16} className='text-[var(--accent)]' />
           <div className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
             {t('share.filter_traffic_title')}
@@ -177,17 +177,17 @@ function TrafficFilterPanel() {
         </div>
       </div>
 
-      <p className='py-2 text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)]'>
+      <p className='py-[var(--sp-2)] text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)]'>
         {t('share.filter_traffic_desc')}
       </p>
 
-      <div className='space-y-3 pt-2'>
-        <TrafficFilterRow icon={<Bot size={15} className='mt-0.5 text-[var(--accent)] shrink-0' />} title={t('share.filter_bots_title')} desc={t('share.filter_bots_desc')} checked={excludeBots} onChange={(checked) => setFilters({ excludeBots: checked })} />
-        <TrafficFilterRow icon={<Globe size={15} className='mt-0.5 text-[var(--accent)] shrink-0' />} title={t('share.filter_self_title')} desc={t('share.filter_self_desc')} checked={excludeSelfReferrers} onChange={(checked) => setFilters({ excludeSelfReferrers: checked })} />
-        <TrafficFilterRow icon={<UserCheck size={15} className='mt-0.5 text-[var(--accent)] shrink-0' />} title={t('share.filter_owner_title')} desc={t('share.filter_owner_desc')} checked={excludeOwner} onChange={(checked) => setFilters({ excludeOwner: checked })} />
+      <div className='space-y-3 pt-[var(--sp-2)]'>
+        <TrafficFilterRow icon={<Bot size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_bots_title')} desc={t('share.filter_bots_desc')} checked={excludeBots} onChange={(checked) => setFilters({ excludeBots: checked })} />
+        <TrafficFilterRow icon={<Globe size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_self_title')} desc={t('share.filter_self_desc')} checked={excludeSelfReferrers} onChange={(checked) => setFilters({ excludeSelfReferrers: checked })} />
+        <TrafficFilterRow icon={<UserCheck size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_owner_title')} desc={t('share.filter_owner_desc')} checked={excludeOwner} onChange={(checked) => setFilters({ excludeOwner: checked })} />
       </div>
 
-      <div className="mt-3.5 flex items-center gap-1.5 rounded-[var(--r-sm)] bg-[var(--bg-card)] p-2 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+      <div className="mt-[var(--sp-3\\.5)] flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] bg-[var(--bg-card)] p-[var(--sp-2)] text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
         <Info size={12} className='text-[var(--accent)] shrink-0' />
         <span>{t('share.filter_persist_hint')}</span>
       </div>
@@ -203,8 +203,8 @@ function TrafficFilterRow({ icon, title, desc, checked, onChange }: {
   onChange: (checked: boolean) => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-3'>
-      <div className='flex items-start gap-2'>
+    <div className='flex items-center justify-between gap-[var(--sp-3)]'>
+      <div className='flex items-start gap-[var(--sp-2)]'>
         {icon}
         <div>
           <div className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>

@@ -35,7 +35,7 @@ export function ShareCollectionsPanel() {
         onReload={() => void bundle.reload()}
         onPublish={() => openPublish(null)}
       />
-      <div className='flex-1 overflow-y-auto px-4 py-3'>
+      <div className='flex-1 overflow-y-auto px-[var(--sp-4)] py-[var(--sp-3)]'>
         <CollectionsBody bundle={bundle} onEdit={(collection) => openPublish(collection.targetType === 'manual' ? null : { type: collection.targetType, value: collection.targetValue })} />
       </div>
       {isPublishOpen && (
@@ -59,12 +59,12 @@ function CollectionsHeader({ isLoading, onReload, onPublish }: {
   onPublish: () => void
 }) {
   return (
-    <div className='flex flex-wrap items-start justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-3'>
+    <div className='flex flex-wrap items-start justify-between gap-[var(--sp-2)] border-b border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3)]'>
       <div className='min-w-0'>
         <h3 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {t('share.collection_panel_title')}
         </h3>
-        <p className='mt-1 max-w-[60ch] text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-tertiary)]'>
+        <p className='mt-[var(--sp-1)] max-w-[60ch] text-[length:var(--text-11\\\\.5)] leading-relaxed text-[var(--text-tertiary)]'>
           {t('share.collection_panel_hint')}
         </p>
       </div>
@@ -88,7 +88,7 @@ function CollectionsBody({ bundle, onEdit }: {
 }) {
   const toast = useUi((s) => s.toast)
   if (bundle.isLoading && bundle.collections.length === 0) {
-    return <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
+    return <p className='py-[var(--sp-6)] text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
   }
   if (bundle.hasError && bundle.collections.length === 0) {
     return <LoadErrorState label={t('share.collection_load_failed')} onRetry={() => void bundle.reload()} />
@@ -98,11 +98,11 @@ function CollectionsBody({ bundle, onEdit }: {
     <table className='w-full border-collapse text-left text-[length:var(--text-12)]'>
       <thead className='text-[length:var(--text-11)] font-medium text-[var(--text-quaternary)]'>
         <tr className='border-b border-[var(--border-subtle)]'>
-          <th scope='col' className='py-1.5 pr-3'>{t('share.collection_col_title')}</th>
-          <th scope='col' className='py-1.5 pr-3'>{t('share.collection_col_members')}</th>
-          <th scope='col' className='py-1.5 pr-3'>{t('share.collection_col_access')}</th>
-          <th scope='col' className='py-1.5 pr-3'>{t('share.collection_col_expiry')}</th>
-          <th scope='col' className='py-1.5 pr-3'>{t('share.collection_col_status')}</th>
+          <th scope='col' className='py-1.5 pr-[var(--sp-3)]'>{t('share.collection_col_title')}</th>
+          <th scope='col' className='py-1.5 pr-[var(--sp-3)]'>{t('share.collection_col_members')}</th>
+          <th scope='col' className='py-1.5 pr-[var(--sp-3)]'>{t('share.collection_col_access')}</th>
+          <th scope='col' className='py-1.5 pr-[var(--sp-3)]'>{t('share.collection_col_expiry')}</th>
+          <th scope='col' className='py-1.5 pr-[var(--sp-3)]'>{t('share.collection_col_status')}</th>
           <th scope='col' className='py-1.5 text-right'>{t('common.more_actions')}</th>
         </tr>
       </thead>
@@ -125,7 +125,7 @@ function CollectionsBody({ bundle, onEdit }: {
 
 function CollectionsEmpty() {
   return (
-    <div className='py-8 text-center'>
+    <div className='py-[var(--sp-8)] text-center'>
       <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>
         {t('share.collection_empty')}
       </p>
@@ -187,29 +187,29 @@ function CollectionRow({ collection, isBusy, onCopy, onToggle, onEdit, onRevoke 
 }) {
   return (
     <tr className='border-b border-[var(--border-subtle)] align-top'>
-      <td className='py-2 pr-3'>
+      <td className='py-[var(--sp-2)] pr-[var(--sp-3)]'>
         <span className='block font-medium text-[var(--text-primary)]'>{collection.title}</span>
-        <span className='mt-0.5 block text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <span className='mt-[var(--sp-0\\.5)] block text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t(collectionTargetKey(collection))}
         </span>
       </td>
-      <td className='py-2 pr-3 text-[var(--text-secondary)]'>
+      <td className='py-[var(--sp-2)] pr-[var(--sp-3)] text-[var(--text-secondary)]'>
         {t('share.collection_members', { count: collection.count })}
       </td>
-      <td className='py-2 pr-3'>
+      <td className='py-[var(--sp-2)] pr-[var(--sp-3)]'>
         {collection.hasPassword
           ? <Badge tone='warning'>{t('share.collection_protected')}</Badge>
           : <Badge tone='neutral'>{t('share.collection_public')}</Badge>}
       </td>
-      <td className='py-2 pr-3 text-[var(--text-secondary)]'>
+      <td className='py-[var(--sp-2)] pr-[var(--sp-3)] text-[var(--text-secondary)]'>
         {collection.expiresAt ? fullTime(collection.expiresAt) : t('share.collection_never_expires')}
       </td>
-      <td className='py-2 pr-3'>
+      <td className='py-[var(--sp-2)] pr-[var(--sp-3)]'>
         {collection.isEnabled
           ? <Badge tone='success'>{t('share.collection_enabled')}</Badge>
           : <Badge tone='neutral'>{t('share.collection_disabled')}</Badge>}
       </td>
-      <td className='py-2'>
+      <td className='py-[var(--sp-2)]'>
         <RowActions collection={collection} isBusy={isBusy} onCopy={onCopy} onToggle={onToggle} onEdit={onEdit} onRevoke={onRevoke} />
       </td>
     </tr>
@@ -226,7 +226,7 @@ function RowActions({ collection, isBusy, onCopy, onToggle, onEdit, onRevoke }: 
 }) {
   const toggleLabel = collection.isEnabled ? t('share.collection_pause') : t('share.collection_resume')
   return (
-    <div className='flex items-center justify-end gap-1'>
+    <div className='flex items-center justify-end gap-[var(--sp-1)]'>
       <Tooltip label={t('share.collection_copy_link')}>
         <IconButton label={t('share.collection_copy_link')} size='sm' onClick={onCopy}>
           <Link2 size={13} />

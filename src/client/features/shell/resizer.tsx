@@ -80,8 +80,8 @@ function ResizeIndicator({ isDragging }: { isDragging: boolean }) {
         'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2',
         'transition-[background-color,width] duration-[var(--dur-base)] ease-[var(--ease-out)]',
         isDragging
-          ? 'w-0.5 bg-[var(--accent)]'
-          : 'bg-[var(--border-subtle)] group-hover:w-0.5 group-hover:bg-[var(--accent)] group-focus-visible:w-0.5 group-focus-visible:bg-[var(--accent)]',
+          ? 'w-[var(--sp-0\\.5)] bg-[var(--accent)]'
+          : 'bg-[var(--border-subtle)] group-hover:w-[var(--sp-0\\.5)] group-hover:bg-[var(--accent)] group-focus-visible:w-[var(--sp-0\\.5)] group-focus-visible:bg-[var(--accent)]',
       )}
     />
   )
@@ -125,7 +125,7 @@ function VerticalResizeHandle({
       onLostPointerCapture={finish}
       onKeyDown={(event) => handleResizeKeyDown(event, value, keyboardStep, min, max, onChange)}
       onDoubleClick={onReset}
-      className={cn('group relative z-[var(--z-sticky)] -mx-[var(--sp-1)] w-2.25 shrink-0 cursor-col-resize touch-none outline-none', className)}
+      className={cn('group relative z-[var(--z-sticky)] -mx-[var(--sp-1)] w-[var(--sp-2\\.25)] shrink-0 cursor-col-resize touch-none outline-none', className)}
     >
       <ResizeIndicator isDragging={isDragging} />
     </div>

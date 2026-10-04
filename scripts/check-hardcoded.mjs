@@ -92,6 +92,188 @@ const PALETTE_BASELINE_PATH = path.join(import.meta.dirname, 'check-hardcoded.pa
 // never enter the baseline, so resnapshotting cannot absorb new debt there.
 const PALETTE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/share/']
 
+// Part 6 is the bare scale-step rule: `bottom-4`, `py-0.5`, `z-10`, `h-2` carry no unit and no bracket,
+// so every rule above walks past them — yet each one writes a primitive that this app keeps in a token
+// family (--sp-* for spacing and sizes, --z-* for stacking). It is enforced with zero tolerance inside
+// SCALE_ZERO_TOLERANCE_PREFIXES; elsewhere the count is printed on the pass line instead of failed, so
+// the debt a future batch has to clear stays visible rather than being quietly allowed or quietly hidden.
+const SCALE_CLASS_RE = /(^|[\s'"`])-?(p|px|py|pt|pb|pl|pr|ps|pe|m|mx|my|mt|mb|ml|mr|ms|me|gap|w|h|min-w|min-h|max-w|max-h|top|bottom|left|right|inset|z)-(?:(?:[1-9]\d*)|(?:0\.\d+))(?![\w./-])/g
+const SCALE_MESSAGE = 'bare Tailwind scale step'
+// L-9 clears this debt one module at a time, and each entry is a place that is now clean and must not
+// be able to regress: the file path is admitted only after every bare step in it became a `--sp-*` /
+// `--z-*` read, or a read of a role token named for what the box is for (`--band-h`, `--touch-h`,
+// `--btn-h-*`, `--segment-h-*`, `--empty-h-*`, `--skeleton-h-*`). A step-for-step rename to `--sp-*`
+// is only right where the box is spacing; where it is a control, the role name is what must change.
+// The slide-editor family is admitted file by file — the directory cannot be admitted until its last
+// file is clean, and waiting for that would leave the ones already converted free to regress.
+const SCALE_ZERO_TOLERANCE_PREFIXES = [
+  'src/client/components/activity-calendar/header.tsx',
+  'src/client/components/activity-calendar/legend.tsx',
+  'src/client/components/activity-calendar/month-view.tsx',
+  'src/client/components/activity-calendar/weeks-strip.tsx',
+  'src/client/components/activity-calendar/year-view.tsx',
+  'src/client/components/calendar-grids.tsx',
+  'src/client/components/dashboard-blocks.tsx',
+  'src/client/components/date-range-popover.tsx',
+  'src/client/components/form.tsx',
+  'src/client/components/hub-folder-row.tsx',
+  'src/client/components/overlay/drawer.tsx',
+  'src/client/components/overlay/menu-row.tsx',
+  'src/client/components/overlay/prompt.tsx',
+  'src/client/components/overlay/tooltip.tsx',
+  'src/client/components/primitives.tsx',
+  'src/client/components/tag-filter-popover.tsx',
+  'src/client/features/attachments/attachment-batch-bar.tsx',
+  'src/client/features/attachments/attachment-dashboard-view.tsx',
+  'src/client/features/attachments/attachment-drive-sidebar/folder-row.tsx',
+  'src/client/features/attachments/attachment-drive-sidebar/label.tsx',
+  'src/client/features/attachments/attachment-drive-sidebar/tag-row.tsx',
+  'src/client/features/attachments/attachment-qr-modal.tsx',
+  'src/client/features/attachments/attachment-rename-modal.tsx',
+  'src/client/features/blog/blog-batch-bar.tsx',
+  'src/client/features/blog/blog-categories-modal.tsx',
+  'src/client/features/blog/blog-dashboard-view/audience-cards.tsx',
+  'src/client/features/blog/blog-dashboard-view/dashboard-controls.tsx',
+  'src/client/features/blog/blog-dashboard-view/index.tsx',
+  'src/client/features/blog/blog-grid-view/index.tsx',
+  'src/client/features/blog/blog-links-view/index.tsx',
+  'src/client/features/blog/blog-links-view/link-edit-modal.tsx',
+  'src/client/features/blog/blog-links-view/link-import-export-modal.tsx',
+  'src/client/features/blog/blog-links-view/link-qr-modal.tsx',
+  'src/client/features/blog/blog-load-failure.tsx',
+  'src/client/features/blog/blog-post-pager.tsx',
+  'src/client/features/blog/blog-publish-modal/index.tsx',
+  'src/client/features/blog/blog-settings-modal.tsx',
+  'src/client/features/command/command-palette/palette-row.tsx',
+  'src/client/features/folders/create-folder-modal.tsx',
+  'src/client/features/folders/folder-color-submenu.tsx',
+  'src/client/features/folders/folder-picker.tsx',
+  'src/client/features/folders/manage-folders-modal/index.tsx',
+  'src/client/features/graph/graph-panel/canvas.tsx',
+  'src/client/features/graph/graph-panel/index.tsx',
+  'src/client/features/list/note-list/bulk-bar.tsx',
+  'src/client/features/list/note-list/list-empty.tsx',
+  'src/client/features/list/note-list/render-window.tsx',
+  'src/client/features/music/music-edit-track-modal.tsx',
+  'src/client/features/music/music-floating-lyrics.tsx',
+  'src/client/features/music/music-group-browse.tsx',
+  'src/client/features/music/music-health-modal.tsx',
+  'src/client/features/music/music-hub-playlists.tsx',
+  'src/client/features/music/music-hub-tags.tsx',
+  'src/client/features/music/music-panel-failure.tsx',
+  'src/client/features/music/music-provider-suggestions.tsx',
+  'src/client/features/music/music-queue-browser.tsx',
+  'src/client/features/music/music-queue-list.tsx',
+  'src/client/features/music/music-queue-panel.tsx',
+  'src/client/features/music/music-search-box.tsx',
+  'src/client/features/music/music-seek-bar.tsx',
+  'src/client/features/music/music-selection-bar.tsx',
+  'src/client/features/music/music-server-manager.tsx',
+  'src/client/features/music/music-source-badge.tsx',
+  'src/client/features/music/music-source-switch-modal.tsx',
+  'src/client/features/music/music-text-import.tsx',
+  'src/client/features/music/music-track-list.tsx',
+  'src/client/features/music/music-track-tags.tsx',
+  'src/client/features/music/music-url-import.tsx',
+  'src/client/features/music/music-visualizer.tsx',
+  'src/client/features/presentation/',
+  'src/client/features/preview/excalidraw-fullscreen.tsx',
+  'src/client/features/preview/file-preview-modal/code-viewer.tsx',
+  'src/client/features/preview/mindmap-fullscreen.tsx',
+  'src/client/features/preview/preview.tsx',
+  'src/client/features/settings/about-settings.tsx',
+  'src/client/features/settings/account-settings.tsx',
+  'src/client/features/settings/avatar-picker.tsx',
+  'src/client/features/settings/backup-settings/index.tsx',
+  'src/client/features/settings/backup-settings/run-row.tsx',
+  'src/client/features/settings/backup-settings/target-card.tsx',
+  'src/client/features/settings/backup-settings/target-form.tsx',
+  'src/client/features/settings/data-settings.tsx',
+  'src/client/features/settings/mcp-settings/index.tsx',
+  'src/client/features/settings/totp-settings/action-row.tsx',
+  'src/client/features/settings/totp-settings/code-input.tsx',
+  'src/client/features/settings/totp-settings/index.tsx',
+  'src/client/features/settings/totp-settings/password-input.tsx',
+  'src/client/features/share/share-audit-history.tsx',
+  'src/client/features/share/share-collections-panel.tsx',
+  'src/client/features/share/share-dashboard-breakdown.tsx',
+  'src/client/features/share/share-dashboard-card-shell.tsx',
+  'src/client/features/share/share-dashboard-expired-notice.tsx',
+  'src/client/features/share/share-dashboard-header.tsx',
+  'src/client/features/share/share-dashboard-kpis.tsx',
+  'src/client/features/share/share-dashboard-loading.tsx',
+  'src/client/features/share/share-dashboard-stale-card.tsx',
+  'src/client/features/share/share-dashboard-view.tsx',
+  'src/client/features/share/share-edit-modal/index.tsx',
+  'src/client/features/share/share-edit-modal/sections.tsx',
+  'src/client/features/share/share-grid-view/index.tsx',
+  'src/client/features/share/share-hub-toolbar.tsx',
+  'src/client/features/share/share-list-empty.tsx',
+  'src/client/features/share/share-list-view.tsx',
+  'src/client/features/share/share-load-error.tsx',
+  'src/client/features/share/share-qr-modal.tsx',
+  'src/client/features/share/share-settings-modal.tsx',
+  'src/client/features/share/share-traffic-filter-popover.tsx',
+  'src/client/features/shell/app-shell.tsx',
+  'src/client/features/shell/resizer.tsx',
+  'src/client/features/shell/save-indicator.tsx',
+  'src/client/features/sidebar/calendar-tree.tsx',
+  'src/client/features/sidebar/sidebar-calendar.tsx',
+  'src/client/features/sidebar/sidebar.tsx',
+  'src/client/features/sidebar/sidebar/search-button.tsx',
+  'src/client/features/sidebar/sidebar/sidebar-folders/row.tsx',
+  'src/client/features/sidebar/sidebar/sidebar-folders/section.tsx',
+  'src/client/features/sidebar/sidebar/sidebar-rail.tsx',
+  'src/client/features/sidebar/sidebar/sidebar-tags.tsx',
+  'src/client/features/tags/tag-color-submenu.tsx',
+  'src/client/features/tags/tag-row.tsx',
+  'src/client/features/tags/tag-tree-list.tsx',
+  'src/client/features/templates/gallery-controls.tsx',
+  'src/client/features/templates/gallery-header.tsx',
+  'src/client/features/templates/gallery-jsx.tsx',
+  'src/client/features/update/update-dialog.tsx',
+  'src/client/features/workspace/backlinks-panel.tsx',
+  'src/client/features/workspace/editor-toolbar.tsx',
+  'src/client/lib/markdown/kanban/column-width.ts',
+  'src/client/lib/markdown/kanban/dependencies.ts',
+  'src/client/lib/markdown/kanban/ui/kanban-batch-bar.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-card-header.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-card-subtasks.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-card-title.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-column-count.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-column-header.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-date-badge.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-detail-shell.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-due-notice.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-empty-board.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-icon-badge.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-item-detail-description.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-item-detail.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-list-view.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-panel.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-quick-filter-bar.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-render-window.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-subtask-list.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-sum-section.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-table-row.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-table-view.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-tag-filter-bar.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-timeline-grid.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-view-tabs.tsx',
+  'src/client/lib/markdown/kanban/ui/kanban-write-status.tsx',
+  'src/client/lib/markdown/slides/ui/code-block.tsx',
+  'src/client/lib/markdown/slides/ui/element-renderer.tsx',
+  'src/client/lib/markdown/slides/ui/embed-block.tsx',
+  'src/client/lib/markdown/slides/ui/inspector-element.tsx',
+  'src/client/lib/markdown/slides/ui/inspector-section.tsx',
+  'src/client/lib/markdown/slides/ui/layout-picker.tsx',
+  'src/client/lib/markdown/slides/ui/slides-help-dialog.tsx',
+  'src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx',
+  'src/client/lib/markdown/slides/ui/slides-stage.tsx',
+  'src/client/lib/markdown/slides/ui/unsupported-element.tsx',
+]
+
 // Files whose hex literals are authored content or a self-contained
 // stylesheet, not UI values that could consume the token layer. Each entry
 // carries the reason; add a new file here only when the same argument holds.
@@ -379,11 +561,26 @@ function problemsFor(rel, text) {
     ts.forEachChild(node, visitPalette)
   }
 
+  // Part 6: a Tailwind scale step in any class string. The families named in
+  // SCALE_CLASS_RE all have a token layer, so the number itself is the violation
+  // whether it came from a bracket, a ternary branch or a plain class list.
+  function visitScaleClasses(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+      || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      for (const match of node.text.matchAll(SCALE_CLASS_RE)) {
+        push(lineOf(node), `${SCALE_MESSAGE} ${match[0].trim()} (AGENTS.md rule 2): reference the token family — var(--sp-*) for spacing and sizes, var(--z-*) for stacking`)
+      }
+      return
+    }
+    ts.forEachChild(node, visitScaleClasses)
+  }
+
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
   visitClasses(sf)
   visitTokenFamilies(sf)
   visitPalette(sf)
+  visitScaleClasses(sf)
   return found
 }
 
@@ -417,14 +614,23 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const problems = []
   const paletteCounts = new Map()
+  let scaleDebt = 0
   for (const root of ROOTS) {
     for (const file of walk(path.resolve(root))) {
       const rel = path.relative(process.cwd(), file).replaceAll('\\\\', '/')
       if (isExemptFile(rel)) continue
       if (ALLOWED_CONTENT_FILES.has(rel)) continue
       for (const problem of problemsFor(rel, fs.readFileSync(file, 'utf8'))) {
-        if (problem.includes(` ${PALETTE_MESSAGE} `)) paletteCounts.set(rel, (paletteCounts.get(rel) ?? 0) + 1)
-        else problems.push(problem)
+        if (problem.includes(` ${PALETTE_MESSAGE} `)) {
+          paletteCounts.set(rel, (paletteCounts.get(rel) ?? 0) + 1)
+          continue
+        }
+        if (problem.includes(` ${SCALE_MESSAGE} `)) {
+          if (SCALE_ZERO_TOLERANCE_PREFIXES.some((prefix) => rel.startsWith(prefix))) problems.push(problem)
+          else scaleDebt += 1
+          continue
+        }
+        problems.push(problem)
       }
     }
   }
@@ -447,7 +653,7 @@ if (isMain) {
     process.exit(1)
   }
   const debt = Object.values(baseline).reduce((total, count) => total + count, 0)
-  console.log(`hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src (${debt} palette classes grandfathered in ${Object.keys(baseline).length} files)`)
+  console.log(`hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src (${debt} palette classes grandfathered in ${Object.keys(baseline).length} files; ${scaleDebt} bare scale steps outside the token-enforced modules, ${SCALE_ZERO_TOLERANCE_PREFIXES.join(', ')} keeps none)`)
 }
 
 export { arbitraryUnitProblems, paletteDriftProblems, problemsFor }

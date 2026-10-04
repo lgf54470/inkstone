@@ -77,16 +77,16 @@ export function KanbanRenderTail({ hiddenCount, setTailElement, onReveal, column
       ref={setTailElement}
       onClick={onReveal}
       data-kanban-render-more
-      className='flex items-center gap-1.5 rounded-[var(--r-md)] px-2 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
     >
       {t('preview.kanban_show_more', { count: hiddenCount })}
     </button>
   )
   if (columnCount === undefined) {
-    return <div className='p-1'>{control}</div>
+    return <div className='p-[var(--sp-1)]'>{control}</div>
   }
   return (
-    <div role='row' className='border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-1'>
+    <div role='row' className='border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)] py-[var(--sp-1)]'>
       <div role='cell' aria-colspan={columnCount}>{control}</div>
     </div>
   )

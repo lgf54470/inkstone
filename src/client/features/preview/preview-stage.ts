@@ -60,6 +60,7 @@ export async function prepareStagedHtml(opts: {
     // runs only on this surface, which is the one the author is looking at.
     echarts: 'live',
     echartsScript: true,
+    slides: 'live',
     // What the blocks in this markup were rendered from; the host gets the same set when it takes the markup.
     fences,
     // The preview is where the lightbox lives, so this is the surface whose images are controls.

@@ -173,18 +173,18 @@ function StageControls({
 }) {
   return (
     <div className='bento-corner-controls'>
-      <div className='bento-zoom-cluster flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-full px-2 py-0.5 shadow-md gap-1'>
+      <div className='bento-zoom-cluster flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-full px-[var(--sp-2)] py-[var(--sp-0\\.5)] shadow-md gap-[var(--sp-1)]'>
         <button
           type='button'
           onClick={onStartSlideshow}
-          className='flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors'
+          className='flex items-center gap-[var(--sp-1\\.5)] px-[var(--sp-2)] py-[var(--sp-1)] rounded-full text-xs font-semibold hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors'
           title={t('slides.slideshow')}
         >
           <span className='text-[length:var(--text-10)]'>▶</span>
           <span>{t('slides.slideshow')}</span>
         </button>
 
-        <span className='h-3.5 w-px bg-[var(--border-subtle)]' />
+        <span className='h-[var(--sp-3\\.5)] w-px bg-[var(--border-subtle)]' />
 
         <IconButton label={t('slides.fit_to_window')} size='sm' variant='ghost' onClick={onFitToWindow}>
           <span aria-hidden='true'>⤢</span>

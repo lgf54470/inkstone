@@ -54,7 +54,7 @@ export function MusicVisualizer({
 
   useEffect(() => paintLoop(canvasRef.current, analyserRef, variant, barCount, isPlaying), [variant, barCount, isPlaying])
 
-  return <canvas ref={canvasRef} aria-hidden='true' className={cn('block h-7 w-full', className)} />
+  return <canvas ref={canvasRef} aria-hidden='true' className={cn('block h-[var(--sp-7)] w-full', className)} />
 }
 
 // A paused or off-screen strip stops requesting frames entirely; the last painted

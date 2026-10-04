@@ -35,6 +35,7 @@ import {
   Table as TableIcon,
 } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
+import { PRESENTATION_START_COMBO } from '../../presentation'
 import { t } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
 import { insertAdvancedCodeBlock, insertAlign, insertCallout, insertCodeBlock, insertColumns, insertDetails, insertFrontMatter, insertHorizontalRule, insertLink, insertDiagramCode, CHARTJS_TEMPLATES, ECHARTS_TEMPLATES, COMMON_EMOJIS, MERMAID_TEMPLATES, MINDMAP_TEMPLATES, KANBAN_TEMPLATES, EXCALIDRAW_TEMPLATES, BENTO_SLIDES_TEMPLATES, insertAbbreviation, insertDefinitionList, insertEmoji, insertNoteTemplate, insertRunnableJsBlock, insertTable, insertTableOfContents, insertTabs, insertTimeline, insertTaskWithStatus, toggleInlineMath } from '../../../editor/commands'
@@ -231,7 +232,7 @@ function buildInsertItem(ctx: MenuCtx): MenuItem {
 
 function buildPresentationItem(ctx: MenuCtx): MenuItem | null {
   if (!ctx.onPresent) return null
-  return { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={14} />, onSelect: ctx.onPresent }
+  return { id: 'presentation', label: t('workspace.presentation_mode'), combo: PRESENTATION_START_COMBO, icon: <Presentation size={14} />, onSelect: ctx.onPresent }
 }
 
 export function buildCommonEditorItems(

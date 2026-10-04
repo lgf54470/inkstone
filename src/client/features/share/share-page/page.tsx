@@ -9,21 +9,33 @@ import { Input } from '../../../components/form'
 import { LoadingBlock } from '../../../components/feedback'
 import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
+import { AudienceView } from '../../presentation'
 import type { ShareRenderBundle } from './use-share-page'
 import { useShareLoad, useShareRendering } from './use-share-page'
 
 const TRACKING_H1 = 'tracking-[var(--tracking-share-h1)]'
 
-export function SharePage({ slug }: {
+/**
+ * A shared note, read by whoever the link reached.
+ *
+ * `present` is the audience's seat at a running show (ADR-0006): the same page, but the note is drawn as
+ * slides that follow somebody else's position instead of as prose the visitor scrolls. The token arrives
+ * in the URL the speaker handed out and never becomes part of the page's identity — no cache key, no
+ * fingerprint, no visit row carries it.
+ */
+export function SharePage({ slug, present }: {
+  slug: string
+  present?: string | null
+}) {
+  if (present) return <ShareAudiencePage slug={slug} token={present} />
+  return <ShareNotePage slug={slug} />
+}
+
+function ShareNotePage({ slug }: {
   slug: string
 }) {
   const loadBundle = useShareLoad(slug)
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
-  const toggleTheme = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.dataset.theme = next ? 'dark' : 'light'
-  }
+  const { dark, toggleTheme } = useShareTheme()
   const renderBundle = useShareRendering(loadBundle.note, dark)
   return (
     <div className='share-public h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>
@@ -33,6 +45,61 @@ export function SharePage({ slug }: {
       </main>
     </div>
   )
+}
+
+// The projector needs the room, so this layout is a column that fills the viewport rather than a prose
+// column that grows: a stage measured against an auto-height parent falls back to its design size and
+// the viewer gets a slide that does not fit their screen.
+function ShareAudiencePage({ slug, token }: {
+  slug: string
+  token: string
+}) {
+  const loadBundle = useShareLoad(slug)
+  const { dark, toggleTheme } = useShareTheme()
+  return (
+    <div className='share-public flex h-full min-h-0 flex-col bg-[var(--bg-base)]'>
+      <SharePageHeader siteName={loadBundle.note?.site.name ?? 'Inkstone'} dark={dark} onToggleTheme={toggleTheme} />
+      <main className='flex min-h-0 flex-1 flex-col px-[var(--sp-2)] pb-[calc(var(--sp-2)+env(safe-area-inset-bottom))] md:px-[var(--sp-4)] md:pb-[var(--sp-4)]'>
+        <ShareAudienceBody loadBundle={loadBundle} slug={slug} token={token} />
+      </main>
+    </div>
+  )
+}
+
+function ShareAudienceBody({ loadBundle, slug, token }: {
+  loadBundle: ShareLoadBundle
+  slug: string
+  token: string
+}) {
+  const { isPasswordRequired, isLoading, error, note } = loadBundle
+  if (isLoading && !isPasswordRequired) {
+    return <div className='pt-24'>
+      <LoadingBlock label={t('share.opening')}/>
+    </div>
+  }
+  // A passcode share is read before it is watched: the show only starts for a visitor the note itself
+  // has been handed to.
+  if (isPasswordRequired) {
+    return <SharePasswordView loadBundle={loadBundle} />
+  }
+  if (error) {
+    return <ShareUnavailable error={error} />
+  }
+  if (!note)
+    return null
+  return <AudienceView slug={slug} token={token} source={note.content} />
+}
+
+function useShareTheme(): { dark: boolean; toggleTheme: () => void } {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+  return {
+    dark,
+    toggleTheme: () => {
+      const next = !dark
+      setDark(next)
+      document.documentElement.dataset.theme = next ? 'dark' : 'light'
+    },
+  }
 }
 
 function SharePageHeader({ siteName, dark, onToggleTheme }: {
@@ -76,16 +143,22 @@ function SharePageBody({ loadBundle, renderBundle }: {
     return <SharePasswordView loadBundle={loadBundle} />
   }
   if (error) {
-    return (
-      <div className='mx-auto max-w-95 pt-[18vh] text-center'>
-        <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.content_unavailable')}</h1>
-        <p role='alert' className='mt-2 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>{error}</p>
-      </div>
-    )
+    return <ShareUnavailable error={error} />
   }
   if (!note)
     return null
   return <ShareNoteView note={note} renderBundle={renderBundle} />
+}
+
+function ShareUnavailable({ error }: {
+  error: string
+}) {
+  return (
+    <div className='mx-auto max-w-95 pt-[18vh] text-center'>
+      <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.content_unavailable')}</h1>
+      <p role='alert' className='mt-2 text-[length:var(--text-13)] leading-relaxed text-[var(--text-tertiary)]'>{error}</p>
+    </div>
+  )
 }
 
 function SharePasswordView({ loadBundle }: {

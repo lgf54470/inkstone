@@ -74,7 +74,7 @@ function DetailStatusDropdown({
       <button
         type='button'
         onClick={() => setOpen((o) => !o)}
-        className='flex items-center gap-2 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
+        className='flex items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
         aria-haspopup='listbox'
         aria-expanded={open}
         {...(open ? { 'aria-controls': panelId } : {})}
@@ -137,7 +137,7 @@ function DetailTitleDraft({
         if (e.key === 'Enter') commitDraft()
         if (e.key === 'Escape') setDraft(lastSent.current)
       }}
-      className='w-full rounded-[var(--r-xs)] border-0 bg-transparent text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none focus:bg-[var(--bg-inset)] px-1'
+      className='w-full rounded-[var(--r-xs)] border-0 bg-transparent text-[length:var(--text-18)] font-bold text-[var(--text-primary)] outline-none focus:bg-[var(--bg-inset)] px-[var(--sp-1)]'
       placeholder={t('preview.kanban_card_title')}
     />
   )
@@ -167,14 +167,14 @@ function DetailHeader({
   const iconPanelId = useId()
 
   return (
-    <div className='flex flex-col gap-2.5'>
+    <div className='flex flex-col gap-[var(--sp-2\\.5)]'>
       <DetailStatusDropdown
         statusCol={statusCol}
         statusVal={statusVal}
         onChangeStatus={onChangeStatus}
       />
 
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-[var(--sp-2)]'>
         <button
           ref={iconBtnRef}
           type='button'
@@ -332,7 +332,7 @@ function DetailModalContent({
   onChangeDependencies,
 }: DetailModalContentProps) {
   return (
-    <div className='flex flex-col gap-5 py-2'>
+    <div className='flex flex-col gap-[var(--sp-5)] py-[var(--sp-2)]'>
       <DetailPropertySections
         item={item}
         columns={columns}

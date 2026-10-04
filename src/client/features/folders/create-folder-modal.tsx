@@ -15,7 +15,7 @@ function FolderNameField({ name, onNameChange }: { name: string; onNameChange: (
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
         placeholder={t('common.new_folder')}
-        className='h-10 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-3 text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'
+        className='h-[var(--sp-10)] w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-[var(--sp-3)] text-[length:var(--text-13)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'
       />
     </label>
   )
@@ -80,7 +80,7 @@ export function CreateFolderModal({
       width={MODAL_WIDTH}
       footer={<CreateFolderFooter canSubmit={Boolean(name.trim())} onCancel={closeAndReset} />}
     >
-      <form id='create-folder-modal-form' onSubmit={handleSubmit} className='pt-1'>
+      <form id='create-folder-modal-form' onSubmit={handleSubmit} className='pt-[var(--sp-1)]'>
         <FolderNameField name={name} onNameChange={setName} />
       </form>
     </Modal>

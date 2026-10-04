@@ -15,7 +15,7 @@ export function KanbanWriteStatus({ unsaved, onRetry, onDiscard }: KanbanWriteSt
     <span
       data-kanban-write-status
       role='status'
-      className='inline-flex h-9 items-center gap-1 rounded-[var(--r-md)] bg-[var(--bg-sunken)] px-2 text-[length:var(--text-12)] text-[var(--text-secondary)] md:h-auto md:py-1'
+      className='inline-flex h-[var(--sp-9)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] bg-[var(--bg-sunken)] px-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)] md:h-auto md:py-[var(--sp-1)]'
     >
       <span>{t('preview.kanban_unsaved')}</span>
       <button
