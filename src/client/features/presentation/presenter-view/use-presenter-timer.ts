@@ -8,7 +8,14 @@ function useTimerInterval(isPaused: boolean, setNow: Dispatch<SetStateAction<num
   }, [isPaused, setNow])
 }
 
-export function usePresenterTimer(startedAt: number) {
+/**
+ * The show's own clock.
+ *
+ * `frozen` is the show having ended while this window is still open: the reading stops where the room
+ * stopped rather than counting the silence after it. It is deliberately not the pause button — a paused
+ * clock is a presenter's decision that resumes on the next press, a frozen one is a record.
+ */
+export function usePresenterTimer(startedAt: number, frozen = false) {
   const [isPaused, setIsPaused] = useState(false)
   const [accumulatedMs, setAccumulatedMs] = useState(0)
   const [lastResumeAt, setLastResumeAt] = useState(() => startedAt)
@@ -25,7 +32,9 @@ export function usePresenterTimer(startedAt: number) {
     }
   }, [startedAt])
 
-  useTimerInterval(isPaused, setNow)
+  // Stopping the tick is the whole of freezing: `elapsedSeconds` reads `now`, and `now` only moves on
+  // a tick, so the display holds at whatever the clock last said.
+  useTimerInterval(isPaused || frozen, setNow)
 
   const togglePause = useCallback(() => {
     setIsPaused((currentlyPaused) => {

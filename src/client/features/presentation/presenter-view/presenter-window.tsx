@@ -99,7 +99,9 @@ function PresenterHeader({
   sendCommand: (command: PresenterInboundCommand) => void
 }) {
   const clock = usePresenterClock()
-  const timer = usePresenterTimer(state.startedAt)
+  // The show ending is heard as the channel closing, not as a final message: the last page the room
+  // saw stays on screen as a record, and so does the time it took (L-6).
+  const timer = usePresenterTimer(state.startedAt, !connected)
 
   return (
     <header className='flex h-[var(--sp-12)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)]'>
@@ -113,7 +115,7 @@ function PresenterHeader({
         <ConnectionBadge connected={connected} />
       </div>
 
-      <PresenterHeaderTimer timer={timer} clock={clock} />
+      <PresenterHeaderTimer timer={timer} clock={clock} frozen={!connected} />
       <PresenterHeaderStepper state={state} sendCommand={sendCommand} />
     </header>
   )
@@ -122,9 +124,11 @@ function PresenterHeader({
 function PresenterHeaderTimer({
   timer,
   clock,
+  frozen,
 }: {
   timer: ReturnType<typeof usePresenterTimer>
   clock: string
+  frozen: boolean
 }) {
   return (
     <div className='flex items-center gap-[var(--sp-4)]'>
@@ -137,12 +141,15 @@ function PresenterHeaderTimer({
             size='sm'
             label={timer.isPaused ? t('workspace.presentation_timer_resume') : t('workspace.presentation_timer_pause')}
             onClick={timer.togglePause}
+            // Nothing to pause or reset on a show that is over: the numbers are a record, and
+            // `togglePause` would count the silence since the room left as if the talk were running.
+            disabled={frozen}
           >
             {timer.isPaused ? <Play size={13} /> : <Pause size={13} />}
           </IconButton>
         </Tooltip>
         <Tooltip label={t('workspace.presentation_timer_reset')}>
-          <IconButton size='sm' label={t('workspace.presentation_timer_reset')} onClick={timer.resetTimer}>
+          <IconButton size='sm' label={t('workspace.presentation_timer_reset')} onClick={timer.resetTimer} disabled={frozen}>
             <RotateCcw size={13} />
           </IconButton>
         </Tooltip>

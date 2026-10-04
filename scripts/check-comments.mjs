@@ -7708,6 +7708,11 @@ const allowed = new Map([
     '// The shell hosts the overlay for the whole session, so this mount is the app opening, not a talk.',
     '// The second talk of the evening: an hour after the app was opened, and after a finished show.',
   ]],
+  ['src/client/features/presentation/presenter-timer-frozen.test.ts', [
+    '// What the presenter window does when the talk is over (L-6). The clock is the record of a show that',
+    '// happened, so once the room has gone it has to stop where it stopped — a number still climbing under',
+    '// a badge that says "disconnected" reads as a show that never ended.',
+  ]],
   ['src/client/features/presentation/presenter-view/presenter-channel.test-helpers.ts', [
     '/** A `BroadcastChannel` for jsdom, which does not have one. It records every post before delivering it,\n * so a test can ask how much traffic a hook produced rather than only what arrived — the difference\n * between "the presenter got the state" and "the show spoke to nobody". */',
     '/** Clears both registries. The posts must be cleared too, or a case counts its predecessor\'s traffic. */',
@@ -7761,6 +7766,10 @@ const allowed = new Map([
   ['src/client/features/presentation/presenter-view/presenter-window.tsx', [
     '// The console reads the show\'s own position: the same derivation, so the number the speaker sees is the',
     '// number the room sees, reveal included (N-11 unified those surfaces and this one was left out).',
+    '// The show ending is heard as the channel closing, not as a final message: the last page the room',
+    '// saw stays on screen as a record, and so does the time it took (L-6).',
+    '// Nothing to pause or reset on a show that is over: the numbers are a record, and',
+    '// `togglePause` would count the silence since the room left as if the talk were running.',
   ]],
   ['src/client/features/presentation/presenter-view/use-presenter-broadcast.test.ts', [
     '// What the show puts on the channel is the author\'s private notes and the deck\'s source, so the',
@@ -7827,6 +7836,11 @@ const allowed = new Map([
   ['src/client/features/presentation/presenter-view/use-presenter-slide-media.ts', [
     '/**\n * The presenter reads the slide the room reads, so a diagram, a formula, a chart or a board has to\n * arrive as a picture in this document too. The channel carries markdown rather than rendered pages,\n * so the enhancement runs here — the same chain the projector and the printed deck run, with the\n * board and map channels set to `snapshot` because a presenter\'s pane is a display, not an editor.\n *\n * `fences` is the set this markup was rendered from: a snapshot reads its content out of it, so a\n * slide whose bodies were left behind draws empty fences rather than its board (P-01).\n */',
     '// The presenter reads the same page the room reads, board layout included (N-36).',
+  ]],
+  ['src/client/features/presentation/presenter-view/use-presenter-timer.ts', [
+    '/**\n * The show\'s own clock.\n *\n * `frozen` is the show having ended while this window is still open: the reading stops where the room\n * stopped rather than counting the silence after it. It is deliberately not the pause button — a paused\n * clock is a presenter\'s decision that resumes on the next press, a frozen one is a record.\n */',
+    '// Stopping the tick is the whole of freezing: `elapsedSeconds` reads `now`, and `now` only moves on',
+    '// a tick, so the display holds at whatever the clock last said.',
   ]],
   ['src/client/features/presentation/slide-cache.test.ts', [
     '// N-23: the pass prepares one page per slide of the deck, and the cap that holds them used to be a',
