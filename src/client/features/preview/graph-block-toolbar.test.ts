@@ -114,11 +114,13 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const trigger = button(root, 'toggle-source')
     const panel = root.querySelector<HTMLElement>('[data-graph-source]')!
+    expect(trigger.getAttribute('aria-pressed')).toBe('false')
     executeGraphBlockAction('toggle-source', trigger, vi.fn())
     expect(panel.hidden).toBe(false)
     expect(trigger.getAttribute('aria-pressed')).toBe('true')
     executeGraphBlockAction('toggle-source', trigger, vi.fn())
     expect(panel.hidden).toBe(true)
+    expect(trigger.getAttribute('aria-pressed')).toBe('false')
   })
 
   it('rewrites a JSON fence as the table that means the same chart, and says so on the line', () => {

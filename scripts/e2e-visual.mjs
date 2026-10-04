@@ -2028,6 +2028,15 @@ async function assertImageAttributes(page) {
   await sleep(SAVE_SETTLE_MS)
   await ensurePaneVisible(page, '.ink-prose')
   await page.waitForFunction((count) => document.querySelectorAll('.ink-prose img[data-image-line]').length >= count, { timeout: 30_000 }, 5)
+  // The renderer marks pictures lazy, so one that never entered the scroller was never fetched and has no
+  // box to measure; a scenario has to look at what it measures, the way the lightbox step already does.
+  await page.evaluate(() => {
+    for (const image of document.querySelectorAll('.ink-prose img[data-image-line]')) image.scrollIntoView({ block: 'center' })
+  })
+  await page.waitForFunction((count) => {
+    const images = [...document.querySelectorAll('.ink-prose img[data-image-line]')]
+    return images.filter((image) => image.complete && image.naturalWidth > 0).length >= count
+  }, { timeout: 30_000 }, 5)
   const measured = await measureImages(page)
   const half = probeOf(measured, 'Half probe')
   const fixed = probeOf(measured, 'Fixed probe')
@@ -8327,6 +8336,280 @@ async function assertNamedControlSurfaces(page) {
   })
 }
 
+/**
+ * The two chart families, drawn and switched.
+ *
+ * What this adds over the unit suites is the parts a stubbed DOM cannot fake: chart.js sizing a canvas
+ * inside a column that has a real width, echarts painting an SVG whose colours came from the account's
+ * accent, a map's outlines arriving through the app's own proxy with no setting turned on by the reader,
+ * and the format control writing the note, the save debounce landing, and the block re-rendering from what
+ * came back. Each of those has been the site of a real defect this round.
+ *
+ * The blocks are found by what their own bodies say, never by position: the note this scenario writes into
+ * already holds another scenario's diagram, and a chart wrapper counted from the top of the document is a
+ * different chart on every run.
+ */
+const CHART_BLOCKS = [
+  '',
+  '## Chart blocks',
+  '',
+  '```chart',
+  '{"type":"bar","data":{"labels":["Mon","Tue"],"datasets":[{"label":"gate-chart","data":[1,2]}]}}',
+  '```',
+  '',
+  '```echarts',
+  '{ xAxis: { type: "category", data: ["Mon", "Tue"] }, yAxis: {}, series: [{ name: "gate-line", type: "line", data: [3, 5] }] }',
+  '```',
+  '',
+  '```echarts style=table',
+  '| :pie:{"title": "gate-split"} | Mon | Tue |',
+  '| --- | --- | --- |',
+  '| gate-pie | 3 | 5 |',
+  '```',
+  '',
+  '```echarts',
+  '| :map:{"title": "gate-map"} | 地区 | 值 |',
+  '| --- | --- | --- |',
+  '| 北京 | 100 |',
+  '| 上海 | 88 |',
+  '```',
+  '',
+  '```chart style=tabel',
+  '{"type":"bar","data":{"labels":["Mon"],"datasets":[{"label":"gate-bad","data":[1]}]}}',
+  '```',
+  '',
+].join('\n')
+
+// Every chart block this scenario wrote, by the marker only its own body carries.
+const CHART_MARKERS = {
+  jsonChart: 'gate-chart',
+  optionEcharts: 'gate-line',
+  tableEcharts: 'gate-split',
+  mapEcharts: 'gate-map',
+  badStyleChart: 'gate-bad',
+}
+
+const ACCENT_LABELS = {
+  cinnabar: ['Cinnabar', '朱砂'],
+  indigo: ['Deep sea', '深海蓝'],
+}
+
+/**
+ * One record per chart block: the kind, the body it was drawn from as the note now holds it, whether it
+ * painted, and what it said when it did not. The body comes out of the block's own source panel, which is
+ * in the markup even while collapsed — that is the app's own decode of what it rendered, so an assertion
+ * on it is an assertion on the committed note rather than on a copy this script keeps.
+ */
+function readGraphBlocks() {
+  return [...document.querySelectorAll('.ink-prose [data-graph-block]')].map((wrapper) => {
+    const block = wrapper.querySelector('[data-chart], [data-echarts]')
+    // The block's head carries 12x12 icon svgs; only a picture inside the block itself is a drawing.
+    const canvas = block?.querySelector('canvas') ?? null
+    const svg = block?.querySelector('svg') ?? null
+    const box = canvas?.getBoundingClientRect() ?? svg?.getBoundingClientRect()
+    return {
+      kind: wrapper.dataset.graphBlock,
+      body: wrapper.querySelector('[data-graph-source] code')?.textContent ?? '',
+      painted: Boolean(box && box.width > 60 && box.height > 60),
+      size: box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'none',
+      paths: svg ? svg.querySelectorAll('path').length : 0,
+      svgText: svg?.textContent ?? '',
+      error: wrapper.querySelector('.chart-error-text')?.textContent ?? '',
+      statedStyle: block?.getAttribute('data-chart-style') ?? block?.getAttribute('data-echarts-style') ?? null,
+      sourceHidden: wrapper.querySelector('[data-graph-source]')?.hasAttribute('hidden') ?? null,
+      sourcePressed: wrapper.querySelector('[data-graph-action="toggle-source"]')?.getAttribute('aria-pressed') ?? null,
+    }
+  })
+}
+
+/** The one block whose body carries this marker, with its position in the document. */
+async function findChartBlock(page, marker) {
+  const found = await page.evaluate((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const index = blocks.findIndex((wrapper) => (wrapper.querySelector('[data-graph-source] code')?.textContent ?? '').includes(wanted))
+    if (index < 0) return null
+    const wrapper = blocks[index]
+    const block = wrapper.querySelector('[data-chart], [data-echarts]')
+    const canvas = block?.querySelector('canvas') ?? null
+    const svg = block?.querySelector('svg') ?? null
+    const box = canvas?.getBoundingClientRect() ?? svg?.getBoundingClientRect()
+    return {
+      index,
+      kind: wrapper.dataset.graphBlock,
+      body: wrapper.querySelector('[data-graph-source] code')?.textContent ?? '',
+      painted: Boolean(box && box.width > 60 && box.height > 60),
+      size: box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'none',
+      paths: svg ? svg.querySelectorAll('path').length : 0,
+      svgText: svg?.textContent ?? '',
+      error: wrapper.querySelector('.chart-error-text')?.textContent ?? '',
+      statedStyle: block?.getAttribute('data-chart-style') ?? block?.getAttribute('data-echarts-style') ?? null,
+      sourceHidden: wrapper.querySelector('[data-graph-source]')?.hasAttribute('hidden') ?? null,
+      sourcePressed: wrapper.querySelector('[data-graph-action="toggle-source"]')?.getAttribute('aria-pressed') ?? null,
+    }
+  }, marker)
+  if (!found) throw new Error(`chart scenario: no block holds ${marker}; the note reads ${JSON.stringify((await page.evaluate(readGraphBlocks)).map((block) => block.kind))}`)
+  return found
+}
+
+/** Press one control of one block with the real pointer, and report where it was. */
+async function pressChartTool(page, index, action) {
+  const found = await page.evaluate(([which, name]) => {
+    const wrapper = [...document.querySelectorAll('.ink-prose [data-graph-block]')][which]
+    const button = wrapper?.querySelector(`[data-graph-action="${name}"]`)
+    if (!button) return null
+    button.scrollIntoView({ block: 'center' })
+    const box = button.getBoundingClientRect()
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2, label: button.getAttribute('aria-label') ?? '' }
+  }, [index, action])
+  if (!found) throw new Error(`chart scenario: block ${index} has no ${action} control`)
+  await page.mouse.click(found.x, found.y)
+  await sleep(300)
+  return found
+}
+
+/**
+ * The block once the press has finished taking effect: the write goes to the note, the note saves on a
+ * debounce, and the preview redraws from what came back, so reading one frame after the click would meet
+ * the picture the old body drew.
+ */
+async function findSettledChartBlock(page, marker, settled) {
+  const deadline = Date.now() + 20_000
+  let block = await findChartBlock(page, marker)
+  while (!settled(block) && Date.now() < deadline) {
+    await sleep(250)
+    block = await findChartBlock(page, marker)
+  }
+  return block
+}
+
+/** The colours an echarts block put into its drawing, which is what an accent change has to move. */
+async function readChartPaint(page, marker) {
+  return page.evaluate((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const wrapper = blocks.find((node) => (node.querySelector('[data-graph-source] code')?.textContent ?? '').includes(wanted))
+    const nodes = [...wrapper?.querySelectorAll('[data-echarts] svg [fill], [data-echarts] svg [stroke]') ?? []]
+    // A line is painted by its stroke over an empty fill, so one node can carry two colours and the
+    // series' own is the one a palette change moves. Reading only the fill would watch the axes.
+    const values = nodes.flatMap((node) => [node.getAttribute('fill'), node.getAttribute('stroke')])
+    return [...new Set(values.filter((value) => value && value !== 'none'))].sort().join(',')
+  }, marker)
+}
+
+/** The accent is a per-account setting, so it is driven through the control a person would use. */
+async function setChartAccent(page, accent) {
+  const resolved = await page.evaluate(() => document.documentElement.dataset.accent ?? '')
+  if (resolved === accent) return { changed: false, accent: resolved }
+  await page.keyboard.down('Control')
+  await page.keyboard.press(',')
+  await page.keyboard.up('Control')
+  await page.waitForSelector('[role="dialog"] button[aria-label]', { timeout: 15_000 })
+  const clicked = await page.evaluate((wanted) => {
+    const button = [...document.querySelectorAll('[role="dialog"] button[aria-label]')]
+      .find((element) => wanted.includes(element.getAttribute('aria-label') ?? ''))
+    button?.click()
+    return Boolean(button)
+  }, ACCENT_LABELS[accent])
+  if (!clicked) throw new Error(`chart scenario: the settings dialog has no ${accent} accent`)
+  await page.waitForFunction((wanted) => document.documentElement.dataset.accent === wanted, { timeout: 10_000 }, accent)
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  return { changed: true, accent }
+}
+
+async function assertChartBlocks(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  if (!(await ensurePaneVisible(page, '.cm-content'))) throw new Error('chart scenario: the editor pane never became visible')
+  await writeAtEndOfNote(page, CHART_BLOCKS, 'chart scenario')
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('chart scenario: the preview pane never became visible')
+  await waitForProseEnhancements(page)
+
+  const markers = Object.values(CHART_MARKERS)
+  await page.waitForFunction((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const mine = blocks.filter((wrapper) => wanted.some((marker) => (wrapper.querySelector('[data-graph-source] code')?.textContent ?? '').includes(marker)))
+    return mine.length === wanted.length && mine.every((wrapper) => wrapper.querySelector('[data-chart], [data-echarts]')?.classList.contains('has-error')
+      || wrapper.querySelector('[data-chart] canvas, [data-echarts] svg'))
+  }, { timeout: 45_000 }, markers)
+
+  const painted = await findChartBlock(page, CHART_MARKERS.jsonChart)
+  const option = await findChartBlock(page, CHART_MARKERS.optionEcharts)
+  const table = await findChartBlock(page, CHART_MARKERS.tableEcharts)
+  const map = await findChartBlock(page, CHART_MARKERS.mapEcharts)
+  const badStyle = await findChartBlock(page, CHART_MARKERS.badStyleChart)
+
+  check('chart scenario: chart.js paints a canvas sized by its column', painted.painted && painted.kind === 'chart', JSON.stringify(painted))
+  check('chart scenario: an echarts option body paints an svg', option.painted && option.error === '', JSON.stringify(option))
+  check(
+    'chart scenario: a table body stated on the fence paints, with its title in the picture',
+    table.painted && table.statedStyle === 'table' && table.svgText.includes('gate-split'),
+    JSON.stringify(table),
+  )
+  check(
+    'chart scenario: a map draws its outlines with no reader setting turned on',
+    map.painted && map.paths > 5 && map.error === '' && map.svgText.includes('gate-map'),
+    JSON.stringify({ size: map.size, paths: map.paths, error: map.error, text: map.svgText.slice(0, 40) }),
+  )
+  check(
+    'chart scenario: a format the note did not name is reported, not guessed',
+    !badStyle.painted && badStyle.error.includes('style=') && badStyle.body.includes('gate-bad'),
+    JSON.stringify({ error: badStyle.error.slice(0, 80) }),
+  )
+  check(
+    'chart scenario: the source control reveals the body the block was drawn from',
+    painted.sourceHidden === true && painted.sourcePressed === 'false',
+    JSON.stringify({ hidden: painted.sourceHidden, pressed: painted.sourcePressed }),
+  )
+
+  // The format control, driven by a pointer: it rewrites the fence, the note saves, the preview re-renders
+  // from what came back, and the block states the new format on its own line.
+  const asTable = await pressChartTool(page, painted.index, 'convert-format')
+  const switched = await findSettledChartBlock(page, CHART_MARKERS.jsonChart, (block) => block.body.includes(':bar:') && block.statedStyle === 'table' && block.painted)
+  check('chart scenario: the format control is named by what it writes', asTable.label.length > 0, JSON.stringify(asTable))
+  check(
+    'chart scenario: a json chart switches to the table that means it',
+    switched.body.includes(':bar:') && switched.body.includes('gate-chart') && switched.statedStyle === 'table' && switched.painted,
+    JSON.stringify({ body: switched.body.slice(0, 80), style: switched.statedStyle, painted: switched.painted }),
+  )
+  await pressChartTool(page, switched.index, 'convert-format')
+  const back = await findSettledChartBlock(page, CHART_MARKERS.jsonChart, (block) => block.statedStyle === 'json' && block.painted)
+  check(
+    'chart scenario: switching back restates the fence as json',
+    back.body.includes('"type": "bar"') && !back.body.includes(':bar:') && back.statedStyle === 'json' && back.painted,
+    JSON.stringify({ body: back.body.slice(0, 80), style: back.statedStyle }),
+  )
+
+  await pressChartTool(page, option.index, 'convert-format')
+  const echartsTable = await findSettledChartBlock(page, CHART_MARKERS.optionEcharts, (block) => block.body.includes('| :line:') && block.statedStyle === 'table' && block.painted)
+  check(
+    'chart scenario: an echarts option switches to a table and states it',
+    echartsTable.body.includes('| :line:') && echartsTable.body.includes('gate-line') && echartsTable.statedStyle === 'table' && echartsTable.painted,
+    JSON.stringify({ body: echartsTable.body.slice(0, 80), style: echartsTable.statedStyle }),
+  )
+  await pressChartTool(page, echartsTable.index, 'convert-format')
+  await findSettledChartBlock(page, CHART_MARKERS.optionEcharts, (block) => block.statedStyle === null || block.statedStyle === 'json')
+
+  // The accent is switchable per account and the palette is read at draw time, so a block that kept the
+  // colours it first read is the frozen-at-creation regression ADR-0002 §5 names. The unit suites pin the
+  // draw signature; this pins that the painted attributes moved, on a page with a real layout.
+  // The account is left wherever an earlier run put it, so the target is whichever accent the page is
+  // not wearing: pressing the same swatch again would change nothing and prove nothing.
+  const marker = CHART_MARKERS.optionEcharts
+  const wearing = await page.evaluate(() => document.documentElement.dataset.accent ?? 'cinnabar')
+  const target = wearing === 'indigo' ? 'cinnabar' : 'indigo'
+  const before = await readChartPaint(page, marker)
+  const moved = await setChartAccent(page, target)
+  const after = await readChartPaint(page, marker)
+  const repaint = await findChartBlock(page, marker)
+  check('chart scenario: the accent drive reached the account setting', moved.changed && moved.accent === target, JSON.stringify({ wearing, target, moved }))
+  check(
+    'chart scenario: a moved accent repaints the chart rather than keeping its old colours',
+    before.length > 0 && after.length > 0 && before !== after && repaint.painted && repaint.error === '',
+    JSON.stringify({ before: before.slice(0, 70), after: after.slice(0, 70) }),
+  )
+  await setChartAccent(page, wearing === '' ? 'cinnabar' : wearing)
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -8369,6 +8652,7 @@ async function main() {
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
+    await assertChartBlocks(page)
     await assertSlidesEditor(page)
     await assertKanbanBoard(page)
     await assertImageAttributes(page)

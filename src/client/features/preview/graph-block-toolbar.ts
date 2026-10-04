@@ -65,9 +65,12 @@ function graphOf(element: HTMLElement): GraphBlock | null {
   return { wrapper, block, kind: named === 'chart' || named === 'echarts' ? named : 'mermaid' }
 }
 
-function toolButton(action: string, label: string, icon: string): string {
+function toolButton(action: string, label: string, icon: string, pressed?: boolean): string {
   const name = escapeAttr(label)
-  return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${name}" aria-label="${name}">${icon}</button>`
+  // A toggle has to state the state it is in *before* it is first pressed, or a screen reader announces
+  // a control whose position nobody can hear.
+  const state = pressed === undefined ? '' : ` aria-pressed="${String(pressed)}"`
+  return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${name}" aria-label="${name}"${state}>${icon}</button>`
 }
 
 const ICONS = {
@@ -123,7 +126,7 @@ function otherStyle(mode: FormatName): DeclaredStyle {
 function renderHeadHtml(kind: GraphKind, format: FormatName): string {
   const zoomable = kind === 'mermaid'
   const titleKey = kind === 'mermaid' ? 'preview.graph_mermaid' : kind === 'chart' ? 'preview.graph_chart' : 'preview.graph_echarts'
-  const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source)
+  const badge = toolButton('toggle-source', t('preview.graph_source'), ICONS.source, false)
   return [
     `<div class="block-head">`,
     `<span class="block-head-title">${escapeHtml(t(titleKey))}</span>`,
