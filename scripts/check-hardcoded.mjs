@@ -99,7 +99,10 @@ const PALETTE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/share/']
 // the debt a future batch has to clear stays visible rather than being quietly allowed or quietly hidden.
 const SCALE_CLASS_RE = /(^|[\s'"`])-?(p|px|py|pt|pb|pl|pr|ps|pe|m|mx|my|mt|mb|ml|mr|ms|me|gap|w|h|min-w|min-h|max-w|max-h|top|bottom|left|right|inset|z)-(?:(?:[1-9]\d*)|(?:0\.\d+))(?![\w./-])/g
 const SCALE_MESSAGE = 'bare Tailwind scale step'
-const SCALE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/presentation/']
+// L-9 clears this debt one module at a time, and each entry is a place that is now clean and must not
+// be able to regress: the file path is admitted only after every bare step in it became a `--sp-*` /
+// `--z-*` read.
+const SCALE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/presentation/', 'src/client/lib/markdown/slides/ui/inspector-element.tsx']
 
 // Files whose hex literals are authored content or a self-contained
 // stylesheet, not UI values that could consume the token layer. Each entry
