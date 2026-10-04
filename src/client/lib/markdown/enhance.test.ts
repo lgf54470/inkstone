@@ -421,7 +421,7 @@ describe('the accent palette reaches the drawings', () => {
       await renderChartJs(root, false)
       const datasets = (root.querySelector('[data-chart]') as unknown as { __chartInstance?: { data: { datasets: { backgroundColor?: unknown }[] } } }).__chartInstance?.data.datasets ?? []
       expect(datasets).toHaveLength(2)
-      expect(String(datasets[0]?.backgroundColor)).toMatch(/^oklch\(/)
+      expect(String(datasets[0]?.backgroundColor)).toMatch(/^#[0-9a-f]{6}$/)
       expect(datasets[1]?.backgroundColor).toBe('rgb(1, 2, 3)')
       destroyChartInstances(root)
     }

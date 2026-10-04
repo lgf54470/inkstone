@@ -47,6 +47,14 @@
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
+.ink-prose .block-tool-btn--text {
+  width: auto;
+  padding-inline: var(--sp-1\.5);
+  font-family: var(--font-ui);
+  font-size: var(--text-11);
+  line-height: 1;
+  white-space: nowrap;
+}
 .ink-prose .block-tool-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);

@@ -35,7 +35,7 @@ export {
   type ChartTableReason,
 } from './table'
 export { resolveScatterColumns, symbolSize, type ScatterColumns } from './columns'
-export { accentPalette, accentRamp, formatOklch, parseOklch, PALETTE_SIZE, type Oklch } from './palette'
+export { accentPalette, accentRamp, parseOklch, PALETTE_SIZE, toRgb, type Oklch } from './palette'
 export { chartAccent, chartPalette, chartPaletteKey, chartRamp } from './accent'
 export {
   NO_DECLARED_STYLE,

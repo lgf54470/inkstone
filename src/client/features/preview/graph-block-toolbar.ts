@@ -65,12 +65,12 @@ function graphOf(element: HTMLElement): GraphBlock | null {
   return { wrapper, block, kind: named === 'chart' || named === 'echarts' ? named : 'mermaid' }
 }
 
-function toolButton(action: string, label: string, icon: string, pressed?: boolean): string {
+function toolButton(action: string, label: string, icon: string, pressed?: boolean, variant = ''): string {
   const name = escapeAttr(label)
   // A toggle has to state the state it is in *before* it is first pressed, or a screen reader announces
   // a control whose position nobody can hear.
   const state = pressed === undefined ? '' : ` aria-pressed="${String(pressed)}"`
-  return `<button type="button" class="block-tool-btn" data-graph-action="${action}" title="${name}" aria-label="${name}"${state}>${icon}</button>`
+  return `<button type="button" class="block-tool-btn${variant}" data-graph-action="${action}" title="${name}" aria-label="${name}"${state}>${icon}</button>`
 }
 
 const ICONS = {
@@ -103,7 +103,8 @@ const CONVERT_LABELS: Record<FormatName, MessageKey> = {
  */
 function convertButton(current: FormatName, other: Exclude<FormatName, 'table'>): string {
   const target: FormatName = current === 'table' ? other : 'table'
-  return toolButton('convert-format', t(CONVERT_LABELS[target]), escapeHtml(t(FORMAT_LABELS[target])))
+  // The one tool in the head that carries a word instead of a glyph, so it asks for its own box.
+  return toolButton('convert-format', t(CONVERT_LABELS[target]), escapeHtml(t(FORMAT_LABELS[target])), undefined, ' block-tool-btn--text')
 }
 
 /**
