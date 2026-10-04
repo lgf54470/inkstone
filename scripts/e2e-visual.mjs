@@ -8368,6 +8368,29 @@ const CHART_BLOCKS = [
   '```',
   '',
   '```echarts',
+  '| :heatmap:{"title": "gate-heat"} | Mon | Tue | Wed |',
+  '| --- | --- | --- | --- |',
+  '| AM | 10 | 20 | 30 |',
+  '| PM | 15 | 25 | 35 |',
+  '```',
+  '',
+  '```echarts',
+  '| :sankey:{"title": "gate-flow"} | from | to | value |',
+  '| --- | --- | --- | --- |',
+  '| coal | power | 300 |',
+  '| gas | power | 200 |',
+  '| power | industry | 400 |',
+  '| power | homes | 150 |',
+  '```',
+  '',
+  '```echarts',
+  '| :bar:{"title": "gate-bars"} | Mon | Tue |',
+  '| --- | --- | --- |',
+  '| alpha | 12 | 19 |',
+  '| beta | 5 | 9 |',
+  '```',
+  '',
+  '```echarts',
   '| :map:{"title": "gate-map"} | 地区 | 值 |',
   '| --- | --- | --- |',
   '| 北京 | 100 |',
@@ -8387,6 +8410,9 @@ const CHART_MARKERS = {
   tableEcharts: 'gate-split',
   mapEcharts: 'gate-map',
   badStyleChart: 'gate-bad',
+  heatEcharts: 'gate-heat',
+  sankeyEcharts: 'gate-flow',
+  barsEcharts: 'gate-bars',
 }
 
 const ACCENT_LABELS = {
@@ -8449,6 +8475,95 @@ async function findChartBlock(page, marker) {
   }, marker)
   if (!found) throw new Error(`chart scenario: no block holds ${marker}; the note reads ${JSON.stringify((await page.evaluate(readGraphBlocks)).map((block) => block.kind))}`)
   return found
+}
+
+/**
+ * The colours a block's own shapes are painted with.
+ *
+ * Only `path`/`rect`/`polygon` nodes outside the svg's `defs` are read: the axes and the title are
+ * strokes and text, and a check that watched them would pass while the picture itself was black. What is
+ * counted is therefore how many shapes carry a colour the palette handed the library, because black is
+ * what echarts falls back to when it cannot parse one — which is how a heatmap came out as a black box
+ * and a sankey as a black ladder, both *after* the palette was said to be applied. echarts' own chrome
+ * (a visualMap handle, a clip path) is black by design, so it is the coloured shapes that prove the
+ * series was read, not the absence of black.
+ */
+async function readShapePaint(page, marker) {
+  return page.evaluate((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const wrapper = blocks.find((node) => (node.querySelector('[data-graph-source] code')?.textContent ?? '').includes(wanted))
+    const shapes = [...wrapper?.querySelectorAll('[data-echarts] svg path[fill], [data-echarts] svg rect[fill], [data-echarts] svg polygon[fill]') ?? []]
+      .filter((shape) => !shape.closest('defs'))
+    const fills = shapes.map((shape) => shape.getAttribute('fill')).filter((fill) => fill && fill !== 'none' && !fill.startsWith('url('))
+    const isBlack = (fill) => /^(#000|#000000|rgb\(0,\s*0,\s*0\)|black)$/i.test(fill.trim())
+    const coloured = fills.filter((fill) => !isBlack(fill))
+    return {
+      shapes: fills.length,
+      coloured: coloured.length,
+      distinct: [...new Set(coloured)].length,
+      sample: [...new Set(coloured)].slice(0, 4).join(','),
+    }
+  }, marker)
+}
+
+/**
+ * Put the pointer on one bar of a block and report what that bar became.
+ *
+ * The bar is tagged first because the question is about *that* shape across the highlight: echarts paints
+ * a hover state by deriving a new colour from the one it has, and a derivation it cannot perform used to
+ * hand back nothing, which read as the bar vanishing under the cursor rather than as a colour failure.
+ */
+async function hoverChartBar(page, marker) {
+  const target = await page.evaluate((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const wrapper = blocks.find((node) => (node.querySelector('[data-graph-source] code')?.textContent ?? '').includes(wanted))
+    const bars = [...wrapper?.querySelectorAll('[data-echarts] svg path[fill]') ?? []]
+      .map((shape) => ({ shape, box: shape.getBoundingClientRect() }))
+      .filter((entry) => entry.box.height > 12 && entry.box.width > 6)
+    if (bars.length === 0) return null
+    const bar = bars[0]
+    bar.shape.setAttribute('data-hover-probe', '1')
+    bar.shape.scrollIntoView({ block: 'center' })
+    const box = bar.shape.getBoundingClientRect()
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2, before: bar.shape.getAttribute('fill'), area: Math.round(box.width * box.height) }
+  }, marker)
+  if (!target) throw new Error(`chart scenario: ${marker} painted no bar to hover`)
+  await page.mouse.move(target.x - 6, target.y - 6)
+  await page.mouse.move(target.x, target.y)
+  await sleep(500)
+  const after = await page.evaluate(() => {
+    const bar = document.querySelector('[data-hover-probe]')
+    if (!bar) return { gone: true }
+    const box = bar.getBoundingClientRect()
+    const style = getComputedStyle(bar)
+    return {
+      gone: false,
+      fill: bar.getAttribute('fill'),
+      opacity: style.opacity,
+      visible: box.width > 4 && box.height > 4 && style.opacity !== '0' && style.display !== 'none' && style.visibility !== 'hidden',
+    }
+  })
+  await page.mouse.move(target.x, 4)
+  await sleep(200)
+  return { ...target, ...after }
+}
+
+/** The head's format control: what it says, and how tall the box saying it came out. */
+async function readFormatButton(page, marker) {
+  return page.evaluate((wanted) => {
+    const blocks = [...document.querySelectorAll('.ink-prose [data-graph-block]')]
+    const wrapper = blocks.find((node) => (node.querySelector('[data-graph-source] code')?.textContent ?? '').includes(wanted))
+    const button = wrapper?.querySelector('[data-graph-action="convert-format"]')
+    if (!button) return null
+    const box = button.getBoundingClientRect()
+    return {
+      text: button.textContent ?? '',
+      height: Math.round(box.height),
+      width: Math.round(box.width),
+      lines: button.getClientRects().length,
+      overflows: button.scrollWidth > button.clientWidth + 1,
+    }
+  }, marker)
 }
 
 /** Press one control of one block with the real pointer, and report where it was. */
@@ -8550,6 +8665,35 @@ async function assertChartBlocks(page) {
     map.painted && map.paths > 5 && map.error === '' && map.svgText.includes('gate-map'),
     JSON.stringify({ size: map.size, paths: map.paths, error: map.error, text: map.svgText.slice(0, 40) }),
   )
+  const heat = await readShapePaint(page, CHART_MARKERS.heatEcharts)
+  const flow = await readShapePaint(page, CHART_MARKERS.sankeyEcharts)
+  check(
+    'chart scenario: a heatmap paints its cells from the ramp rather than as a black block',
+    heat.coloured >= 4 && heat.distinct >= 3,
+    JSON.stringify(heat),
+  )
+  check(
+    'chart scenario: a sankey paints its nodes and links with the group colours',
+    flow.coloured >= 4 && flow.distinct >= 3,
+    JSON.stringify(flow),
+  )
+
+  // The hover state is derived from the series colour, so it is where an unreadable colour shows up as a
+  // missing bar rather than as a wrong one.
+  const hovered = await hoverChartBar(page, CHART_MARKERS.barsEcharts)
+  check(
+    'chart scenario: a bar is still there under the pointer',
+    hovered.gone !== true && hovered.visible === true && hovered.fill && hovered.fill !== 'none',
+    JSON.stringify({ before: hovered.before, after: hovered.fill, visible: hovered.visible, opacity: hovered.opacity }),
+  )
+
+  const format = await readFormatButton(page, CHART_MARKERS.jsonChart)
+  check(
+    'chart scenario: the format control fits its own box on one line',
+    format !== null && format.text.length > 0 && format.lines === 1 && !format.overflows && format.height <= 26,
+    JSON.stringify(format),
+  )
+
   check(
     'chart scenario: a format the note did not name is reported, not guessed',
     !badStyle.painted && badStyle.error.includes('style=') && badStyle.body.includes('gate-bad'),
