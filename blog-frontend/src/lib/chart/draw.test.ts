@@ -51,6 +51,9 @@ describe('drawing a post\'s chart table', () => {
     expect(root.textContent).toContain('北京')
   })
 
+})
+
+describe('a drawn chart table following the page', () => {
   // The accent is read when the chart is drawn, so a site redeployed with another one must not leave a
   // reader looking at colours the previous accent painted. The key a drawn block caches under is what
   // decides that, and a key carrying only the light mode would answer "already drawn" here.

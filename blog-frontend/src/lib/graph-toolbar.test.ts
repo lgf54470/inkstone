@@ -59,7 +59,7 @@ describe('a post\'s echarts block in its toolbar', () => {
     expect(panel?.hidden).toBe(true)
     expect(panel?.textContent).toContain("series: [{ type: 'bar' }]")
     expect(action(root, 'toggle-source')).toBe(true)
-    expect(wrapper?.querySelector('[data-graph-source]')?.hidden).toBe(false)
+    expect(panel?.hidden).toBe(false)
   })
 
   it('can be zoomed and fitted, which a chart.js picture cannot', () => {

@@ -150,21 +150,23 @@ describe('a post drawing an echarts fence', () => {
     expect(run.banner).toContain('allowed https source')
   })
 
-  it('blames the outlines when they do not arrive', async () => {
+  it('names the default outline file a map with no source of its own needs', async () => {
+    const run = await draw(MAP, () => GEOMETRY)
+    expect(run.urls[0]).toContain(encodeURIComponent(ALLOWED.slice(0, ALLOWED.lastIndexOf('/'))))
+  })
+})
+
+describe('a map whose outlines do not come', () => {
+  it('blames the route when it answers with a failure', async () => {
     const run = await draw(MAP, () => false)
     expect(run.drew).toBe(false)
     expect(run.banner).toContain('map outlines')
   })
 
-  it('blames the outlines when the answer is not outline geometry', async () => {
+  it('blames the route when the answer is not outline geometry', async () => {
     const run = await draw(MAP, () => ({ type: 'Feature', features: [] }))
     expect(run.drew).toBe(false)
     expect(run.banner).toContain('map outlines')
-  })
-
-  it('names the default outline file a map with no source of its own needs', async () => {
-    const run = await draw(MAP, () => GEOMETRY)
-    expect(run.urls[0]).toContain(encodeURIComponent(ALLOWED.slice(0, ALLOWED.lastIndexOf('/'))))
   })
 })
 

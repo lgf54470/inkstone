@@ -7,6 +7,7 @@ import { createConcurrencyQueue } from './concurrency-queue'
 import { EchartsOptionError, parseEchartsOption } from './chart/option.ts'
 import { EchartsTableError, mapRequestOfOption } from './chart/table-option.ts'
 import { MapOutlineError, renderEcharts } from './chart/draw.ts'
+import { chartPalette } from './chart/accent.ts'
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -224,7 +225,26 @@ function cssVarValue(name: string, fallback: string): string {
   return value || fallback
 }
 
-function buildChartConfig(config: Record<string, unknown>, textColor: string, gridColor: string): ChartConfiguration {
+/**
+ * Colours the series the note left uncoloured, the same rule the app's chart.js path applies: chart.js's
+ * own default palette is a rainbow nobody chose for this page, so an unstyled dataset takes the accent
+ * group instead — and a note that named its own colours keeps them, because that is a statement about
+ * the data rather than an omission.
+ */
+function themedDatasets(datasets: unknown, palette: string[]): unknown {
+  if (!Array.isArray(datasets)) return datasets
+  return datasets.map((raw, index) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+    const dataset = raw as Record<string, unknown>
+    const next: Record<string, unknown> = { ...dataset }
+    const colour = palette[index % palette.length]
+    if (next.backgroundColor === undefined) next.backgroundColor = colour
+    if (next.borderColor === undefined) next.borderColor = colour
+    return next
+  })
+}
+
+function buildChartConfig(config: Record<string, unknown>, textColor: string, gridColor: string, palette: string[]): ChartConfiguration {
   const userOptions = asRecord(config.options)
   const userScales = asRecord(userOptions.scales)
   const scales: Record<string, Record<string, unknown>> = {}
@@ -239,8 +259,13 @@ function buildChartConfig(config: Record<string, unknown>, textColor: string, gr
     }
   }
 
+  const source = config.data && typeof config.data === 'object' && !Array.isArray(config.data)
+    ? config.data as Record<string, unknown>
+    : null
+  const data = source ? { ...source, datasets: themedDatasets(source.datasets, palette) } : undefined
   return {
     ...config,
+    ...(data ? { data } : {}),
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -296,7 +321,7 @@ async function renderChartBlock(block: HTMLElement): Promise<void> {
     container.appendChild(canvas)
     block.appendChild(container)
 
-    const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor))
+    const instance = new Chart(canvas, buildChartConfig(config, textColor, gridColor, chartPalette(isDarkMode())))
     chartInstances.set(block, instance)
     renderedChartBlocks.add(block)
     chartRevealObserver.current?.unobserve(block)

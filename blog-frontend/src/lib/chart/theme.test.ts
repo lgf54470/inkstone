@@ -2,14 +2,14 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { chartAccent, chartPalette, chartPaletteKey, chartRamp } from './accent.ts'
 import { applyChartPalette, echartsTheme } from './theme.ts'
+import { toRgb } from './palette.ts'
 
 /**
  * The colours a post's chart paints with are the site's accent, read when the chart is drawn.
  *
  * jsdom has no stylesheet, so the accent is written onto the root as an inline custom property — the
- * same way the app's own palette tests reach it. Whether the library finally *renders* those colours is
- * a real-browser question (echarts rejects an oklch string it cannot parse in jsdom), so what is pinned
- * here is the value the app hands it.
+ * same way the app's own palette tests reach it. What is pinned here is which value the drawing code
+ * asks for; ./palette.test.ts is what pins that the answer is one the chart library can read back.
  */
 
 const CINNABAR = 'oklch(49% 0.15 30)'
@@ -27,7 +27,7 @@ describe('the accent a chart reads', () => {
     setAccent(CINNABAR)
     expect(chartAccent()).toEqual({ l: 0.49, c: 0.15, h: 30 })
     const palette = chartPalette(false)
-    expect(palette[0]).toBe(CINNABAR)
+    expect(palette[0]).toBe(toRgb({ l: 0.49, c: 0.15, h: 30 }))
     expect(new Set(palette).size).toBe(palette.length)
   })
 
@@ -36,7 +36,7 @@ describe('the accent a chart reads', () => {
     const warm = chartPalette(false)
     setAccent(INDIGO)
     const cold = chartPalette(false)
-    expect(cold[0]).toBe(INDIGO)
+    expect(cold[0]).toBe(toRgb({ l: 0.62, c: 0.16, h: 252 }))
     expect(cold[1]).not.toBe(warm[1])
   })
 
