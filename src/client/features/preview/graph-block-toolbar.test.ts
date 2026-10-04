@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n } from '../../lib/i18n'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import {
-  convertChartFormat,
-  convertEchartsFormat,
+  convertChartFence,
+  convertEchartsFence,
   enhanceGraphBlockToolbarsInRoot,
   executeGraphBlockAction,
   graphBlockToolbar,
@@ -22,6 +22,11 @@ function mount(markdown: string): HTMLElement {
 
 function button(root: HTMLElement, action: string): HTMLButtonElement {
   return root.querySelector<HTMLButtonElement>(`[data-graph-action="${action}"]`)!
+}
+
+/** The line a rendered block claims to sit on — what a write looks its fence up by. */
+function lineOf(root: HTMLElement, selector: string): number {
+  return Number(root.querySelector<HTMLElement>(selector)!.dataset.line)
 }
 
 const MERMAID = '```mermaid\nflowchart TD\nA-->B\n```'
@@ -121,7 +126,7 @@ describe('executeGraphBlockAction', () => {
     const root = mount(note)
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
-    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
+    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
     expect(edits[0]).toBe('```chart style=table\n| :bar: | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |\n```')
   })
@@ -131,7 +136,7 @@ describe('executeGraphBlockAction', () => {
     const root = mount(note)
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
-    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
+    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
     expect(edits[0]).toContain('```chart style=json\n')
     expect(JSON.parse(edits[0].replace('```chart style=json\n', '').replace('\n```', ''))).toEqual({
@@ -152,7 +157,7 @@ describe('executeGraphBlockAction', () => {
       .toBe('Write this chart as JSON')
     const edits: string[] = []
     const toast = vi.fn()
-    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), toast)
+    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), toast)
     expect(edits).toHaveLength(1)
     expect(edits[0]).toContain('```chart style=json\n')
     expect(edits[0]).toContain('"type": "bar"')
@@ -165,7 +170,7 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     const toast = vi.fn()
-    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), toast)
+    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), toast)
     expect(edits).toEqual([])
     expect(toast).toHaveBeenCalledWith({ title: 'This chart holds more than a table can carry', tone: 'warning' })
   })
@@ -176,7 +181,7 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     const toast = vi.fn()
-    convertChartFormat(root.querySelector('[data-chart]')!, 'intro\n' + note + '\nmore', (next) => edits.push(next), toast)
+    convertChartFence(lineOf(root, '[data-chart]'), 'intro\n' + note + '\nmore', (next: string) => edits.push(next), toast)
     expect(edits).toEqual([])
     expect(toast).toHaveBeenCalledWith({ title: 'This block no longer sits where it was drawn; try again', tone: 'warning' })
   })
@@ -187,7 +192,7 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     expect(root.querySelectorAll('.block-tool-btn')).toHaveLength(3)
     const edits: string[] = []
-    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), vi.fn())
+    convertEchartsFence(lineOf(root, '[data-echarts]'), note, (next: string) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
     expect(edits[0]).toContain('| :bar:{"title":"T"} | A |')
     expect(edits[0]).toContain('| s | 1 |')
@@ -199,7 +204,7 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     const toast = vi.fn()
-    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), toast)
+    convertEchartsFence(lineOf(root, '[data-echarts]'), note, (next: string) => edits.push(next), toast)
     expect(edits).toHaveLength(1)
     expect(edits[0]).toContain('```echarts style=table\n| :bar:')
     expect(toast).not.toHaveBeenCalled()
@@ -210,7 +215,7 @@ describe('executeGraphBlockAction', () => {
     const root = mount(note)
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
-    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), vi.fn())
+    convertEchartsFence(lineOf(root, '[data-echarts]'), note, (next: string) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
     expect(edits[0]).toContain('```echarts style=json\n')
     expect(edits[0]).toContain('"series"')
@@ -222,7 +227,7 @@ describe('executeGraphBlockAction', () => {
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     const toast = vi.fn()
-    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), toast)
+    convertEchartsFence(lineOf(root, '[data-echarts]'), note, (next: string) => edits.push(next), toast)
     expect(edits).toEqual([])
     expect(toast).toHaveBeenCalledWith({ title: 'This option is not one a table can write back out', tone: 'warning' })
   })

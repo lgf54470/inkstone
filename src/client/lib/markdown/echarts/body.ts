@@ -8,6 +8,7 @@
  * so a note shared with a stranger never runs what only its author asked to run.
  */
 import { applyFencePatchAtSource, fenceAt, type FenceTarget } from '../fence-edit'
+import { fenceBody } from '../fence-bodies'
 import { isChartTableBody, withFenceStyle, type DeclaredStyle } from '../chart'
 
 export type EchartsMode = 'option' | 'table'
@@ -55,6 +56,18 @@ export function withFenceScript(info: string, on: boolean): string {
 export function echartsFenceAt(content: string, line: number): EchartsFence | null {
   const fence = fenceAt(content, line, ECHARTS_LANGUAGES)
   return fence === null ? null : { line, body: fence.body, info: fence.info }
+}
+
+/**
+ * The body an already-drawn block was mounted from, read back through the document's fence-body set by
+ * the index the renderer stamped. A surface that has the node but not the note's text — the right-click
+ * menu, a hover card — asks this rather than scraping the placeholder, which by then holds a chart.
+ */
+export function echartsBody(node: HTMLElement): string {
+  const index = Number(node.dataset.echartsIndex)
+  return fenceBody(node, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
+    .replace(/\r\n/g, '\n')
+    .replace(/\n$/, '')
 }
 
 /**

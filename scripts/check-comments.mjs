@@ -533,12 +533,17 @@ const allowed = new Map([
     '// column words a note\'s header is matched against, and the labels a fixture table carries.',
     '// The reference table-chart demos, copied as written so the port is checked against the',
     '// same inputs the page documents.',
+    '// A ```echarts map template colours the regions the outline file names, so its table carries those',
+    '// names as data: translating them would leave a note that draws a map with nothing coloured.',
     '// The OAuth consent page is a self-contained HTML document with its own',
     '// language switch (cookie-based); it does not use the React i18n layer.',
     '// A constant that holds note data or a syntax\'s own input vocabulary, rather than UI copy rendered',
     '// by the i18n layer, may carry the localized literal it matches against. The names are written here',
     '// rather than in a Set above: this runs inside the scan, which starts before a later `const` is',
     '// initialized.',
+    '// ECHARTS_TEMPLATES is the third kind of case: a map template\'s region names are the keys the outline',
+    '// file itself uses, so translating them would draw a map with nothing coloured — the same reason',
+    '// SCATTER_HEADER_WORDS may name the columns a note is written with.',
     '// The literal is allowed wherever the named constant reaches it, not only when it is the initializer',
     '// itself: the scatter\'s header words sit in arrays inside one object.',
     '// allowedHanFragments keeps first-occurrence replacement on purpose: some',
@@ -2996,6 +3001,12 @@ const allowed = new Map([
   ]],
   ['src/client/editor/diagram-templates.ts', [
     '/**\n * Whiteboard starter scenes. The body is the standard `.excalidraw` scene, so the shape\n * of an element here is the library\'s own (see lib/markdown/excalidraw/body.ts); a blank\n * board is a scene with no elements, which the reader turns into an empty canvas.\n */',
+  ]],
+  ['src/client/editor/echarts-templates.ts', [
+    '/**\n * The templates the insert menu offers for a ```echarts fence.\n *\n * An echarts body names no colours: the block paints its series with the account\'s accent ramp unless\n * the note colours them itself, which is the difference between a chart that came out of a\n * documentation page and one the author styled on purpose. The last two bodies are Cherry\'s table form,\n * which is the same data written where a person can edit it in place.\n */',
+    '/**\n * An echarts body names no colours: the block paints its series with the account\'s accent ramp unless\n * the note colours them itself, which is the difference between a chart that came from a documentation\n * page and one the author styled on purpose.\n */',
+    '// The outlines come from the app\'s own map route, so a reader needs no setting turned on to see the',
+    '// picture; `mapDataSource` is only for a note that names another allowed region file.',
   ]],
   ['src/client/editor/live-preview.test.ts', [
     '/**\n * A board a snapshot can group: cards live under `properties`, so a body written from memory can\n * parse and still break the grouping that draws it.\n */',
@@ -7992,6 +8003,7 @@ const allowed = new Map([
     '// Highlighting is best-effort; the plain text code stays visible on failure.',
   ]],
   ['src/client/features/preview/graph-block-toolbar.test.ts', [
+    '/** The line a rendered block claims to sit on — what a write looks its fence up by. */',
     '// The control works off the body\'s shape while the annotation decides which reader draws it. On a',
     '// note whose two statements disagree that makes the press a repair: it writes the body it holds into',
     '// the other format and restates `style=` to match, so one click lands on a note that says one thing.',
@@ -8008,8 +8020,9 @@ const allowed = new Map([
     '/** The zoom step next to the one currently applied, clamped to the ends of the ladder. */',
     '/** An echarts block draws SVG, so it leaves the same way a diagram does: the markup, not a raster. */',
     '/** Why a body will not write the other way, in the words the author needs to act on. */',
-    '/**\n * Rewrites an echarts fence as the other format. A conversion always lands on a body made of data, so\n * the `js` marker goes with the option it was written for — leaving it would let a note keep claiming\n * a permission its new body does not need — and the body\'s new format is written into `style=` beside\n * it, so the note states what it now holds.\n */',
+    '/**\n * Rewrites an echarts fence as the other format, by the line its block was drawn at. A conversion\n * always lands on a body made of data, so the `js` marker goes with the option it was written for —\n * leaving it would let a note keep claiming a permission its new body does not need — and the body\'s\n * new format is written into `style=` beside it, so the note states what it now holds.\n *\n * The line is the only thing a caller needs, which is what lets the preview\'s format control and the\n * editor\'s right-click menu run the same write.\n */',
     '/**\n * Rewrites the fence as the other format. The block was drawn from the body the renderer encoded, so\n * that is what the fence is looked up by: when the note no longer holds it, nothing is written, in\n * either direction of the mistake.\n */',
+    '/** The line a rendered block claims to sit on, or NaN when its markup carries none. */',
     '/** This block family\'s toolbar: no note writes and no overlay, so its dismiss is nothing to do. */',
   ]],
   ['src/client/features/preview/image-editor.test.ts', [
@@ -8064,6 +8077,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/preview/image-sync.ts', [
     '/**\n * Applies an image\'s own controls to the note store. The change is resolved against the note\'s\n * *current* text rather than against the markup the preview rendered from: the user may have\n * typed since, and writing on top of that snapshot would throw those edits away. When the image\n * can no longer be found where the rendered node said it was, nothing is written.\n */',
+  ]],
+  ['src/client/features/preview/index.ts', [
+    '// The two block writers the editor\'s right-click menu shares with the preview\'s format control: the',
+    '// menu is a second surface for the same edit, not a second implementation of it.',
   ]],
   ['src/client/features/preview/js-runner-core.ts', [
     '/**\n * Executes user javascript-example code inside the dedicated Worker thread.\n * Results cross the postMessage boundary as plain strings only, and the Worker\n * has no DOM or parent-page reference, so preview code cannot reach page data.\n * A dedicated thread is also the only way to hard-stop while(true) loops via\n * terminate(); timeouts live in the page-side bridge (js-runner.ts).\n */',
@@ -9184,12 +9201,31 @@ const allowed = new Map([
     '/** The fences whose own menu replaces the code block\'s, by every name the language goes by. */',
     '/** The context a diagram fence carries: its source and the range a template would replace. */',
   ]],
+  ['src/client/features/workspace/context-menu-detect/preview.ts', [
+    '/** The block\'s own fence body, read back by the index the renderer stamped; a bare table-chart has none. */',
+  ]],
+  ['src/client/features/workspace/context-menu/charts.tsx', [
+    '/**\n * The menus of the two chart block families. What a note can ask of either — an option body or a Cherry\n * table — is the choice the preview\'s format control writes, so each menu offers that switch as one item\n * and calls the preview\'s own function to carry it out, rather than a second copy of the surgery.\n */',
+    '/**\n * The line a fence\'s opening backticks sit on. The menu holds the block\'s offset while the write looks\n * its fence up by line — the same number the renderer stamps as `data-line` — so the two meet here\n * rather than in a second copy of the surgery.\n */',
+    '/**\n * The menu\'s copy of the format control the preview\'s block head carries: the same fence surgery, the\n * same refusal when the note cannot be read the other way, so the two surfaces cannot drift into\n * offering different conversions.\n */',
+    '/** The echarts block\'s menu: the chart block\'s menu with the family\'s own templates. */',
+  ]],
+  ['src/client/features/workspace/context-menu/fence-template.ts', [
+    '/**\n * The one write every block menu shares: replace the fenced block the menu was opened on with a new\n * fence of the same language, body included.\n *\n * It lives beside the menus rather than inside one of them because the diagram families and the chart\n * families all offer the same gesture — swap this block\'s body for a template\'s — and a menu that\n * rewrote the fence by hand would drift from the one next to it on the first edit to either.\n */',
+    '/** One menu item per template, each replacing the block the menu was opened on. */',
+  ]],
   ['src/client/features/workspace/context-menu/media.tsx', [
     '/**\n * A mind map block\'s menu matches the diagram ones: copy the source, swap in a\n * template while the fence is being edited from the note, and jump back to it\n * from the rendered block.\n */',
     '/**\n * A whiteboard block\'s menu is the one every other block gets: the note owns the\n * right-click, so the source is what can be copied here and a template is what can be\n * swapped in while the fence is being edited — the library\'s own canvas menu belongs to\n * the full screen view, where the board is the surface being worked on.\n */',
   ]],
   ['src/client/features/workspace/context-menu/types.ts', [
     '/**\n * Everything an EditorContextMenu item builder can read or trigger.\n * Assembled once per render by the `EditorContextMenu` component and handed to\n * the per-context builder modules so each branch stays a pure function of the\n * menu state (decoupled from the component\'s hooks and DOM plumbing).\n */',
+  ]],
+  ['src/client/features/workspace/editor-context-menu-charts.test.ts', [
+    '/**\n * The chart block families\' right-click menu. Two things are pinned here that no unit test of the\n * converters covers: that a block of each family *gets* the menu at all, and that the templates the\n * insert menu offers are bodies the block can draw — a template that lands on an error box is a menu\n * item that teaches the syntax wrong.\n */',
+    '// The insert menu is how a person learns the syntax exists, so the two shapes have to be the two the',
+    '// format control switches between: an option body detected as an option, a table body as a table.',
+    '// No third-party host is contacted from the reader\'s browser, and no setting has to be turned on.',
   ]],
   ['src/client/features/workspace/workspace/use-workspace.ts', [
     '// live keeps the editor on screen and renders the block around the caret in',
@@ -9766,6 +9802,7 @@ const allowed = new Map([
     '/**\n * The format a block reads its body as. The note\'s two names are `json` and `table`; this family calls\n * its data body an `option`, which is the one spelling difference and the only translation here. A\n * stated format wins over inference, so the reader that runs is the one the author asked for — see\n * ../chart/style.\n */',
     '/** Whether this fence\'s info line asked to run JavaScript. */',
     '/** The same info line with the flag set or cleared, leaving every other token where it was. */',
+    '/**\n * The body an already-drawn block was mounted from, read back through the document\'s fence-body set by\n * the index the renderer stamped. A surface that has the node but not the note\'s text — the right-click\n * menu, a hover card — asks this rather than scraping the placeholder, which by then holds a chart.\n */',
     '/**\n * Rewrites the fence\'s body, its info line, or both in one edit. The body and the two marks travel\n * together because a conversion changes what the body is made of: a JavaScript option turned into a\n * table has to give up the `js` flag it was written for, and carries the new format in `style=` so the\n * note says what it now holds.\n */',
   ]],
   ['src/client/lib/markdown/echarts/index.ts', [
@@ -16731,6 +16768,12 @@ const allowed = new Map([
     '// The local graph is built around the note the reader is standing on. Taking that note out of the',
     '// global picture must not answer their own note\'s neighbourhood with an empty canvas.',
     '// One note past the cap: the list is what the route refuses to carry further, not the graph.',
+  ]],
+  ['tests/insert-menu-families.test.ts', [
+    '/**\n * Every block language the note can draw has an insert entry on both surfaces that offer them — the\n * editor toolbar\'s block menu and the blank canvas\'s right-click menu — and both lists are the languages\n * whose own context menu replaces the code block\'s.\n *\n * Three hand-written lists describe one fact, which is how a family ends up drawing but not inserting:\n * a ```echarts fence that renders and has no menu entry can only be typed out by someone who already\n * knows it exists, and the feature reads as missing to everyone else. The detection list is taken as the\n * source of truth because a language only appears there once its block has a menu of its own.\n */',
+    '/** Order says nothing about coverage, so every comparison is on the sorted names. */',
+    '/** The families a menu offers: the keys of its own diagram table. */',
+    '/** The families a menu actually lists, in the order it lists them. */',
   ]],
   ['tests/kanban-board-title.test.ts', [
     '/**\n * A board\'s name is in the fence body, and the markup a fence renders does not read that body — so\n * the block head drew its own type name instead: the type name in the head, and the same word again\n * as the tab of the board view. A reader who had named the board saw that name nowhere, and saw a\n * twice repeated type name where the name belonged (user report 2026-09-23).\n *\n * The name now comes from the two layers that hold it, each in the host where it has the room:\n *\n *  - the note, where the registry writes it into the block\'s own head. The head is a few hundred\n *    pixels wide and its two other children take 60 of them, so the name has room there; the board\'s\n *    own header does not — a name drawn in that bar took the room the view strip needs to scroll its\n *    own tab into (the visual gate read a 26px strip for an 8-tab board when it was drawn there).\n *  - the overlay, where the same header draws it, because there is no block head in an overlay.\n *\n * Nothing is drawn for an untitled board: a placeholder would have to be translated, and nothing\n * re-renders this block when the language changes. The strings that are translated and do live in\n * markup the host made — the canvas\'s landmark name — are pinned in\n * `src/client/lib/markdown/kanban/registry-locale.test.ts`.\n */',

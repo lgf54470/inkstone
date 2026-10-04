@@ -3,6 +3,7 @@ export {
   ECHARTS_SCRIPT_KEY,
   applyEchartsFencePatch,
   detectEchartsMode,
+  echartsBody,
   echartsFenceAt,
   resolveEchartsMode,
   readsFenceScript,

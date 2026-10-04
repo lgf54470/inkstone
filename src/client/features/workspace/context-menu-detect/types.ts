@@ -10,6 +10,7 @@ type ContextType =
   | 'codeblock'
   | 'mermaid'
   | 'chart'
+  | 'echarts'
   | 'mindmap'
   | 'excalidraw'
   | 'kanban'
@@ -32,6 +33,7 @@ export interface EditorContextData {
   codeBlock?: { language: string; code: string; from: number; to: number; isClosed?: boolean }
   mermaid?: { code: string; from: number; to: number }
   chart?: { code: string; from: number; to: number }
+  echarts?: { code: string; from: number; to: number }
   mindmap?: { code: string; from: number; to: number }
   excalidraw?: { code: string; from: number; to: number }
   kanban?: { code: string; from: number; to: number }
@@ -76,6 +78,10 @@ export interface PreviewContextData {
     sourceLine?: number
   }
   chart?: {
+    code: string
+    sourceLine?: number
+  }
+  echarts?: {
     code: string
     sourceLine?: number
   }

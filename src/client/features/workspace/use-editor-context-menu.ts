@@ -10,7 +10,8 @@ import { formatMarkdownTable, parseMarkdownTable, type ParsedTable } from '../..
 import type { MenuCtx } from './context-menu/types'
 import { buildEditorSelectionItems, buildPreviewSelectionItems } from './context-menu/selection'
 import { buildEditorTableItems, buildPreviewTableItems } from './context-menu/table'
-import { buildImageItems, buildMathItems, buildCodeBlockItems, buildMermaidItems, buildChartItems, buildMindmapItems, buildKanbanItems, buildSlidesItems, buildExcalidrawItems } from './context-menu/media'
+import { buildImageItems, buildMathItems, buildCodeBlockItems, buildMermaidItems, buildMindmapItems, buildKanbanItems, buildSlidesItems, buildExcalidrawItems } from './context-menu/media'
+import { buildChartItems, buildEchartsItems } from './context-menu/charts'
 import { buildWikiLinkItems, buildLinkItems, buildFrontmatterItems, buildTaskItems, buildHeadingItems } from './context-menu/structure'
 import { buildCommonEditorItems, buildPreviewCanvasItems } from './context-menu/canvas'
 import { type ContextToolbarProps } from './context-menu/toolbar'
@@ -127,6 +128,7 @@ function buildPrivateEditorItems(ctx: MenuCtx): MenuItem[] | null {
     buildCodeBlockItems(ctx) ??
     buildMermaidItems(ctx) ??
     buildChartItems(ctx) ??
+    buildEchartsItems(ctx) ??
     buildMindmapItems(ctx) ??
     buildKanbanItems(ctx) ??
     buildSlidesItems(ctx) ??
@@ -148,6 +150,7 @@ function buildPrivatePreviewItems(ctx: MenuCtx): MenuItem[] | null {
     buildCodeBlockItems(ctx) ??
     buildMermaidItems(ctx) ??
     buildChartItems(ctx) ??
+    buildEchartsItems(ctx) ??
     buildMindmapItems(ctx) ??
     buildKanbanItems(ctx) ??
     buildSlidesItems(ctx) ??

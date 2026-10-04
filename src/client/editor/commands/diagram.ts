@@ -1,5 +1,6 @@
 import type { StateCommand } from '@codemirror/state'
 import { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from '../diagram-templates'
+import { ECHARTS_TEMPLATES } from '../echarts-templates'
 
 
 export const insertMermaid: StateCommand = insertDiagramCode('mermaid', MERMAID_TEMPLATES[0]!.code)
@@ -13,4 +14,4 @@ export const insertMindmap: StateCommand = insertDiagramCode('mindmap', MINDMAP_
 
 export const insertExcalidraw: StateCommand = insertDiagramCode('excalidraw', EXCALIDRAW_TEMPLATES[0]!.code)
 
-export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES }
+export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, ECHARTS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES }

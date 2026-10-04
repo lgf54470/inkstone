@@ -59,6 +59,7 @@ export const messages = {
 'workspace.math': 'Math',
 'workspace.mermaid_diagram': 'Mermaid diagram',
 'workspace.chartjs_diagram': 'Chart.js chart',
+'workspace.echarts_chart': 'ECharts chart',
 'workspace.mind_map': 'Mind map',
 'workspace.kanban': 'Kanban',
 'workspace.whiteboard': 'Excalidraw whiteboard',

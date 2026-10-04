@@ -1,7 +1,6 @@
 import { escapeHtml } from '@shared/escape'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
-import { fenceBody } from '../fence-bodies'
 import { decodeDataValue } from '../data-attr'
 import {
   CHART_TABLE_MESSAGES,
@@ -16,6 +15,7 @@ import {
 } from '../chart'
 import { applyChartPalette } from '../echarts'
 import {
+  echartsBody,
   EchartsOptionError,
   EchartsTableError,
   MAP_SERIES_NAME,
@@ -148,8 +148,7 @@ interface EchartsSource {
 }
 
 function fenceSource(node: HTMLElement): EchartsSource {
-  const index = Number(node.dataset.echartsIndex)
-  const raw = fenceBody(node, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
+  const raw = echartsBody(node)
   const asksForScript = node.dataset.echartsScript === 'true'
   const style = parseStyleValue(node.dataset.echartsStyle ?? null)
   return {

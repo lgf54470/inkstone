@@ -70,6 +70,9 @@ const localizedDataFragments = new Map([
     // The reference table-chart demos, copied as written so the port is checked against the
     // same inputs the page documents.
     [path.resolve('src/client/lib/markdown/echarts/table-option.test.ts'), ['\u6570\u636e\u6563\u70b9\u56fe', '\u80fd\u6e90\u6d41\u5411\u56fe', '\u4e2d\u56fd\u5730\u56fe', '\u7eb5\u5750\u6807', '\u7cfb\u5217\u4e00', '\u6298\u7ebf\u56fe', '\u6a2a\u5750\u6807', '\u67f1\u72b6\u56fe', '\u96f7\u8fbe\u56fe', '\u5929\u7136\u6c14', '\u7cfb\u5217\u4e8c', '\u70ed\u529b\u56fe', '\u53d1\u7535', '\u4e0b\u5348', '\u82f9\u679c', '\u4e0a\u6d77', '\u5468\u4e8c', '\u997c\u56fe', '\u9999\u8549', '\u5317\u4eac', '\u76ee\u6807', '\u5927\u5c0f', '\u5185\u7f51', '\u7cfb\u5217', '\u5468\u4e00', '\u7164\u70ad', '\u6280\u80fd', '\u4e0a\u5348', '\u6570\u503c', '\u7528\u6237', '\u5de5\u4e1a']],
+    // A ```echarts map template colours the regions the outline file names, so its table carries those
+    // names as data: translating them would leave a note that draws a map with nothing coloured.
+    [path.resolve('src/client/editor/echarts-templates.ts'), ['\u5730\u533a', '\u503c', '\u5317\u4eac', '\u4e0a\u6d77', '\u5e7f\u4e1c', '\u6d59\u6c5f']],
     [path.resolve('src/client/lib/markdown/echarts/read.test.ts'), ['\u67f1\u72b6\u56fe']],
     [path.resolve('src/client/lib/markdown/enhance.test.ts'), ['\u5317\u4eac']],
     [path.resolve('src/worker/routes/map-geojson.test.ts'), ['\u5317\u4eac']],
@@ -222,9 +225,12 @@ for (const file of walk(root)) {
 // by the i18n layer, may carry the localized literal it matches against. The names are written here
 // rather than in a Set above: this runs inside the scan, which starts before a later `const` is
 // initialized.
+// ECHARTS_TEMPLATES is the third kind of case: a map template's region names are the keys the outline
+// file itself uses, so translating them would draw a map with nothing coloured — the same reason
+// SCATTER_HEADER_WORDS may name the columns a note is written with.
 function insideDataConstant(node) {
     const name = enclosingDataConstant(node)
-    return name === 'DEFAULT_TODO_TAG' || name === 'SCATTER_HEADER_WORDS'
+    return name === 'DEFAULT_TODO_TAG' || name === 'SCATTER_HEADER_WORDS' || name === 'ECHARTS_TEMPLATES'
 }
 // The literal is allowed wherever the named constant reaches it, not only when it is the initializer
 // itself: the scatter's header words sit in arrays inside one object.

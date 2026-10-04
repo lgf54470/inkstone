@@ -6,7 +6,7 @@ export { insertKanban, KANBAN_TEMPLATES, insertKanbanFromOutline, generateKanban
 export { insertColumns, insertTimeline, insertAlign } from './panel'
 export { insertCallout, insertDetails, insertTabs, insertNoteTemplate, insertFrontMatter, insertTable, insertCodeBlock, insertAdvancedCodeBlock, insertRunnableJsBlock, insertHorizontalRule } from './block'
 export { completeCodeFenceOnEnter, smartEnter, tableTab, toggleTaskDone, setTaskAtLine, updateTaskAtSourceLine } from './enter'
-export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from './diagram'
+export { insertDiagramCode, MERMAID_TEMPLATES, CHARTJS_TEMPLATES, ECHARTS_TEMPLATES, MINDMAP_TEMPLATES, EXCALIDRAW_TEMPLATES } from './diagram'
 export { insertMindmapFromOutline, generateMindmapFromOutline } from './mindmap'
 export { insertSlides, BENTO_SLIDES_TEMPLATES, insertSlidesFromOutline, generateSlidesFromOutline } from './slides'
 
