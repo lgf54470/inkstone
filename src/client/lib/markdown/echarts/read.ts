@@ -9,7 +9,13 @@
 import { readChartTable, writeChartTable, type DeclaredStyle } from '../chart'
 import { detectEchartsMode, resolveEchartsMode } from './body'
 import { EchartsOptionError, parseEchartsOption } from './option'
-import { EchartsTableError, echartsOptionToTable, tableToEchartsOption, type EchartsTableOption } from './table-option'
+import {
+  EchartsTableError,
+  echartsOptionToTable,
+  mapRequestOfOption,
+  tableToEchartsOption,
+  type EchartsTableOption,
+} from './table-option'
 
 export type EchartsConvertFailure =
   | 'invalid-option'
@@ -32,9 +38,9 @@ export interface EchartsReadOptions {
 
 /** The option a fence means, from a JSON5/JS body or from a table one, as the note states it. */
 export function readEchartsBody(raw: string, { allowScript = false, style = null }: EchartsReadOptions = {}): EchartsTableOption {
-  return resolveEchartsMode(raw, style) === 'table'
-    ? tableToEchartsOption(readChartTable(raw))
-    : { option: parseEchartsOption(raw, { allowScript }), mapSource: null }
+  if (resolveEchartsMode(raw, style) === 'table') return tableToEchartsOption(readChartTable(raw))
+  const option = parseEchartsOption(raw, { allowScript })
+  return { option, map: mapRequestOfOption(option) }
 }
 
 function failure(err: unknown): EchartsConversion {

@@ -23,3 +23,23 @@ export function stubCanvasContext(): () => void {
     HTMLCanvasElement.prototype.getContext = original
   }
 }
+
+// jsdom lays nothing out, so an element reports zero width and height and a library that projects
+// geometry into the drawing box (an echarts map divides its bounds by the box it measured) throws on
+// the way in. Tests that let the real library build a chart hand it a box instead of mocking the
+// library, so what they exercise stays the app's own render path.
+export function stubElementSize(width = 320, height = 200): () => void {
+  const keys = ['clientWidth', 'clientHeight'] as const
+  const values = { clientWidth: width, clientHeight: height }
+  const before = keys.map((key) => Object.getOwnPropertyDescriptor(HTMLElement.prototype, key))
+  keys.forEach((key) => {
+    Object.defineProperty(HTMLElement.prototype, key, { configurable: true, get: () => values[key] })
+  })
+  return () => {
+    keys.forEach((key, index) => {
+      const original = before[index]
+      if (original) Object.defineProperty(HTMLElement.prototype, key, original)
+      else Reflect.deleteProperty(HTMLElement.prototype, key)
+    })
+  }
+}

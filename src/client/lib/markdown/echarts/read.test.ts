@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { convertEchartsBody, readEchartsBody } from './read'
+import { DEFAULT_MAP_SOURCE } from '@shared/map-sources'
 
 const TABLE = '| :bar:{"title": "柱状图"} | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |'
 
@@ -13,7 +14,8 @@ describe('reading an echarts fence body', () => {
 
   it('takes an option body through the option reader', () => {
     expect(readEchartsBody('{ series: [{ type: \'funnel\', data: [] }] }').option).toEqual({ series: [{ type: 'funnel', data: [] }] })
-    expect(readEchartsBody(TABLE).mapSource).toBeNull()
+    expect(readEchartsBody(TABLE).map).toBeNull()
+    expect(readEchartsBody('{ series: [{ type: \'map\', map: \'china\' }] }').map).toEqual({ source: DEFAULT_MAP_SOURCE, name: 'china' })
   })
 
   it('will not run a function body the surface did not allow', () => {

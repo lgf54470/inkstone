@@ -18,11 +18,11 @@ import {
   echartsBody,
   EchartsOptionError,
   EchartsTableError,
-  MAP_SERIES_NAME,
   loadEcharts,
   loadMapGeometry,
   readEchartsBody,
   tableToEchartsOption,
+  type EchartsMapRequest,
   type EchartsChart,
   type EchartsTableOption,
 } from '../echarts'
@@ -206,7 +206,7 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: Ech
   const signature = `${chartPaletteKey(draw.dark)}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}:${styleSignature(source.style)}`
   if (node.dataset.rendered === signature && node.__echartsChart) return
   let option: unknown
-  let mapSource: string | null = null
+  let map: EchartsMapRequest | null = null
   if (source.style.invalid !== null) {
     markEchartsError(node, t('markdown.chart_style_unknown'), source.key, signature)
     return
@@ -214,22 +214,32 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: Ech
   try {
     const body = source.read(allowScript)
     option = body.option
-    mapSource = body.mapSource
+    map = body.map
   }
   catch (err) {
     markEchartsError(node, blockMessage(err), source.key, signature)
     return
   }
   try {
-    if (mapSource) {
+    if (map) {
       const { registerEchartsMap } = await loadEcharts()
-      registerEchartsMap(MAP_SERIES_NAME, await loadMapGeometry(mapSource))
+      // Under the name the note's own series asks for, which is what lets a copied example draw.
+      registerEchartsMap(map.name, await loadMapGeometry(map.source))
     }
+  }
+  catch (err) {
+    // Only the outline step is blamed on the outlines: a drawing that fails after they arrived is the
+    // chart's own complaint, and calling that a load failure sends the reader to the wrong setting.
+    if (!root.contains(node)) return
+    markEchartsError(node, `${t('markdown.echarts_map_failed')}: ${errorMessage(err)}`, source.key, signature)
+    return
+  }
+  try {
     await drawInto(root, node, applyChartPalette(withDrawMode(option, draw.instant), draw.dark), draw.dark, signature)
   }
   catch (err) {
     if (!root.contains(node)) return
-    markEchartsError(node, mapSource ? `${t('markdown.echarts_map_failed')}: ${errorMessage(err)}` : errorMessage(err), source.key, signature)
+    markEchartsError(node, errorMessage(err), source.key, signature)
   }
 }
 

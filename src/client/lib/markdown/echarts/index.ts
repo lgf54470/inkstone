@@ -14,7 +14,16 @@ export {
 export { EchartsOptionError, parseEchartsOption, type EchartsOptionReason } from './option'
 export { loadEcharts } from './loader'
 export { MAP_SERIES_NAME, loadMapGeometry } from './map'
-export { EchartsTableError, ECHARTS_TABLE_KINDS, tableToEchartsOption, echartsOptionToTable, type EchartsTableReason, type EchartsTableOption } from './table-option'
+export {
+  EchartsTableError,
+  ECHARTS_TABLE_KINDS,
+  echartsOptionToTable,
+  mapRequestOfOption,
+  tableToEchartsOption,
+  type EchartsMapRequest,
+  type EchartsTableReason,
+  type EchartsTableOption,
+} from './table-option'
 export {
   convertEchartsBody,
   readEchartsBody,

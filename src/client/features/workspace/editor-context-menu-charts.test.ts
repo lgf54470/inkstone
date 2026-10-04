@@ -165,8 +165,8 @@ describe('the echarts templates', () => {
     const map = ECHARTS_TEMPLATES.find((tpl) => tpl.id === 'map')!
     const drawn = readEchartsBody(map.code)
     // No third-party host is contacted from the reader's browser, and no setting has to be turned on.
-    expect(isAllowedMapSource(drawn.mapSource!)).toBe(true)
-    expect(mapGeometryUrl(drawn.mapSource!)).toMatch(/^\/api\/map-geojson\?source=https%3A%2F%2F/)
+    expect(isAllowedMapSource(drawn.map!.source)).toBe(true)
+    expect(mapGeometryUrl(drawn.map!.source)).toMatch(/^\/api\/map-geojson\?source=https%3A%2F%2F/)
   })
 
   it('none of them name a colour, so the accent ramp is what paints them', () => {

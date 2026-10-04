@@ -75,6 +75,8 @@ const localizedDataFragments = new Map([
     [path.resolve('src/client/editor/echarts-templates.ts'), ['\u5730\u533a', '\u503c', '\u5317\u4eac', '\u4e0a\u6d77', '\u5e7f\u4e1c', '\u6d59\u6c5f']],
     [path.resolve('src/client/lib/markdown/echarts/read.test.ts'), ['\u67f1\u72b6\u56fe']],
     [path.resolve('src/client/lib/markdown/enhance.test.ts'), ['\u5317\u4eac']],
+    // The outline fixture names the region the way the outline file does, so the map has something to match.
+    [path.resolve('src/client/lib/markdown/enhance-echarts-map.test.ts'), ['\u5317\u4eac']],
     [path.resolve('src/worker/routes/map-geojson.test.ts'), ['\u5317\u4eac']],
 ])
 const allowedHanFragments = new Map([
