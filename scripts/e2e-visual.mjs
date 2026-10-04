@@ -2754,13 +2754,13 @@ async function assertSettingsReachTheShow(browser, page) {
     try {
       const dropped = await waitForDiagramSurfaces(page, 'off')
       const relisted = await waitForCardMarker(page, 'drawn')
-      check('presentation settings: the projector and the slide list both drop a diagram the account turned off', dropped.agrees, JSON.stringify({ ...dropped, relisted }))
-      // The marker is carried in the detail rather than judged: measured on this same byte, the card of
-      // the re-prepared page stays `undrawn` for the whole 15 s the wait allows (the listing pass
-      // restarts on a settings flip — `starts the listing over when the account turns a display switch`
-      // in slide-preflight.test.ts — yet the page is never re-captured within a show). That is L-17, and
-      // an assertion here would either stay red or bless the lag, so the reading travels with the check
-      // that judges what the room must not see: a picture the account turned off.
+      // Both halves are judged: the card must stop showing the picture, and the same card must then be
+      // listed from a capture taken *after* the flip. Read together they are not vacuous — a `drawn` card
+      // holding zero diagrams is the new settings' page, while the lag this scenario first measured left
+      // the card `undrawn` for the whole wait because the pass only read the cache during render and
+      // never noticed the projector's re-prepare (L-17).
+      check('presentation settings: the projector and the slide list both drop a diagram the account turned off',
+        dropped.agrees && relisted.marker === 'drawn', JSON.stringify({ ...dropped, relisted }))
     } finally {
       // Whatever the reading said, the account goes back the way it was found: every scenario after
       // this one measures a show whose diagrams are drawn.

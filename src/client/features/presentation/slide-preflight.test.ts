@@ -193,6 +193,55 @@ describe('SlidePreflight — what a settings flip does to a pass that finished',
     expect(measured(), 'the flip invalidates the markup, so it invalidates the listing with it').toBe(0)
     view.unmount()
   })
+
+  it('measures a page whose markup lands while the pass is already waiting on it', async () => {
+    // The projector and the pass are two components over one cache: the room's own page is re-prepared
+    // by the projector while the pass sits pointing at it, and a cache read taken during render cannot
+    // see a write that lands between two renders. That page was then stall-skipped without ever being
+    // measured, so its capture never came back — the browser reading behind L-17, reproduced here by
+    // doing the projector's write from the case.
+    rememberSlidePlan(HASHES[0] ?? '', { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] })
+    seed({ ...plainEntry(), prepared: true, drawn: true, flags: 'drawn-for-other-settings' })
+    const onProgress = vi.fn()
+    const view = await runPass(vi.fn(), onProgress)
+    const measured = () => (onProgress.mock.calls.at(-1)?.[0] as { measured: number } | undefined)?.measured ?? -1
+    expect(measured(), 'a page drawn for the other settings is not listed for these').toBe(0)
+
+    act(() => {
+      seed({ ...plainEntry(), prepared: true, flags: currentFlags() })
+    })
+    for (let beat = 0; beat < 12 && readSlideHtml(keyFor(0))?.drawn !== true; beat++) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 60))
+      })
+    }
+    expect(document.querySelector('[data-slide-preflight]'), 'the markup that landed is the page the pass was waiting for').toBeTruthy()
+    expect(readSlideHtml(keyFor(0))?.drawn, 'and the pass takes its capture back').toBe(true)
+    view.unmount()
+  })
+})
+
+// A tab that is not showing is given no animation frames, and the pass asked for one before mounting its
+// canvas: measured on a hidden show tab, zero frames in two seconds while its own timers kept firing, so
+// the page it was pointing at was taken by the four-second stall guard and never revisited (L-17).
+describe('SlidePreflight — what the pass does when no frame is coming', () => {
+  it('mounts its canvas on a timer when the tab gives it no frames', async () => {
+    const frame = window.requestAnimationFrame
+    const cancel = window.cancelAnimationFrame
+    let asked = 0
+    window.requestAnimationFrame = () => { asked += 1; return 0 }
+    window.cancelAnimationFrame = () => {}
+    try {
+      seed({ ...plainEntry(), prepared: true })
+      const view = await runPass(vi.fn())
+      expect(asked, 'the mount did ask for a frame, and none was coming').toBeGreaterThan(0)
+      expect(document.querySelector('[data-slide-preflight]'), 'and it mounted anyway, off the fallback timer').toBeTruthy()
+      view.unmount()
+    } finally {
+      window.requestAnimationFrame = frame
+      window.cancelAnimationFrame = cancel
+    }
+  })
 })
 
 // One page of the queue, held open on purpose: the pass must neither list it nor walk past it while the

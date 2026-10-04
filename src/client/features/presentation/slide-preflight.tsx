@@ -3,6 +3,7 @@ import { useSession } from '../../store/session'
 import { LAG_FRAME_MS, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, type SlicePace } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { SlideCanvas } from './slide-canvas'
+import { useCachedSlideHtml } from './slide-thumb'
 import { captureSlideHtml, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan, slideSettingFlags, stagedFor } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
@@ -17,6 +18,10 @@ import { useSlideHtml } from './use-slide-html'
 // the projector's later visit is a cache hit instead of a second render).
 const STALL_MS = 4_000
 const IDLE_FALLBACK_MS = 60
+// How long the deferred mount may wait for a frame before taking a timer instead. Below `STALL_MS`
+// even when a hidden tab clamps its timers, so a page never becomes a stall-guard skip for want of a
+// painted frame.
+const DEFER_FALLBACK_MS = 250
 // Waiting for a real idle window (bounded by the timeout, so the pass always finishes) is what
 // keeps this background work off the presenter's frames; the timeout is generous because filling
 // the slide list slightly later costs nothing, while a stutter during a talk does.
@@ -55,6 +60,11 @@ export interface PreflightProgress {
   finished: boolean
 }
 
+// The pass waits for its page's markup *as a subscriber* (`useCachedSlideHtml`), not with a read taken
+// during render: the projector prepares the page the room is looking at from another component, and a
+// render-time read cannot see a write that lands while the pass sits pointing at that page. It then
+// never mounts its canvas, the stall guard skips a slide it never measured, and the slide list keeps a
+// page whose picture was lost — which is what a settings flip mid-show did to every page it touched (L-17).
 export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onProgress }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
@@ -76,7 +86,7 @@ export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, 
   // gives the list both its picture and its page count from placeholders — a chart's skeleton is not
   // the height of the chart. A page still being drawn is waited for; a page that never finishes is
   // skipped by the stall guard and measured by the projector when the presenter reaches it.
-  const staged = stagedFor(cursor === null ? undefined : readSlideHtml(key), flags)
+  const staged = useCachedSlideHtml(key)
   const ready = useDeferredMount(Boolean(staged?.prepared || staged?.failed), key)
   if (!ready) return null
 
@@ -105,15 +115,27 @@ export function SlidePreflight({ deck, hashes, cacheKeys, fingerprint, metrics, 
   )
 }
 
-// True one frame after `ready` flips for this token, so whatever the flag announces is committed
-// in a task of its own instead of extending the task that produced it.
+// True one deferred task after `ready` flips for this token, so whatever the flag announces is committed
+// in a task of its own instead of extending the task that produced it. The frame is the preferred moment,
+// not the only one: a tab that is not showing is given no frames at all (measured on a hidden show tab —
+// zero animation frames in two seconds while its own timers kept firing), and a page still waiting for a
+// frame at four seconds is taken by the stall guard and never revisited in this show.
 function useDeferredMount(ready: boolean, token: string): boolean {
   const [mounted, setMounted] = useState('')
   useEffect(() => {
     setMounted('')
     if (!ready) return
-    const frame = window.requestAnimationFrame(() => setMounted(token))
-    return () => window.cancelAnimationFrame(frame)
+    const land = () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(fallback)
+      setMounted(token)
+    }
+    const frame = window.requestAnimationFrame(land)
+    const fallback = window.setTimeout(land, DEFER_FALLBACK_MS)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(fallback)
+    }
   }, [ready, token])
   return ready && mounted === token
 }
