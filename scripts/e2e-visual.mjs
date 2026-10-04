@@ -81,7 +81,12 @@ const NOTE_MARKDOWN = [
 
 let pass = 0
 let fail = 0
+// Which assertion the run was at when something was collected. A resource error gathered three hundred
+// checks after the scenario that provoked it is only findable by that trail, and L-15's 409 has been
+// reported exactly that way — named by URL, with no way back to the writer.
+let lastScene = ''
 function check(name, cond, extra = '') {
+  lastScene = name
   if (cond) {
     pass++
     console.log(`  ✓ ${name}`)
@@ -1340,6 +1345,41 @@ async function assertPresentationChromeAutoHide(page) {
   check('chrome fade: the scene puts its show and its fullscreen down', !down.open && !down.full, JSON.stringify({ ...down, rePressed }))
 }
 
+/**
+ * Wraps a keystroke in two recorders so a red cover check can say whether the key ever arrived. L-4 has
+ * been sampling this for thirty runs on the same bytes and its detail (`insideDialog:false, hitIsCover:false`)
+ * cannot tell a keystroke the show never received from one it received and ignored, so the press is read
+ * from both sides of the window plus the page's own focus state. Recorded, never judged.
+ */
+async function armKeyRecorder(page) {
+  await page.evaluate(() => {
+    window.__gateKeys = { capture: [], bubble: [] }
+    if (window.__gateKeysArmed) return
+    window.__gateKeysArmed = true
+    const note = (bucket) => (event) => window.__gateKeys[bucket].push({
+      key: event.key,
+      on: event.target instanceof Element ? event.target.tagName.toLowerCase() : 'other',
+      inDialog: event.target instanceof Element && Boolean(event.target.closest('[role="dialog"]')),
+    })
+    window.addEventListener('keydown', note('capture'), true)
+    window.addEventListener('keydown', note('bubble'), false)
+  })
+}
+
+async function readKeyRecorder(page) {
+  return page.evaluate(() => {
+    const active = document.activeElement instanceof Element ? document.activeElement : null
+    const seen = window.__gateKeys ?? { capture: [], bubble: [] }
+    return {
+      hasFocus: document.hasFocus(),
+      visibility: document.visibilityState,
+      active: active ? `${active.tagName.toLowerCase()}${active.getAttribute('aria-label') ? `[${active.getAttribute('aria-label')}]` : ''}` : 'nothing',
+      capture: seen.capture,
+      bubble: seen.bubble,
+    }
+  })
+}
+
 async function assertPresentationScreenCover(page) {
   await clickButton(page, LABELS.present)
   await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
@@ -1352,6 +1392,7 @@ async function assertPresentationScreenCover(page) {
   const viewport = page.viewport() ?? DESKTOP_VIEWPORT
   const point = { x: Math.round(viewport.width * 0.5), y: Math.round(viewport.height * 0.5) }
 
+  await armKeyRecorder(page)
   await page.keyboard.press('b')
   await sleep(200)
   const blackout = await page.evaluate(({ x, y, names }) => {
@@ -1373,19 +1414,28 @@ async function assertPresentationScreenCover(page) {
       saysCover: names.blackout.some((label) => said.includes(label)),
     }
   }, { ...point, names: { blackout: LABELS.presentationBlackout } })
-  check('cover: the blackout is a control the keyboard is standing on', blackout.isButton && blackout.isButtonType && blackout.named && blackout.focused, JSON.stringify(blackout))
+  const toBlack = await readKeyRecorder(page)
+  check('cover: the blackout is a control the keyboard is standing on', blackout.isButton && blackout.isButtonType && blackout.named && blackout.focused, JSON.stringify({ ...blackout, keys: toBlack }))
   check('cover: the blackout says itself out loud', blackout.saysCover, JSON.stringify(blackout))
-  check('cover: B covers the projector in black', blackout.active === 'black' && blackout.insideDialog && blackout.hitIsCover, JSON.stringify(blackout))
+  check('cover: B covers the projector in black', blackout.active === 'black' && blackout.insideDialog && blackout.hitIsCover, JSON.stringify({ ...blackout, keys: toBlack }))
 
+  await armKeyRecorder(page)
   await page.keyboard.press(' ')
   await sleep(200)
   const dismissedBlack = await page.evaluate((names) => ({
     lifted: !document.querySelector('[data-screen-cover]'),
     saysLifted: names.off.some((label) => (document.querySelector('[role="dialog"] [data-cover-status]')?.textContent ?? '').includes(label)),
   }), { off: LABELS.presentationCoverOff })
-  check('cover: pressing a key lifts the blackout', dismissedBlack.lifted)
+  const toLift = await readKeyRecorder(page)
+  check('cover: pressing a key lifts the blackout', dismissedBlack.lifted, JSON.stringify({ ...dismissedBlack, keys: toLift }))
+  // L-4 has been red on identical bytes for thirty runs without saying which half failed, so the
+  // keystroke's arrival is now asserted in its own right. A capture-phase listener on the window sees a
+  // key before any handler could stop it: an empty list here means the show never received the press,
+  // which is a different bug from the show receiving it and ignoring it — and the detail says which.
+  check('cover: the keystroke that lifts the blackout reaches the page', toLift.capture.some((entry) => entry.key === ' '), JSON.stringify({ ...dismissedBlack, keys: toLift }))
   check('cover: lifting the blackout is said too', dismissedBlack.saysLifted, JSON.stringify(dismissedBlack))
 
+  await armKeyRecorder(page)
   await page.keyboard.press('w')
   await sleep(200)
   const whiteout = await page.evaluate(({ x, y }) => {
@@ -1399,7 +1449,10 @@ async function assertPresentationScreenCover(page) {
       bg: cover ? getComputedStyle(cover).backgroundColor : '',
     }
   }, point)
-  check('cover: W covers the projector in white', whiteout.active === 'white' && whiteout.insideDialog && whiteout.hitIsCover, JSON.stringify(whiteout))
+  const toWhite = await readKeyRecorder(page)
+  check('cover: W covers the projector in white', whiteout.active === 'white' && whiteout.insideDialog && whiteout.hitIsCover, JSON.stringify({ ...whiteout, keys: toWhite }))
+  // The same question for the other half of L-4, which has always gone red with the first one.
+  check('cover: the keystroke that covers in white reaches the page', toWhite.capture.some((entry) => entry.key === 'w'), JSON.stringify({ ...whiteout, keys: toWhite }))
 
   await page.mouse.click(point.x, point.y)
   await sleep(200)
@@ -6981,6 +7034,32 @@ async function readSweepContent(page, surface) {
   return loaded
 }
 
+/**
+ * Watches where focus comes to rest instead of reading it once. L-8's red says `active: body`, which fits
+ * both "never handed back" and "handed back, then taken" — those need different fixes, and one sample
+ * cannot tell them apart. So the half second after the surface closes is watched and only the changes are
+ * kept, together with whether the control that was marked before pressing is still in the document.
+ * Recorded, never judged: the assertion below answers the same question it always did.
+ */
+async function readFocusTrail(page) {
+  const trail = []
+  for (let hop = 0; hop < 14; hop++) {
+    const state = await page.evaluate(() => {
+      const active = document.activeElement instanceof Element ? document.activeElement : null
+      const marked = (window.__gateOpeners ?? []).at(-1) ?? null
+      return {
+        on: active ? `${active.tagName.toLowerCase()}${active.getAttribute('aria-label') ? `[${active.getAttribute('aria-label')}]` : ''}` : 'nothing',
+        openerConnected: marked ? marked.isConnected : null,
+        hasFocus: document.hasFocus(),
+      }
+    })
+    const last = trail.at(-1)
+    if (!last || last.on !== state.on || last.openerConnected !== state.openerConnected || last.hasFocus !== state.hasFocus) trail.push(state)
+    await sleep(30)
+  }
+  return trail
+}
+
 async function assertFullscreenToolbars(page) {
   // The hotkeys below are the app's own, and half of them are refused while a text field has the
   // keyboard: each surface starts from no focus at all rather than from wherever the last scenario
@@ -7050,7 +7129,8 @@ async function assertFullscreenToolbars(page) {
         returned: (connected !== null && active === connected) || inherited,
       }
     }, surface.successorAttributes ?? [])
-    check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify(focus))
+    const trail = await readFocusTrail(page)
+    check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify({ ...focus, trail }))
   }
   // The drawer's entry is the one that changed the window: the run leaves the app as it found it.
   await page.setViewport(DESKTOP_VIEWPORT)
@@ -10474,14 +10554,23 @@ async function main() {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
   const consoleErrors = []
+  // The other half of L-15's question: a 409 on a note is the server doing optimistic locking right,
+  // so what the gate needs is who wrote and when — the method, the route, the status, and the assertion
+  // the run was standing on. Recorded, never judged: a failed request is not an assertion.
+  const httpWrites = []
   try {
     const page = await browser.newPage()
     page.on('console', (message) => {
       // The failing resource's own URL travels with the message: a failed load is judged by what was
       // loaded and not only by what Chrome said about it.
-      if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location()?.url ?? '' })
+      if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location()?.url ?? '', after: lastScene })
     })
-    page.on('pageerror', (error) => consoleErrors.push({ text: String(error), url: '' }))
+    page.on('pageerror', (error) => consoleErrors.push({ text: String(error), url: '', after: lastScene }))
+    page.on('response', (response) => {
+      const method = response.request().method()
+      if (method === 'GET' || response.status() < 400) return
+      httpWrites.push({ method, status: response.status(), url: response.url(), after: lastScene })
+    })
 
     await page.setViewport(MOBILE_VIEWPORT)
     await page.goto(BASE, { waitUntil: 'networkidle2' })
@@ -10557,7 +10646,10 @@ async function main() {
     ]
     const fatal = consoleErrors.filter((entry) => !ALLOWED_PAGE_ERRORS.some((allowed) =>
       allowed.text.test(entry.text) && (!allowed.url || allowed.url.test(entry.url))))
-    check('console: no page errors', fatal.length === 0, JSON.stringify(fatal.slice(0, 3)))
+    // The trail travels with the error: which assertion the run was standing on when it arrived, and
+    // every write that was refused since the page opened. Without it a 409 is an accusation with no
+    // scene of the crime (L-15).
+    check('console: no page errors', fatal.length === 0, JSON.stringify({ fatal: fatal.slice(0, 3), writes: httpWrites.slice(-8) }))
   } finally {
     await browser.close()
   }
