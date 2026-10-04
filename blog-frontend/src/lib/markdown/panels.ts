@@ -6,6 +6,7 @@ import { escapeAttr, escapeHtml } from './escape.ts'
 import { calloutDefaultTitle } from './callout.ts'
 import { blockLine, walkNonFenceLines } from './block-lines.ts'
 import { parseTimelineItem, stripBracketTitle } from './panel-options.ts'
+import { renderInlineLabel } from './inline-label.ts'
 import type {
   AlignValue,
   CalloutHeader,
@@ -242,7 +243,7 @@ function timeMarkup(time: string): string {
 function timelineHead(item: TimelineItem, env: RenderEnv | undefined, md: InstanceType<typeof MarkdownIt>): string {
   const locale: BlogLocale = env?.locale ?? DEFAULT_LOCALE
   const status = `<span class="markdown-timeline-status">${escapeHtml(t(TIMELINE_STATUS_KEYS[item.status], {}, locale))}</span>`
-  const title = md.renderInline(item.title, (env ?? {}) as Record<string, unknown>)
+  const title = renderInlineLabel(md, item.title, (env ?? {}) as Record<string, unknown>)
   return `<div class="markdown-timeline-head">${timeMarkup(item.time)}<span class="markdown-timeline-title">${title}</span>${status}</div>`
 }
 
@@ -268,7 +269,7 @@ export function registerPanels(md: InstanceType<typeof MarkdownIt>): void {
   md.renderer.rules.panel_col_close = () => '</div>'
   md.renderer.rules.panel_timeline_open = (tokens, index, _options, env) => {
     const { title } = tokens[index]!.meta as { title: string }
-    const rendered = title ? md.renderInline(title, (env ?? {}) as Record<string, unknown>) : ''
+    const rendered = title ? renderInlineLabel(md, title, (env ?? {}) as Record<string, unknown>) : ''
     const caption = title ? `<div class="markdown-timeline-caption">${rendered}</div>` : ''
     return `<div class="markdown-timeline-block">${caption}<ol class="markdown-timeline">`
   }

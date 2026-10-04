@@ -18,6 +18,11 @@ const FIXTURES: Record<string, string> = {
   tabs: '::: tabs\n@tab 甲\n内容A\n@tab:active 乙\n内容B\n:::',
   tabsDirective: ':::: tabs\n::: tab-item 甲\n内容A\n:::\n::: tab-item 乙\n内容B\n:::\n::::',
   details: '::: details open 标题\n内容\n:::',
+  // A container that renders its own label inline, in a post that ends with a footnote: the label is
+  // where a document-level pass leaks into a nested render, and the two trees sit on different
+  // markdown-it majors precisely there — v15 runs the core chain inside `renderInline`, v14 does not.
+  detailsFootnote: '::: details 标题\n内容\n:::\n\n引用[^1]\n\n[^1]: 注释内容',
+  timelineFootnote: '::: timeline 里程碑\n:: [done] 发布\n:::\n\n引用[^1]\n\n[^1]: 注释内容',
   wikilink: '[[笔记|别名]] 与 [[纯链接]]',
   blockRef: '段落 ^anchor-id\n\n((anchor-id))',
   tag: '前置 #技术/前端 后置',

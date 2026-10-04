@@ -171,6 +171,12 @@ describe('::: timeline panels', () => {
     expect(root.querySelector('.markdown-timeline-title a')?.getAttribute('href')).toBe('https://example.com')
   })
 
+  it('keeps a footnote that the post ends with out of the caption and the node title', () => {
+    const html = render('::: timeline 里程碑\n:: [done] 发布\n:::\n\n引用[^a]\n\n[^a]: 注释\n')
+    expect(html).toContain('<div class="markdown-timeline-caption">里程碑</div>')
+    expect(html).toContain('<span class="markdown-timeline-title">发布</span>')
+  })
+
   it('writes the status word in the language the page was rendered for', () => {
     const html = renderMarkdown('::: timeline\n:: [doing] x\n:::', { locale: 'en-US' }).html
     expect(html).toContain('markdown-timeline-status">Doing<')

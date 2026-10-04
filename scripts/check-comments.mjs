@@ -16954,6 +16954,9 @@ const allowed = new Map([
     '/**\n * Offline audio is private content the service worker caches on this device\n * (features/music plan FEAT-10). It must not outlive the account that saved\n * it, so the logout flow has to clear that cache — and it has to happen after\n * the local database wipe, never inside a branch that logout can return from\n * early. logoutImpl itself is tangled in settings flushing, session caching\n * and location.reload, none of which is cheap to mount; this source-order\n * guard keeps the privacy invariant pinned the same way the fullscreen policy\n * test pins its ownership rule.\n */',
   ]],
   ['tests/markdown-renderer-parity.test.ts', [
+    '// A container that renders its own label inline, in a post that ends with a footnote: the label is',
+    '// where a document-level pass leaks into a nested render, and the two trees sit on different',
+    '// markdown-it majors precisely there — v15 runs the core chain inside `renderInline`, v14 does not.',
     '// A bare table whose first cell names a chart: both trees must emit the same marker in the same',
     '// place and empty the same cell, or a post renders a chart in one tree and a stray `:bar:` in the',
     '// other. The configuration rides differently (base64 in the app, percent-encoded here), which the',
