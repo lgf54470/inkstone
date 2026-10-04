@@ -2614,13 +2614,18 @@ async function assertPresenterConsole(browser, page) {
     await page.bringToFront()
     await sleep(1_000)
     check('presenter console: the window is really gone', (await findPresenterPage(browser)) === null)
-    // What a *closed* window leaves behind is deliberately not asserted here. React's cleanup does not
-    // run when the browser throws the document away, so the goodbye never goes out and the show keeps an
-    // audience it no longer has: measured on this very path, one real page turn (3/3 → 2/3) after the
-    // close still cost one broadcast (4 → 5 posts). Whether the answer is a `pagehide` goodbye or a
-    // timeout on silence is a behaviour decision, and the ledger carries it as L-7 rather than this gate
-    // asserting whichever way it has not yet landed. N-26 does bound the damage — it is one message per
-    // turn now, not one per render.
+    // What a closed window leaves behind, asserted rather than narrated (L-7). React's cleanup never runs
+    // when the browser throws a document away, so the goodbye lives on `pagehide`, which the browser does
+    // promise: two real turns after the close must cost no further broadcast. N-26's bound is what keeps
+    // the case `pagehide` cannot cover — a killed renderer — at one message per turn rather than one per
+    // render, so this reads "nobody is being recited to", not "the channel was never opened".
+    const afterClose = await readSyncTally(page)
+    await page.keyboard.press('ArrowRight')
+    await sleep(900)
+    await page.keyboard.press('ArrowLeft')
+    await sleep(900)
+    const recital = await readSyncTally(page)
+    check('presenter console: a closed window ends the recital', recital === afterClose, `posts=${recital} after the close, was ${afterClose}`)
 
     // The refused window. `window.open` returning null is what a blocker does to the app, and the app's
     // answer is a column in the show itself plus one toast saying why. Overriding the call proves the

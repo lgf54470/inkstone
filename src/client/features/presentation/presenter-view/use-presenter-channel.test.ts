@@ -14,7 +14,7 @@ import {
   type PresenterInboundCommand,
   type PresenterSlideState,
 } from './use-presenter-channel'
-import { MockBroadcastChannel, flushed, openChannelCount, openChannelNames, resetChannelRegistry } from './presenter-channel.test-helpers'
+import { MockBroadcastChannel, flushed, openChannelCount, openChannelNames, resetChannelRegistry, syncPostCount } from './presenter-channel.test-helpers'
 
 describe('use-presenter-channel — formatElapsed and formatClock', () => {
   it('formats elapsed time correctly for seconds, minutes and hours', () => {
@@ -401,5 +401,46 @@ describe('buildPresenterSlideState — end of deck', () => {
     })
 
     expect(state.nextSlideSource).toBeNull()
+  })
+})
+
+// A presenter window that the browser throws away never runs React's cleanup, so the goodbye that tells
+// the show "nobody is listening" is the one thing that does not go out — and the talk then keeps
+// reciting one message per turn into a document that no longer exists (L-7). `pagehide` is the hook the
+// browser does promise, so that is where the goodbye lives now.
+function ReceiverProbe({ token = 'tok-1' }: { token?: string }) {
+  usePresenterReceiver(token)
+  return null
+}
+
+describe('usePresenterReceiver — the goodbye a discarded document still says', () => {
+  it('stops the broadcast once the window is hidden away, without unmounting anything', async () => {
+    const broadcaster = renderElement(createElement(TestBroadcaster, { slide: 0 }))
+    const receiver = renderElement(createElement(ReceiverProbe))
+    await flushed()
+    await flushed()
+
+    act(() => {
+      broadcaster.rerender(createElement(TestBroadcaster, { slide: 1 }))
+    })
+    await flushed()
+    expect(syncPostCount(), 'a window that is listening gets the turn').toBeGreaterThan(0)
+
+    const channelsBefore = openChannelCount()
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'))
+    })
+    await flushed()
+    expect(openChannelCount(), 'and it lets go of the channel rather than leaving a hidden tab holding one').toBe(channelsBefore - 1)
+    const afterGoodbye = syncPostCount()
+
+    act(() => {
+      broadcaster.rerender(createElement(TestBroadcaster, { slide: 2 }))
+    })
+    await flushed()
+    expect(syncPostCount(), 'the show is not reciting to a document the browser threw away').toBe(afterGoodbye)
+
+    receiver.unmount()
+    broadcaster.unmount()
   })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { ProseFont } from '@shared/types'
 import type { SlideLayout } from '../slides'
 import { planPageSteps, type SlidePlan } from '../slide-pagination'
@@ -246,6 +246,30 @@ function handleInboundCommand(command: PresenterInboundCommand, nav: { goNext: (
   }
 }
 
+/**
+ * The goodbye a presenter window says when it stops listening, wrapped so both senders can call it.
+ *
+ * React's cleanup runs on unmount, and the browser fires `pagehide` when it throws a document away —
+ * which is the case no cleanup sees, and without the word the projector keeps an audience it no longer
+ * has and recites one message per turn into nothing (L-7). Sending it twice is fine by design: a channel
+ * that is already closed refuses both the post and the close, and refusing is what this state means.
+ */
+function channelGoodbye(channel: BroadcastChannel, channelRef: RefObject<BroadcastChannel | null>): () => void {
+  return () => {
+    try {
+      channel.postMessage({ type: 'close' })
+    } catch {
+      // Channel already closed
+    }
+    try {
+      channel.close()
+    } catch {
+      // Already closed
+    }
+    channelRef.current = null
+  }
+}
+
 export function usePresenterReceiver(token: string | null): {
   state: PresenterSlideState | null
   connected: boolean
@@ -285,16 +309,12 @@ export function usePresenterReceiver(token: string | null): {
       // Channel initialization
     }
 
+    const goodbye = channelGoodbye(channel, channelRef)
+    window.addEventListener('pagehide', goodbye)
+
     return () => {
-      // Say the same word the show says on its own way out: without it the projector keeps a listener it
-      // no longer has and goes on reciting the deck to a closed window.
-      try {
-        channel.postMessage({ type: 'close' })
-      } catch {
-        // Channel already closed
-      }
-      channel.close()
-      channelRef.current = null
+      window.removeEventListener('pagehide', goodbye)
+      goodbye()
     }
   }, [token])
 
