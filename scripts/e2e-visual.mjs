@@ -2753,7 +2753,14 @@ async function assertSettingsReachTheShow(browser, page) {
     check('presentation settings: another tab can reach the diagram switch', off.arrived && off.clicked !== '', JSON.stringify(off))
     try {
       const dropped = await waitForDiagramSurfaces(page, 'off')
-      check('presentation settings: the projector and the slide list both drop a diagram the account turned off', dropped.agrees, JSON.stringify(dropped))
+      const relisted = await waitForCardMarker(page, 'drawn')
+      check('presentation settings: the projector and the slide list both drop a diagram the account turned off', dropped.agrees, JSON.stringify({ ...dropped, relisted }))
+      // The marker is carried in the detail rather than judged: measured on this same byte, the card of
+      // the re-prepared page stays `undrawn` for the whole 15 s the wait allows (the listing pass
+      // restarts on a settings flip — `starts the listing over when the account turns a display switch`
+      // in slide-preflight.test.ts — yet the page is never re-captured within a show). That is L-17, and
+      // an assertion here would either stay red or bless the lag, so the reading travels with the check
+      // that judges what the room must not see: a picture the account turned off.
     } finally {
       // Whatever the reading said, the account goes back the way it was found: every scenario after
       // this one measures a show whose diagrams are drawn.
@@ -2813,6 +2820,21 @@ async function waitForDiagramSurfaces(page, want) {
     read = await readDiagramSurfaces(page)
   }
   return { ...read, agrees: agrees(read) }
+}
+
+/** Reads the selected card's source marker and its diagram count, waiting for the marker to answer. */
+async function waitForCardMarker(page, wanted) {
+  const read = async () => page.evaluate(() => {
+    const card = document.querySelector('[role="dialog"] [data-presentation-rail] [aria-selected="true"] [data-slide-thumb-draw]')
+    const block = card?.closest('.ink-slide-thumb')?.querySelector('[data-mermaid]')
+    return { marker: card?.getAttribute('data-slide-thumb-draw') ?? 'absent', svg: block ? block.querySelectorAll('svg').length : -1 }
+  })
+  let seen = await read()
+  for (let attempt = 0; attempt < 30 && seen.marker !== wanted; attempt += 1) {
+    await sleep(500)
+    seen = await read()
+  }
+  return seen
 }
 
 /** Opens the settings dialog in this tab, finds one switch by its accessible name, and presses it. */

@@ -1,8 +1,9 @@
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
+import { useSession } from '../../store/session'
 import { initI18n } from '../../lib/i18n'
-import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, rememberSlideHtml, rememberSlidePlan, renderSlideSource, slideCacheKey, slideMarkup } from './slide-html'
+import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, rememberSlideHtml, rememberSlidePlan, renderSlideSource, slideCacheKey, slideMarkup, slideSettingFlags } from './slide-html'
 import { SLIDE_DESIGN_HEIGHT, SLIDE_DESIGN_WIDTH, SLIDE_PAD_X, SLIDE_PAD_Y, measureStage } from './slide-stage'
 import { SlidePreflight } from './slide-preflight'
 import type { SlidePlan } from './slide-pagination'
@@ -164,6 +165,34 @@ describe('SlidePreflight — a page is listed only once its drawings answered', 
     view.unmount()
   })
 
+})
+
+// A flip of the account's display settings invalidates the markup every page was drawn from, so it has
+// to invalidate the listing too: the pass restarts and walks the deck again. Without that, a page
+// re-prepared under the new settings keeps the old capture and the old page count for the rest of the
+// show — which is what the projector scenario in `scripts/e2e-visual.mjs` measures from the other side
+// (L-17).
+describe('SlidePreflight — what a settings flip does to a pass that finished', () => {
+  const currentFlags = () => slideSettingFlags(useSession.getState().settings.preview)
+
+  it('starts the listing over when the account turns a display switch', async () => {
+    rememberSlidePlan(HASHES[0] ?? '', { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] })
+    seed({ ...plainEntry(), prepared: true, drawn: true, flags: currentFlags() })
+    const onProgress = vi.fn()
+    const view = await runPass(vi.fn(), onProgress)
+    const measured = () => (onProgress.mock.calls.at(-1)?.[0] as { measured: number } | undefined)?.measured ?? -1
+    expect(measured(), 'a plan-cached page whose markup is drawn is already listed').toBe(1)
+
+    act(() => {
+      const preview = useSession.getState().settings.preview
+      useSession.setState((state) => ({ ...state, settings: { ...state.settings, preview: { ...preview, mermaid: !preview.mermaid } } }))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    })
+    expect(measured(), 'the flip invalidates the markup, so it invalidates the listing with it').toBe(0)
+    view.unmount()
+  })
 })
 
 // One page of the queue, held open on purpose: the pass must neither list it nor walk past it while the
