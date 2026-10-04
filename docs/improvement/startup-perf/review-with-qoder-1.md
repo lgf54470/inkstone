@@ -10,7 +10,7 @@
 真实原因是三层叠在一起，按证据强度排：
 
 1. **懒边界建错了位置。** 外壳到笔记界面之间有三道 `React.lazy`（`app.tsx:12`、`app-shell.tsx:26`、`app-shell.tsx:40`），但每道后面紧跟的都是「首帧必画」的表面，所以对用户只是把一次大下载切成几段串行等待。实测并集 **300 请求 / 3.72 MiB 原文 / 1.15 MiB gzip**，其中 `AppShell` 自己的静态闭包就有 **240 chunk / 919 KiB gz**，`Workspace` 只再多 234 KiB。**贵的是外壳，不是工作区。**
-2. **首屏前串行排着四道与体积无关的闸**：文档 TTFB 里有 2 次串行 D1 往返（§7.1）；`main.tsx:23` 在 `createRoot().render()` 之前 `await initI18n()`，而 `i18n.ts:65-66` 先等 `en-US` 再等目标语言，**中文用户串行下两份语言包（152 KiB gz）**；`app.tsx:162` 在会话接口返回前渲染的是空 `div`，外壳 919 KiB 要等一个 HTTP 往返 + 一次 IndexedDB 事务之后才开始取；而那个 IDB 事务里有一个**每次启动都跑的全库扫描**（§7.2）。
+2. **首屏前串行排着几道与体积无关的闸**：`main.tsx:23` 在 `createRoot().render()` 之前 `await initI18n()`，而 `i18n.ts:65-66` 先等 `en-US` 再等目标语言，**中文用户串行下两份语言包（152 KiB gz）**；`app.tsx:162` 在会话接口返回前渲染的是空 `div`，外壳 919 KiB 要等一个 HTTP 往返 + 一次 IndexedDB 事务之后才开始取；而那个 IDB 事务里有一个**每次启动都跑的全库扫描**（§7.2）。
 3. **dev 侧是同一结构问题的放大**：那 300 个 chunk 在 dev 里是 **878 个未打包源文件 / 5.25 MB 源码**，每文件一次请求一次 transform；外加 Vite 8 的依赖优化把 lucide 整族图标子块静态再导出（上一轮 CDP 实测，§6.3），以及 Tailwind 4 无 `@source` 时对整仓做 `**/*` 扫描并把每个文件挂成 `app.css` 的 watch 依赖（§6.2）。
 
 一句话给决策：**「入口薄、外壳胖、门禁瞎、dev 无打包」**。上一轮已用 puppeteer 采到墙钟基线（§9），本轮补上了产物图口径与三条此前没发现的确定性缺陷（§7）。
@@ -87,7 +87,7 @@
 
 ## 5. 首屏前的串行闸（时序）
 
-1. `GET /` 走 Worker（`run_worker_first` 含 `/`、`/index.html`）→ **首字节之前有 2 次串行 D1 往返**，见 §7.1；文档 `Cache-Control: no-store`（`middleware/security-headers.ts:47-59`），HTTP 缓存也用不上。
+1. `GET /` 走 Worker（`run_worker_first` 含 `/`、`/index.html`）→ 首字节前有 `viewerAllowsExternalImages` 的串行 DB 读，**是否每导航都付未证**（§7.1）；文档 `Cache-Control: no-store`（`middleware/security-headers.ts:47-59`），HTTP 缓存确定用不上。
 2. `initial-2-wGJCzh.css` 阻塞渲染：283 KiB / **43.7 KiB gz**。字体是 `font-display: swap`（实测在初始 CSS 里），只有 2 个 Inter 变量字体，KaTeX 的 20 个在懒层——**字体这条是干净的**。
 3. `main.tsx:22` 动态取 `App`（26 chunk / 185 KiB gz），`main.tsx:23` **`await initI18n()` 在 render 之前**。
 4. `i18n.ts:65` `await ensureLocaleLoaded('en-US')` → `:66` 再 `await ensureLocaleLoaded(locale)`。**两份语言包串行**（72 + 80 KiB gz；源 `src/shared/locales/{en-US,zh-CN}` 各 44 个文件 / 384 KB / 368 KB，产物各是一个零依赖的叶子 chunk，**没有命名空间级切分**）。`:65` 那行本身是必需的（`t()` 回退与 `englishMessageKeys` 依赖它，`:57-59`、`:84`），**要改的是「串行」不是「多」**。
@@ -119,12 +119,16 @@
 
 **6.4 其它 dev 启动动作。** `[observability] enabled = true` 在两个 wrangler toml 里都开着，且 `persistState` 默认开（`vite.config.ts:147`），实测 `.wrangler/state/v3/observability/` 已 **16 MiB** trace store。`inkstone:excalidraw-fonts` 在 `configureServer` 里跑 `materialize`（`vite.config.ts:104`）：当前版本戳一致所以只读两个文件就返回，但 excalidraw 一升版就会在 dev 启动时删拷 **14 MiB / 235 个字体文件**进 `publicDir`。
 
-## 7. 本轮新发现的五条确定性缺陷（此前未记录）
+## 7. 本轮新发现的确定性缺陷（此前未记录）
 
-这五条不是「设计取舍」，是**写漏了**，每条都能单独定位、单独验。
+7.2–7.5 这四条不是「设计取舍」，是**写漏了**，每条都能单独定位、单独验。7.1 是本轮查出的结构事实，但它的代价**未证**，所以只登记不修。
 
-**7.1 文档首字节前做 2 次串行 D1 往返。**
-`src/worker/app.ts` 的 `registerSecurityHeaders` 会 `await viewerAllowsExternalImages`（`src/worker/middleware/security-headers.ts:20,85-107`），而它内部先 `initializeDatabase()`（1 次 `getMeta` 读）再一条 `sessions ⋈ users` SELECT（1 次读），**两次串行**，然后才 HTMLRewriter 注 nonce（`:110-122`）。也就是说**每一次页面导航、包括未登录用户打开首页，都在等两次数据库往返之后才拿到第一个字节**，而拿到的文档还是 `no-store`（`:47-59`），下次再来一遍。这条与前端体积完全无关，是纯 TTFB。
+**7.1 文档路径上的两次串行 D1 读——结构确认，「每次导航都付」未证。**
+`src/worker/middleware/security-headers.ts:20,85-107` 在 HTMLRewriter 注 nonce（`:110-122`）之前 `await viewerAllowsExternalImages`，其中 `:92` 先 `await initializeDatabase(c.env)`、`:93-98` 再一条 `sessions ⋈ users` SELECT，**两次串行**。
+
+但**不能就此说每次导航都付两次读**：`initializeDatabase` 以 `WeakMap<D1Database, Promise>` 记忆（`runtime.ts:7-19`），所以第一次读是否发生，取决于运行时是否在同一 isolate 内跨请求给出**同一 `env.DB` 对象**——仓库里没有任何证据说明这一点（`docs/bug/2026-09-08-…md:143` 只把这层缓存称作「提升冷启动性能」），本轮也无法在本地证明。此外那个 `await` 是**有意的 schema 就绪屏障**（`:91` 注释明写「先确保 schema 存在，再对裸 D1 读」），并发化会在空库上撞上 `no such table`，不是免费的。
+
+因此本条从「确定性缺陷」下调为「未证的疑点」，B3 的代码改动**不做**（见计划 D 节）。确定无误的只有一条：文档是 `no-store`（`:47-59`），所以任何导航都无法用 HTTP 缓存。
 
 **7.2 每次启动都跑一次 IndexedDB 全库扫描，而且它挡在白屏撤销之前。**
 `src/client/lib/db/core.ts:35-58` 的 `bindLocalUser` 在每次启动都写入不带命名空间的 `'userId'` 键且**从不清理**（`:41,50,57`），于是从第二次启动起 `legacyUserId === userId` 恒成立 → `:55-56` `await migrateLegacyData(userId)` → `store-io.ts:66-79` 的 `entries(store)` **读出并结构化克隆反序列化整个 IDB 键空间**（每一条 `note:*` 正文与 `note-summary:*`），再过滤、`getMany`、`delMany`。早退分支 `if (!legacy.length) return`（`:69`）**仍然先付了那次全读**。而这条链被 `session.ts:79` 的 `await persistSession(info)` 挡在 `dismissBootScreen()` 之前。**库越大越慢，且永远不会变快**——它是一次性的迁移，却每次启动都重跑。
@@ -171,5 +175,7 @@
 **10.3 本轮已明确作废的两个归因**（记下来防重犯）：
 - 「`export-note-*.js` 675 KiB 是导出管线，改懒就省 185 KiB」——内容复核后作废，见 §4.1。
 - 「首屏 1.06 MiB 主要是 workspace 造成的」——`AppShell` 自己就是 919 KiB gz，见 §2。
+
+- 「文档首字节前每次导航都付 2 次串行 D1 往返」——本文件初稿把 §7.1 写成确定缺陷并据此排了 B3。复核后下调：那取决于 `env.DB` 是否跨请求同一，仓库与本轮都无法证明，且那个 `await` 是有意的 schema 就绪屏障。**B3 已从计划撤销**。
 
 **10.4 明确不成立的原始假设**：「因为支持的格式多，所以启动时把所有格式模块都加载了」。§3 逐库查完，一个都不在首屏图里。按这条假设去改，会把力气花在本项目已经做对的地方。
