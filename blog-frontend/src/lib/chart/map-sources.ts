@@ -1,10 +1,9 @@
 /**
  * The outline data a `map` chart may load.
  *
- * A note's table cell names the source, so the list has to be closed: without it a note could point a
- * reader's browser at an intranet address, or at any host that would log who read the page. The same
- * list is what the response's `connect-src` is widened with, and only for a viewer who already opted
- * into third-party resources — one list, read by the two layers that must agree.
+ * A note's table cell names the source, so the list has to be closed: without it a note could point the
+ * site's own Worker — which is what fetches outlines now — at an intranet address, or at any host that
+ * would log who read the page. One list, read by the route that fetches and by the client that asks.
  */
 
 /** Where the default country outlines come from when a table names no source of its own. */

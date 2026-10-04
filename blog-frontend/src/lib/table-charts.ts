@@ -1,7 +1,9 @@
 import { chartTableFromElement } from './chart/from-dom.ts'
-import { echartsTheme } from './chart/theme.ts'
+import { applyChartPalette, echartsTheme } from './chart/theme.ts'
+import { chartPaletteKey } from './chart/accent.ts'
 import { tableToEchartsOption } from './chart/table-option.ts'
 import { isDarkMode } from './diagram-reveal'
+import { mapGeometryUrl } from './map-geometry.ts'
 
 /**
  * Drawing the charts a bare table asks for: the renderer leaves an empty `.table-chart` above a table
@@ -43,11 +45,13 @@ function drop(block: HTMLElement): void {
 }
 
 /**
- * What this block was drawn from. A post's text does not change under a reader, so the only thing
- * that can make a drawn picture stale is the theme it was painted for.
+ * What this block was drawn from. A post's text does not change under a reader, so the things that can
+ * make a drawn picture stale are the reading theme and the accent the site was deployed with — both of
+ * which the palette is computed from, so the key carries them together rather than the light mode
+ * alone.
  */
 function sourceKey(block: HTMLElement, dark: boolean): string {
-  return `${dark ? 'd' : 'l'}:${block.dataset.tableChart}`
+  return `${chartPaletteKey(dark)}:${block.dataset.tableChart}`
 }
 
 async function renderTableChart(block: HTMLElement): Promise<void> {
@@ -74,8 +78,8 @@ async function renderTableChart(block: HTMLElement): Promise<void> {
     const container = document.createElement('div')
     container.className = 'echarts-container'
     block.replaceChildren(container)
-    const chart = echarts.init(container, echartsTheme(), { renderer: 'svg' })
-    chart.setOption(built.option as never, true)
+    const chart = echarts.init(container, echartsTheme(dark), { renderer: 'svg' })
+    chart.setOption(applyChartPalette(built.option, dark) as never, true)
     drawn.set(block, key)
   }
   catch {
@@ -83,10 +87,14 @@ async function renderTableChart(block: HTMLElement): Promise<void> {
   }
 }
 
-/** The outline data a map needs. Same shape check as the app: a bad payload is no chart, not a crash. */
-async function fetchMapGeometry(url: string): Promise<unknown | null> {
+/**
+ * The outline data a map needs, asked for on this page's own origin (see `src/lib/map-geometry.ts`).
+ * The shape check stays: a payload that is not a FeatureCollection is no chart rather than a crash, and
+ * the route that serves it could have been answered by a cache the site does not control.
+ */
+async function fetchMapGeometry(source: string): Promise<unknown | null> {
   try {
-    const response = await fetch(url, { referrerPolicy: 'no-referrer' })
+    const response = await fetch(mapGeometryUrl(source), { referrerPolicy: 'no-referrer' })
     if (!response.ok) return null
     const geometry: unknown = await response.json()
     const isCollection = Boolean(geometry) && typeof geometry === 'object'

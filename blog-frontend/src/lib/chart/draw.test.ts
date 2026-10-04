@@ -42,6 +42,21 @@ describe('drawing a post\'s chart table', () => {
     expect(root.textContent).toContain('北京')
   })
 
+  // The accent is read when the chart is drawn, so a site redeployed with another one must not leave a
+  // reader looking at colours the previous accent painted. The key a drawn block caches under is what
+  // decides that, and a key carrying only the light mode would answer "already drawn" here.
+  it('repaints when the accent moves, without the post changing', async () => {
+    const root = mount(BAR)
+    initTableCharts()
+    await settle(() => Boolean(root.querySelector('.table-chart svg')))
+    const first = root.querySelector('.table-chart svg')
+    document.documentElement.style.setProperty('--accent', 'oklch(62% 0.16 252)')
+    rerenderTableChartsForTheme()
+    const repainted = await settle(() => root.querySelector('.table-chart svg') !== first)
+    expect(repainted).toBe(true)
+    document.documentElement.style.removeProperty('--accent')
+  })
+
   it('repaints for the theme it is showing', async () => {
     const root = mount(BAR)
     initTableCharts()
