@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { act } from 'react'
@@ -9,6 +9,23 @@ import { api } from '../../lib/api'
 import type { BlogPost, BlogCategory, BlogTag, BlogSiteInfo } from '../../lib/types'
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+/**
+ * Every root this file mounts is unmounted before the environment goes away. react-dom leaves a queued
+ * continuation on the node scheduler, and a callback that fires after jsdom has closed finds no
+ * `window` — which the runner reports as an unhandled error of the whole run rather than of one case.
+ */
+const mounted: ReturnType<typeof createRoot>[] = []
+
+function mountRoot(container: HTMLElement): ReturnType<typeof createRoot> {
+  const root = createRoot(container)
+  mounted.push(root)
+  return root
+}
+
+afterEach(() => {
+  for (const root of mounted.splice(0)) act(() => root.unmount())
+})
 
 const MOCK_SITE: BlogSiteInfo = {
   siteName: '测试博客',
@@ -82,7 +99,7 @@ const MOCK_TAGS: BlogTag[] = [
 describe('HomeFeedView initial rendering', () => {
   it('renders posts, pagination toolbar, author profile and tags', async () => {
     const container = document.createElement('div')
-    const root = createRoot(container)
+    const root = mountRoot(container)
 
     await act(async () => {
       root.render(
@@ -120,7 +137,7 @@ type PostsResponse = {
 
 function renderFeed(): { container: HTMLDivElement; root: ReturnType<typeof createRoot> } {
   const container = document.createElement('div')
-  const root = createRoot(container)
+  const root = mountRoot(container)
   act(() => {
     root.render(
       createElement(HomeFeedView, {
@@ -166,7 +183,7 @@ describe('HomeFeedView tag filter interaction', () => {
 
   it('filters posts and displays active tag banner on tag click', async () => {
     const container = document.createElement('div')
-    const root = createRoot(container)
+    const root = mountRoot(container)
 
     await act(async () => {
       root.render(
