@@ -102,7 +102,18 @@ const SCALE_MESSAGE = 'bare Tailwind scale step'
 // L-9 clears this debt one module at a time, and each entry is a place that is now clean and must not
 // be able to regress: the file path is admitted only after every bare step in it became a `--sp-*` /
 // `--z-*` read.
-const SCALE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/presentation/', 'src/client/lib/markdown/slides/ui/inspector-element.tsx']
+// The slide-editor family is admitted file by file — the directory cannot be admitted until its last
+// file is clean, and waiting for that would leave the ones already converted free to regress.
+const SCALE_ZERO_TOLERANCE_PREFIXES = [
+  'src/client/features/presentation/',
+  'src/client/lib/markdown/slides/ui/embed-block.tsx',
+  'src/client/lib/markdown/slides/ui/inspector-element.tsx',
+  'src/client/lib/markdown/slides/ui/layout-picker.tsx',
+  'src/client/lib/markdown/slides/ui/slides-help-dialog.tsx',
+  'src/client/lib/markdown/slides/ui/slides-settings-dialog.tsx',
+  'src/client/lib/markdown/slides/ui/slides-stage.tsx',
+  'src/client/lib/markdown/slides/ui/unsupported-element.tsx',
+]
 
 // Files whose hex literals are authored content or a self-contained
 // stylesheet, not UI values that could consume the token layer. Each entry

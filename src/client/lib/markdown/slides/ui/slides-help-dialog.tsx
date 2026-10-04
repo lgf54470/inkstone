@@ -84,7 +84,7 @@ export const SlidesHelpDialog = memo(function SlidesHelpDialog({
       description={t('slides.help_description')}
       width={HELP_DIALOG_WIDTH}
     >
-      <div className='grid gap-5 md:grid-cols-2'>
+      <div className='grid gap-[var(--sp-5)] md:grid-cols-2'>
         {sections().map((section) => (
           <section key={section.title} className='space-y-2'>
             <h3 className='text-[length:var(--text-12)] font-semibold tracking-[var(--tracking-group)] text-[var(--text-tertiary)] uppercase'>
@@ -92,9 +92,9 @@ export const SlidesHelpDialog = memo(function SlidesHelpDialog({
             </h3>
             <ul className='space-y-2'>
               {section.rows.map((row) => (
-                <li key={row.label} className='flex items-start gap-2.5 text-[length:var(--text-12\\.5)] leading-relaxed'>
+                <li key={row.label} className='flex items-start gap-[var(--sp-2\\.5)] text-[length:var(--text-12\\.5)] leading-relaxed'>
                   {(row.keys || row.keyCaps) && (
-                    <span className='shrink-0 pt-0.5'>
+                    <span className='shrink-0 pt-[var(--sp-0\\.5)]'>
                       <Kbd combo={row.keys} keys={row.keyCaps} />
                     </span>
                   )}

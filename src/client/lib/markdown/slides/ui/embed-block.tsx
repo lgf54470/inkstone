@@ -30,7 +30,7 @@ export const SlideEmbedBlock = memo(function SlideEmbedBlock({ el }: { el: Embed
   return (
     <div
       data-slide-embed='link'
-      className='flex size-full flex-col items-start justify-center gap-1 overflow-hidden rounded border border-[var(--border-subtle)] px-3'
+      className='flex size-full flex-col items-start justify-center gap-[var(--sp-1)] overflow-hidden rounded border border-[var(--border-subtle)] px-[var(--sp-3)]'
     >
       <span className='text-xs text-[var(--text-tertiary)]'>{t('slides.embed_no_live')}</span>
       <a
@@ -47,7 +47,7 @@ export const SlideEmbedBlock = memo(function SlideEmbedBlock({ el }: { el: Embed
 
 function EmbedNotice({ text }: { text: string }) {
   return (
-    <div className='flex size-full items-center justify-center rounded border border-dashed border-[var(--border-subtle)] px-3 text-center text-xs text-[var(--text-tertiary)]'>
+    <div className='flex size-full items-center justify-center rounded border border-dashed border-[var(--border-subtle)] px-[var(--sp-3)] text-center text-xs text-[var(--text-tertiary)]'>
       {text}
     </div>
   )
