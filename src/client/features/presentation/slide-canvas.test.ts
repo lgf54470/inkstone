@@ -16,6 +16,44 @@ vi.mock('./slide-html', async (importOriginal) => {
   return { ...actual, renderSlideSource: vi.fn(actual.renderSlideSource) }
 })
 
+// The canvas's two diagram renders are the whole of what "settled" means, so they are stubbed where
+// reading them needs a promise the case controls: `hold` stops the pass mid-flight, `failMermaid`
+// makes it throw. Neither touches the other cases here, none of which draw a diagram.
+const diagram = vi.hoisted(() => ({ hold: null as Promise<void> | null, failMermaid: false }))
+
+vi.mock('../../lib/markdown/enhance', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/markdown/enhance')>()
+  return {
+    ...actual,
+    renderPendingMermaid: () => (diagram.failMermaid ? Promise.reject(new Error('mermaid refused the page')) : Promise.resolve()),
+    renderChartJs: () => diagram.hold ?? Promise.resolve(),
+  }
+})
+
+function mountCanvas(onPlan: (plan: unknown, settled: boolean) => void) {
+  return renderElement(createElement(SlideCanvas, {
+    cacheKey: CACHED_KEY,
+    source: CACHED_SOURCE,
+    subPage: 0,
+    onPlan,
+    contentWidth: 1120,
+    contentHeight: 630,
+  }))
+}
+
+/** Runs beats until the predicate answers, and says which way it finished. */
+async function waitUntil(predicate: () => boolean, tries = 20): Promise<boolean> {
+  for (let beat = 0; beat < tries && !predicate(); beat++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    })
+  }
+  return predicate()
+}
+
+const reported = (onPlan: ReturnType<typeof vi.fn>, settled: boolean) =>
+  onPlan.mock.calls.some((call) => (call as [unknown, boolean])[1] === settled)
+
 describe('prefersReducedMotion', () => {
   const originalMatchMedia = window.matchMedia
 
@@ -220,6 +258,60 @@ describe('SlideCanvas — the prepared markup landing after the first paint', ()
     expect(view.container.textContent).toContain('Prepared later')
     expect(renderSlideSourceMock).toHaveBeenCalledTimes(1)
     view.unmount()
+  })
+})
+
+// The background pass advances on the canvas's own report, and a report taken before that page's
+// diagram pass is a report about a page of placeholders. The two halves are told apart at the only
+// place that knows whether the drawing finished (L-1).
+describe('SlideCanvas — the report a page is measured by', () => {
+  it('reports the measured page unsettled first and says so once its diagrams are through', async () => {
+    rememberSlideHtml(CACHED_KEY, { html: '<h1>Prepared</h1>', fences: createFenceBodies() })
+    const onPlan = vi.fn()
+    const view = mountCanvas(onPlan)
+    expect(reported(onPlan, false), 'a measured page is reported before anything is drawn').toBe(true)
+    expect(await waitUntil(() => reported(onPlan, true)), 'the canvas says the page is settled once its own pass is over').toBe(true)
+    view.unmount()
+  })
+
+  it('takes back the settled answer when a different page arrives under it', async () => {
+    // The pass holds one canvas while the show turns, and the preflight swaps pages the same way. A
+    // flag that stayed up across the swap would let the next capture be filed as drawn before the new
+    // page had been drawn at all — which is the defect, seen from the other side.
+    rememberSlideHtml(CACHED_KEY, { html: '<h1>First</h1>', fences: createFenceBodies() })
+    const onPlan = vi.fn()
+    const view = mountCanvas(onPlan)
+    expect(await waitUntil(() => reported(onPlan, true))).toBe(true)
+    let release!: () => void
+    diagram.hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    try {
+      onPlan.mockClear()
+      act(() => {
+        rememberSlideHtml(CACHED_KEY, { html: '<h1>Second</h1>', fences: createFenceBodies() })
+      })
+      expect(await waitUntil(() => reported(onPlan, false)), 'the swapped page is reported before its own pass').toBe(true)
+      expect(reported(onPlan, true), 'and nothing about it is settled while its diagrams are held').toBe(false)
+      release()
+      expect(await waitUntil(() => reported(onPlan, true)), 'the swapped page settles on its own terms').toBe(true)
+    } finally {
+      diagram.hold = null
+    }
+    view.unmount()
+  })
+
+  it('settles a page whose diagram threw, because nothing else is coming to finish it', async () => {
+    diagram.failMermaid = true
+    try {
+      rememberSlideHtml(CACHED_KEY, { html: '<h1>Broken</h1>', fences: createFenceBodies() })
+      const onPlan = vi.fn()
+      const view = mountCanvas(onPlan)
+      expect(await waitUntil(() => reported(onPlan, true)), 'a failed diagram still answers the waiting pass').toBe(true)
+      view.unmount()
+    } finally {
+      diagram.failMermaid = false
+    }
   })
 })
 

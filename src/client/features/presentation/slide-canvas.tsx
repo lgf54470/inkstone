@@ -31,8 +31,14 @@ export interface SlideCanvasProps {
    * The measured plan, shared with the show so the slide list can list this
    * slide's pages and the counter can name them. The canvas is the only place a
    * plan is measured because it renders the same markup the projector shows.
+   *
+   * The second argument says whether this canvas's own diagram pass is over. A page measured before it
+   * is a page of placeholders, and the background pass captures what the page holds at the moment it
+   * reports — so the pass that advanced on the first report listed the placeholders for the slide list
+   * to paint (L-1). Every surface is free to ignore it; the one that fills a cache is the one that has
+   * to wait for it.
    */
-  onPlan: (plan: SlidePlan) => void
+  onPlan: (plan: SlidePlan, settled: boolean) => void
   /**
    * Whether charts are drawn with their entrance animation. Off by default, because the projector's
    * canvas is looked at. The measuring pass turns it on: it is invisible, and its markup is captured
@@ -84,14 +90,13 @@ export function SlideCanvas({ cacheKey, source, subPage, step, contentWidth, con
   const html = shown.html
   const fences = shown.fences
   const requestedLayout = shown.layout
-  const [renderVersion, setRenderVersion] = useState(0)
-  const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
-  const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, shown.steps, subPage, step, contentWidth, contentHeight, renderVersion)
+  const diagrams = useDiagramPass(html, dark)
+  const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, shown.steps, subPage, step, contentWidth, contentHeight, diagrams.version)
   const prefersMotion = prefersReducedMotion()
   const effectiveInstantCharts = instantCharts || prefersMotion
-  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts, preview.mermaid)
-  useBentoSlidesFallback(hostRef, html, fences, markDiagramsRendered)
-  useFontLoadedMeasure(markDiagramsRendered)
+  useSlideDiagrams({ hostRef, html, dark, onRendered: diagrams.onRendered, onSettled: diagrams.onSettled, instantCharts: effectiveInstantCharts, mermaid: preview.mermaid })
+  useBentoSlidesFallback(hostRef, html, fences, diagrams.onRendered)
+  useFontLoadedMeasure(diagrams.onRendered)
   // Only a measurement of the markup on screen is published. The canvas is reused when
   // the show moves to another slide, so its state still holds the previous slide's plan
   // for the first commit: reporting that would tell the show — and the slide list — that
@@ -101,8 +106,8 @@ export function SlideCanvas({ cacheKey, source, subPage, step, contentWidth, con
   // pass captures the canvas's markup for the slide list, and the capture has to be the one
   // taken after the diagrams are in place, or the list shows their loading placeholders.
   useEffect(() => {
-    if (measured) onPlan(plan)
-  }, [measured, plan, renderVersion, onPlan])
+    if (measured) onPlan(plan, diagrams.settled)
+  }, [measured, plan, diagrams.version, diagrams.settled, onPlan])
   const page = plan.pages[resolvePageIndex(plan, subPage)]
 
   const handleLinkClick = useSlideLinkInterceptor()
@@ -285,19 +290,53 @@ export function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage
 // editor preview does: an observer-driven re-render would fire on the diagram's
 // own DOM writes and re-render them forever, and every pagination re-measure
 // would then see the leftover placeholders instead of the diagram's real height.
-function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: string, dark: boolean, onRendered: () => void, instantCharts: boolean, mermaid: boolean): void {
+// The canvas's two answers about its own diagram pass. They are separate because a bump is not an
+// ending: a font arriving, or a bento block falling back to still cards, changes what the page measures
+// and has to be re-measured, while only the diagram pass says the page is as finished as this canvas
+// will ever make it — and that is the answer a surface filling a cache from a capture has to wait for.
+function useDiagramPass(html: string, dark: boolean): { onRendered: () => void; onSettled: () => void; settled: boolean; version: number } {
+  const [version, setVersion] = useState(0)
+  const [settled, setSettled] = useState(false)
+  const onRendered = useCallback(() => setVersion((value) => value + 1), [])
+  // Both callbacks are stable on purpose: the diagram pass lists them among its own dependencies, so an
+  // identity that changed every render would re-run the pass, which would settle the page, which would
+  // render — a loop built out of two `useCallback`s that forgot their brackets.
+  const onSettled = useCallback(() => setSettled(true), [])
+  useEffect(() => {
+    setSettled(false)
+  }, [html, dark])
+  return { onRendered, onSettled, settled, version }
+}
+
+function useSlideDiagrams({ hostRef, html, dark, onRendered, onSettled, instantCharts, mermaid }: {
+  hostRef: RefObject<HTMLDivElement | null>
+  html: string
+  dark: boolean
+  onRendered: () => void
+  onSettled: () => void
+  instantCharts: boolean
+  mermaid: boolean
+}): void {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
     const render = async () => {
-      // The account's own display preference, honoured here rather than assumed: the enhancement chain
-      // that painted this page may have written the fence's source into the block, and drawing on top of
-      // that is what turns a turned-off setting into a diagram the room never asked for.
-      if (mermaid) await renderPendingMermaid(host, dark)
-      if (cancelled) return
-      await renderChartJs(host, dark, { instant: instantCharts })
-      if (!cancelled) onRendered()
+      try {
+        // The account's own display preference, honoured here rather than assumed: the enhancement chain
+        // that painted this page may have written the fence's source into the block, and drawing on top of
+        // that is what turns a turned-off setting into a diagram the room never asked for.
+        if (mermaid) await renderPendingMermaid(host, dark)
+        if (!cancelled) await renderChartJs(host, dark, { instant: instantCharts })
+      } finally {
+        // Settled means "this canvas is done with the page", not "the page has pictures": a diagram that
+        // threw left the page as finished as this pass will ever make it, and a waiting surface has to
+        // hear about that too rather than hold the page open until a guard gives up on it.
+        if (!cancelled) {
+          onRendered()
+          onSettled()
+        }
+      }
     }
     void render().catch((error: unknown) => {
       console.warn('[inkstone] slide diagram rendering failed', error)
@@ -306,7 +345,7 @@ function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: strin
       cancelled = true
       destroyChartInstances(host)
     }
-  }, [html, dark, hostRef, onRendered, instantCharts])
+  }, [html, dark, hostRef, onRendered, onSettled, instantCharts, mermaid])
 }
 
 function useFontLoadedMeasure(onLoaded: () => void): void {

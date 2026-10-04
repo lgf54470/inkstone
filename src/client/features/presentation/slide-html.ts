@@ -27,6 +27,16 @@ export interface SlideMarkup {
    */
   prepared?: boolean
   /**
+   * Set when a canvas has run its own diagram pass over this markup and the capture came from the page
+   * afterwards. It is a separate answer from `prepared` because the two are produced by different
+   * work: the enhancement chain runs off-DOM and cannot draw a mermaid or a chart — those are drawn by
+   * the canvas, into the live page, which is also where the capture is taken from. A surface that took
+   * `prepared` for "there is a picture in here" shipped the loading placeholders: after a theme flip the
+   * slide list kept every page's placeholders for the rest of the show, because the background pass read
+   * the *plan* cache as "this slide is already listed" and never went back to draw it (L-1).
+   */
+  drawn?: boolean
+  /**
    * Set when the page could not be enhanced: its diagrams, math and embeds stayed placeholders while
    * the text of the slide is still there. It travels with the entry rather than with a surface
    * because the slide list, the projector and the export all read the same prepared page — one of

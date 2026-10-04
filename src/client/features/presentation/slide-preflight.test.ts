@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installTestGlobals, renderElement } from '../../lib/test-render'
 import { initI18n } from '../../lib/i18n'
-import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup } from './slide-html'
+import { clearSlideHtmlCache, clearSlidePlanCache, hashContent, readSlideHtml, rememberSlideHtml, rememberSlidePlan, renderSlideSource, slideCacheKey, slideMarkup } from './slide-html'
 import { SLIDE_DESIGN_HEIGHT, SLIDE_DESIGN_WIDTH, SLIDE_PAD_X, SLIDE_PAD_Y, measureStage } from './slide-stage'
 import { SlidePreflight } from './slide-preflight'
 import type { SlidePlan } from './slide-pagination'
@@ -11,10 +11,20 @@ installTestGlobals()
 
 // Drawing a page's diagrams is what the pass is waiting for, so the enhancement is made to hang here:
 // a case that passed only because the stubbed chain happened to finish inside the wait window would
-// prove nothing about what the pass refuses to measure.
+// prove nothing about what the pass refuses to measure. The canvas's own two diagram renders are
+// stubbed to succeed at once — they are what turns a measured page into a *drawn* one, and loading
+// mermaid and chart.js into jsdom to say so would only make the answer depend on the stub. `hold`
+// lets one case stop the diagram pass part-way and say what the pass does while it waits.
+const diagram = vi.hoisted(() => ({ hold: null as Promise<void> | null }))
+
 vi.mock('../../lib/markdown/enhance', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/markdown/enhance')>()
-  return { ...actual, enhancePreview: () => new Promise<void>(() => { }) }
+  return {
+    ...actual,
+    enhancePreview: () => new Promise<void>(() => { }),
+    renderPendingMermaid: () => Promise.resolve(),
+    renderChartJs: () => diagram.hold ?? Promise.resolve(),
+  }
 })
 
 // The background pass draws a slide off-screen, measures its pages, and hands the measured markup to
@@ -64,7 +74,7 @@ function plainEntry() {
   return slideMarkup(renderSlideSource(SLIDE, false))
 }
 
-async function runPass(onPlan: (slide: number, plan: SlidePlan) => void) {
+async function runPass(onPlan: (slide: number, plan: SlidePlan) => void, onProgress: (progress: unknown) => void = vi.fn()) {
   const view = renderElement(createElement(SlidePreflight, {
     deck: DECK,
     hashes: HASHES,
@@ -74,7 +84,7 @@ async function runPass(onPlan: (slide: number, plan: SlidePlan) => void) {
     content: SLIDE,
     noteTitle: 'Chart page',
     onPlan,
-    onProgress: vi.fn(),
+    onProgress,
   }))
   // The pass starts on an idle slice with a deliberate gap, so give it a few of those rather than
   // asserting on the frame right after mount.
@@ -112,5 +122,67 @@ describe('SlidePreflight — what a measurement is allowed to be taken from', ()
     const view = await runPass(vi.fn())
     expect(document.querySelector('[data-slide-preflight]')).toBeTruthy()
     view.unmount()
+  })
+})
+
+// A page can be *measured* and still not be *drawn*: the plan cache is keyed by the slide's text alone,
+// so it outlives the theme and the box the markup was drawn for, and the capture the pass files is only
+// as good as the moment it was taken. These three are the difference between the two words (L-1).
+describe('SlidePreflight — a page is listed only once its drawings answered', () => {
+  it('measures a page again when its plan is cached but its diagrams were never drawn', async () => {
+    // The plan cache and the markup cache are two keys for one question. A page listed yesterday by a
+    // pass that tore its canvas down before the chart landed is still yesterday's page: the list paints
+    // whatever the entry holds, so a cached plan must not read as a finished capture (L-1).
+    rememberSlidePlan(HASHES[0] ?? '', { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] })
+    seed({ ...plainEntry(), prepared: true })
+    const view = await runPass(vi.fn())
+    expect(document.querySelector('[data-slide-preflight]'), 'a page count measured before is not a page drawn now').toBeTruthy()
+    view.unmount()
+  })
+
+  it('marks the entry it hands the list drawn, because that is what the list paints', async () => {
+    seed({ ...plainEntry(), prepared: true })
+    const view = await runPass(vi.fn())
+    for (let beat = 0; beat < 12 && readSlideHtml(keyFor(0))?.drawn !== true; beat++) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 60))
+      })
+    }
+    expect(readSlideHtml(keyFor(0))?.drawn, 'the capture the pass took is the markup the list shows').toBe(true)
+    view.unmount()
+  })
+
+})
+
+// One page of the queue, held open on purpose: the pass must neither list it nor walk past it while the
+// canvas's diagram pass is out — the two halves of the same answer, seen from the queue.
+describe('SlidePreflight — what the pass does while a page is still being drawn', () => {
+  it('holds the page open while its diagram pass is out, and lists it once it answers', async () => {
+    // The pass captures what the page holds at the moment it reports, so a cursor that moved on the
+    // first report would leave the slide list holding a page of placeholders — and the entry would
+    // say `prepared`, which is why the drawn answer has to come from the canvas that drew.
+    let releaseDiagrams!: () => void
+    diagram.hold = new Promise<void>((resolve) => {
+      releaseDiagrams = resolve
+    })
+    try {
+      seed({ ...plainEntry(), prepared: true })
+      const onPlan = vi.fn()
+      const onProgress = vi.fn()
+      const view = await runPass(onPlan, onProgress)
+      expect(onPlan, 'the page count is measured from the report that came first').toHaveBeenCalled()
+      expect(readSlideHtml(keyFor(0))?.drawn, 'a page whose diagrams are still out is not drawn').toBeFalsy()
+      const progress = () => (onProgress.mock.calls.at(-1)?.[0] as { measured: number } | undefined)?.measured ?? -1
+      expect(progress(), 'the pass does not walk on while a page is still being drawn').toBe(0)
+      await act(async () => {
+        releaseDiagrams()
+        await new Promise((resolve) => setTimeout(resolve, 60))
+      })
+      expect(readSlideHtml(keyFor(0))?.drawn, 'the settled report is the one that fills the entry in').toBe(true)
+      expect(progress(), 'and the page counts as listed only from then on').toBe(1)
+      view.unmount()
+    } finally {
+      diagram.hold = null
+    }
   })
 })

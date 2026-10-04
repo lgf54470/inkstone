@@ -351,12 +351,14 @@ describe('pageLabel', () => {
 })
 
 // A thumbnail that shows a slide's placeholders looks exactly like a slide whose diagrams failed to
-// draw. The four states below are the four answers to "where did this markup come from", which is the
-// only thing that tells those two cases apart (L-1).
+// draw. The states below are the answers to "where did this markup come from", which is the only thing
+// that tells those two cases apart (L-1). Enhancing a page and drawing it are separate answers: the
+// first says the chain ran, the second says the page the list paints holds its pictures.
 describe('thumbDrawOf — what a card says about its own source', () => {
-  it('names a page the cache holds as prepared, and one it holds only half as uncaptured', () => {
+  it('names a page whose diagrams landed drawn, and one that is still waiting undrawn', () => {
     const body = { html: '<p>page</p>', fences: createFenceBodies() }
-    expect(thumbDrawOf({ ...body, prepared: true } as never)).toBe('prepared')
+    expect(thumbDrawOf({ ...body, prepared: true, drawn: true } as never)).toBe('drawn')
+    expect(thumbDrawOf({ ...body, prepared: true } as never), 'a page that has been enhanced is not a page that has been drawn').toBe('undrawn')
     expect(thumbDrawOf(body as never), 'a plain render parked in the cache mid-preparation is not the finished page').toBe('uncaptured')
   })
 

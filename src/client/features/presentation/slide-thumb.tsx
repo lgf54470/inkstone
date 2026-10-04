@@ -100,15 +100,19 @@ export function extractSlideHeading(source: string): string {
  *
  * A thumbnail that shows a slide's placeholders reads exactly like a slide whose diagrams failed to
  * draw, and the only difference is where its markup came from. So the card names its own source: the
- * four states are the four things a reader could otherwise only guess at, and a red that carries them
+ * five states are the five things a reader could otherwise only guess at, and a red that carries them
  * says which one to go looking for.
  */
-export type ThumbDraw = 'prepared' | 'uncaptured' | 'failed' | 'plain'
+export type ThumbDraw = 'drawn' | 'undrawn' | 'uncaptured' | 'failed' | 'plain'
 
+// `prepared` and `drawn` are two answers: the first says the enhancement chain ran over the page, the
+// second says a canvas then drew its mermaid and its chart into the markup the list paints. A card on
+// `undrawn` is showing exactly what a failed page shows, which is why the card has to say which it is.
 export function thumbDrawOf(cached: SlideMarkup | undefined): ThumbDraw {
   if (!cached) return 'plain'
   if (cached.failed) return 'failed'
-  return cached.prepared ? 'prepared' : 'uncaptured'
+  if (!cached.prepared) return 'uncaptured'
+  return cached.drawn ? 'drawn' : 'undrawn'
 }
 
 export function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }: {

@@ -161,17 +161,21 @@ function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef,
   cacheKeys: string[]
   hostRef: RefObject<HTMLDivElement | null>
   onPlan: (slide: number, plan: SlidePlan) => void
-}): { cursor: number | null; report: (plan: SlidePlan) => void; measured: number; finished: boolean } {
+}): { cursor: number | null; report: (plan: SlidePlan, settled: boolean) => void; measured: number; finished: boolean } {
   const pass = usePassState()
   const { done, skipped, sliceStart, sliceCost, cursorRef } = pass
-  const queue = useSliceQueue({ deck, hashes, fingerprint, dark, pass, onPlan })
+  const queue = useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPlan })
   const { cursor, scheduleNext, countVisited } = queue
   cursorRef.current = cursor
 
-  const report = useCallback((plan: SlidePlan) => {
+  const report = useCallback((plan: SlidePlan, settled: boolean) => {
     const slide = cursorRef.current
     if (slide === null) return
-    publishPlan(slide, plan, { hashes, hostRef, cacheKeys, onPlan })
+    publishPlan(slide, plan, { hashes, hostRef, cacheKeys, onPlan, settled })
+    // A page whose diagram pass has not finished is not listed yet: the canvas keeps its host, the pass
+    // keeps its cursor, and the report that arrives when the drawings land is the one that advances. A
+    // page that never lands is taken by the stall guard, exactly as a page that never measured.
+    if (!settled) return
     noteSliceCost(sliceStart, sliceCost)
     done.current.add(slide)
     countVisited()
@@ -190,14 +194,20 @@ function usePreflightPass({ deck, hashes, fingerprint, dark, cacheKeys, hostRef,
   return { cursor, report, measured: queue.measured, finished: queue.finished }
 }
 
-function initPreflightDone(hashes: string[], onPlan: (slide: number, plan: SlidePlan) => void): Set<number> {
+// A slide counts as already listed when its plan is measured *and* the markup the list paints is
+// finished with. The two caches are keyed differently on purpose — a plan by the slide's own text, the
+// markup by the text plus the theme and the box — so a plan outlives the theme it was measured under
+// while its capture does not, and reading the plan alone let a flip leave every card showing its
+// placeholders for the rest of the show (L-1). The cached plan is still published at once: the list gets
+// its page counts immediately, and the slide stays in the queue to have its pictures put back.
+function initPreflightDone(hashes: string[], cacheKeys: string[], onPlan: (slide: number, plan: SlidePlan) => void): Set<number> {
   const done = new Set<number>()
   for (let i = 0; i < hashes.length; i++) {
     const cached = readSlidePlan(hashes[i] ?? '')
-    if (cached) {
-      done.add(i)
-      onPlan(i, cached)
-    }
+    if (!cached) continue
+    onPlan(i, cached)
+    const markup = readSlideHtml(cacheKeys[i] ?? '')
+    if (markup?.drawn || markup?.failed) done.add(i)
   }
   return done
 }
@@ -206,9 +216,10 @@ function initPreflightDone(hashes: string[], onPlan: (slide: number, plan: Slide
 // deck has been listed. It restarts whenever the deck or the markup under it changes — an edited
 // note re-splits into different slides, and a theme flip invalidates every slide's markup, so
 // either way every slide has to be visited again.
-function useSliceQueue({ deck, hashes, fingerprint, dark, pass, onPlan }: {
+function useSliceQueue({ deck, hashes, cacheKeys, fingerprint, dark, pass, onPlan }: {
   deck: string[]
   hashes: string[]
+  cacheKeys: string[]
   fingerprint: string
   dark: boolean
   pass: PassState
@@ -241,14 +252,14 @@ function useSliceQueue({ deck, hashes, fingerprint, dark, pass, onPlan }: {
 
   const countVisited = useCallback(() => setMeasured(done.current.size + skipped.current.size), [done, skipped])
   const restart = useCallback(() => {
-    const alreadyDone = initPreflightDone(hashes, onPlan)
+    const alreadyDone = initPreflightDone(hashes, cacheKeys, onPlan)
     done.current = alreadyDone
     skipped.current = new Set()
     pace.current = { factor: 1, quietRun: 0 }
     setFinished(alreadyDone.size >= deck.length)
     setMeasured(alreadyDone.size)
     scheduleNext(0)
-  }, [deck, hashes, onPlan, scheduleNext, done, skipped, pace])
+  }, [deck, hashes, cacheKeys, onPlan, scheduleNext, done, skipped, pace])
   usePassRestart(`${deckLength}:${fingerprint}:${dark}`, restart, idle)
 
   return { cursor, finished, measured, scheduleNext, countVisited }
@@ -257,11 +268,12 @@ function useSliceQueue({ deck, hashes, fingerprint, dark, pass, onPlan }: {
 // What a measurement means: the markup it came from goes back to the cache under the slide's key
 // (so the projector's later visit is a cache hit instead of a second render) and the plan goes to
 // the show, which lists this slide's pages.
-function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKeys, onPlan }: {
+function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKeys, onPlan, settled }: {
   hashes: string[]
   hostRef: RefObject<HTMLDivElement | null>
   cacheKeys: string[]
   onPlan: (slide: number, plan: SlidePlan) => void
+  settled: boolean
 }): void {
   const key = cacheKeys[slide]
   const html = captureSlideHtml(hostRef.current)
@@ -271,7 +283,12 @@ function publishPlan(slide: number, plan: SlidePlan, { hashes, hostRef, cacheKey
   // The entry keeps its own `prepared` / `failed`: the capture came from what that entry was drawn
   // into, so it cannot promote a page that is still being drawn. `prepared: true` used to be stamped
   // here whatever the entry said, and a page caught mid-preparation was then left alone forever.
-  if (html && key && (markup?.prepared || markup?.failed)) rememberSlideHtml(key, { ...markup, html })
+  // `drawn` is the canvas's own answer rather than a guess out of the markup: the enhancement chain
+  // cannot draw a mermaid or a chart, so a capture taken before the page's diagram pass is a capture of
+  // placeholders — which is what the slide list then painted for the rest of the show (L-1). A page
+  // whose enhancement failed is finished by definition, since nothing is going to draw on it.
+  if (html && key && (markup?.prepared || markup?.failed))
+    rememberSlideHtml(key, { ...markup, html, drawn: settled || markup.failed === true })
   rememberSlidePlan(hashes[slide] ?? '', plan)
   onPlan(slide, plan)
 }
