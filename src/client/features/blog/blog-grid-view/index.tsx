@@ -25,7 +25,7 @@ export function BlogGridView({
   const folderMap = useMemo(() => new Map(folders.map((f) => [f.id, f])), [folders])
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 text-[length:var(--text-12\.5)]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[var(--sp-4)] p-[var(--sp-4)] text-[length:var(--text-12\.5)]">
       {posts.map((post) => {
         const isSelected = selectedPostIds.has(post.id)
         const cat = post.categoryId ? categoryMap.get(post.categoryId) ?? null : null

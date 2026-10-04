@@ -43,7 +43,7 @@ interface MonthGridProps {
 
 export function MonthGrid({ year, month, weekStart = 1, weekdayLabels, todayKey, className, ariaLabel, onKeyDown, onMouseDown, onMouseUp, onMouseEnter, renderCell }: MonthGridProps) {
   const cells = useMemo(() => buildMonthGridCells(year, month, weekStart, todayKey), [year, month, weekStart, todayKey])
-  return (<div role='group' aria-label={ariaLabel} onKeyDown={onKeyDown} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseEnter={onMouseEnter} className={cn('grid grid-cols-7 gap-0.5 select-none', className)}>
+  return (<div role='group' aria-label={ariaLabel} onKeyDown={onKeyDown} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseEnter={onMouseEnter} className={cn('grid grid-cols-7 gap-[var(--sp-0\\.5)] select-none', className)}>
     {weekdayLabels.map((label, index) => (<div key={index} className='flex items-center justify-center text-[length:var(--text-9)] font-medium text-[var(--text-quaternary)]'>
       {label}
     </div>))}
@@ -83,7 +83,7 @@ interface YearGridProps {
 
 export function YearGrid({ year, weekStart = 1, todayKey, columns = YEAR_GRID_COLUMNS, className, ariaLabel, onKeyDown, renderMonth }: YearGridProps) {
   const months = useMemo(() => buildYearGridMonths(year, weekStart, todayKey), [year, weekStart, todayKey])
-  return (<div role='group' aria-label={ariaLabel} onKeyDown={onKeyDown} className={cn('grid gap-1 select-none', columns === 4 ? 'grid-cols-4' : 'grid-cols-3', className)}>
+  return (<div role='group' aria-label={ariaLabel} onKeyDown={onKeyDown} className={cn('grid gap-[var(--sp-1)] select-none', columns === 4 ? 'grid-cols-4' : 'grid-cols-3', className)}>
     {months.map((month) => (<Fragment key={month.month}>{renderMonth(month)}</Fragment>))}
   </div>)
 }

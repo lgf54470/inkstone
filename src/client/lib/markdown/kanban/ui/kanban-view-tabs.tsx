@@ -296,7 +296,7 @@ function KanbanTab({ view, panelId, isActive, index, register, onSelectView, onK
       tabIndex={isActive ? 0 : -1}
       onClick={() => onSelectView(view.id)}
       onKeyDown={(event) => onKeyDown(event, index)}
-      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] transition-colors md:h-7 md:py-1 ${
+      className={`flex h-[var(--sp-9)] shrink-0 items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2\\.5)] text-[length:var(--text-12)] transition-colors md:h-[var(--sp-7)] md:py-[var(--sp-1)] ${
         isActive
           ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
           : 'font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -336,7 +336,7 @@ function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListPr
       // positioned strip that value is measured against whichever ancestor the browser picks instead —
       // in the full screen overlay a stage far to the tab's left, whose number made the reveal scroll
       // the first tab out of its own view (measured by the visual gate's tab check, 2026-09-24).
-      className='relative flex min-w-0 items-center gap-1 overflow-x-auto'
+      className='relative flex min-w-0 items-center gap-[var(--sp-1)] overflow-x-auto'
       role='tablist'
       aria-label={t('preview.kanban_views')}
     >
@@ -377,7 +377,7 @@ export function KanbanViewTabs({
     // header's other controls and scroll sideways instead, and `shrink-0` keeps a tab from being
     // squeezed below its own width by that scroll. The two management controls stay outside the
     // list — anything inside a tablist is announced as a tab.
-    <div className='flex min-w-0 items-center gap-1'>
+    <div className='flex min-w-0 items-center gap-[var(--sp-1)]'>
       <KanbanTabList views={views} activeViewId={activeViewId} panelId={panelId} onSelectView={onSelectView} />
       <KanbanNewViewMenu onCreate={viewOps.createView} />
       <KanbanActiveViewMenu views={views} activeViewId={activeViewId} viewOps={viewOps} />

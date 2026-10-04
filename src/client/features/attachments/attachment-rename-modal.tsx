@@ -24,14 +24,14 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
       open={open}
       onClose={onClose}
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <Pencil size={15} className='text-[var(--accent)]' />
           <span>{t('attachments.rename')}</span>
         </div>
       }
       width={MODAL_WIDTH}
     >
-      <form onSubmit={form.handleSubmit} className='space-y-4 pt-1'>
+      <form onSubmit={form.handleSubmit} className='space-y-4 pt-[var(--sp-1)]'>
         <label className='block space-y-1.5'>
           <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
             {t('attachments.filename')}
@@ -39,12 +39,12 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
           <Input autoFocus value={form.name} onChange={(e) => form.setName(e.target.value)} disabled={form.isSaving} />
         </label>
 
-        <label className="flex items-center gap-2.5 cursor-pointer text-[length:var(--text-12\\.5)] text-[var(--text-secondary)] select-none">
+        <label className="flex items-center gap-[var(--sp-2\\.5)] cursor-pointer text-[length:var(--text-12\\.5)] text-[var(--text-secondary)] select-none">
           <Checkbox checked={form.isUpdateRefs} onChange={(checked) => form.setIsUpdateRefs(checked)} />
           <span>{t('attachments.sync_note_references')}</span>
         </label>
 
-        <div className='flex items-center justify-end gap-2 pt-2'>
+        <div className='flex items-center justify-end gap-[var(--sp-2)] pt-[var(--sp-2)]'>
           <Button type='button' variant='secondary' size='sm' onClick={onClose} disabled={form.isSaving}>
             {t('common.cancel')}
           </Button>

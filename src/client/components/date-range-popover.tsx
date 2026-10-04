@@ -12,7 +12,7 @@ export function DateRangePopover(props: DateRangePopoverProps) {
   const p = useDateRangePopover(props)
   if (!props.open)
     return null
-  return createPortal(<div ref={p.popoverRef} role='dialog' aria-label={t('notes.range_editor_title')} className='anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]' style={{ top: p.position.top, left: p.position.left, width: POPOVER_WIDTH, transformOrigin: p.position.origin }}>
+  return createPortal(<div ref={p.popoverRef} role='dialog' aria-label={t('notes.range_editor_title')} className='anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-2)] shadow-[var(--shadow-pop)]' style={{ top: p.position.top, left: p.position.left, width: POPOVER_WIDTH, transformOrigin: p.position.origin }}>
     <RangePopoverHeader monthTitle={p.monthTitle} onPrevMonth={() => p.shiftMonth(-1)} onNextMonth={() => p.shiftMonth(1)} onClear={() => p.onChange(null)}/>
     <EndpointToggle editing={p.editing} onSelect={p.selectEndpoint}/>
     <PresetBar presets={p.presets} isActivePreset={p.isActivePreset} onApplyPreset={p.applyPreset} onApplyRelative={p.onApplyRelative} isEditorOpen={p.isEditorOpen} onToggleEditor={() => p.setIsEditorOpen((open) => !open)}/>

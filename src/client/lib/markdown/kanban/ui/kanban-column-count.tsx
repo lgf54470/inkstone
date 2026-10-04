@@ -28,7 +28,7 @@ export function KanbanColumnCount({ count, limit, className }: KanbanColumnCount
       data-kanban-wip-limit={limit}
       data-kanban-wip={isOver ? 'over' : undefined}
       title={words}
-      className={`inline-flex items-center gap-1 ${isOver ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'} ${className ?? ''}`}
+      className={`inline-flex items-center gap-[var(--sp-1)] ${isOver ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'} ${className ?? ''}`}
     >
       {isOver ? <AlertTriangle size={11} className='shrink-0 text-[var(--danger)]' aria-hidden='true' /> : null}
       <span>{limit === undefined ? count : t('preview.kanban_wip_count', { count, limit })}</span>

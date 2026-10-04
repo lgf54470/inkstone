@@ -119,12 +119,12 @@ function TagRowBody(props: TagRowBodyProps) {
       onContextMenu={onRowContextMenu}
       style={{ paddingLeft: `${node.depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
-        'group flex h-7.5 w-full items-center gap-1 rounded-[var(--r-md)] pr-1 text-left text-[length:var(--text-12)] font-medium transition-colors',
+        'group flex h-7.5 w-full items-center gap-[var(--sp-1)] rounded-[var(--r-md)] pr-[var(--sp-1)] text-left text-[length:var(--text-12)] font-medium transition-colors',
         active ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
       )}
     >
       <TagToggle expanded={expanded} hasChildren={hasChildren} onToggleExpand={onToggleExpand} />
-      <button type='button' onClick={onSelectTag} className='flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left'>
+      <button type='button' onClick={onSelectTag} className='flex min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] py-[var(--sp-1)] text-left'>
         <Hash size={12} style={{ color: node.tag?.color ?? undefined }} className={cn('shrink-0', !node.tag?.color && 'text-[var(--text-quaternary)]')} />
         <span className='truncate'>{node.name}</span>
       </button>
@@ -144,7 +144,7 @@ function TagToggle({ expanded, hasChildren, onToggleExpand }: { expanded: boolea
         onToggleExpand()
       }}
       className={cn(
-        'flex h-4 w-4 shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-transform',
+        'flex h-[var(--sp-4)] w-[var(--sp-4)] shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-transform',
         !hasChildren && 'invisible',
         expanded && 'rotate-90',
       )}
@@ -164,7 +164,7 @@ function FolderMoreButton({ moreButtonRef, onMoreClick }: { moreButtonRef: React
         e.stopPropagation()
         onMoreClick()
       }}
-      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
+      className='opacity-0 group-hover:opacity-100 p-[var(--sp-0\\.5)] rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity'
     >
       <MoreHorizontal size={12} />
     </button>
