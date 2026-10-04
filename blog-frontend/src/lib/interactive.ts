@@ -2,6 +2,7 @@ import { COPY_FEEDBACK_MS } from './constants'
 import { renderJsOutcome, runUserCode } from './js-runner-runner'
 import { t, getCurrentLocale } from './i18n'
 import { initDiagramLazyRender, isDarkMode, rerenderDiagramsForTheme, revealPanelBlocks } from './diagram-reveal'
+import { initTableCharts, rerenderTableChartsForTheme } from './table-charts'
 import { applyExampleSplits } from './example-splits'
 import { configureCodeBlockCollapsing, toggleCodeBlockCollapse } from './code-collapse'
 import { enhanceGraphBlockToolbars, executeGraphBlockAction } from './graph-toolbar'
@@ -27,6 +28,7 @@ export function initInteractiveContent() {
   initCodeBlockControls()
   initGraphActions()
   initDiagramLazyRender()
+  initTableCharts()
   initMindmapSnapshots()
   initThemeObserver()
 }
@@ -281,6 +283,7 @@ function initThemeObserver() {
     if (nextDark !== isDark) {
       isDark = nextDark
       rerenderDiagramsForTheme()
+      rerenderTableChartsForTheme()
       rerenderMindmapsForTheme()
     }
   }
@@ -291,6 +294,7 @@ function initThemeObserver() {
     if (nextDark !== isDark) {
       isDark = nextDark
       rerenderDiagramsForTheme()
+      rerenderTableChartsForTheme()
       rerenderMindmapsForTheme()
     }
   })

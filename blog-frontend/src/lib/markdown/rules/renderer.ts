@@ -3,6 +3,7 @@ import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import type { RenderEnv } from '../types.ts'
 import { TABLE_OPTION_DEFAULTS, type TableOptions } from '../table-options.ts'
+import { parseChartKeyword, type ChartKeyword } from '../../chart/model.ts'
 import { registerPanels } from '../panels.ts'
 
 function registerDetailsRendererRules(md: InstanceType<typeof MarkdownIt>): void {
@@ -109,9 +110,44 @@ function registerMathRendererRules(md: InstanceType<typeof MarkdownIt>): void {
   }
 }
 
+/** The part of a markdown-it token this rule touches. */
+interface TableToken {
+  type: string
+  content: string
+  children?: unknown[] | null
+}
+
+/** The first header cell of the table that starts at `index`, if it names a chart. */
+function chartDirective(tokens: TableToken[], index: number): { keyword: ChartKeyword; cell: TableToken } | null {
+  for (let i = index + 1; i < tokens.length; i++) {
+    const token = tokens[i]!
+    if (token.type === 'table_close') return null
+    if (token.type !== 'th_open') continue
+    const cell = tokens[i + 1]
+    if (!cell || cell.type !== 'inline') return null
+    const keyword = parseChartKeyword(cell.content)
+    return keyword ? { keyword, cell } : null
+  }
+  return null
+}
+
+function chartMarker(keyword: ChartKeyword): string {
+  // The table below carries the same data in accessible form, so the picture asks for nothing.
+  const config = encodeURIComponent(JSON.stringify(keyword.options))
+  return `<div class="table-chart" aria-hidden="true" data-table-chart="${escapeAttr(keyword.kind)}" data-table-chart-config="${escapeAttr(config)}"></div>`
+}
+
 function registerTableRendererRules(md: InstanceType<typeof MarkdownIt>): void {
-  // Table wrapping
-  md.renderer.rules.table_open = () => '<div class="table-wrap"><table>'
+  // Table wrapping. A table whose first header cell names a chart draws one above itself, and that
+  // cell is a directive rather than data, so it is emptied here and the kind and configuration travel
+  // on the marker instead — the table underneath keeps every value, and the client reads them from it.
+  md.renderer.rules.table_open = (tokens, index) => {
+    const directive = chartDirective(tokens, index)
+    if (!directive) return '<div class="table-wrap"><table>'
+    directive.cell.content = ''
+    directive.cell.children = []
+    return `<div class="table-wrap">${chartMarker(directive.keyword)}<table>`
+  }
   md.renderer.rules.table_close = () => '</table></div>'
 
   const defaultThOpen = md.renderer.rules.th_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))

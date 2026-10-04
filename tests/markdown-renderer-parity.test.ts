@@ -24,6 +24,11 @@ const FIXTURES: Record<string, string> = {
   embed: '![[嵌入笔记]]',
   ruby: '{汉字|hàn zì} 与 [注音]{zhù yīn}',
   table: '| a | b |\n| :--- | ---: |\n| 1 | 2 |',
+  // A bare table whose first cell names a chart: both trees must emit the same marker in the same
+  // place and empty the same cell, or a post renders a chart in one tree and a stray `:bar:` in the
+  // other. The configuration rides differently (base64 in the app, percent-encoded here), which the
+  // skeleton comparison ignores by design — it is the shape that has to agree.
+  tableChart: '| :bar:{"title": "T"} | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |',
   toc: '[TOC]\n\n# 标题一\n\n## 子标题',
   footnote: '引用[^1]\n\n[^1]: 注释内容',
   obsidianComment: '正文 %%隐藏%% 保留',
