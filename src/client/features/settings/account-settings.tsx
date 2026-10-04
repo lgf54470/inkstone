@@ -22,7 +22,7 @@ export function AccountSettings() {
       <ProfileSection />
 
       <section>
-        <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
+        <h3 className='mb-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
           {t('settings.sign_in_security')}
         </h3>
         <div className='space-y-2'>
@@ -33,7 +33,7 @@ export function AccountSettings() {
 
       {user.role === 'owner' && (
         <section>
-          <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
+          <h3 className='mb-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
             {t('common.access_control')}
           </h3>
           <RegistrationSection />
@@ -112,7 +112,7 @@ function ProfileSection() {
   const editor = useProfileEditor()
   return (
     <section>
-      <h3 className='mb-2 px-1 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
+      <h3 className='mb-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
         {t('settings.personal_profile')}
       </h3>
       <div className='overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
@@ -127,7 +127,7 @@ function ProfileSection() {
 function ProfileHeader({ editor }: { editor: ProfileEditor }) {
   const { user } = editor
   return (
-    <div className='flex items-center gap-3 p-4'>
+    <div className='flex items-center gap-[var(--sp-3)] p-[var(--sp-4)]'>
       <button
         type='button'
         aria-label={t('settings.change_avatar')}
@@ -140,16 +140,16 @@ function ProfileHeader({ editor }: { editor: ProfileEditor }) {
         </span>
       </button>
       <div className='min-w-0 flex-1'>
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-[var(--sp-2)]'>
           <span className='truncate text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
             {user.name}
           </span>
           {user.role === 'owner' && <Badge tone='accent'>{t('common.owner')}</Badge>}
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+        <div className="mt-[var(--sp-0\\.5)] flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
           <UserRound size={11} />@{user.username}
         </div>
-        <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+        <p className="mt-[var(--sp-1)] text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
           {t('settings.username_is_sign_in_id')}
         </p>
       </div>
@@ -161,7 +161,7 @@ function ProfileHeader({ editor }: { editor: ProfileEditor }) {
 function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
   return (
     <form
-      className='border-t border-[var(--border-subtle)] px-4 py-3.5'
+      className='border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3\\.5)]'
       onSubmit={(event) => {
         event.preventDefault()
         editor.saveName()
@@ -170,7 +170,7 @@ function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
       <label htmlFor='profile-display-name' className="block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
         {t('settings.display_name')}
       </label>
-      <div className='mt-1.5 flex flex-col gap-2 sm:flex-row'>
+      <div className='mt-[var(--sp-1\\.5)] flex flex-col gap-[var(--sp-2)] sm:flex-row'>
         <Input
           id='profile-display-name'
           value={editor.name}
@@ -188,7 +188,7 @@ function DisplayNameForm({ editor }: { editor: ProfileEditor }) {
           {t('common.save')}
         </Button>
       </div>
-      {editor.error && <p role='alert' className='mt-1.5 text-[length:var(--text-12)] text-[var(--danger)]'>{editor.error}</p>}
+      {editor.error && <p role='alert' className='mt-[var(--sp-1\\.5)] text-[length:var(--text-12)] text-[var(--danger)]'>{editor.error}</p>}
     </form>
   )
 }
@@ -296,7 +296,7 @@ function PasswordSection() {
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
-        className='px-4'
+        className='px-[var(--sp-4)]'
         title={t('settings.login_password')}
         description={t('settings.username_value0_changing_the_password_signs_out_other_devices', { value0: form.user.username })}
       >
@@ -312,7 +312,7 @@ function PasswordSection() {
 function PasswordFields({ form }: { form: PasswordForm }) {
   return (
     <form
-      className='space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5'
+      className='space-y-2.5 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3\\.5)]'
       onSubmit={(event) => {
         event.preventDefault()
         form.submit()
@@ -321,7 +321,7 @@ function PasswordFields({ form }: { form: PasswordForm }) {
       <PasswordLabel text={t('settings.current_password')}>
         <Input type='password' value={form.currentPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setCurrentPassword(event.target.value)} disabled={form.isBusy} autoComplete='current-password' />
       </PasswordLabel>
-      <div className='grid grid-cols-1 gap-2.5 md:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-2\\.5)] md:grid-cols-2'>
         <PasswordLabel text={t('settings.new_password')}>
           <Input type='password' value={form.newPassword} maxLength={LIMITS.passwordMaxLength} onChange={(event) => form.setNewPassword(event.target.value)} disabled={form.isBusy} autoComplete='new-password' />
         </PasswordLabel>
@@ -342,7 +342,7 @@ function PasswordFields({ form }: { form: PasswordForm }) {
 function PasswordLabel({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <label className='block'>
-      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+      <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {text}
       </span>
       {children}
@@ -426,7 +426,7 @@ function RegistrationSection() {
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <SettingRow
-        className='px-4'
+        className='px-[var(--sp-4)]'
         title={t('common.open_registration')}
         description={`${toggle.enabled ? t('settings.open_anyone_can_register_with_a_username_and_password') : t('settings.off_default_only_existing_accounts_can_log_in')} ${t('settings.changing_this_requires_your_current_password_and_takes_effect_immediatel')}`}
       >
@@ -440,14 +440,14 @@ function RegistrationSection() {
 function RegistrationForm({ toggle }: { toggle: RegistrationToggle }) {
   return (
     <form
-      className='space-y-2.5 border-t border-[var(--border-subtle)] px-4 py-3.5'
+      className='space-y-2.5 border-t border-[var(--border-subtle)] px-[var(--sp-4)] py-[var(--sp-3\\.5)]'
       onSubmit={(event) => {
         event.preventDefault()
         toggle.finishToggle()
       }}
     >
       <label className='block'>
-        <span className="mb-1 flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+        <span className="mb-[var(--sp-1)] flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
           <ShieldCheck size={12} />
           {toggle.target ? t('settings.open_registration_requires_password_verification') : t('settings.close_registration_requires_password_verification')}
         </span>
@@ -462,7 +462,7 @@ function RegistrationForm({ toggle }: { toggle: RegistrationToggle }) {
         />
       </label>
       {toggle.error && <p role='alert' className='text-[length:var(--text-12)] text-[var(--danger)]'>{toggle.error}</p>}
-      <div className='flex justify-end gap-2'>
+      <div className='flex justify-end gap-[var(--sp-2)]'>
         <Button type='button' size='sm' variant='ghost' disabled={toggle.isBusy} onClick={toggle.cancelToggle}>
           {t('common.cancel')}
         </Button>

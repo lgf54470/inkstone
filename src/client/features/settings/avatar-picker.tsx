@@ -143,13 +143,13 @@ async function chooseAvatarFileFlow({ file, busyRef, processingRef, setIsProcess
 
 function SelectedAvatarCard({ picker }: { picker: PickerState }) {
   return (
-    <div className='flex items-center gap-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4'>
+    <div className='flex items-center gap-[var(--sp-4)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-[var(--sp-4)]'>
       <Avatar src={picker.selected} name={picker.displayName} size={72} />
       <div className='min-w-0 flex-1'>
         <div className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('settings.selected_avatar')}
         </div>
-        <div className="mt-1 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{picker.selectionLabel}</div>
+        <div className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{picker.selectionLabel}</div>
       </div>
       <Button size='sm' variant='secondary' icon={<RotateCcw size={12} />} onClick={() => picker.setSelected('')} disabled={picker.isBusy || picker.isProcessing}>
         {t('settings.use_name_avatar')}
@@ -161,7 +161,7 @@ function SelectedAvatarCard({ picker }: { picker: PickerState }) {
 function RandomAvatarGrid({ picker }: { picker: PickerState }) {
   return (
     <section>
-      <div className='mb-2.5 flex items-center justify-between gap-3'>
+      <div className='mb-[var(--sp-2\\.5)] flex items-center justify-between gap-[var(--sp-3)]'>
         <h3 className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
           {t('settings.random_avatars')}
         </h3>
@@ -169,7 +169,7 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
           {t('settings.refresh_avatars')}
         </Button>
       </div>
-      <div className='grid grid-cols-5 gap-2.5'>
+      <div className='grid grid-cols-5 gap-[var(--sp-2\\.5)]'>
         {picker.choices.map((choice, index) => {
           const active = picker.selected === choice
           return (
@@ -188,7 +188,7 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
             >
               <Avatar src={choice} name={picker.displayName} size={42} className='md:!size-15' />
               {active && (
-                <span className='absolute right-1.5 bottom-1.5 flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
+                <span className='absolute right-[var(--sp-1\\.5)] bottom-[var(--sp-1\\.5)] flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
                   <Check size={10} strokeWidth={3} />
                 </span>
               )}
@@ -202,13 +202,13 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
 
 function UploadSection({ picker }: { picker: PickerState }) {
   return (
-    <section className='rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)] bg-[var(--bg-inset)] p-4'>
-      <div className='flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center'>
+    <section className='rounded-[var(--r-lg)] border border-dashed border-[var(--border-default)] bg-[var(--bg-inset)] p-[var(--sp-4)]'>
+      <div className='flex flex-col items-start justify-between gap-[var(--sp-3)] sm:flex-row sm:items-center'>
         <div>
           <h3 className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
             {t('settings.upload_local_image')}
           </h3>
-          <p className='mt-1 text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>
+          <p className='mt-[var(--sp-1)] text-[length:var(--text-11)] leading-relaxed text-[var(--text-quaternary)]'>
             {t('settings.avatar_upload_hint')}
           </p>
         </div>

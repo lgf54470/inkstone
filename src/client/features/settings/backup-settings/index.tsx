@@ -141,12 +141,12 @@ async function runBackupFlow({ runningRef, mountedRef, setIsRunning, reload, toa
 
 function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[color-mix(in_oklab,var(--danger)_28%,var(--border-subtle))] bg-[var(--bg-base)] p-4'>
-      <div className='flex items-start gap-3'>
-      <AlertCircle size={16} className='mt-0.5 shrink-0 text-[var(--danger)]'/>
+    <div className='rounded-[var(--r-lg)] border border-[color-mix(in_oklab,var(--danger)_28%,var(--border-subtle))] bg-[var(--bg-base)] p-[var(--sp-4)]'>
+      <div className='flex items-start gap-[var(--sp-3)]'>
+      <AlertCircle size={16} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]'/>
       <div className='min-w-0 flex-1'>
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{t('settings.could_not_load_backup_settings')}</div>
-        <p className="mt-1 break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{error}</p>
+        <p className="mt-[var(--sp-1)] break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{error}</p>
       </div>
       <Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>
       </div>
@@ -157,8 +157,8 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
 function ErrorBanner({ error, onRetry }: { error: string | null; onRetry: () => void }) {
   if (!error) return null
   return (
-    <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--danger)]">
-      <AlertCircle size={13} className='mt-0.5 shrink-0'/>
+    <div className="flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--danger)]">
+      <AlertCircle size={13} className='mt-[var(--sp-0\\.5)] shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{error}</span>
       <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={onRetry}>{t('common.retry')}</button>
     </div>
@@ -167,16 +167,16 @@ function ErrorBanner({ error, onRetry }: { error: string | null; onRetry: () => 
 
 function BackupHero({ enabled, isRunning, onRun }: { enabled: number; isRunning: boolean; onRun: () => void }) {
   return (
-    <section className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-4'>
-      <div className='flex items-start gap-3'>
-      <span className='mt-0.5 text-[var(--accent)]'>
+    <section className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-[var(--sp-4)]'>
+      <div className='flex items-start gap-[var(--sp-3)]'>
+      <span className='mt-[var(--sp-0\\.5)] text-[var(--accent)]'>
         <CloudUpload size={18}/>
       </span>
       <div className='min-w-0 flex-1'>
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
         {enabled > 0 ? t('settings.value0_backup_targets_active', { value0: enabled }) : t('settings.no_backup_configured_yet')}
         </div>
-        <p className="mt-1 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes')}</p>
+        <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes')}</p>
       </div>
       <Button size='sm' variant='primary' icon={isRunning ? undefined : <Zap size={13}/>} loading={isRunning} disabled={!enabled} onClick={onRun}>{t('settings.back_up_now')}</Button>
       </div>
@@ -197,7 +197,7 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
 }) {
   return (
     <section>
-      <div className='mb-2 flex items-center justify-between'>
+      <div className='mb-[var(--sp-2)] flex items-center justify-between'>
       <h3 className='text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.backup_target')}</h3>
       <Button size='sm' variant='secondary' icon={<Plus size={13}/>} onClick={onAdd}>{t('settings.add_target')}</Button>
       </div>
@@ -220,7 +220,7 @@ function TargetsSection({ targets, editing, onAdd, onEdit, onChanged, onPatch, o
 function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSchedule; options: SegmentedOption<BackupSchedule>[]; onChange: (schedule: BackupSchedule) => void }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.automatic_backups')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.automatic_backups')}</h3>
       <SettingRow title={t('settings.frequency')} description={t('settings.runs_from_cloudflare_cron_the_page_does_not_need_to_stay_open')}>
       <Segmented<BackupSchedule> label={t('settings.frequency')} value={schedule} onChange={onChange} options={options}/>
       </SettingRow>
@@ -231,9 +231,9 @@ function ScheduleSection({ schedule, options, onChange }: { schedule: BackupSche
 function RunsSection({ runs }: { runs: BackupRun[] }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.latest_backups')}</h3>
+      <h3 className='mb-[var(--sp-2)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.latest_backups')}</h3>
       {runs.length === 0 ? (
-      <p className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-4 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('settings.no_backup_record_yet')}</p>
+      <p className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-[var(--sp-3)] py-[var(--sp-4)] text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('settings.no_backup_record_yet')}</p>
       ) : (
       <ul className='space-y-1'>
         {runs.slice(0, 12).map((run) => (<RunRow key={run.id} run={run}/>))}

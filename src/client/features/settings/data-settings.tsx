@@ -253,7 +253,7 @@ async function reportImportFlow({ result, pull, loadStats, toast }: {
 function OverviewSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-2 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.overview')}</h3>
+      <h3 className='mb-[var(--sp-2)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.overview')}</h3>
       {d.stats === null ? (
       d.statsError ? <StatsLoadError d={d}/> : <LoadingBlock label={t('common.loading')}/>
       ) : (
@@ -268,11 +268,11 @@ function OverviewSection({ d }: { d: DataState }) {
 
 function StatsLoadError({ d }: { d: DataState }) {
   return (
-    <div role='alert' className='flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-3'>
-      <AlertCircle size={14} className='mt-0.5 shrink-0 text-[var(--danger)]'/>
+    <div role='alert' className='flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-3)]'>
+      <AlertCircle size={14} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]'/>
       <div className='min-w-0 flex-1'>
       <div className="text-[length:var(--text-12\.5)] font-medium text-[var(--text-primary)]">{t('settings.could_not_load_data_overview')}</div>
-      <p className="mt-0.5 break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{d.statsError}</p>
+      <p className="mt-[var(--sp-0\\.5)] break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{d.statsError}</p>
       </div>
       <Button size='sm' variant='secondary' onClick={() => void d.loadStats()}>{t('common.retry')}</Button>
     </div>
@@ -281,8 +281,8 @@ function StatsLoadError({ d }: { d: DataState }) {
 
 function InlineStatsError({ d }: { d: DataState }) {
   return (
-    <div role='alert' className="mb-2 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--danger)]">
-      <AlertCircle size={13} className='mt-0.5 shrink-0'/>
+    <div role='alert' className="mb-[var(--sp-2)] flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--danger)]">
+      <AlertCircle size={13} className='mt-[var(--sp-0\\.5)] shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{d.statsError}</span>
       <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={() => void d.loadStats()}>{t('common.retry')}</button>
     </div>
@@ -302,17 +302,17 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
   ]
   return (
     <>
-      <div className='grid grid-cols-2 gap-2 md:grid-cols-4'>
+      <div className='grid grid-cols-2 gap-[var(--sp-2)] md:grid-cols-4'>
       {items.map((item) => (
-        <div key={item.label} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5'>
+        <div key={item.label} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2\\.5)]'>
         <div className={`text-[length:var(--text-17)] font-semibold tabular ${TRACKING_STAT} text-[var(--text-primary)]`}>
           {formatNumber(item.value)}
         </div>
-        <div className='mt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{item.label}</div>
+        <div className='mt-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{item.label}</div>
         </div>
       ))}
       </div>
-      {stats.attachmentBytes ? (<p className="mt-2 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
+      {stats.attachmentBytes ? (<p className="mt-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
       </p>) : null}
     </>
   )
@@ -321,7 +321,7 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
 function AttachmentSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.attachments')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.attachments')}</h3>
       <SettingRow title={t('attachments.manage')} description={t('attachments.manage_description')}>
       <Button size='sm' icon={<ImageIcon size={13}/>} onClick={() => d.setIsAttachmentManagerOpen(true)}>{t('attachments.manage')}</Button>
       </SettingRow>
@@ -332,7 +332,7 @@ function AttachmentSection({ d }: { d: DataState }) {
 function ShareHubSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('share.hub_title')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('share.hub_title')}</h3>
       <SettingRow title={t('share.manage_shares')} description={t('share.manage_shares_description')}>
       <Button size='sm' icon={<Share2 size={13}/>} onClick={() => d.openPanel('share')}>{t('share.manage_shares')}</Button>
       </SettingRow>
@@ -343,7 +343,7 @@ function ShareHubSection({ d }: { d: DataState }) {
 function ExportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.export')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.export')}</h3>
       <SettingRow title={t('settings.export_to_zip')} description={t('settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu')}>
       <Button size='sm' icon={<Download size={13}/>} loading={d.busy === 'export-zip'} disabled={d.busy !== null} onClick={() => d.exportData('zip')}>{t('settings.download_zip')}</Button>
       </SettingRow>
@@ -357,7 +357,7 @@ function ExportSection({ d }: { d: DataState }) {
 function ImportSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.import')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.import')}</h3>
       <SettingRow title={t('settings.restore_backup_folder')} description={t('settings.restore_backup_folder_description')}>
       <Button size='sm' icon={<FolderOpen size={13}/>} loading={d.busy === 'restore-backup'} disabled={d.busy !== null} onClick={() => d.backupFolderRef.current?.click()}>{t('settings.select_backup_folder')}</Button>
       </SettingRow>
@@ -383,7 +383,7 @@ function ImportSection({ d }: { d: DataState }) {
 function MaintenanceSection({ d }: { d: DataState }) {
   return (
     <section>
-      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
+      <h3 className='mb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
       <SettingRow title={t('settings.rebuild_search_index')} description={t('settings.try_this_when_your_search_results_don_t_look_right')}>
       <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'reindex'} disabled={d.busy !== null} onClick={d.reindex}>{t('settings.rebuild_index')}</Button>
       </SettingRow>

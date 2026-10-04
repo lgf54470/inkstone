@@ -4,7 +4,7 @@ import { t } from '../../../lib/i18n'
 export function CodeInput(props: { value: string; isBusy: boolean; onChange: (value: string) => void }) {
   return (
     <label className='block'>
-      <span className="mb-1 block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+      <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
         {t('settings.totp_authenticator_code')}
       </span>
       <Input

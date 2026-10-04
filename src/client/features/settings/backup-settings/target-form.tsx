@@ -212,8 +212,8 @@ async function testTargetFlow({ target, type, name, form, secret, actionRef, set
 
 function TypeChangeWarning() {
   return (
-    <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_28%,var(--border-subtle))] bg-[var(--bg-inset)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--warning)]">
-      <AlertCircle size={13} className='mt-0.5 shrink-0'/>
+    <div className="flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_28%,var(--border-subtle))] bg-[var(--bg-inset)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--warning)]">
+      <AlertCircle size={13} className='mt-[var(--sp-0\\.5)] shrink-0'/>
       <span>{t('settings.enter_the_complete_credentials_for_the_new_backup_type_after_switching_t')}</span>
     </div>
   )
@@ -224,11 +224,11 @@ function PresetPicker({ f }: { f: TargetFormState }) {
     <div className='space-y-2.5'>
       <p className={`text-[length:var(--text-11)] font-medium ${TRACKING_HINT} text-[var(--text-quaternary)]`}>
       {f.type === 'webdav' ? 'WebDAV' : 'S3'} · {t('settings.common_provider_presets_optional_click_to_autofill')}</p>
-      <div className='grid grid-cols-3 gap-1.5'>
-      {f.recommendedPresets.map((preset) => (<button key={preset.id} type='button' onClick={() => f.applyBackupPreset(preset)} className={cn('flex flex-col gap-0.5 rounded-[var(--r-md)] border px-2.5 py-2 text-left', 'transition-colors duration-[var(--dur-fast)]', f.activePreset === preset.id
+      <div className='grid grid-cols-3 gap-[var(--sp-1\\.5)]'>
+      {f.recommendedPresets.map((preset) => (<button key={preset.id} type='button' onClick={() => f.applyBackupPreset(preset)} className={cn('flex flex-col gap-[var(--sp-0\\.5)] rounded-[var(--r-md)] border px-[var(--sp-2\\.5)] py-[var(--sp-2)] text-left', 'transition-colors duration-[var(--dur-fast)]', f.activePreset === preset.id
           ? 'border-[var(--accent)] bg-[var(--accent-softer)]'
           : 'border-[var(--border-default)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)]')}>
-        <span className='flex w-full items-center justify-between gap-1'>
+        <span className='flex w-full items-center justify-between gap-[var(--sp-1)]'>
           <span className={cn('truncate text-[length:var(--text-12)] font-medium', f.activePreset === preset.id ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {preset.name}
           </span>
@@ -246,29 +246,29 @@ function PresetPicker({ f }: { f: TargetFormState }) {
 
 function PresetGuide({ guide }: { guide: BackupPreset }) {
   return (
-    <div className='anim-rise rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--accent)_28%,transparent)] bg-[var(--accent-softer)] px-3 py-2.5'>
-      <div className='flex flex-wrap items-center justify-between gap-2'>
+    <div className='anim-rise rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--accent)_28%,transparent)] bg-[var(--accent-softer)] px-[var(--sp-3)] py-[var(--sp-2\\.5)]'>
+      <div className='flex flex-wrap items-center justify-between gap-[var(--sp-2)]'>
       <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
         {guide.name} · {guide.tagline}
       </span>
-      <a href={guide.signupUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'>
+      <a href={guide.signupUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'>
         {guide.signupLabel ?? t('settings.sign_up')}
         <ExternalLink size={10}/>
       </a>
       </div>
-      <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-secondary)] marker:text-[var(--accent)]">
+      <ol className="mt-[var(--sp-1\\.5)] list-decimal space-y-1 pl-[var(--sp-4)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-secondary)] marker:text-[var(--accent)]">
       {guide.steps.map((step, index) => (<li key={index}>
         {step.map((part, partIndex) => part.href ? (<a key={partIndex} href={part.href} target='_blank' rel='noopener noreferrer' className='font-medium text-[var(--accent)] underline decoration-[color-mix(in_oklab,var(--accent)_35%,transparent)] underline-offset-2 hover:decoration-[var(--accent)]'>
           {part.text}
           </a>) : (<span key={partIndex}>{part.text}</span>))}
         </li>))}
       </ol>
-      {guide.addressIntro && guide.addresses && (<div className='mt-2 border-t border-[color-mix(in_oklab,var(--accent)_18%,transparent)] pt-2'>
+      {guide.addressIntro && guide.addresses && (<div className='mt-[var(--sp-2)] border-t border-[color-mix(in_oklab,var(--accent)_18%,transparent)] pt-[var(--sp-2)]'>
         <p className='text-[length:var(--text-11)] leading-relaxed text-[var(--text-tertiary)]'>{guide.addressIntro}</p>
-        <dl className='mt-1.5 grid gap-1 sm:grid-cols-2'>
-        {guide.addresses.map((address) => (<div key={address.label} className='min-w-0 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-2 py-1.5'>
+        <dl className='mt-[var(--sp-1\\.5)] grid gap-[var(--sp-1)] sm:grid-cols-2'>
+        {guide.addresses.map((address) => (<div key={address.label} className='min-w-0 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-1\\.5)]'>
           <dt className="text-[length:var(--text-10\.5)] font-medium text-[var(--text-secondary)]">{address.label}</dt>
-          <dd className='mt-0.5 overflow-x-auto whitespace-nowrap font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{address.url}</dd>
+          <dd className='mt-[var(--sp-0\\.5)] overflow-x-auto whitespace-nowrap font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{address.url}</dd>
           </div>))}
         </dl>
       </div>)}
@@ -283,7 +283,7 @@ function S3Fields({ f }: { f: TargetFormState }) {
       <Field label={t('settings.endpoint')} hint={t('settings.leave_blank_unless_the_provider_requires_it_for_r2_use_url')}>
       <Input value={f.form.endpoint} onChange={(e) => f.patchField('endpoint', e.target.value)} placeholder='https://…'/>
       </Field>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
       <Field label={t('settings.bucket')} required>
         <Input value={f.form.bucket} onChange={(e) => f.patchField('bucket', e.target.value)} placeholder='my-notes-backup'/>
       </Field>
@@ -291,7 +291,7 @@ function S3Fields({ f }: { f: TargetFormState }) {
         <Input value={f.form.region} onChange={(e) => f.patchField('region', e.target.value)} placeholder='auto'/>
       </Field>
       </div>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
       <Field label={t('settings.access_key_id')} required={!canKeepSecret}>
         <Input value={f.secret.accessKeyId} onChange={(e) => f.setSecret({ ...f.secret, accessKeyId: e.target.value })} placeholder={canKeepSecret ? t('settings.unchanged') : ''} autoComplete='off'/>
       </Field>
@@ -311,7 +311,7 @@ function WebdavFields({ f }: { f: TargetFormState }) {
       <Field label={t('settings.webdav_address')} required hint={t('settings.https_only_redirects_within_the_same_site_are_handled_automatically')}>
       <Input value={f.form.url} onChange={(e) => f.patchField('url', e.target.value)} placeholder='https://dav.example.com/dav/'/>
       </Field>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-[var(--sp-3)]'>
       <Field label={t('common.username')} required>
         <Input value={f.form.username} onChange={(e) => f.patchField('username', e.target.value)} autoComplete='off'/>
       </Field>
@@ -325,7 +325,7 @@ function WebdavFields({ f }: { f: TargetFormState }) {
 
 function ResultNote({ result }: { result: TestConnectionResult }) {
   return (
-    <div role={result.ok ? 'status' : 'alert'} className={cn('flex items-start gap-2 rounded-[var(--r-md)] px-3 py-2.5 text-[length:var(--text-12)] leading-relaxed', result.ok
+    <div role={result.ok ? 'status' : 'alert'} className={cn('flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-3)] py-[var(--sp-2\\.5)] text-[length:var(--text-12)] leading-relaxed', result.ok
         ? 'bg-[color-mix(in_oklab,var(--success)_12%,transparent)] text-[var(--success)]'
         : 'bg-[color-mix(in_oklab,var(--danger)_11%,transparent)] text-[var(--danger)]')}>
       {result.ok ? (<CheckCircle2 size={13} className='mt-px shrink-0'/>) : (<AlertCircle size={13} className='mt-px shrink-0'/>)}
