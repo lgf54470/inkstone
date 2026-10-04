@@ -112,6 +112,8 @@ const SCALE_ZERO_TOLERANCE_PREFIXES = [
   'src/client/components/activity-calendar/year-view.tsx',
   'src/client/components/calendar-grids.tsx',
   'src/client/components/date-range-popover.tsx',
+  'src/client/components/form.tsx',
+  'src/client/components/hub-folder-row.tsx',
   'src/client/components/overlay/menu-row.tsx',
   'src/client/components/overlay/prompt.tsx',
   'src/client/components/overlay/tooltip.tsx',

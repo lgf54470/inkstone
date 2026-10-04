@@ -18,7 +18,7 @@ const SELECT_CHEVRON_SIZE = 11
 
 const FIELD_BASE = cn(
   'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)]',
-  'px-2.5 text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
+  'px-[var(--sp-2\\.5)] text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
   'transition-[border-color,box-shadow] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
   'focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none',
   'disabled:opacity-50',
@@ -44,7 +44,7 @@ export function Input({
     return (
       <div className='relative flex items-center'>
         {leading && (
-          <span className='pointer-events-none absolute left-2.5 text-[var(--text-quaternary)]'>
+          <span className='pointer-events-none absolute left-[var(--sp-2\\.5)] text-[var(--text-quaternary)]'>
             {leading}
           </span>
         )}
@@ -53,14 +53,14 @@ export function Input({
           aria-invalid={accessibleInvalid}
           className={cn(
             FIELD_BASE,
-            'h-11 md:h-8.5',
-            leading && 'pl-8',
-            trailing && 'pr-8',
+            'h-[var(--field-h-md)] md:h-[var(--field-h-md-compact)]',
+            leading && 'pl-[var(--sp-8)]',
+            trailing && 'pr-[var(--sp-8)]',
             invalid && 'border-[var(--danger)]',
             className,
           )}
         />
-        {trailing && <span className='absolute right-2.5 flex items-center'>{trailing}</span>}
+        {trailing && <span className='absolute right-[var(--sp-2\\.5)] flex items-center'>{trailing}</span>}
       </div>
     )
   }
@@ -68,7 +68,7 @@ export function Input({
     <input
       {...rest}
       aria-invalid={accessibleInvalid}
-      className={cn(FIELD_BASE, 'h-11 md:h-8.5', invalid && 'border-[var(--danger)]', className)}
+      className={cn(FIELD_BASE, 'h-[var(--field-h-md)] md:h-[var(--field-h-md-compact)]', invalid && 'border-[var(--danger)]', className)}
     />
   )
 }
@@ -77,7 +77,7 @@ export function Textarea({
   className,
   ...rest
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & { ref?: Ref<HTMLTextAreaElement> }) {
-  return <textarea {...rest} className={cn(FIELD_BASE, 'py-2 leading-relaxed resize-y', className)} />
+  return <textarea {...rest} className={cn(FIELD_BASE, 'py-[var(--sp-2)] leading-relaxed resize-y', className)} />
 }
 
 export function Select({
@@ -89,7 +89,7 @@ export function Select({
     <div className='relative'>
       <select
         {...rest}
-        className={cn(FIELD_BASE, 'h-11 cursor-pointer appearance-none pr-7 md:h-8.5', className)}
+        className={cn(FIELD_BASE, 'h-[var(--field-h-md)] cursor-pointer appearance-none pr-[var(--sp-7)] md:h-[var(--field-h-md-compact)]', className)}
       >
         {children}
       </select>
@@ -97,7 +97,7 @@ export function Select({
         viewBox='0 0 12 12'
         width={SELECT_CHEVRON_SIZE}
         height={SELECT_CHEVRON_SIZE}
-        className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
+        className='pointer-events-none absolute right-[var(--sp-2\\.5)] top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
         aria-hidden='true'
       >
         <path
@@ -134,7 +134,7 @@ export const Switch = memo(function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[var(--sp-5)] md:w-8.5',
+        'relative h-[var(--toggle-h)] w-[var(--toggle-w)] shrink-0 rounded-full transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] md:h-[var(--toggle-h-compact)] md:w-[var(--toggle-w-compact)]',
         'disabled:opacity-45',
         checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]',
       )}
@@ -142,7 +142,7 @@ export const Switch = memo(function Switch({
       <span
         aria-hidden='true'
         className={cn(
-          'absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
+          'absolute left-[var(--sp-0\\.5)] top-[var(--sp-0\\.5)] size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
           'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
           checked ? 'translate-x-5 md:translate-x-3.5' : 'translate-x-0',
         )}
@@ -216,10 +216,10 @@ function SegmentedButton<T extends string>({
         move(index, event.key)
       }}
       className={cn(
-        'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--r-sm)] font-medium',
+        'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-[var(--sp-1\\.5)] whitespace-nowrap rounded-[var(--r-sm)] font-medium',
         'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-8 px-2.5 text-[length:var(--text-11\\.5)] md:h-5.5 md:px-2' : 'h-9 px-3 text-[length:var(--text-12\\.5)] md:h-6.5 md:px-2.5',
+        size === 'sm' ? 'h-[var(--btn-h-sm)] px-[var(--sp-2\\.5)] text-[length:var(--text-11\\.5)] md:h-[var(--btn-h-sm-compact)] md:px-[var(--sp-2)]' : 'h-[var(--btn-h-md)] px-[var(--sp-3)] text-[length:var(--text-12\\.5)] md:h-[var(--btn-h-md-compact)] md:px-[var(--sp-2\\.5)]',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-control)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
@@ -273,7 +273,7 @@ function SegmentedInner<T extends string>({
       aria-required={ariaRequired}
       aria-disabled={disabled || undefined}
       className={cn(
-        'relative inline-flex items-center gap-0.5 rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.75',
+        'relative inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[var(--sp-0\\.75)]',
         'border border-[var(--border-subtle)]',
         className,
       )}
@@ -339,7 +339,7 @@ function SliderInner({
   const rawPct = range > 0 && Number.isFinite(value) ? ((value - min) / range) * 100 : 0
   const pct = Math.min(100, Math.max(0, rawPct))
   return (
-    <div className={cn('flex items-center gap-3', className)}>
+    <div className={cn('flex items-center gap-[var(--sp-3)]', className)}>
       <input
         id={id}
         type='range'
@@ -358,10 +358,10 @@ function SliderInner({
         // transport's `w-36` volume control) pushes the value readout out of its own box and under
         // the next button — which the contrast gate then reads as text painted over by another
         // element.
-        className='ink-slider h-4.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent'
+        className='ink-slider h-[var(--slider-h)] min-w-0 flex-1 cursor-pointer appearance-none bg-transparent'
         style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
-      <span className='w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]'>
+      <span className='w-[var(--readout-w)] shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]'>
         {value}
         {suffix}
       </span>
@@ -409,7 +409,7 @@ export function Field({
     <div className={cn('space-y-1.5', className)}>
       <label id={labelId} htmlFor={controlId} className='block text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {label}
-        {required && <span aria-hidden='true' className='ml-0.5 text-[var(--danger)]'>*</span>}
+        {required && <span aria-hidden='true' className='ml-[var(--sp-0\\.5)] text-[var(--danger)]'>*</span>}
       </label>
       <div>{control}</div>
       {hint && <p id={hintId} className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">{hint}</p>}
@@ -431,7 +431,7 @@ export function SettingRow({
   return (
     <div
       className={cn(
-        'flex flex-col items-stretch justify-between gap-2 py-3 md:flex-row md:items-center md:gap-6',
+        'flex flex-col items-stretch justify-between gap-[var(--sp-2)] py-[var(--sp-3)] md:flex-row md:items-center md:gap-[var(--sp-6)]',
         'border-b border-[var(--border-subtle)] last:border-b-0',
         className,
       )}
@@ -439,7 +439,7 @@ export function SettingRow({
       <div className='min-w-0 flex-1'>
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{title}</div>
         {description && (
-          <div className="mt-0.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
             {description}
           </div>
         )}
@@ -474,7 +474,7 @@ function CheckboxInner({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'inline-flex min-h-10 items-center gap-2 text-[length:var(--text-13)] disabled:opacity-45 md:min-h-0',
+        'inline-flex min-h-[var(--touch-min)] items-center gap-[var(--sp-2)] text-[length:var(--text-13)] disabled:opacity-45 md:min-h-0',
         className,
       )}
     >

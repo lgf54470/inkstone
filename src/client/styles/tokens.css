@@ -42,10 +42,26 @@
   --sp-5: 20px;
   --sp-6: 24px;
   --sp-7: 28px;
+  --sp-8: 32px;
   --sp-9: 36px;
   --sp-10: 40px;
   --sp-12: 48px;
   --sp-16: 64px;
+
+  --field-h-md: 44px;
+  --field-h-md-compact: 34px;
+  --btn-h-sm: 32px;
+  --btn-h-sm-compact: 22px;
+  --btn-h-md: 36px;
+  --btn-h-md-compact: 26px;
+  --toggle-h: 24px;
+  --toggle-h-compact: 20px;
+  --toggle-w: 44px;
+  --toggle-w-compact: 34px;
+  --readout-w: 44px;
+  --slider-h: 18px;
+  --touch-min: 40px;
+  --row-h-md: 32px;
 
   --text-6: 6px;
   --text-7: 7px;

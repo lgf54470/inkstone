@@ -151,7 +151,7 @@ function TagExpandAffordance({
   onToggle?: (e: MouseEvent) => void
 }) {
   if (!hasChildren) {
-    return depth > 0 ? <span className='w-2 shrink-0' /> : null
+    return depth > 0 ? <span className='w-[var(--sp-2)] shrink-0' /> : null
   }
   return (
     <button
@@ -161,7 +161,7 @@ function TagExpandAffordance({
         e.stopPropagation()
         onToggle?.(e)
       }}
-      className='p-0.5 -ml-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors shrink-0'
+      className='p-[var(--sp-0\\.5)] -ml-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-colors shrink-0'
     >
       {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
     </button>
@@ -197,7 +197,7 @@ function TagNameEditor({
         if (e.key === 'Enter') commit(value)
         if (e.key === 'Escape') onCommit(initialName)
       }}
-      className='flex-1 bg-[var(--bg-surface)] px-1 py-0.5 text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
+      className='flex-1 bg-[var(--bg-surface)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
     />
   )
 }
@@ -265,7 +265,7 @@ function TagToggleControl({
           toast({ title: labels.emptyHint, tone: 'default' })
         }
       }}
-      className='flex items-center pl-1 shrink-0'
+      className='flex items-center pl-[var(--sp-1)] shrink-0'
     >
       <Tooltip label={tooltipLabel} side='top'>
         <div>
@@ -345,7 +345,7 @@ function HubTagRow({
       onContextMenu={onContextMenu}
       style={{ paddingLeft: `${depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
-        'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors',
+        'group relative flex h-[var(--row-h-md)] items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] pr-[var(--sp-2)] text-[length:var(--text-12)] font-medium transition-colors',
         isSelected
           ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
