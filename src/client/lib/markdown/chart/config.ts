@@ -25,8 +25,14 @@ export class ChartConfigError extends Error {
 }
 
 /** A config that will not survive the round trip, and why the toggle should decline to offer it. */
-export type ChartTableLoss = 'not-a-config' | 'unknown-kind' | 'needs-echarts' | 'lossy' | 'styled'
-export type ChartTableConversion = { ok: true; table: ChartTable } | { ok: false; reason: ChartTableLoss }
+export type ChartTableLoss = 'not-a-config' | 'unknown-kind' | 'needs-echarts' | 'lossy' | 'series-layout'
+
+/**
+ * `dropped` counts the styling entries the table could not carry — colours, borders, point shapes —
+ * which the accent paints over once the block is written as a table. The caller says so out loud:
+ * a rewrite that changes a chart's colours has to be one the author hears about.
+ */
+export type ChartTableConversion = { ok: true; table: ChartTable; dropped: number } | { ok: false; reason: ChartTableLoss }
 
 const SLICE_KINDS: readonly string[] = ['pie', 'doughnut', 'polarArea']
 
@@ -135,15 +141,35 @@ function readKeywordOptions(value: unknown): { value: Record<string, unknown> } 
 }
 
 /**
- * Whether a dataset or a point carries more than the name and the numbers a table row can hold.
+ * What a table row holds about a series: its name and its numbers.
  *
- * A table gives a series its label and its values and nothing else: a colour, a border width, a second
- * axis or a `fill` belongs to the dataset rather than to the data, and no cell of the shared syntax has
- * a home for it. Writing such a config as a table would restyle the chart under the author's hands, so
- * the control declines and names what is in the way.
+ * Everything else a dataset carries is one of two things. A colour, a border width, a point shape or a
+ * `fill` is styling, and a table has no cell for it — so the rewrite leaves it out and the accent paints
+ * the series instead, which is the whole point of the accent palette. Which axis a series is measured
+ * against, or which stack it joins, is not styling: a table gives every row the same axis and the same
+ * stack, so dropping that would draw a different chart rather than the same one in other colours. Those
+ * are refused, and the count of what was left out travels with the answer so the caller can say it.
  */
-function hasExtraKeys(record: Record<string, unknown>, held: string[]): boolean {
-  return Object.keys(record).some((key) => !held.includes(key))
+const SERIES_ROW_KEYS = ['label', 'data']
+const POINT_ROW_KEYS = ['x', 'y', 'r', 'name']
+const SERIES_LAYOUT_KEYS = ['xAxisID', 'yAxisID', 'xAxisIndex', 'yAxisIndex', 'stack', 'grouped', 'indexAxis']
+
+function readSeriesStyling(datasets: unknown[]): { dropped: number } | { refused: true } {
+  let dropped = 0
+  for (const raw of datasets) {
+    if (!isRecord(raw)) continue
+    for (const key of Object.keys(raw)) {
+      if (SERIES_ROW_KEYS.includes(key)) continue
+      if (SERIES_LAYOUT_KEYS.includes(key)) return { refused: true }
+      dropped++
+    }
+    if (!Array.isArray(raw.data)) continue
+    for (const point of raw.data) {
+      if (!isRecord(point)) continue
+      dropped += Object.keys(point).filter((key) => !POINT_ROW_KEYS.includes(key)).length
+    }
+  }
+  return { dropped }
 }
 
 export function chartConfigToTable(config: unknown): ChartTableConversion {
@@ -156,43 +182,47 @@ export function chartConfigToTable(config: unknown): ChartTableConversion {
   if (kind === null) return { ok: false, reason: 'unknown-kind' }
   const data = isRecord(config.data) ? config.data : null
   if (!data || !Array.isArray(data.datasets) || data.datasets.length === 0) return { ok: false, reason: 'lossy' }
+  const styling = readSeriesStyling(data.datasets)
+  if ('refused' in styling) return { ok: false, reason: 'series-layout' }
   const options = readKeywordOptions(config.options)
   if ('reason' in options) return options
-  if (kind === 'scatter' || kind === 'bubble') return scatterToTable(data.datasets, options.value)
-  if (SLICE_KINDS.includes(kind)) return sliceToTable(data.labels, data.datasets, options.value, kind)
-  return axisToTable(kind, data.labels, data.datasets, options.value)
+  const table = kind === 'scatter' || kind === 'bubble'
+    ? scatterToTable(data.datasets, options.value)
+    : SLICE_KINDS.includes(kind)
+      ? sliceToTable(data.labels, data.datasets, options.value, kind)
+      : axisToTable(kind, data.labels, data.datasets, options.value)
+  return table.ok ? { ok: true, table: table.table, dropped: styling.dropped } : table
 }
 
-function axisToTable(type: string, labels: unknown, datasets: unknown[], title: Record<string, unknown>): ChartTableConversion {
+/** What one shape decides; `chartConfigToTable` adds the styling count on the way out. */
+type ShapeResult = { ok: true; table: ChartTable } | { ok: false; reason: ChartTableLoss }
+
+function axisToTable(type: string, labels: unknown, datasets: unknown[], title: Record<string, unknown>): ShapeResult {
   if (!Array.isArray(labels) || labels.some((label) => typeof label !== 'string')) return { ok: false, reason: 'lossy' }
   const rows: string[][] = []
   for (const raw of datasets) {
     if (!isRecord(raw) || typeof raw.label !== 'string' || !isNumberArray(raw.data, labels.length)) return { ok: false, reason: 'lossy' }
-    if (hasExtraKeys(raw, ['label', 'data'])) return { ok: false, reason: 'styled' }
     rows.push([raw.label, ...raw.data.map(String)])
   }
   return { ok: true, table: { kind: type, options: title, header: ['', ...labels.map(String)], rows } }
 }
 
 /** A pie's value column has no place in a config, so the name a hand-written table gave it is dropped. */
-function sliceToTable(labels: unknown, datasets: unknown[], title: Record<string, unknown>, type: string): ChartTableConversion {
+function sliceToTable(labels: unknown, datasets: unknown[], title: Record<string, unknown>, type: string): ShapeResult {
   const only = datasets.length === 1 ? datasets[0] : null
   if (!Array.isArray(labels) || labels.some((label) => typeof label !== 'string') || !isRecord(only) || only.label !== undefined) return { ok: false, reason: 'lossy' }
   if (!isNumberArray(only.data, labels.length)) return { ok: false, reason: 'lossy' }
-  if (hasExtraKeys(only, ['data'])) return { ok: false, reason: 'styled' }
   return { ok: true, table: { kind: type, options: title, header: ['', ''], rows: only.data.map((value, index) => [String(labels[index]), String(value)]) } }
 }
 
-function scatterToTable(datasets: unknown[], title: Record<string, unknown>): ChartTableConversion {
+function scatterToTable(datasets: unknown[], title: Record<string, unknown>): ShapeResult {
   const points: { name: string; x: number; y: number; r?: number; series: string }[] = []
   for (const raw of datasets) {
     if (!isRecord(raw) || !Array.isArray(raw.data)) return { ok: false, reason: 'lossy' }
     const series = raw.label === undefined ? '' : typeof raw.label === 'string' ? raw.label : null
     if (series === null || (series === '' && datasets.length > 1)) return { ok: false, reason: 'lossy' }
-    if (hasExtraKeys(raw, ['label', 'data'])) return { ok: false, reason: 'styled' }
     for (const point of raw.data) {
       if (!isRecord(point) || typeof point.x !== 'number' || typeof point.y !== 'number') return { ok: false, reason: 'lossy' }
-      if (hasExtraKeys(point, ['x', 'y', 'r', 'name'])) return { ok: false, reason: 'styled' }
       if (point.r !== undefined && typeof point.r !== 'number') return { ok: false, reason: 'lossy' }
       points.push({ name: typeof point.name === 'string' ? point.name : '', x: point.x, y: point.y, r: point.r, series })
     }

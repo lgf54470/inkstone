@@ -167,12 +167,11 @@ describe('executeGraphBlockAction', () => {
   })
 
   it('leaves the note alone and says why when a table cannot hold the chart', () => {
-    // Two different refusals, and the author needs the one that matches: a series that carries its own
-    // styling has no table cell at all, while a config whose categories are not words is not a table's
-    // data. `options` beyond a title is neither — the keyword cell carries it.
-    const styled = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1],"backgroundColor":"#36A2EB"}]}}\n```'
+    // Two refusals that need different words: a series measured on another axis would draw a different
+    // chart, and a config whose categories are not words is not a table's data at all.
+    const offAxis = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1],"yAxisID":"y1"}]}}\n```'
     const lossy = '```chart\n{"type":"bar","data":{"labels":[1],"datasets":[{"label":"s","data":[1]}]}}\n```'
-    for (const [note, message] of [[styled, 'This chart gives a series its own styling (colour, border, fill), which a table cannot carry — remove those keys to rewrite it.'], [lossy, 'This chart holds more than a table can carry']] as const) {
+    for (const [note, message] of [[offAxis, 'A series sits on another axis or in another stack, which a table cannot carry — put them back on one axis first.'], [lossy, 'This chart holds more than a table can carry']] as const) {
       const root = mount(note)
       enhanceGraphBlockToolbarsInRoot(root)
       const edits: string[] = []
@@ -181,6 +180,19 @@ describe('executeGraphBlockAction', () => {
       expect(edits, note).toEqual([])
       expect(toast, note).toHaveBeenCalledWith({ title: message, tone: 'warning' })
     }
+  })
+
+  it('rewrites a hand-coloured chart as a table and says the accent took the colours over', () => {
+    const note = '```chart\n{"type":"bar","data":{"labels":["A"],"datasets":[{"label":"s","data":[1],"backgroundColor":"#36A2EB","borderColor":"rgb(54,162,235)","borderWidth":1}]}}\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertChartFence(lineOf(root, '[data-chart]'), note, (next: string) => edits.push(next), toast)
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toContain('| :bar: | A |')
+    expect(edits[0]).not.toContain('36A2EB')
+    expect(toast).toHaveBeenCalledWith({ title: 'Rewritten as a table, leaving 3 styling entries behind — the accent paints those series now.', tone: 'warning' })
   })
 
   it('declines to write when the fence no longer sits where the block was drawn', () => {

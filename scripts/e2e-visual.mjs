@@ -8357,6 +8357,10 @@ const CHART_BLOCKS = [
   '{"type":"bar","data":{"labels":["Mon","Tue"],"datasets":[{"label":"gate-chart","data":[1,2]}]}}',
   '```',
   '',
+  '```chart',
+  '{"type":"bar","data":{"labels":["Mon","Tue"],"datasets":[{"label":"gate-colour","data":[3,8],"backgroundColor":"rgba(54, 162, 235, 0.5)","borderColor":"rgb(54,162,235)","borderWidth":1}]}}',
+  '```',
+  '',
   '```echarts',
   '{ xAxis: { type: "category", data: ["Mon", "Tue"] }, yAxis: {}, series: [{ name: "gate-line", type: "line", data: [3, 5] }] }',
   '```',
@@ -8406,6 +8410,7 @@ const CHART_BLOCKS = [
 // Every chart block this scenario wrote, by the marker only its own body carries.
 const CHART_MARKERS = {
   jsonChart: 'gate-chart',
+  colouredChart: 'gate-colour',
   optionEcharts: 'gate-line',
   tableEcharts: 'gate-split',
   mapEcharts: 'gate-map',
@@ -8705,8 +8710,26 @@ async function assertChartBlocks(page) {
     JSON.stringify({ hidden: painted.sourceHidden, pressed: painted.sourcePressed }),
   )
 
-  // The format control, driven by a pointer: it rewrites the fence, the note saves, the preview re-renders
-  // from what came back, and the block states the new format on its own line.
+  // A chart the note coloured by hand: the colours win while it is a config, and the rewrite to a table
+  // leaves them out (a table has no cell for them, and the accent paints series from there). The press
+  // used to be refused outright, which read as the control being broken.
+  const coloured = await findChartBlock(page, CHART_MARKERS.colouredChart)
+  check(
+    'chart scenario: a hand-coloured chart paints with the colours the note named',
+    coloured.painted && coloured.body.includes('rgba(54, 162, 235, 0.5)') && coloured.statedStyle === null,
+    JSON.stringify({ size: coloured.size, painted: coloured.painted, style: coloured.statedStyle }),
+  )
+  await pressChartTool(page, coloured.index, 'convert-format')
+  const restyled = await findSettledChartBlock(page, CHART_MARKERS.colouredChart, (block) => block.body.includes(':bar:') && block.painted)
+  check(
+    'chart scenario: rewriting a coloured chart as a table keeps it drawn and leaves the styling out',
+    restyled.body.includes('| :bar: |') && !restyled.body.includes('rgba(54') && restyled.painted && restyled.statedStyle === 'table',
+    JSON.stringify({ body: restyled.body.slice(0, 70), painted: restyled.painted, style: restyled.statedStyle }),
+  )
+  await pressChartTool(page, restyled.index, 'convert-format')
+  await findSettledChartBlock(page, CHART_MARKERS.colouredChart, (block) => (block.statedStyle === null || block.statedStyle === 'json') && block.painted)
+
+
   const asTable = await pressChartTool(page, painted.index, 'convert-format')
   const switched = await findSettledChartBlock(page, CHART_MARKERS.jsonChart, (block) => block.body.includes(':bar:') && block.statedStyle === 'table' && block.painted)
   check('chart scenario: the format control is named by what it writes', asTable.label.length > 0, JSON.stringify(asTable))

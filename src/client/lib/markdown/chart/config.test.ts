@@ -168,7 +168,10 @@ describe('a chart.js config as a chart table', () => {
     expect(converted.ok && converted.table.options).toEqual(options)
   })
 
-  it('declines a chart whose series carry styling a table has no cell for', () => {
+  // A series colour has no table cell, and the accent is what paints a table's series — so the rewrite
+  // leaves the styling out and counts what it left, rather than refusing over something that changes
+  // nothing about the numbers.
+  it('leaves a series styling behind and counts what it left out', () => {
     const styled = {
       type: 'bar',
       data: {
@@ -177,9 +180,24 @@ describe('a chart.js config as a chart table', () => {
       },
       options: { responsive: true, plugins: { legend: { position: 'top' } } },
     }
-    expect(chartConfigToTable(styled)).toEqual({ ok: false, reason: 'styled' })
-    const point = { type: 'scatter', data: { datasets: [{ data: [{ x: 1, y: 2, pointStyle: 'cross' }] }] } }
-    expect(chartConfigToTable(point)).toEqual({ ok: false, reason: 'styled' })
+    const converted = chartConfigToTable(styled)
+    expect(converted.ok && converted.dropped).toBe(3)
+    expect(converted.ok && converted.table.rows).toEqual([['Revenue ($k)', '12', '19', '15', '25', '22', '30']])
+    // The table means the same chart, uncoloured: reading it back is what the accent then paints.
+    expect(converted.ok && tableToChartConfig(converted.table)).toEqual({
+      type: 'bar',
+      data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], datasets: [{ label: 'Revenue ($k)', data: [12, 19, 15, 25, 22, 30] }] },
+      options: { responsive: true, plugins: { legend: { position: 'top' } } },
+    })
+    expect(chartConfigToTable({ type: 'scatter', data: { datasets: [{ data: [{ x: 1, y: 2, pointStyle: 'cross' }] }] } })).toMatchObject({ ok: true, dropped: 1 })
+  })
+
+  it('refuses to move a series off the axis its numbers sit on', () => {
+    const twoAxes = {
+      type: 'bar',
+      data: { labels: ['A'], datasets: [{ label: 's', data: [1] }, { label: 't', data: [2], yAxisID: 'y1' }] },
+    }
+    expect(chartConfigToTable(twoAxes)).toEqual({ ok: false, reason: 'series-layout' })
   })
 
   it('names the reason a refusal needs the other fence for', () => {

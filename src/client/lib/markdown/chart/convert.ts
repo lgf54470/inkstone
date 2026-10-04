@@ -18,14 +18,14 @@ export type ChartConvertFailure =
   | 'table-syntax'
   | 'not-a-config'
   | 'unknown-kind'
-  | 'styled'
+  | 'series-layout'
   | 'needs-echarts'
   | 'lossy'
   | 'too-narrow'
   | 'bad-mapping'
   | 'empty-table'
 
-export type ChartConversion = { ok: true; body: string } | { ok: false; reason: ChartConvertFailure }
+export type ChartConversion = { ok: true; body: string; dropped: number } | { ok: false; reason: ChartConvertFailure }
 
 /** The config a chart fence means, from a JSON body or from a table one, as the note states it. */
 export function readChartBody(raw: string, style: DeclaredStyle | null = null): Record<string, unknown> {
@@ -42,11 +42,11 @@ function failure(err: unknown): ChartConversion {
 export function convertChartBody(raw: string): ChartConversion {
   try {
     if (detectChartMode(raw) === 'table') {
-      return { ok: true, body: JSON.stringify(readChartBody(raw), null, 2) }
+      return { ok: true, body: JSON.stringify(readChartBody(raw), null, 2), dropped: 0 }
     }
     const converted = chartConfigToTable(parseChartJson(raw))
     if (!converted.ok) return converted
-    return { ok: true, body: writeChartTable(converted.table) }
+    return { ok: true, body: writeChartTable(converted.table), dropped: converted.dropped }
   }
   catch (err) {
     return failure(err)

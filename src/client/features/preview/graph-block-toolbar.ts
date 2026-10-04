@@ -53,7 +53,7 @@ const CONVERT_MESSAGES: Record<ChartConvertFailure, MessageKey> = {
   'table-syntax': 'markdown.chart_convert_table_syntax',
   'not-a-config': 'markdown.chart_convert_not_config',
   lossy: 'markdown.chart_convert_lossy',
-  styled: 'markdown.chart_convert_styled',
+  'series-layout': 'markdown.chart_convert_series_layout',
 }
 
 const GRAPH_SOURCES = '[data-mermaid], [data-chart], [data-echarts]'
@@ -295,6 +295,9 @@ export function convertChartFence(
   const next = applyChartFencePatch(content, fence, { body: converted.body, style: target })
   if (next === null) return declined(toast, 'preview.graph_block_moved')
   onEdit(next)
+  // A rewrite that leaves styling behind has changed what the block looks like, even though nothing about
+  // the data moved and the accent now paints the series. Say it, rather than let the author find out.
+  if (converted.dropped > 0) toast({ title: t('markdown.chart_convert_styled_dropped', { count: converted.dropped }), tone: 'warning' })
   return true
 }
 
