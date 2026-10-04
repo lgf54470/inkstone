@@ -116,28 +116,47 @@ describe('executeGraphBlockAction', () => {
     expect(panel.hidden).toBe(true)
   })
 
-  it('rewrites a JSON fence as the table that means the same chart', () => {
+  it('rewrites a JSON fence as the table that means the same chart, and says so on the line', () => {
     const note = '```chart\n{"type":"bar","data":{"labels":["A","B"],"datasets":[{"label":"s","data":[1,2]}]}}\n```'
     const root = mount(note)
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
-    expect(edits[0]).toBe('```chart\n| :bar: | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |\n```')
+    expect(edits[0]).toBe('```chart style=table\n| :bar: | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |\n```')
   })
 
   it('rewrites a table fence as the JSON that means the same chart', () => {
-    const note = '```chart\n| :bar:{"title": "t"} | A |\n| --- | --- |\n| s | 1 |\n```'
+    const note = '```chart style=table\n| :bar:{"title": "t"} | A |\n| --- | --- |\n| s | 1 |\n```'
     const root = mount(note)
     enhanceGraphBlockToolbarsInRoot(root)
     const edits: string[] = []
     convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), vi.fn())
     expect(edits).toHaveLength(1)
-    expect(JSON.parse(edits[0].replace('```chart\n', '').replace('\n```', ''))).toEqual({
+    expect(edits[0]).toContain('```chart style=json\n')
+    expect(JSON.parse(edits[0].replace('```chart style=json\n', '').replace('\n```', ''))).toEqual({
       type: 'bar',
       data: { labels: ['A'], datasets: [{ label: 's', data: [1] }] },
       options: { plugins: { title: { display: true, text: 't' } } },
     })
+  })
+
+  // The control works off the body's shape while the annotation decides which reader draws it. On a
+  // note whose two statements disagree that makes the press a repair: it writes the body it holds into
+  // the other format and restates `style=` to match, so one click lands on a note that says one thing.
+  it('repairs a note that states a format its body is not written in', () => {
+    const note = '```chart style=json\n| :bar: | A |\n| --- | --- |\n| s | 1 |\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    expect(root.querySelector<HTMLElement>('[data-graph-action="convert-format"]')!.getAttribute('aria-label'))
+      .toBe('Write this chart as JSON')
+    const edits: string[] = []
+    const toast = vi.fn()
+    convertChartFormat(root.querySelector('[data-chart]')!, note, (next) => edits.push(next), toast)
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toContain('```chart style=json\n')
+    expect(edits[0]).toContain('"type": "bar"')
+    expect(toast).not.toHaveBeenCalled()
   })
 
   it('leaves the note alone and says why when a table cannot hold the chart', () => {
@@ -182,8 +201,19 @@ describe('executeGraphBlockAction', () => {
     const toast = vi.fn()
     convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), toast)
     expect(edits).toHaveLength(1)
-    expect(edits[0]).toContain('```echarts\n| :bar:')
+    expect(edits[0]).toContain('```echarts style=table\n| :bar:')
     expect(toast).not.toHaveBeenCalled()
+  })
+
+  it('restates the format an echarts fence was converted into', () => {
+    const note = '```echarts style=table\n| :bar: | A | B |\n| --- | --- | --- |\n| s | 1 | 2 |\n```'
+    const root = mount(note)
+    enhanceGraphBlockToolbarsInRoot(root)
+    const edits: string[] = []
+    convertEchartsFormat(root.querySelector('[data-echarts]')!, note, (next) => edits.push(next), vi.fn())
+    expect(edits).toHaveLength(1)
+    expect(edits[0]).toContain('```echarts style=json\n')
+    expect(edits[0]).toContain('"series"')
   })
 
   it('declines to convert an echarts option a table cannot write', () => {

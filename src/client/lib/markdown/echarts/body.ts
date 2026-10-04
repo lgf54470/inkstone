@@ -8,15 +8,17 @@
  * so a note shared with a stranger never runs what only its author asked to run.
  */
 import { applyFencePatchAtSource, fenceAt, type FenceTarget } from '../fence-edit'
-import { isChartTableBody } from '../chart'
+import { isChartTableBody, withFenceStyle, type DeclaredStyle } from '../chart'
 
 export type EchartsMode = 'option' | 'table'
 
 /** Fence languages that render as an echarts block. */
 export const ECHARTS_LANGUAGES = ['echarts'] as const
 
-/** The body text of an echarts fence plus the line its opening fence sits on. */
-export interface EchartsFence extends FenceTarget {}
+/** The body an echarts fence holds, the info line that opens it, and the line that holds both. */
+export interface EchartsFence extends FenceTarget {
+  info: string
+}
 
 /** The bare flag that says a body may be a JavaScript literal rather than JSON5. */
 export const ECHARTS_SCRIPT_KEY = 'js'
@@ -26,6 +28,17 @@ const SCRIPT_WHOLE_RE = /(?:^|\s)["']?js["']?(?=\s|$)/gi
 
 export function detectEchartsMode(body: string): EchartsMode {
   return isChartTableBody(body) ? 'table' : 'option'
+}
+
+/**
+ * The format a block reads its body as. The note's two names are `json` and `table`; this family calls
+ * its data body an `option`, which is the one spelling difference and the only translation here. A
+ * stated format wins over inference, so the reader that runs is the one the author asked for — see
+ * ../chart/style.
+ */
+export function resolveEchartsMode(body: string, style: DeclaredStyle | null): EchartsMode {
+  if (style === null) return detectEchartsMode(body)
+  return style === 'table' ? 'table' : 'option'
 }
 
 /** Whether this fence's info line asked to run JavaScript. */
@@ -41,28 +54,25 @@ export function withFenceScript(info: string, on: boolean): string {
 
 export function echartsFenceAt(content: string, line: number): EchartsFence | null {
   const fence = fenceAt(content, line, ECHARTS_LANGUAGES)
-  return fence === null ? null : { line, body: fence.body }
+  return fence === null ? null : { line, body: fence.body, info: fence.info }
 }
 
 /**
- * Rewrites the fence's body, its info line, or both in one edit. A body and a flag travel together
- * because a conversion can change what the body is made of: turning a run JavaScript option into a
- * table has to take the flag back with it, or the note would keep claiming to need it.
+ * Rewrites the fence's body, its info line, or both in one edit. The body and the two marks travel
+ * together because a conversion changes what the body is made of: a JavaScript option turned into a
+ * table has to give up the `js` flag it was written for, and carries the new format in `style=` so the
+ * note says what it now holds.
  */
 export function applyEchartsFencePatch(
   content: string,
   target: EchartsFence,
-  patch: { body?: string; script?: boolean },
+  patch: { body?: string; script?: boolean; style?: DeclaredStyle },
 ): string | null {
-  if (patch.script === undefined) {
+  if (patch.script === undefined && patch.style === undefined) {
     return applyFencePatchAtSource(content, target, { body: patch.body }, ECHARTS_LANGUAGES)
   }
-  const info = fenceAt(content, target.line, ECHARTS_LANGUAGES)?.info
-  if (info === undefined) return null
-  return applyFencePatchAtSource(
-    content,
-    target,
-    { body: patch.body, info: withFenceScript(info, patch.script) },
-    ECHARTS_LANGUAGES,
-  )
+  let info = target.info
+  if (patch.script !== undefined) info = withFenceScript(info, patch.script)
+  if (patch.style !== undefined) info = withFenceStyle(info, patch.style)
+  return applyFencePatchAtSource(content, target, { body: patch.body, info }, ECHARTS_LANGUAGES)
 }

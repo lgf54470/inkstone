@@ -2,7 +2,14 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { fenceBody } from '../../lib/markdown/fence-bodies'
 import { escapeAttr } from '../../lib/markdown/renderer'
-import { applyChartBodyAtFence, chartFenceAt, convertChartBody, detectChartMode, type ChartConvertFailure } from '../../lib/markdown/chart'
+import {
+  applyChartFencePatch,
+  chartFenceAt,
+  convertChartBody,
+  detectChartMode,
+  type ChartConvertFailure,
+  type DeclaredStyle,
+} from '../../lib/markdown/chart'
 import { applyEchartsFencePatch, convertEchartsBody, detectEchartsMode, echartsFenceAt, type EchartsConvertFailure } from '../../lib/markdown/echarts'
 import { downloadBlob } from '../../lib/export-note'
 import { t, type MessageKey } from '../../lib/i18n'
@@ -96,11 +103,21 @@ function convertButton(current: FormatName, other: Exclude<FormatName, 'table'>)
   return toolButton('convert-format', t(CONVERT_LABELS[target]), escapeHtml(t(FORMAT_LABELS[target])))
 }
 
-/** Which format a block's body is in, read from the body itself rather than from a mark on the node. */
+/**
+ * Which format a block's body is in, read from the body itself rather than from a mark on the node.
+ * The stated `style=` decides which reader *draws* the block (see ../chart/style); the control works
+ * off the shape, so on a note whose two statements disagree it offers to write the body it actually
+ * holds — and restating the format as it goes, which is what makes the press a repair.
+ */
 function formatOf(block: HTMLElement, kind: GraphKind): FormatName {
   if (kind === 'mermaid') return 'json'
   const source = decodedSource(block, kind)
   return kind === 'chart' ? detectChartMode(source) : detectEchartsMode(source)
+}
+
+/** The format the control switches to: the other one, whichever the body is written in. */
+function otherStyle(mode: FormatName): DeclaredStyle {
+  return mode === 'table' ? 'json' : 'table'
 }
 
 function renderHeadHtml(kind: GraphKind, format: FormatName): string {
@@ -229,7 +246,8 @@ const ECHARTS_CONVERT_MESSAGES: Record<EchartsConvertFailure, MessageKey> = {
 /**
  * Rewrites an echarts fence as the other format. A conversion always lands on a body made of data, so
  * the `js` marker goes with the option it was written for — leaving it would let a note keep claiming
- * a permission its new body does not need.
+ * a permission its new body does not need — and the body's new format is written into `style=` beside
+ * it, so the note states what it now holds.
  */
 export function convertEchartsFormat(
   block: HTMLElement,
@@ -241,9 +259,10 @@ export function convertEchartsFormat(
   if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
   const fence = echartsFenceAt(content, line)
   if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const target = otherStyle(detectEchartsMode(fence.body))
   const converted = convertEchartsBody(fence.body)
   if (!converted.ok) return declined(toast, ECHARTS_CONVERT_MESSAGES[converted.reason])
-  const next = applyEchartsFencePatch(content, fence, { body: converted.body, script: converted.script })
+  const next = applyEchartsFencePatch(content, fence, { body: converted.body, script: converted.script, style: target })
   if (next === null) return declined(toast, 'preview.graph_block_moved')
   onEdit(next)
   return true
@@ -264,9 +283,10 @@ export function convertChartFormat(
   if (!Number.isInteger(line) || line < 0) return declined(toast, 'preview.code_edit_unavailable')
   const fence = chartFenceAt(content, line)
   if (!fence) return declined(toast, 'preview.graph_block_moved')
+  const target = otherStyle(detectChartMode(fence.body))
   const converted = convertChartBody(fence.body)
   if (!converted.ok) return declined(toast, CONVERT_MESSAGES[converted.reason])
-  const next = applyChartBodyAtFence(content, fence, converted.body)
+  const next = applyChartFencePatch(content, fence, { body: converted.body, style: target })
   if (next === null) return declined(toast, 'preview.graph_block_moved')
   onEdit(next)
   return true

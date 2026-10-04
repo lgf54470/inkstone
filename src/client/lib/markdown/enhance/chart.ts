@@ -2,7 +2,17 @@ import { escapeHtml } from '@shared/escape'
 import { decodeDataValue } from '../data-attr'
 import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
-import { ChartConfigError, chartPalette, chartPaletteKey, readChartBody } from '../chart'
+import {
+  ChartConfigError,
+  ChartTableError,
+  CHART_TABLE_MESSAGES,
+  chartPalette,
+  chartPaletteKey,
+  parseStyleValue,
+  readChartBody,
+  styleSignature,
+  type StyleRead,
+} from '../chart'
 import { shortHash, withTimeout } from './util'
 
 const CHARTJS_TEXT_COLORS = { dark: '#94a3b8', light: '#64748b' } as const
@@ -50,14 +60,17 @@ export function destroyChartInstances(root: HTMLElement | null): void {
 
 function chartConfigMessage(err: unknown): string {
   if (err instanceof ChartConfigError) return t(CHART_CONFIG_MESSAGES[err.reason])
+  if (err instanceof ChartTableError) return t(CHART_TABLE_MESSAGES[err.reason])
+  // The only thing in this path that parses JSON is the config reader, so a SyntaxError here is the
+  // body not being readable — and the engine's own sentence about it is one the note's language has.
+  if (err instanceof SyntaxError) return t('markdown.chart_convert_invalid_json')
   return errorMessage(err)
 }
 
-function markChartError(node: HTMLElement, err: unknown, raw: string, signature: string): void {
+function markChartError(node: HTMLElement, message: string, raw: string, signature: string): void {
   node.classList.remove('loading')
   node.classList.add('has-error', 'chart-error')
   node.removeAttribute('aria-busy')
-  const message = chartConfigMessage(err)
   node.innerHTML = `<div class="chart-error-banner"><span class="chart-error-text">${escapeHtml(t('markdown.chart_rendering_failed'))}: ${escapeHtml(message)}</span></div><pre><code>${escapeHtml(raw)}</code></pre>`
   node.dataset.rendered = signature
 }
@@ -172,16 +185,28 @@ function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { r
   holder.__chartObserver = observer
 }
 
-// One block: parse the config, then instantiate the chart; both failures land
-// on the same error banner. The root-containment check aborts the whole batch
-// once the node was detached mid-render (the original behavior).
-async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string, signature: string, dark: boolean, instant: boolean): Promise<void> {
+// One block: read the body in the format the note states (or in the one its shape implies), then
+// instantiate the chart; both failures land on the same error banner. The root-containment check
+// aborts the whole batch once the node was detached mid-render (the original behavior).
+async function renderChartNode(
+  root: HTMLElement,
+  node: HTMLElement,
+  raw: string,
+  style: StyleRead,
+  signature: string,
+  dark: boolean,
+  instant: boolean,
+): Promise<void> {
+  if (style.invalid !== null) {
+    markChartError(node, t('markdown.chart_style_unknown'), raw, signature)
+    return
+  }
   let config: Record<string, unknown>
   try {
-    config = readChartBody(raw)
+    config = readChartBody(raw, style.style)
   }
   catch (err: unknown) {
-    markChartError(node, err, raw, signature)
+    markChartError(node, chartConfigMessage(err), raw, signature)
     return
   }
   try {
@@ -213,7 +238,7 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
   catch (err: unknown) {
     if (!root.contains(node))
       return
-    markChartError(node, err, raw, signature)
+    markChartError(node, chartConfigMessage(err), raw, signature)
   }
 }
 
@@ -235,11 +260,13 @@ export async function renderChartJs(root: HTMLElement, dark: boolean, { instant 
   const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')]
   for (const node of nodes) {
     const raw = decodeDataValue(node.dataset.chart)
+    const style = parseStyleValue(node.dataset.chartStyle ?? null)
     // The accent is in the key beside the light mode: it is switchable per account, and a chart that
-  // kept the colours it read before it moved is the frozen-at-creation regression ADR-0002 §5 names.
-    const signature = `${chartPaletteKey(dark)}:${raw.length}:${shortHash(raw)}`
+    // kept the colours it read before it moved is the frozen-at-creation regression ADR-0002 §5 names.
+    // The stated format is in it for the same reason: which reader runs is not in the body's text.
+    const signature = `${chartPaletteKey(dark)}:${raw.length}:${shortHash(raw)}:${styleSignature(style)}`
     if (node.dataset.rendered === signature && hasLiveChart(node))
       continue
-    await renderChartNode(root, node, raw, signature, dark, instant)
+    await renderChartNode(root, node, raw, style, signature, dark, instant)
   }
 }

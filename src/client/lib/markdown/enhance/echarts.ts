@@ -3,8 +3,17 @@ import { errorMessage } from '../../errors'
 import { t, type MessageKey } from '../../i18n'
 import { fenceBody } from '../fence-bodies'
 import { decodeDataValue } from '../data-attr'
-import { chartTableFromElement, chartTableText } from '../chart'
-import { chartPaletteKey } from '../chart'
+import {
+  CHART_TABLE_MESSAGES,
+  chartPaletteKey,
+  chartTableFromElement,
+  chartTableText,
+  ChartTableError,
+  NO_DECLARED_STYLE,
+  parseStyleValue,
+  styleSignature,
+  type StyleRead,
+} from '../chart'
 import { applyChartPalette } from '../echarts'
 import {
   EchartsOptionError,
@@ -54,6 +63,9 @@ const TABLE_MESSAGES: Record<EchartsTableError['reason'], MessageKey> = {
 function blockMessage(err: unknown): string {
   if (err instanceof EchartsTableError) return t(TABLE_MESSAGES[err.reason])
   if (err instanceof EchartsOptionError) return t(OPTION_MESSAGES[err.reason])
+  // A chart table the fence carries is read by the chart family's parser, so its reasons and its words
+  // come from there: a broken `| --- |` row says the same thing whichever backend draws the table.
+  if (err instanceof ChartTableError) return t(CHART_TABLE_MESSAGES[err.reason])
   return errorMessage(err)
 }
 
@@ -130,14 +142,22 @@ interface EchartsSource {
   key: string
   /** The source's own request to run JavaScript, which a surface may still refuse. */
   asksForScript: boolean
+  /** What the source states about the format its body is written in. */
+  style: StyleRead
   read: (allowScript: boolean) => EchartsTableOption
 }
 
-function fenceSource(node: Element): EchartsSource {
-  const index = Number((node as HTMLElement).dataset.echartsIndex)
+function fenceSource(node: HTMLElement): EchartsSource {
+  const index = Number(node.dataset.echartsIndex)
   const raw = fenceBody(node, 'echarts', Number.isInteger(index) && index >= 0 ? index : -1)
-  const asksForScript = (node as HTMLElement).dataset.echartsScript === 'true'
-  return { key: raw, asksForScript, read: (allowScript) => readEchartsBody(raw, { allowScript }) }
+  const asksForScript = node.dataset.echartsScript === 'true'
+  const style = parseStyleValue(node.dataset.echartsStyle ?? null)
+  return {
+    key: raw,
+    asksForScript,
+    style,
+    read: (allowScript) => readEchartsBody(raw, { allowScript, style: style.style }),
+  }
 }
 
 /**
@@ -152,6 +172,7 @@ function tableChartSource(node: HTMLElement): EchartsSource | null {
   return {
     key: chartTableText(table),
     asksForScript: false,
+    style: NO_DECLARED_STYLE,
     read: () => tableToEchartsOption(chartTableFromElement(table, kind, options)),
   }
 }
@@ -183,10 +204,14 @@ async function renderEchartsNode(root: HTMLElement, node: EchartsNode, draw: Ech
   const allowScript = draw.allowScript && source.asksForScript
   // The palette is in the key, not just the light mode: the accent is switchable per account, and a
   // chart that kept its old colours after it moved would be the frozen-at-creation regression.
-  const signature = `${chartPaletteKey(draw.dark)}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}`
+  const signature = `${chartPaletteKey(draw.dark)}:${source.key.length}:${shortHash(source.key)}:${allowScript ? 's' : 'j'}:${styleSignature(source.style)}`
   if (node.dataset.rendered === signature && node.__echartsChart) return
   let option: unknown
   let mapSource: string | null = null
+  if (source.style.invalid !== null) {
+    markEchartsError(node, t('markdown.chart_style_unknown'), source.key, signature)
+    return
+  }
   try {
     const body = source.read(allowScript)
     option = body.option

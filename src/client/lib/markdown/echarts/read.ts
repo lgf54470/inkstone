@@ -6,8 +6,8 @@
  * second axis, a formatter or a theme in it has no table form, and a toggle that quietly dropped one
  * would leave the note drawing a different chart than the one the author was looking at.
  */
-import { readChartTable, writeChartTable } from '../chart'
-import { detectEchartsMode } from './body'
+import { readChartTable, writeChartTable, type DeclaredStyle } from '../chart'
+import { detectEchartsMode, resolveEchartsMode } from './body'
 import { EchartsOptionError, parseEchartsOption } from './option'
 import { EchartsTableError, echartsOptionToTable, tableToEchartsOption, type EchartsTableOption } from './table-option'
 
@@ -24,9 +24,15 @@ export type EchartsConvertFailure =
 
 export type EchartsConversion = { ok: true; body: string; script: boolean } | { ok: false; reason: EchartsConvertFailure }
 
-/** The option a fence means, from a JSON5/JS body or from a table one. */
-export function readEchartsBody(raw: string, { allowScript = false } = {}): EchartsTableOption {
-  return detectEchartsMode(raw) === 'table'
+/** What a surface asks of a body: whether it honours the fence's `js`, and the format the note states. */
+export interface EchartsReadOptions {
+  allowScript?: boolean
+  style?: DeclaredStyle | null
+}
+
+/** The option a fence means, from a JSON5/JS body or from a table one, as the note states it. */
+export function readEchartsBody(raw: string, { allowScript = false, style = null }: EchartsReadOptions = {}): EchartsTableOption {
+  return resolveEchartsMode(raw, style) === 'table'
     ? tableToEchartsOption(readChartTable(raw))
     : { option: parseEchartsOption(raw, { allowScript }), mapSource: null }
 }
@@ -37,10 +43,15 @@ function failure(err: unknown): EchartsConversion {
   return { ok: false, reason: 'invalid-option' }
 }
 
-export function convertEchartsBody(raw: string, { allowScript = false } = {}): EchartsConversion {
+/**
+ * The body written the other way round. The direction comes from the body's own shape rather than from
+ * the stated format: on a note whose two statements disagree, that is what makes the press a repair —
+ * it writes the body the note holds into the other format, and the caller restates `style=` to match.
+ */
+export function convertEchartsBody(raw: string, { allowScript = false }: { allowScript?: boolean } = {}): EchartsConversion {
   try {
     if (detectEchartsMode(raw) === 'table') {
-      return { ok: true, body: JSON.stringify(readEchartsBody(raw).option, null, 2), script: false }
+      return { ok: true, body: JSON.stringify(readEchartsBody(raw, { allowScript }).option, null, 2), script: false }
     }
     const converted = echartsOptionToTable(parseEchartsOption(raw, { allowScript }))
     if (!converted.ok) return converted

@@ -4,6 +4,7 @@ export {
   applyEchartsFencePatch,
   detectEchartsMode,
   echartsFenceAt,
+  resolveEchartsMode,
   readsFenceScript,
   withFenceScript,
   type EchartsFence,
@@ -13,7 +14,13 @@ export { EchartsOptionError, parseEchartsOption, type EchartsOptionReason } from
 export { loadEcharts } from './loader'
 export { MAP_SERIES_NAME, loadMapGeometry } from './map'
 export { EchartsTableError, ECHARTS_TABLE_KINDS, tableToEchartsOption, echartsOptionToTable, type EchartsTableReason, type EchartsTableOption } from './table-option'
-export { convertEchartsBody, readEchartsBody, type EchartsConversion, type EchartsConvertFailure } from './read'
+export {
+  convertEchartsBody,
+  readEchartsBody,
+  type EchartsConversion,
+  type EchartsConvertFailure,
+  type EchartsReadOptions,
+} from './read'
 export { applyChartPalette, echartsTheme } from './theme'
 // The chart handle is a type only: re-exporting `./vendor` as a value would pull the library into
 // every chunk that imports this index, which is the boundary ./loader exists to hold.

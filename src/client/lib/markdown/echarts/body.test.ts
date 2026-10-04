@@ -4,6 +4,7 @@ import {
   detectEchartsMode,
   echartsFenceAt,
   readsFenceScript,
+  resolveEchartsMode,
   withFenceScript,
 } from './body'
 
@@ -15,6 +16,16 @@ describe('an echarts fence', () => {
     expect(detectEchartsMode(OPTION)).toBe('option')
     expect(detectEchartsMode(TABLE)).toBe('table')
     expect(detectEchartsMode('  \n' + TABLE)).toBe('table')
+  })
+
+  it('reads the format the note states instead of the one the body implies', () => {
+    expect(resolveEchartsMode(OPTION, null)).toBe('option')
+    expect(resolveEchartsMode(TABLE, null)).toBe('table')
+    // The two names the note uses are `json` and `table`; this family spells the first one `option`.
+    expect(resolveEchartsMode(TABLE, 'json')).toBe('option')
+    expect(resolveEchartsMode(OPTION, 'table')).toBe('table')
+    expect(resolveEchartsMode(OPTION, 'json')).toBe('option')
+    expect(resolveEchartsMode(TABLE, 'table')).toBe('table')
   })
 
   it('reads the script flag as its own word', () => {
@@ -36,29 +47,42 @@ describe('an echarts fence', () => {
 
   it('finds its own fence by the line the block was stamped with', () => {
     const note = 'intro\n```echarts\n' + OPTION + '\n```\n'
-    expect(echartsFenceAt(note, 1)).toEqual({ line: 1, body: OPTION })
+    expect(echartsFenceAt(note, 1)).toEqual({ line: 1, body: OPTION, info: 'echarts' })
+    expect(echartsFenceAt('```echarts js\n' + OPTION + '\n```\n', 0)).toEqual({ line: 0, body: OPTION, info: 'echarts js' })
     expect(echartsFenceAt(note, 0)).toBeNull()
     expect(echartsFenceAt('```chart\n{}\n```', 0)).toBeNull()
   })
 
   it('keeps a CRLF note that way when it rewrites one', () => {
     const note = '```echarts\r\n' + OPTION + '\r\n```\r\n'
-    const next = applyEchartsFencePatch(note, { line: 0, body: OPTION }, { body: '{ a: 1 }' })
+    const fence = echartsFenceAt(note, 0)!
+    const next = applyEchartsFencePatch(note, fence, { body: '{ a: 1 }' })
     expect(next).toBe('```echarts\r\n{ a: 1 }\r\n```\r\n')
   })
 
   it('changes the body, the flag, or both in one edit', () => {
     const note = '```echarts js\n' + OPTION + '\n```\n'
-    const target = { line: 0, body: OPTION }
-    expect(applyEchartsFencePatch(note, target, { body: '{ a: 1 }' })).toContain('```echarts js\n{ a: 1 }')
-    expect(applyEchartsFencePatch(note, target, { script: false })).toContain('```echarts\n')
-    const both = applyEchartsFencePatch(note, target, { body: TABLE, script: false })
+    const fence = echartsFenceAt(note, 0)!
+    expect(applyEchartsFencePatch(note, fence, { body: '{ a: 1 }' })).toContain('```echarts js\n{ a: 1 }')
+    expect(applyEchartsFencePatch(note, fence, { script: false })).toContain('```echarts\n')
+    const both = applyEchartsFencePatch(note, fence, { body: TABLE, script: false })
     expect(both).toContain('```echarts\n| :bar: | A |')
     expect(both).not.toContain(' js')
   })
 
+  it('writes the format the body was converted into beside it', () => {
+    const note = '```echarts js\n' + OPTION + '\n```\n'
+    const fence = echartsFenceAt(note, 0)!
+    const toTable = applyEchartsFencePatch(note, fence, { body: TABLE, script: false, style: 'table' })
+    expect(toTable).toContain('```echarts style=table\n| :bar: | A |')
+    const restatedNote = '```echarts style=json\n' + OPTION + '\n```\n'
+    const restated = echartsFenceAt(restatedNote, 0)!
+    expect(applyEchartsFencePatch(restatedNote, restated, { style: 'table' })).toContain('```echarts style=table\n')
+  })
+
   it('declines to write when the fence no longer holds the body it was drawn from', () => {
     const note = '```echarts\n{ other: 1 }\n```\n'
-    expect(applyEchartsFencePatch(note, { line: 0, body: OPTION }, { body: '{ a: 1 }' })).toBeNull()
+    const fence = echartsFenceAt('```echarts\n' + OPTION + '\n```\n', 0)!
+    expect(applyEchartsFencePatch(note, fence, { body: '{ a: 1 }' })).toBeNull()
   })
 })

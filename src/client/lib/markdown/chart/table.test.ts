@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ChartTableError, isChartTableBody, parseChartKeyword, readChartTable, writeChartTable } from './table'
+import { CHART_TABLE_MESSAGES, ChartTableError, isChartTableBody, parseChartKeyword, readChartTable, writeChartTable, type ChartTableReason } from './table'
 
 /** The line-chart example, copied out of Cherry's own table-chart demo. */
 const LINE_TABLE = [
@@ -60,8 +60,19 @@ describe('chart table bodies', () => {
 
   it('reports a configuration it cannot read instead of drawing without it', () => {
     expect(() => readChartTable('| :bar:{"title": } | a |\n| --- | --- |')).toThrow(ChartTableError)
-    expect(() => readChartTable('| :bar: | a |')).toThrow(ChartTableError)
-    expect(() => readChartTable('| :bar: | a |\n| x | y |\n| 1 | 2 |')).toThrow(ChartTableError)
+    expect(() => readChartTable('| :bar: | a |')).toThrow('no-header')
+    expect(() => readChartTable('| bar | a |\n| --- | --- |')).toThrow('no-keyword')
+    expect(() => readChartTable('| :bar: | a |\n| x | y |\n| 1 | 2 |')).toThrow('no-delimiter')
+  })
+
+  it('names every reason a block has to put into words', () => {
+    const keys: ChartTableReason[] = ['no-header', 'no-keyword', 'no-delimiter', 'bad-json']
+    expect(keys.map((reason) => CHART_TABLE_MESSAGES[reason])).toEqual([
+      'markdown.chart_table_no_header',
+      'markdown.chart_table_no_keyword',
+      'markdown.chart_table_no_delimiter',
+      'markdown.chart_table_bad_options',
+    ])
   })
 
   it('writes a table back out that reads as the same table', () => {
