@@ -50,10 +50,16 @@
 
   --field-h-md: 44px;
   --field-h-md-compact: 34px;
-  --btn-h-sm: 32px;
-  --btn-h-sm-compact: 22px;
-  --btn-h-md: 36px;
-  --btn-h-md-compact: 26px;
+  --segment-h-sm: 32px;
+  --segment-h-sm-compact: 22px;
+  --segment-h-md: 36px;
+  --segment-h-md-compact: 26px;
+  --btn-h-sm: 36px;
+  --btn-h-md: 40px;
+  --btn-h-lg: 44px;
+  --btn-h-sm-compact: 28px;
+  --btn-h-md-compact: 32px;
+  --btn-h-lg-compact: 40px;
   --toggle-h: 24px;
   --toggle-h-compact: 20px;
   --toggle-w: 44px;
@@ -61,7 +67,17 @@
   --readout-w: 44px;
   --slider-h: 18px;
   --touch-min: 40px;
+  --touch-floor: 24px;
   --row-h-md: 32px;
+  --band-h: 44px;
+  --touch-h: 44px;
+  --empty-h-sm: 128px;
+  --empty-h-md: 192px;
+  --empty-h-lg: 256px;
+  --empty-h-floor: 240px;
+  --skeleton-h-sm: 88px;
+  --skeleton-h-md: 192px;
+  --skeleton-h-lg: 256px;
 
   --text-6: 6px;
   --text-7: 7px;

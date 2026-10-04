@@ -8,7 +8,7 @@ import { t } from '../../lib/i18n'
  */
 export function BlogLoadFailure({ onRetry }: { onRetry: () => void }) {
   return (
-    <div role='status' className='flex h-64 flex-col items-center justify-center gap-3 text-[var(--text-quaternary)]'>
+    <div role='status' className='flex h-[var(--empty-h-lg)] flex-col items-center justify-center gap-[var(--sp-3)] text-[var(--text-quaternary)]'>
       <AlertTriangle size={32} className='opacity-40' />
       <p>{t('blog.load_failed')}</p>
       <Button size='sm' onClick={onRetry}>

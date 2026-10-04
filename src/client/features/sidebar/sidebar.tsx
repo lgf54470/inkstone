@@ -63,12 +63,12 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
         {collapsed ? <SidebarRail onExpand={onCollapse}/> : (<aside className='flex h-full min-h-0 flex-col bg-[var(--bg-sunken)]'>
       <SidebarHeader onCollapse={onCollapse}/>
 
-      <div className='shrink-0 px-2 pt-2'><SearchButton /></div>
+      <div className='shrink-0 px-[var(--sp-2)] pt-[var(--sp-2)]'><SearchButton /></div>
 
-      <div className='min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-4'>
+      <div className='min-h-0 flex-1 overflow-y-auto px-[var(--sp-2)] pt-[var(--sp-2)] pb-[var(--sp-4)]'>
         <SidebarCalendar />
         <div className='space-y-px'>
-          <div className='pt-2 pb-1'>
+          <div className='pt-[var(--sp-2)] pb-[var(--sp-1)]'>
             <QuickNavGrid view={view} panel={panel} counts={counts} onGo={goTo}/>
           </div>
           <ViewItem icon={<FileText size={14}/>} label={t('navigation.all_notes')} view='all' count={counts.all} active={view === 'all' && !panel} onSelect={openView}/>
@@ -80,13 +80,13 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
         <TagSection />
       </div>
 
-      <div className='shrink-0 border-t border-[var(--border-subtle)] px-2 pt-2.5 pb-2'>
-        <div className='grid grid-cols-2 gap-1'>
+      <div className='shrink-0 border-t border-[var(--border-subtle)] px-[var(--sp-2)] pt-2.5 pb-[var(--sp-2)]'>
+        <div className='grid grid-cols-2 gap-[var(--sp-1)]'>
           <ArchiveNavGrid view={view} panel={panel} counts={counts} onGo={goTo}/>
         </div>
       </div>
 
-      <div className='shrink-0 border-t border-[var(--border-subtle)] p-2'>
+      <div className='shrink-0 border-t border-[var(--border-subtle)] p-[var(--sp-2)]'>
         <SidebarAccount />
       </div>
         </aside>)}
@@ -96,7 +96,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
 function SidebarHeader({ onCollapse }: {
     onCollapse?: () => void
 }) {
-    return (<header className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-3'>
+    return (<header className='flex h-[var(--band-h)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-[var(--sp-3)]'>
       <div className='flex min-w-0 items-center gap-2.25 select-none'>
         <Logo size={24}/>
         <span className={`min-w-0 truncate font-serif text-[length:var(--text-15\\.5)] font-semibold ${TRACKING_APP_TITLE} text-[var(--text-primary)]`}>
@@ -129,7 +129,7 @@ function QuickNavGrid({ view, panel, counts, onGo }: {
     }, [blogPosts])
     const pinDrop = (ids: string[]) => ids.forEach((id) => void patchNote(id, { isPinned: true }))
     const starDrop = (ids: string[]) => ids.forEach((id) => void patchNote(id, { isStarred: true }))
-    return (<div className='grid grid-cols-4 gap-1'>
+    return (<div className='grid grid-cols-4 gap-[var(--sp-1)]'>
       <BottomNavButton icon={<Pin size={13.5} className='shrink-0'/>} label={t('navigation.pinned')} count={counts.pinned} active={view === 'pinned' && !panel} onClick={() => onGo('pinned')} acceptsDrop onDropNotes={pinDrop}/>
       <BottomNavButton icon={<Star size={13.5} className='shrink-0'/>} label={t('navigation.favorites')} count={counts.starred} active={view === 'starred' && !panel} onClick={() => onGo('starred')} acceptsDrop onDropNotes={starDrop}/>
       <BottomNavButton icon={<Share2 size={13.5} className='shrink-0 text-[var(--accent)]'/>} label={t('navigation.share')} count={shareCount} active={view === 'shared' && !panel} onClick={() => onGo('shared')}/>

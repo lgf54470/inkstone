@@ -44,7 +44,7 @@ export function SumBySection({
         id={fieldId}
         value={sumBy ?? ''}
         onChange={(e) => onChangeSumBy(e.target.value || undefined)}
-        className={`${PANEL_FIELD} h-8 md:h-8 bg-[var(--bg-raised)] text-[length:var(--text-12)]`}
+        className={`${PANEL_FIELD} h-[var(--sp-8)] md:h-8 bg-[var(--bg-raised)] text-[length:var(--text-12)]`}
       >
         <option value=''>{t('preview.kanban_sum_off')}</option>
         {candidates.map((col) => (

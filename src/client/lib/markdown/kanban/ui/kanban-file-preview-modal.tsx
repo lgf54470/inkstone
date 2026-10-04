@@ -84,7 +84,7 @@ async function readTextCapped(res: Response, maxBytes: number): Promise<string> 
  */
 function ReadFailed({ onRetry }: { onRetry?: () => void }) {
   return (
-    <div data-kanban-file-failed className='flex h-48 flex-col items-center justify-center gap-2 p-6 text-center'>
+    <div data-kanban-file-failed className='flex h-[var(--empty-h-md)] flex-col items-center justify-center gap-[var(--sp-2)] p-[var(--sp-6)] text-center'>
       <FileWarning size={24} className='text-[var(--text-tertiary)]' aria-hidden='true' />
       <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
         {t('preview.kanban_file_load_failed')}
@@ -155,7 +155,7 @@ function useKanbanTextRead(url: string): { state: ReadState; content: string; re
  * the flag — this way the blocked path cannot reach the fetch by construction.)
  */
 function TextFilePreview({ url, allowed }: { url: string; allowed: boolean }) {
-  if (!allowed) return <KanbanBlockedFile className='h-48 w-full' />
+  if (!allowed) return <KanbanBlockedFile className='h-[var(--empty-h-md)] w-full' />
   return <TextFileRead url={url} />
 }
 
@@ -164,7 +164,7 @@ function TextFileRead({ url }: { url: string }) {
 
   if (state === 'loading') {
     return (
-      <div className='flex h-32 items-center justify-center text-[var(--text-tertiary)]'>
+      <div className='flex h-[var(--empty-h-sm)] items-center justify-center text-[var(--text-tertiary)]'>
         <Loader2 size={16} className='animate-spin' />
       </div>
     )
@@ -176,7 +176,7 @@ function TextFileRead({ url }: { url: string }) {
 
   if (state === 'tooLarge') {
     return (
-      <div data-kanban-file-too-large className='flex h-48 flex-col items-center justify-center gap-2 p-6 text-center'>
+      <div data-kanban-file-too-large className='flex h-[var(--empty-h-md)] flex-col items-center justify-center gap-[var(--sp-2)] p-[var(--sp-6)] text-center'>
         <FileWarning size={24} className='text-[var(--text-tertiary)]' aria-hidden='true' />
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           {t('preview.kanban_file_too_large', { value1: String(KANBAN_FILE_TEXT_MAX_BYTES / (1024 * 1024)) })}
@@ -187,15 +187,15 @@ function TextFileRead({ url }: { url: string }) {
 
   if (content.trim() === '') {
     return (
-      <div className='flex h-32 items-center justify-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
+      <div className='flex h-[var(--empty-h-sm)] items-center justify-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         {t('preview.kanban_file_empty')}
       </div>
     )
   }
 
   return (
-    <div className='max-h-[65vh] overflow-auto p-4'>
-      <pre className='whitespace-pre-wrap break-words rounded-[var(--r-md)] bg-[var(--bg-inset)] p-3 text-[length:var(--text-12)] font-mono text-[var(--text-primary)]'>
+    <div className='max-h-[65vh] overflow-auto p-[var(--sp-4)]'>
+      <pre className='whitespace-pre-wrap break-words rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[var(--sp-3)] text-[length:var(--text-12)] font-mono text-[var(--text-primary)]'>
         {content}
       </pre>
     </div>
@@ -214,7 +214,7 @@ function ImagePreview({ file }: { file: KanbanFile }) {
   if (failed) return <ReadFailed />
 
   return (
-    <div className='flex max-h-[70vh] items-center justify-center overflow-auto p-4'>
+    <div className='flex max-h-[70vh] items-center justify-center overflow-auto p-[var(--sp-4)]'>
       <img
         src={file.url}
         alt={file.name}
@@ -234,7 +234,7 @@ function fileMetaLabel(file: KanbanFile): string {
 
 function PdfPreview({ file }: { file: KanbanFile }) {
   return (
-    <div className='flex flex-col items-center justify-center gap-3 p-8 text-center'>
+    <div className='flex flex-col items-center justify-center gap-[var(--sp-3)] p-[var(--sp-8)] text-center'>
       <FileText size={28} className='text-[var(--text-tertiary)]' />
       <div className='text-[length:var(--text-14)] font-medium text-[var(--text-primary)]'>{file.name}</div>
       <div className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{fileMetaLabel(file)}</div>
@@ -242,7 +242,7 @@ function PdfPreview({ file }: { file: KanbanFile }) {
         href={file.url}
         target='_blank'
         rel='noopener noreferrer'
-        className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-colors hover:bg-[var(--accent-hover)]'
+        className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-[var(--sp-3)] py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-colors hover:bg-[var(--accent-hover)]'
       >
         <ExternalLink size={13} />
         <span>{t('preview.open_in_new_tab')}</span>
@@ -260,7 +260,7 @@ function PreviewContent({ file }: { file: KanbanFile }) {
   const allowed = useKanbanImageAllowed(isImage || isText ? file.url : '')
 
   if (isImage && !allowed) {
-    return <KanbanBlockedImage className='h-64 w-full rounded-[var(--r-md)]' />
+    return <KanbanBlockedImage className='h-[var(--empty-h-lg)] w-full rounded-[var(--r-md)]' />
   }
 
   if (isImage) {
@@ -276,7 +276,7 @@ function PreviewContent({ file }: { file: KanbanFile }) {
   }
 
   return (
-    <div className='flex flex-col items-center justify-center gap-3 p-8 text-center'>
+    <div className='flex flex-col items-center justify-center gap-[var(--sp-3)] p-[var(--sp-8)] text-center'>
       <div className='text-[length:var(--text-14)] font-medium text-[var(--text-primary)]'>{file.name}</div>
       <div className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
         {fileMetaLabel(file)}
@@ -309,7 +309,7 @@ export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModal
             href={file.url}
             target='_blank'
             rel='noopener noreferrer'
-            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
+            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-1.5 text-[length:var(--text-12)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
           >
             <ExternalLink size={14} />
             <span>{t('preview.open_in_new_tab')}</span>
@@ -318,7 +318,7 @@ export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModal
             <a
               href={file.url}
               download={file.name}
-              className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-opacity hover:opacity-90'
+              className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-[var(--sp-3)] py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-opacity hover:opacity-90'
             >
               <Download size={14} />
               <span>{t('preview.kanban_download_file')}</span>

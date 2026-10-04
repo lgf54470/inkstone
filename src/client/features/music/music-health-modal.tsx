@@ -72,7 +72,7 @@ function HealthFooter({ scanning, dead, repairable, onScan, onRepairAll, onTrash
   onTrashAll: (ids: string[]) => Promise<void>
 }) {
   return (
-    <div className='flex flex-wrap items-center justify-end gap-2'>
+    <div className='flex flex-wrap items-center justify-end gap-[var(--sp-2)]'>
       <Button size='sm' variant='ghost' icon={<RefreshCw size={13} />} loading={scanning} onClick={() => void onScan()}>
         {t('music.health_rescan')}
       </Button>
@@ -108,7 +108,7 @@ function HealthBody({ results, scanning, failed, tracks, onRepair, onTrash, onRe
   if (scanning) return <Notice text={t('common.loading')} />
   if (failed && !results) {
     return (
-      <div role='status' className='flex flex-col items-center gap-2 py-3'>
+      <div role='status' className='flex flex-col items-center gap-[var(--sp-2)] py-[var(--sp-3)]'>
         <span className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{t('music.health_failed')}</span>
         <Button size='sm' onClick={onRetry}>{t('music.retry')}</Button>
       </div>
@@ -135,7 +135,7 @@ function HealthGroup({ title, ids, tracks, dead, onRepair, onTrash }: {
 }) {
   return (
     <section>
-      <h3 className='flex items-center gap-1.5 pb-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)]'>
+      <h3 className='flex items-center gap-1.5 pb-[var(--sp-1)] text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)]'>
         <AlertTriangle size={12} />{title}
       </h3>
       <ul className='space-y-0.5'>
@@ -143,7 +143,7 @@ function HealthGroup({ title, ids, tracks, dead, onRepair, onTrash }: {
           const track = tracks.find((entry) => entry.id === id)
           if (!track) return null
           return (
-            <li key={id} className='flex min-h-11 items-center gap-2 rounded-[var(--r-md)] px-1 hover:bg-[var(--bg-hover)]'>
+            <li key={id} className='flex min-h-[var(--touch-h)] items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-1)] hover:bg-[var(--bg-hover)]'>
               <span className='min-w-0 flex-1'>
                 <span className='block truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{track.title}</span>
                 <span className='block truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
@@ -174,5 +174,5 @@ function sourceName(track: MusicTrack): string {
 }
 
 function Notice({ text }: { text: string }) {
-  return <p role='status' className='py-3 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{text}</p>
+  return <p role='status' className='py-[var(--sp-3)] text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{text}</p>
 }

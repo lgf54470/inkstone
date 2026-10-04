@@ -27,13 +27,13 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
   const [open, setOpen] = useState(true)
 
   return (
-    <section aria-label={t('music.section_playlists')} className='pt-1'>
+    <section aria-label={t('music.section_playlists')} className='pt-[var(--sp-1)]'>
       <SectionHead open={open} onToggle={() => setOpen((value) => !value)} onCreate={onCreate} />
 
       {open && (
-        <div className='space-y-0.5 pt-0.5'>
+        <div className='space-y-0.5 pt-[var(--sp-0\\.5)]'>
           {playlists.length === 0
-            ? <p className='px-2.5 py-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_playlists')}</p>
+            ? <p className='px-2.5 py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_playlists')}</p>
             : playlists.map((playlist) => (
               <PlaylistRow
                 key={playlist.id}
@@ -60,12 +60,12 @@ function SectionHead({ open, onToggle, onCreate }: {
   onCreate: () => void
 }) {
   return (
-    <div className='group/head flex items-center justify-between px-2 pb-1'>
+    <div className='group/head flex items-center justify-between px-[var(--sp-2)] pb-[var(--sp-1)]'>
       <button
         type='button'
         onClick={onToggle}
         aria-expanded={open}
-        className='flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+        className='flex items-center gap-[var(--sp-1)] text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span>{t('music.section_playlists')}</span>
@@ -167,7 +167,7 @@ function PlaylistRow({
       <div
         onContextMenu={menu.onContextMenu}
         className={cn(
-          'group/row flex h-8 items-center gap-1 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] transition-colors',
+          'group/row flex h-[var(--row-h-md)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] px-[var(--sp-2)] text-[length:var(--text-12)] transition-colors',
           active
             ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -229,7 +229,7 @@ function PlaylistRenameInput({
         if (event.key === 'Enter') event.currentTarget.blur()
         if (event.key === 'Escape') onChange(null)
       }}
-      className='h-6 min-w-0 flex-1 border-[var(--accent)] bg-[var(--bg-surface)] px-1 text-[length:var(--text-11)]'
+      className='h-[var(--sp-6)] min-w-0 flex-1 border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] text-[length:var(--text-11)]'
     />
   )
 }

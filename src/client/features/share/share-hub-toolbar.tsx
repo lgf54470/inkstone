@@ -28,9 +28,9 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
   const loading = useShareStore((s) => s.loading)
 
   return (
-    <div className='flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2'>
+    <div className='flex min-h-[var(--touch-h)] shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-4)] py-[var(--sp-2)]'>
       <SearchField value={search} onChange={setSearch} />
-      <div className='flex flex-wrap items-center gap-2'>
+      <div className='flex flex-wrap items-center gap-[var(--sp-2)]'>
         <StatusSelect value={statusFilter} onChange={setStatusFilter} />
         <SortSelect value={sort} onChange={setSort} />
         <ShareTrafficFilterPopover />
@@ -63,7 +63,7 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
         placeholder={t('share.search_placeholder')}
         aria-label={t('share.search_placeholder')}
         leading={<Search size={13} />}
-        className='h-7 w-full bg-[var(--bg-card)] text-[length:var(--text-12)]'
+        className='h-[var(--sp-7)] w-full bg-[var(--bg-card)] text-[length:var(--text-12)]'
       />
     </div>
   )
@@ -92,7 +92,7 @@ function StatusSelect({ value, onChange }: { value: ShareStatusFilter; onChange:
       value={value}
       onChange={(e) => onChange(e.target.value as ShareStatusFilter)}
       aria-label={t('share.status_filter_label')}
-      className='h-7 py-0 pl-2 text-[length:var(--text-12)]'
+      className='h-[var(--sp-7)] py-0 pl-[var(--sp-2)] text-[length:var(--text-12)]'
     >
       {SHARE_STATUS_FILTERS.map((status) => (
         <option key={status} value={status}>{t(STATUS_LABEL_KEYS[status])}</option>
@@ -103,7 +103,7 @@ function StatusSelect({ value, onChange }: { value: ShareStatusFilter; onChange:
 
 function SortSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.sort_label')} className='h-7 py-0 pl-2 text-[length:var(--text-12)]'>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.sort_label')} className='h-[var(--sp-7)] py-0 pl-[var(--sp-2)] text-[length:var(--text-12)]'>
       <option value='views_desc'>{t('share.sort_views_desc')}</option>
       <option value='views_asc'>{t('share.sort_views_asc')}</option>
       <option value='recent_visit'>{t('share.sort_recent_visit')}</option>

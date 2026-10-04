@@ -42,21 +42,21 @@ export function UrlImportDialog({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <Modal open={open} onClose={onClose} title={t('music.import_url_title')} width={DIALOG_WIDTH}>
-      <div className='flex flex-col gap-3'>
+      <div className='flex flex-col gap-[var(--sp-3)]'>
         <p className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{t('music.import_url_hint')}</p>
-        <label className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+        <label className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)]'>
           <span className='shrink-0'>{t('music.import_url_address')}</span>
-          <Input ref={url} className='h-8 flex-1' aria-label={t('music.import_url_address')} />
+          <Input ref={url} className='h-[var(--sp-8)] flex-1' aria-label={t('music.import_url_address')} />
         </label>
-        <label className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+        <label className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)]'>
           <span className='shrink-0'>{t('music.import_url_name')}</span>
-          <Input ref={title} className='h-8 flex-1' aria-label={t('music.import_url_name')} />
+          <Input ref={title} className='h-[var(--sp-8)] flex-1' aria-label={t('music.import_url_name')} />
         </label>
-        <label className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+        <label className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)]'>
           <span className='shrink-0'>{t('music.import_url_artist')}</span>
-          <Input ref={artist} className='h-8 flex-1' aria-label={t('music.import_url_artist')} />
+          <Input ref={artist} className='h-[var(--sp-8)] flex-1' aria-label={t('music.import_url_artist')} />
         </label>
-        <div className='flex items-center justify-end gap-2'>
+        <div className='flex items-center justify-end gap-[var(--sp-2)]'>
           <Button size='sm' variant='primary' onClick={() => void add()}>{t('music.import_url_add')}</Button>
         </div>
       </div>

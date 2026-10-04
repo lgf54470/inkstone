@@ -59,7 +59,7 @@ export function BlogLinksView() {
         />
       )}
 
-      <div className='flex-1 overflow-y-auto p-4 space-y-2.5'>
+      <div className='flex-1 overflow-y-auto p-[var(--sp-4)] space-y-2.5'>
         {view.isTruncated && <LinksTruncationNotice shown={view.filteredLinks.length} />}
         <LinksListContent view={view} />
       </div>
@@ -71,7 +71,7 @@ export function BlogLinksView() {
 
 function LinksTruncationNotice({ shown }: { shown: number }) {
   return (
-    <p className='px-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+    <p className='px-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
       {t('blog.link_list_truncated', { value0: shown })}
     </p>
   )
@@ -89,7 +89,7 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
   if (view.filteredLinks.length === 0) {
     if (view.loadFailed) return <BlogLoadFailure onRetry={() => void view.loadLinks()} />
     return (
-      <div className='flex h-64 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
+      <div className='flex h-[var(--empty-h-lg)] flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
         <Inbox size={32} className='opacity-40' />
         <p>{t('blog.link_no_links')}</p>
       </div>
@@ -98,7 +98,7 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
 
   return (
     <>
-      <div className='flex items-center gap-2 px-1 pb-1'>
+      <div className='flex items-center gap-[var(--sp-2)] px-[var(--sp-1)] pb-[var(--sp-1)]'>
         <Checkbox
           checked={view.isAllSelected}
           onChange={view.handleToggleSelectAll}
@@ -113,7 +113,7 @@ function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> 
       <LinkCardRows links={visibleLinks} view={view} />
 
       {visibleLinks.length < view.filteredLinks.length && (
-        <div className='flex justify-center pt-1'>
+        <div className='flex justify-center pt-[var(--sp-1)]'>
           <Button variant='secondary' size='sm' onClick={() => setRenderLimit((limit) => limit + LINKS_RENDER_STEP)}>
             {t('blog.list_show_more', { value0: visibleLinks.length, value1: view.filteredLinks.length })}
           </Button>
@@ -245,12 +245,12 @@ function LinksBatchBar({
   onClear: () => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-3 bg-[var(--accent-soft)]/40 border-b border-[var(--border-subtle)] px-4 py-1.5 text-[length:var(--text-12)]'>
+    <div className='flex items-center justify-between gap-[var(--sp-3)] bg-[var(--accent-soft)]/40 border-b border-[var(--border-subtle)] px-[var(--sp-4)] py-1.5 text-[length:var(--text-12)]'>
       <span className='font-semibold text-[var(--accent)]'>
         {t('blog.selected_links_count', { value0: selectedCount })}
       </span>
 
-      <div className='flex items-center gap-2 flex-wrap'>
+      <div className='flex items-center gap-[var(--sp-2)] flex-wrap'>
         <Button variant='secondary' size='sm' loading={busy} onClick={() => onBatch('approve')}>
           {t('blog.link_batch_approve')}
         </Button>

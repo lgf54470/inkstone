@@ -110,10 +110,11 @@ describe('KanbanHeader progress bar scope', () => {
  * A finger needs a target the project's own scale defines — 36px below `md`, 28px above it — and the
  * labels that make this row readable on a desktop are what makes it overflow on a phone. So each
  * control is measured against that scale, and the labels are dropped on the narrow screen while the
- * accessible name stays: an icon-only button still has to say what it does.
+ * accessible name stays: an icon-only button still has to say what it does. The height arrives
+ * either as the scale step or as the button-size role token, since both name the same 36/28px pair.
  */
-const MOBILE_TARGET = /\bsize-9\b|\bh-9\b|\bmin-h-9\b/
-const DESKTOP_TARGET = /\bmd:size-7\b|\bmd:h-7\b/
+const MOBILE_TARGET = /\bsize-9\b|\bh-9\b|\bmin-h-9\b|h-\[var\(--btn-h-sm\)\]/
+const DESKTOP_TARGET = /\bmd:size-7\b|\bmd:h-7\b|md:h-\[var\(--btn-h-sm-compact\)\]/
 
 /**
  * How a control gives up its words when the bar is narrow. The breakpoint is the header's own

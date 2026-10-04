@@ -136,13 +136,13 @@ function GraphScopeToggle({ mode, onModeChange, hasActiveNote }: {
   hasActiveNote: boolean
 }) {
   return (
-    <div className='flex h-8 items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.5' role='group' aria-label={t('graph.scope')}>
+    <div className='flex h-[var(--sp-8)] items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[var(--sp-0\\.5)]' role='group' aria-label={t('graph.scope')}>
       <button type='button' aria-pressed={mode === 'global'} onClick={() => onModeChange('global')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] ${mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
+        className={`h-[var(--sp-7)] rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] ${mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
         {t('graph.global')}
       </button>
       <button type='button' aria-pressed={mode === 'local'} disabled={!hasActiveNote} onClick={() => onModeChange('local')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] disabled:opacity-40 ${mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
+        className={`h-[var(--sp-7)] rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] disabled:opacity-40 ${mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
         {t('graph.local')}
       </button>
     </div>
@@ -154,7 +154,7 @@ function GraphSearchBox({ search, onSearchChange }: {
   onSearchChange: (value: string) => void
 }) {
   return (
-    <label className='flex h-8 min-w-37.5 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-80'>
+    <label className='flex h-[var(--sp-8)] min-w-37.5 flex-1 items-center gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-80'>
       <Search size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
       <span className='sr-only'>{t('graph.search_notes')}</span>
       <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={t('graph.search_notes')}
@@ -183,12 +183,12 @@ function GraphHeaderActions({ canZoom, isSettingsOpen, onZoomOut, onFit, onZoomI
   onClose: () => void
 }) {
   return (
-    <div className='ml-auto flex items-center gap-1'>
+    <div className='ml-auto flex items-center gap-[var(--sp-1)]'>
       <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!canZoom} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.fit')}><IconButton label={t('graph.reset')} size='sm' disabled={!canZoom} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
       <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!canZoom} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' aria-pressed={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-1'><X size={16}/></IconButton></Tooltip>
+      <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-[var(--sp-1)]'><X size={16}/></IconButton></Tooltip>
     </div>
   )
 }
@@ -210,8 +210,8 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
   onClose: () => void
 }) {
   return (
-    <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
-      <div className='mr-1 flex min-w-0 items-baseline gap-2.5'>
+    <header className='flex min-h-[var(--sp-12)] shrink-0 flex-wrap items-center gap-[var(--sp-2)] border-b border-[var(--border-subtle)] px-[var(--sp-3)] py-[var(--sp-2)] md:px-4'>
+      <div className='mr-[var(--sp-1)] flex min-w-0 items-baseline gap-2.5'>
         <h2 id={titleId} className={`text-[length:var(--text-14)] font-semibold ${TRACKING_TITLE}`}>{t('common.graph')}</h2>
         {data && <GraphStats data={data}/>}
       </div>

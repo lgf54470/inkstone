@@ -33,14 +33,14 @@ export function KpiCard({
         {icon}
       </div>
 
-      <div className='flex items-baseline justify-between pt-2'>
+      <div className='flex items-baseline justify-between pt-[var(--sp-2)]'>
         <span className='font-mono text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]'>
           {unavailable ?? formatNumber(value)}
         </span>
 
         {delta !== undefined && (
           <span
-            className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
+            className={`inline-flex items-center gap-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium ${
               delta === 0 ? 'text-[var(--text-tertiary)]' : delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
@@ -59,12 +59,12 @@ export function KpiCard({
       </div>
 
       {unavailable === undefined && hint && (
-        <p className='pt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{hint}</p>
+        <p className='pt-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{hint}</p>
       )}
 
       {sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0) && (
         // The line repeats the number above it, so it stays out of the reading order.
-        <div className='mt-2 h-7 w-full' aria-hidden>
+        <div className='mt-[var(--sp-2)] h-[var(--sp-7)] w-full' aria-hidden>
           <MiniSparkline values={sparkline} />
         </div>
       )}
@@ -84,15 +84,15 @@ export function BreakdownRow({
   percentage: number
 }) {
   return (
-    <div className='flex flex-col gap-1 text-[length:var(--text-12)]'>
+    <div className='flex flex-col gap-[var(--sp-1)] text-[length:var(--text-12)]'>
       <div className='flex items-center justify-between'>
         <span className='flex items-center gap-1.5 truncate text-[var(--text-primary)]'>
           {flag && <span className='text-[length:var(--text-13)]'>{flag}</span>}
           <span className='truncate'>{name}</span>
         </span>
-        <div className='flex items-center gap-2 font-mono text-[length:var(--text-11)]'>
+        <div className='flex items-center gap-[var(--sp-2)] font-mono text-[length:var(--text-11)]'>
           <span className='font-semibold text-[var(--text-primary)]'>{formatNumber(count)}</span>
-          <span className='w-8 text-right text-[var(--text-tertiary)]'>{formatNumber(percentage)}%</span>
+          <span className='w-[var(--sp-8)] text-right text-[var(--text-tertiary)]'>{formatNumber(percentage)}%</span>
         </div>
       </div>
       <div className='h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>

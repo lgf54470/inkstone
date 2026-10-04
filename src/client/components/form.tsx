@@ -219,7 +219,7 @@ function SegmentedButton<T extends string>({
         'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-[var(--sp-1\\.5)] whitespace-nowrap rounded-[var(--r-sm)] font-medium',
         'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-[var(--btn-h-sm)] px-[var(--sp-2\\.5)] text-[length:var(--text-11\\.5)] md:h-[var(--btn-h-sm-compact)] md:px-[var(--sp-2)]' : 'h-[var(--btn-h-md)] px-[var(--sp-3)] text-[length:var(--text-12\\.5)] md:h-[var(--btn-h-md-compact)] md:px-[var(--sp-2\\.5)]',
+        size === 'sm' ? 'h-[var(--segment-h-sm)] px-[var(--sp-2\\.5)] text-[length:var(--text-11\\.5)] md:h-[var(--segment-h-sm-compact)] md:px-[var(--sp-2)]' : 'h-[var(--segment-h-md)] px-[var(--sp-3)] text-[length:var(--text-12\\.5)] md:h-[var(--segment-h-md-compact)] md:px-[var(--sp-2\\.5)]',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-control)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',

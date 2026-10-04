@@ -61,9 +61,9 @@ export function TextImportDialog({ open, tracks, onClose }: { open: boolean; tra
 
   return (
     <Modal open={open} onClose={onClose} title={t('music.import_text_title')} width={DIALOG_WIDTH}>
-      <div className='flex flex-col gap-3'>
+      <div className='flex flex-col gap-[var(--sp-3)]'>
         <ImportFields textRef={text} nameRef={name} />
-        <div className='flex items-center justify-end gap-2'>
+        <div className='flex items-center justify-end gap-[var(--sp-2)]'>
           <Button size='sm' onClick={queue}>{t('music.import_text_queue')}</Button>
           <Button size='sm' variant='primary' onClick={() => void saveAsPlaylist()}>{t('music.import_text_playlist')}</Button>
         </div>
@@ -82,12 +82,12 @@ function ImportFields({ textRef, nameRef }: {
       <textarea
         ref={textRef}
         rows={8}
-        className='w-full resize-y rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-2 font-mono text-[length:var(--text-12)] text-[var(--text-primary)]'
+        className='w-full resize-y rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] p-[var(--sp-2)] font-mono text-[length:var(--text-12)] text-[var(--text-primary)]'
         aria-label={t('music.import_text_list')}
       />
-      <label className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
+      <label className='flex items-center gap-[var(--sp-2)] text-[length:var(--text-12)] text-[var(--text-secondary)]'>
         <span className='shrink-0'>{t('music.import_text_name')}</span>
-        <Input ref={nameRef} className='h-8 flex-1' />
+        <Input ref={nameRef} className='h-[var(--sp-8)] flex-1' />
       </label>
     </>
   )

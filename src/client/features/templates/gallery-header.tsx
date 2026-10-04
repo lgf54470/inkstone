@@ -19,12 +19,12 @@ interface GalleryHeaderProps {
 
 export function GalleryHeader({ query, onQueryChange, searchRef, selectMode, onToggleSelectMode, onOpenHelp, onNewTemplate, moreButtonRef, onOpenMore, onClose }: GalleryHeaderProps) {
     return (
-            <header className='flex shrink-0 items-center gap-2.5 border-b border-[var(--border-subtle)] px-4 py-2.5'>
+            <header className='flex shrink-0 items-center gap-2.5 border-b border-[var(--border-subtle)] px-[var(--sp-4)] py-2.5'>
                 <LayoutTemplate size={16} className='shrink-0 text-[var(--text-quaternary)]'/>
                 <h2 className='shrink-0 text-[length:var(--text-14)] font-semibold tracking-[var(--tracking-title)] text-[var(--text-primary)]'>{t('templates.template_library')}</h2>
                 <div className='relative min-w-0 flex-1'>
                     <Search size={13} aria-hidden='true' className='pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-quaternary)]'/>
-                    <input ref={searchRef} aria-label={t('templates.search_templates')} value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={t('templates.search_templates')} className='h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-8 pl-8 text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none'/>
+                    <input ref={searchRef} aria-label={t('templates.search_templates')} value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={t('templates.search_templates')} className='h-[var(--sp-10)] w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] pr-[var(--sp-8)] pl-[var(--sp-8)] text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none'/>
                     {query && (<button type='button' aria-label={t('common.clear')} onClick={() => onQueryChange('')} className='absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 items-center justify-center rounded text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'>
                         <X size={13}/>
                     </button>)}
