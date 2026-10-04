@@ -148,6 +148,9 @@ const LABELS = {
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
   presentFollowLost: localeLabel('workspace.presentation_follow_lost'),
+  moveToTrash: localeLabel('common.move_to_trash'),
+  deletePermanently: localeLabel('notes.delete_permanently'),
+  trashView: localeLabel('navigation.trash'),
   presentAudience: localeLabel('workspace.presentation_audience_follow', 'workspace.presentation_audience_stop'),
   audienceFollowing: localeLabel('workspace.presentation_audience_following'),
   audienceBrowsing: localeLabel('workspace.presentation_audience_browsing'),
@@ -2724,6 +2727,136 @@ async function assertPresenterConsole(browser, page) {
     await clickButton(page, LABELS.presentExit)
     await sleep(700)
   }
+}
+
+// N-19 promised what a show says when the note behind it disappears. Its jsdom suite reached that
+// state by editing the store, which left the browser question open (L-10): can a gate reach it at all,
+// and which of the app's two deletes breaks a follow? Both halves are pinned here through a second tab
+// of the same account and the note row's own menu — no store writing, no API call behind the client's
+// back. The measured answer shaped the assertions: moving the note to the trash changes nothing in the
+// show (the note still exists and can be restored), and only the permanent deletion breaks the follow,
+// one second after the other tab confirms it.
+async function assertFollowLost(browser, page) {
+  const title = `Follow loss probe ${Date.now().toString(36)}`
+  await openFollowLossNote(page, title)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await sleep(800)
+  const opened = await readFollowControl(page)
+  check('presentation follow: the show follows the note it opened on', [...LABELS.presentFollow, ...LABELS.presentFreeze].includes(opened.label) && !opened.disabled, JSON.stringify(opened))
+
+  const other = await browser.newPage()
+  try {
+    await other.setViewport(DESKTOP_VIEWPORT)
+    await other.goto(BASE, { waitUntil: 'networkidle2' })
+    await dismissUpdatePrompt(other)
+    await sleep(2_000)
+    const trashed = await clickRowMenu(other, title, LABELS.moveToTrash)
+    check('presentation follow: another tab reaches the note the show is following', trashed.clicked !== '', JSON.stringify(trashed))
+    // The break needs the other tab's write to arrive, and four seconds of waiting is what proves the
+    // show is not merely being told about a deletion it has already swallowed.
+    await sleep(4_000)
+    const afterTrash = await readFollowControl(page)
+    check('presentation follow: a note moved to the trash keeps the show following it, because it can come back', afterTrash.label === opened.label && !afterTrash.disabled && afterTrash.announcements === 0, JSON.stringify(afterTrash))
+
+    const purged = await purgeFromTrash(other, title)
+    check('presentation follow: the second tab deleted the note for good', purged.gone && purged.confirmed !== '', JSON.stringify(purged))
+    const broken = await waitForFollowLoss(page)
+    check('presentation follow: a deleted note names the break on the control and stops the toggle', LABELS.presentFollowLost.includes(broken.label) && broken.disabled, JSON.stringify(broken))
+    check('presentation follow: the break is announced, and never as two notices at once', broken.announcements === 1, JSON.stringify(broken))
+  } finally {
+    await other.close()
+  }
+
+  await clickPresentationControl(page, LABELS.presentExit)
+  await sleep(600)
+  // Hand the run back the deck the scenarios below measure, as the kanban scene has to.
+  await openDeckNote(page)
+}
+
+async function openFollowLossNote(page, title) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await writeAtEndOfNote(page, `# ${title}\n\nOne line of talk, deleted from another tab while the room watches.\n`, 'presentation follow')
+  await sleep(1_500)
+}
+
+// The follow control, read by the three names it can wear. A substring match would find the audience
+// control instead, since the invitation to an audience is worded with the same verb of following, and
+// a second reading would then call a live show a broken one.
+async function readFollowControl(page) {
+  return page.evaluate((wanted) => {
+    const panel = document.querySelector('[role="dialog"]')
+    const button = [...(panel?.querySelectorAll('button') ?? [])].find((entry) => wanted.control.includes((entry.getAttribute('aria-label') ?? '').trim()))
+    const announcements = [...document.querySelectorAll('body *')].filter((node) => node.children.length === 0 && wanted.lost.includes((node.textContent ?? '').trim())).length
+    return { label: button?.getAttribute('aria-label') ?? '', disabled: Boolean(button?.disabled), announcements }
+  }, { control: [...LABELS.presentFollow, ...LABELS.presentFreeze, ...LABELS.presentFollowLost], lost: [...LABELS.presentFollowLost] })
+}
+
+// The note row's own menu, opened with a real pointer on a title this scenario wrote — so it can only
+// ever find its own note.
+async function clickRowMenu(page, title, labels) {
+  const marked = await page.evaluate((text) => {
+    const row = [...document.querySelectorAll('[data-note-id]')].find((node) => node.textContent?.includes(text))
+    if (!row) return false
+    row.setAttribute('data-gate-target', '1')
+    return true
+  }, title)
+  if (!marked) return { clicked: '', reason: 'the note is not listed in this tab' }
+  const handle = await page.$('[data-gate-target]')
+  await handle.click({ button: 'right' })
+  await sleep(700)
+  const clicked = await page.evaluate((wanted) => {
+    const items = [...document.querySelectorAll('[role="menu"] button, [role="menuitem"]')]
+    const textOf = (item) => (item.textContent ?? '').trim()
+    const hit = items.find((item) => wanted.some((label) => textOf(item) === label || textOf(item).startsWith(label)))
+    if (!hit) return { clicked: '', items: items.map(textOf) }
+    hit.click()
+    return { clicked: textOf(hit), items: [] }
+  }, labels)
+  await page.evaluate(() => document.querySelector('[data-gate-target]')?.removeAttribute('data-gate-target'))
+  await sleep(1_200)
+  return clicked
+}
+
+async function purgeFromTrash(page, title) {
+  const opened = await page.evaluate((labels) => {
+    const named = (node) => `${node.textContent ?? ''}|${node.getAttribute('aria-label') ?? ''}|${node.getAttribute('title') ?? ''}`
+    const nav = [...document.querySelectorAll('button, [role="button"], a')].find((node) => labels.some((label) => named(node).includes(label)))
+    if (!nav) return false
+    nav.click()
+    return true
+  }, LABELS.trashView)
+  await sleep(1_500)
+  const menu = await clickRowMenu(page, title, LABELS.deletePermanently)
+  const confirmed = await page.evaluate((labels) => {
+    const dialog = document.querySelector('[role="dialog"]')
+    const buttons = [...(dialog?.querySelectorAll('button') ?? [])]
+    const hit = buttons.find((button) => labels.some((label) => (button.textContent ?? '').trim() === label))
+    if (!hit) return ''
+    hit.click()
+    return (hit.textContent ?? '').trim()
+  }, LABELS.deletePermanently)
+  await sleep(2_000)
+  const gone = await page.evaluate((text) => ![...document.querySelectorAll('[data-note-id]')].some((row) => row.textContent?.includes(text)), title)
+  return { opened, tried: menu.clicked, confirmed, gone }
+}
+
+// The other tab's write reaches this one through the app's own broadcast and pull, so the wait is on
+// the news arriving rather than on a fixed beat. The largest number of notices seen at one time is
+// kept because a single reading cannot tell a second announcement apart from the first still standing.
+async function waitForFollowLoss(page) {
+  let seen = await readFollowControl(page)
+  let announcements = seen.announcements
+  for (let attempt = 0; attempt < 20 && !([...LABELS.presentFollowLost].includes(seen.label) && seen.disabled); attempt += 1) {
+    await sleep(500)
+    seen = await readFollowControl(page)
+    announcements = Math.max(announcements, seen.announcements)
+  }
+  return { ...seen, announcements }
 }
 
 async function assertSlideLayouts(page) {
@@ -10223,6 +10356,7 @@ async function main() {
     await assertPresentationOverview(page)
     await assertAudienceFollow(browser, page, consoleErrors)
     await assertPresenterConsole(browser, page)
+    await assertFollowLost(browser, page)
     await assertSlideLayouts(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
