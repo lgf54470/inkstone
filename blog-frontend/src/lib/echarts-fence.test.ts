@@ -71,7 +71,11 @@ async function draw(body: string, respond: (() => unknown) | 'none' = 'none'): P
   const originalFetch = globalThis.fetch
   const restoreSize = stubElementSize()
   const restoreRects = stubRects()
+  // The library complains out loud about the failures several of these cases *are*, and a log still in
+  // flight when the environment is torn down becomes an unhandled error of the run rather than of the
+  // case. Nothing here asserts on the text: it is the block's own banner that carries the message.
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const warnings = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const urls: string[] = []
   if (respond !== 'none') {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -103,6 +107,7 @@ async function draw(body: string, respond: (() => unknown) | 'none' = 'none'): P
     restoreSize()
     restoreRects()
     errors.mockRestore()
+    warnings.mockRestore()
   }
 }
 

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderMarkdown } from '../markdown/index'
 import { initTableCharts, rerenderTableChartsForTheme } from '../table-charts'
 
@@ -12,6 +12,17 @@ async function settle(predicate: () => boolean, timeoutMs = 8000): Promise<boole
   }
   return predicate()
 }
+
+// echarts warns about the 0-sized box jsdom gives it, and a warning still travelling when the
+// environment closes turns into an unhandled error of the whole run.
+beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function mount(markdown: string): HTMLElement {
   const root = document.createElement('div')
