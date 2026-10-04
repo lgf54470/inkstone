@@ -91,6 +91,16 @@ describe('details container', () => {
     expect(render('::: details open 标题\n内容\n:::')).toContain('<details class="markdown-details" open><summary>标题</summary>')
     expect(render('::: details 标题\n内容\n:::')).toContain('<details class="markdown-details"><summary>标题</summary>')
   })
+
+  it('leaves a footnote that the post ends with at the end, out of the title', () => {
+    const html = render('::: details 标题\n内容\n:::\n\n引用[^a]\n\n[^a]: 注释\n')
+    expect(html).toContain('<summary>标题</summary>')
+    expect(html.indexOf('footnotes-sep')).toBeGreaterThan(html.indexOf('</details>'))
+  })
+
+  it('keeps the headings a post carries past the container that asks for a title', () => {
+    expect(renderMarkdown('## 甲\n\n::: details 标题\n内容\n:::\n\n## 乙\n').headings.map((h) => h.text)).toEqual(['甲', '乙'])
+  })
 })
 
 describe('wikilinks and block references', () => {

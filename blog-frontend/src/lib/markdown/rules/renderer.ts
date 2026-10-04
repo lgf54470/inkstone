@@ -3,6 +3,7 @@ import katex from 'katex'
 import { escapeAttr, escapeHtml } from '../escape.ts'
 import type { RenderEnv } from '../types.ts'
 import { TABLE_OPTION_DEFAULTS, type TableOptions } from '../table-options.ts'
+import { renderInlineLabel } from '../inline-label.ts'
 import { parseChartKeyword, type ChartKeyword } from '../../chart/model.ts'
 import { registerPanels } from '../panels.ts'
 
@@ -13,9 +14,8 @@ function registerDetailsRendererRules(md: InstanceType<typeof MarkdownIt>): void
     return `<details class="markdown-details"${meta.open ? ' open' : ''}${variant}>`
   }
   // The summary title is inline markdown (emphasis, code, links…), same rule the root app renders.
-  // markdown-it v15 requires an env object on renderInline (it reads env.references).
   md.renderer.rules.details_summary = (tokens, index, _options, env) =>
-    `<summary>${md.renderInline(tokens[index]!.content, (env ?? {}) as Record<string, unknown>)}</summary>`
+    `<summary>${renderInlineLabel(md, tokens[index]!.content, (env ?? {}) as Record<string, unknown>)}</summary>`
   md.renderer.rules.details_close = () => '</details>'
 }
 
