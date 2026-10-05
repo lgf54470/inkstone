@@ -49,7 +49,7 @@ export function ShareNoteSubmenu({
 
 function ShareSubmenuHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <div className="flex items-center gap-1.5 px-1 pt-0.5 pb-2 text-[length:var(--text-12\.5)] font-medium text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
+    <div className='flex items-center gap-1.5 px-1 pt-0.5 pb-2 text-[length:var(--text-12-5)] font-medium text-[var(--text-secondary)] border-b border-[var(--border-subtle)]'>
       <button
         type='button'
         onClick={onBack}
@@ -221,7 +221,7 @@ function ShareTagSuggestions({ tags, onAdd }: { tags: ShareTag[]; onAdd: (name: 
             key={tag.id}
             type='button'
             onClick={() => void onAdd(tag.name)}
-            className="inline-flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] border border-transparent transition-colors"
+            className='inline-flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[length:var(--text-10-5)] text-[var(--text-tertiary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] border border-transparent transition-colors'
           >
             <Plus size={9} />
             <span>{tag.name}</span>
@@ -280,7 +280,7 @@ function ShareMainMenu({ bundle, closeMenu, onOpenSettings }: {
   )
   return (
     <div
-      className="w-59 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
+      className='w-59 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12-5)]'
       onClick={(e) => e.stopPropagation()}
     >
       <ShareMenuButton icon={<QrCode size={13} className='shrink-0 text-[var(--text-tertiary)]' />} label={t('share.view_qr')} onClick={() => void bundle.handleOpenQr()} />

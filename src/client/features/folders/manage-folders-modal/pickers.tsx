@@ -95,7 +95,7 @@ function FolderCustomIconInput({ onPick }: { onPick: (icon: string) => void }) {
             if (char) onPick(char)
           }
         }}
-        className="h-6 w-48 rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className='h-6 w-48 rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-6 pr-2 text-[length:var(--text-11-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       />
     </div>
   )

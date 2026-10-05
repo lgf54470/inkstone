@@ -19,7 +19,7 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
           readOnly
           value={share.url}
           aria-label={t('share.share_link')}
-          className="flex-1 font-mono text-[length:var(--text-11\.5)] bg-[var(--bg-surface)] select-all"
+          className='flex-1 font-mono text-[length:var(--text-11-5)] bg-[var(--bg-surface)] select-all'
         />
         <Button size='sm' variant='secondary' icon={isCopied ? <Check size={13} className='text-[var(--success)]' /> : <Copy size={13} />} onClick={() => void handleCopyLink()}>
           {isCopied ? t('common.copied') : t('common.copy')}
@@ -28,7 +28,7 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
           href={share.url}
           target='_blank'
           rel='noreferrer'
-          className='inline-flex h-[var(--sp-7)] items-center justify-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2\\.5)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
+          className='inline-flex h-[var(--sp-7)] items-center justify-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2-5)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors'
           title={t('share.open_link')}
         >
           <ExternalLink size={13} />
@@ -79,7 +79,7 @@ export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
   const { shareFolders, shareFolderId, setShareFolderId } = b
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)] pb-[var(--sp-1\\.5)]'>
+      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1-5)] pb-[var(--sp-1-5)]'>
         <FolderClosed size={14} className='text-[var(--text-tertiary)]' />
         <span>{t('share.folders_isolation')}</span>
       </div>
@@ -104,16 +104,16 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
   const { shareTags, newTagInput, setNewTagInput, handleAddTag, handleRemoveTag } = b
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)] space-y-2'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
+      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] flex items-center gap-[var(--sp-1-5)]'>
         <Hash size={14} className='text-[var(--text-tertiary)]' />
         <span>{t('share.tags_isolation')}</span>
       </div>
-      <div className='flex flex-wrap items-center gap-[var(--sp-1\\.5)] min-h-[var(--sp-6)]'>
+      <div className='flex flex-wrap items-center gap-[var(--sp-1-5)] min-h-[var(--sp-6)]'>
         {shareTags.length === 0 ? (
           <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.no_tags')}</span>
         ) : (
           shareTags.map((tagName) => (
-            <span key={tagName} className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
+            <span key={tagName} className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
               <Hash size={10} className='text-[var(--accent)]' />
               <span>{tagName}</span>
               <IconButton
@@ -128,7 +128,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
           ))
         )}
       </div>
-      <div className='flex items-center gap-[var(--sp-1\\.5)] pt-[var(--sp-1)]'>
+      <div className='flex items-center gap-[var(--sp-1-5)] pt-[var(--sp-1)]'>
         <Input
           type='text'
           value={newTagInput}
@@ -188,7 +188,7 @@ function SlugEditorRow({ customSlug, setCustomSlug, isSlugChecking, slugAvailabl
   slugAvailable: boolean | null
 }) {
   return (
-    <div className='flex items-center gap-[var(--sp-1\\.5)]'>
+    <div className='flex items-center gap-[var(--sp-1-5)]'>
       <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
       <Input
         type='text'
@@ -254,7 +254,7 @@ export function ShareExpiryCard({ b }: { b: ShareEditModalBundle }) {
   const titleId = useId()
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]'>
-      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-[var(--sp-1\\.5)]'>
+      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-[var(--sp-1-5)]'>
         {t('share.expiration_title')}
       </div>
       <Segmented

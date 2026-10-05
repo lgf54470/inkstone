@@ -68,7 +68,7 @@ function TagBarChip({ selected, total, expanded, controls, onToggle }: {
       onClick={onToggle}
       aria-expanded={expanded}
       aria-controls={controls}
-      className='@4xl:hidden inline-flex w-fit items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      className='@4xl:hidden inline-flex w-fit items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
     >
       <Tag size={12} aria-hidden />
       <span>{t('preview.kanban_tags_chip', { selected, total })}</span>
@@ -91,7 +91,7 @@ function TagChip({
       type='button'
       onClick={() => onToggle(tag.id)}
       style={getKanbanTagStyle(tag.color || 'blue')}
-      className={`inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] font-medium transition-all ${
+      className={`inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-2)] py-[var(--sp-0-5)] font-medium transition-all ${
         isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'hover:ring-1 hover:ring-[var(--border-strong)]'
       }`}
     >
@@ -120,7 +120,7 @@ function TagStrip({
   return (
     <div
       id={id}
-      className={`${expanded ? 'flex' : 'hidden'} @4xl:flex flex-wrap items-center gap-[var(--sp-1\\.5)] pt-[var(--sp-1)] text-[length:var(--text-11)]`}
+      className={`${expanded ? 'flex' : 'hidden'} @4xl:flex flex-wrap items-center gap-[var(--sp-1-5)] pt-[var(--sp-1)] text-[length:var(--text-11)]`}
     >
       <span className='flex items-center gap-[var(--sp-1)] text-[var(--text-tertiary)]'>
         <Tag size={12} aria-hidden />
@@ -138,7 +138,7 @@ function TagStrip({
         <button
           type='button'
           onClick={onClearTags}
-          className='rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          className='rounded-[var(--r-xs)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
           {t('common.clear')}
         </button>

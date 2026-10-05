@@ -35,7 +35,7 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
   const pct = Math.round((note.views / maxVal) * 100)
   return (
     <div
-      className='-mx-2 flex items-center gap-[var(--sp-3)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-2\\.5)] transition-colors hover:bg-[var(--bg-hover)]'
+      className='-mx-2 flex items-center gap-[var(--sp-3)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-2-5)] transition-colors hover:bg-[var(--bg-hover)]'
     >
       <span
         className={`flex h-[var(--sp-5)] w-[var(--sp-5)] items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
@@ -56,7 +56,7 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
             {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span>
           </span>
         </div>
-        <div className='mt-[var(--sp-1)] h-[var(--sp-1\\.5)] w-full overflow-hidden rounded-full bg-[var(--bg-base)]'>
+        <div className='mt-[var(--sp-1)] h-[var(--sp-1-5)] w-full overflow-hidden rounded-full bg-[var(--bg-base)]'>
           <div
             className='h-full rounded-full bg-[var(--accent)] transition-all'
             style={{ width: `${pct}%` }}

@@ -13,7 +13,7 @@ export function RunRow({ run }: {
   const tone = run.status === 'success' ? 'success' : run.status === 'partial' ? 'warning' : 'danger'
   const startedTime = useRelativeTime(run.startedAt)
   return (<li className='overflow-hidden rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)]'>
-    <button type='button' aria-expanded={isOpen} onClick={() => setIsOpen((v) => !v)} className='flex w-full items-center gap-[var(--sp-2\\.5)] px-[var(--sp-3)] py-[var(--sp-2)] text-left transition-colors hover:bg-[var(--bg-hover)]'>
+    <button type='button' aria-expanded={isOpen} onClick={() => setIsOpen((v) => !v)} className='flex w-full items-center gap-[var(--sp-2-5)] px-[var(--sp-3)] py-[var(--sp-2)] text-left transition-colors hover:bg-[var(--bg-hover)]'>
     <span className={cn('size-1.5 shrink-0 rounded-full', tone === 'success'
       ? 'bg-[var(--success)]'
       : tone === 'warning'
@@ -29,8 +29,8 @@ export function RunRow({ run }: {
     </button>
 
     {isOpen && run.results.length > 0 && (<ul className='border-t border-[var(--border-subtle)] bg-[var(--bg-inset)] px-[var(--sp-3)] py-[var(--sp-2)]'>
-      {run.results.map((result, index) => (<li key={`${result.targetId}-${index}`} className="flex items-start gap-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11\.5)]">
-        {result.ok ? (<CheckCircle2 size={11} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--success)]'/>) : (<AlertCircle size={11} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]'/>)}
+      {run.results.map((result, index) => (<li key={`${result.targetId}-${index}`} className='flex items-start gap-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11-5)]'>
+        {result.ok ? (<CheckCircle2 size={11} className='mt-[var(--sp-0-5)] shrink-0 text-[var(--success)]'/>) : (<AlertCircle size={11} className='mt-[var(--sp-0-5)] shrink-0 text-[var(--danger)]'/>)}
         <span className='shrink-0 text-[var(--text-secondary)]'>{result.targetName}</span>
         <span className='min-w-0 flex-1 text-[var(--text-quaternary)]'>
         {result.ok

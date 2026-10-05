@@ -64,7 +64,7 @@ function CollectionsHeader({ isLoading, onReload, onPublish }: {
         <h3 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
           {t('share.collection_panel_title')}
         </h3>
-        <p className='mt-[var(--sp-1)] max-w-[60ch] text-[length:var(--text-11\\\\.5)] leading-relaxed text-[var(--text-tertiary)]'>
+        <p className='mt-[var(--sp-1)] max-w-[60ch] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>
           {t('share.collection_panel_hint')}
         </p>
       </div>
@@ -129,7 +129,7 @@ function CollectionsEmpty() {
       <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>
         {t('share.collection_empty')}
       </p>
-      <p className='mx-auto mt-1.5 max-w-[48ch] text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-quaternary)]'>
+      <p className='mx-auto mt-1.5 max-w-[48ch] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-quaternary)]'>
         {t('share.collection_empty_hint')}
       </p>
     </div>
@@ -189,7 +189,7 @@ function CollectionRow({ collection, isBusy, onCopy, onToggle, onEdit, onRevoke 
     <tr className='border-b border-[var(--border-subtle)] align-top'>
       <td className='py-[var(--sp-2)] pr-[var(--sp-3)]'>
         <span className='block font-medium text-[var(--text-primary)]'>{collection.title}</span>
-        <span className='mt-[var(--sp-0\\.5)] block text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <span className='mt-[var(--sp-0-5)] block text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t(collectionTargetKey(collection))}
         </span>
       </td>

@@ -15,7 +15,7 @@ export { KANBAN_DESCRIPTION_MAX_CHARS }
 const KANBAN_DESCRIPTION_WARN_CHARS = KANBAN_DESCRIPTION_MAX_CHARS - 500
 const DESCRIPTION_ROWS = 4
 const EXPANDED_DESCRIPTION_ROWS = 16
-const DESCRIPTION_TEXT_CLASS = 'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-2\\.5)] text-[length:var(--text-12)] text-[var(--text-primary)]'
+const DESCRIPTION_TEXT_CLASS = 'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--sp-2-5)] text-[length:var(--text-12)] text-[var(--text-primary)]'
 const DESCRIPTION_CONTROL_CLASS = 'flex items-center justify-center rounded-[var(--r-xs)] p-[var(--sp-1)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
 
 /** What the length bound has to say about the draft in progress: the notice only after a rejection. */

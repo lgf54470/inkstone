@@ -14,7 +14,7 @@ interface NotePropertiesEditorProps {
 
 function EmptyProperties({ onAdd, className }: { onAdd: () => void; className?: string }) {
   return (
-    <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)]', className)}>
+    <div className={cn('note-properties-editor mb-4 flex items-center justify-between rounded-lg border border-dashed border-[var(--border-subtle)] px-3 py-1.5 text-[length:var(--text-11-5)] text-[var(--text-tertiary)]', className)}>
       <span className='flex items-center gap-1.5 font-medium'>
         <SlidersHorizontal size={13} />
         {t('markdown.properties')}
@@ -42,7 +42,7 @@ function PropertiesHeader({ bundle }: { bundle: NotePropertiesBundle }) {
       >
         <SlidersHorizontal size={13} className='text-[var(--text-tertiary)]' />
         <span>{t('markdown.properties')}</span>
-        <span className="rounded-full bg-[var(--surface-tertiary)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-normal text-[var(--text-tertiary)]">
+        <span className='rounded-full bg-[var(--surface-tertiary)] px-1.5 py-0.2 text-[length:var(--text-10-5)] font-normal text-[var(--text-tertiary)]'>
           {properties.length}
         </span>
       </button>
@@ -72,7 +72,7 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
           if (e.key === 'Enter') handleCommitNewProperty()
           if (e.key === 'Escape') setIsAddingProperty(false)
         }}
-        className="h-7 w-32 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className='h-7 w-32 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       />
       <input
         value={newValue}
@@ -82,13 +82,13 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
           if (e.key === 'Enter') handleCommitNewProperty()
           if (e.key === 'Escape') setIsAddingProperty(false)
         }}
-        className="h-7 min-w-35 flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className='h-7 min-w-35 flex-1 rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-2 text-[length:var(--text-11-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       />
       <div className='flex items-center gap-1'>
         <button
           type='button'
           onClick={handleCommitNewProperty}
-          className="inline-flex h-7 items-center rounded bg-[var(--accent)] px-2.5 text-[length:var(--text-11\.5)] font-medium text-white transition-opacity hover:opacity-90"
+          className='inline-flex h-7 items-center rounded bg-[var(--accent)] px-2.5 text-[length:var(--text-11-5)] font-medium text-white transition-opacity hover:opacity-90'
         >
           <Check size={12} className='mr-1' />
           {t('overlay.confirm')}
@@ -97,7 +97,7 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
           type='button'
           aria-label={t('common.cancel')}
           onClick={() => setIsAddingProperty(false)}
-          className="inline-flex h-7 items-center rounded px-2 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+          className='inline-flex h-7 items-center rounded px-2 text-[length:var(--text-11-5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >
           <X size={13} />
         </button>
@@ -133,7 +133,7 @@ export const NotePropertiesEditor = memo(function NotePropertiesEditor({ noteId,
               <button
                 type='button'
                 onClick={beginAddProperty}
-                className="inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
+                className='inline-flex items-center gap-1.5 text-[length:var(--text-11-5)] font-medium text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
               >
                 <Plus size={12} />
                 {t('properties.add_property')}

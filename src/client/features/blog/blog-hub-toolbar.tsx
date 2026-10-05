@@ -142,7 +142,7 @@ export function BlogHubToolbar({
   const loadHubData = useBlogStore((s) => s.loadHubData)
   const loading = useBlogStore((s) => s.loading)
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-12\\.5)]">
+    <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-12-5)]'>
       <div className='flex items-center gap-2 flex-wrap'>
         <StatusFilterTabs />
         <ActiveFilterChips />

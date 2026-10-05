@@ -85,7 +85,7 @@ function TagRenameField({ value, onChange, onSave, onCancel }: {
           if (event.key === 'Enter') onSave()
           if (event.key === 'Escape') onCancel()
         }}
-        className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\.5)] outline-none"
+        className='h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12-5)] outline-none'
       />
       <Tooltip label={t('common.save')}>
         <IconButton label={t('common.save')} size='sm' onClick={onSave}><Check size={13} className='text-[var(--accent)]' /></IconButton>

@@ -42,7 +42,7 @@ function MenuButton({ buttonRef, label, open, onClick, children, mobile }: { but
         aria-label={label}
         aria-haspopup='menu'
         aria-expanded={open}
-        className={cn('inline-flex shrink-0 items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-[var(--sp-9)]' : 'h-[var(--sp-7)]')}
+        className={cn('inline-flex shrink-0 items-center gap-[var(--sp-0-5)] rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-[var(--sp-9)]' : 'h-[var(--sp-7)]')}
       >
         {children}
         <ChevronDown size={10} className='opacity-60' />
@@ -123,7 +123,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
   const b: ToolbarBundle = { ...menus, mobile }
 
   return (
-    <div className={cn('flex shrink-0 items-center overflow-x-auto border-b border-[var(--border-subtle)] px-[var(--sp-2)] no-scrollbar', mobile ? 'h-[var(--band-h)] gap-[var(--sp-1)]' : 'h-[var(--sp-9)] gap-[var(--sp-0\\.5)]')}>
+    <div className={cn('flex shrink-0 items-center overflow-x-auto border-b border-[var(--border-subtle)] px-[var(--sp-2)] no-scrollbar', mobile ? 'h-[var(--band-h)] gap-[var(--sp-1)]' : 'h-[var(--sp-9)] gap-[var(--sp-0-5)]')}>
       <Tooltip label={t('workspace.title_748d7d')}>
         <button
           ref={b.headingRef}
@@ -132,7 +132,7 @@ export function EditorToolbar({ runCommand, view, onPickImage, onPickFile, mobil
           aria-label={t('workspace.title_level')}
           aria-haspopup='menu'
           aria-expanded={b.openMenu === 'heading'}
-          className={cn('inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-[var(--sp-9)]' : 'h-[var(--sp-7)]')}
+          className={cn('inline-flex items-center gap-[var(--sp-0-5)] rounded-[var(--r-md)] px-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]', mobile ? 'h-[var(--sp-9)]' : 'h-[var(--sp-7)]')}
         >
           <Heading size={14} />
           <ChevronDown size={10} className='opacity-60' />

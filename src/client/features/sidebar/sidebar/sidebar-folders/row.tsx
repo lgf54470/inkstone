@@ -138,9 +138,9 @@ function FolderRowLabel({ node, folders, active, isInbox, renaming, onCommitRena
       onCancelRename()
     }
     e.stopPropagation()
-  }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12\.5)] outline-none"/>)
+  }} className='min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12-5)] outline-none'/>)
   return (<Tooltip label={folderPathLabel(folders, node.id)} side='right'>
-    <button type='button' aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] truncate py-[var(--sp-1)] text-left text-[length:var(--text-12\.5)] font-medium">
+    <button type='button' aria-current={active ? 'page' : undefined} onClick={() => openFolderView(folders, node.id)} onDoubleClick={onStartRename} className='flex min-w-0 flex-1 items-center gap-[var(--sp-1-5)] truncate py-[var(--sp-1)] text-left text-[length:var(--text-12-5)] font-medium'>
       <span className='truncate'>{node.name}</span>
       {isInbox && (<span title={t('folders.inbox')} className='shrink-0 text-[var(--accent)]'><Inbox size={11}/></span>)}
     </button>

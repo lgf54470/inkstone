@@ -45,7 +45,7 @@ export const UnsupportedElement = memo(function UnsupportedElement({
   return (
     <div
       data-slide-unsupported={el.type}
-      className='flex size-full flex-col items-center justify-center gap-[var(--sp-0\\.5)] overflow-hidden rounded border border-dashed border-[var(--border-subtle)] px-[var(--sp-2)] text-center text-xs text-[var(--text-tertiary)]'
+      className='flex size-full flex-col items-center justify-center gap-[var(--sp-0-5)] overflow-hidden rounded border border-dashed border-[var(--border-subtle)] px-[var(--sp-2)] text-center text-xs text-[var(--text-tertiary)]'
     >
       <span className='font-medium'>{t('slides.element_unsupported')}</span>
       <span className='truncate opacity-70'>{reason || el.type}</span>

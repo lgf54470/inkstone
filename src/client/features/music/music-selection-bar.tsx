@@ -38,7 +38,7 @@ export function MusicSelectionBar({ visibleIds }: { visibleIds: string[] }) {
     <div
       role='toolbar'
       aria-label={t('music.selection')}
-      className='flex flex-wrap items-center gap-[var(--sp-1\\.5)] border-b border-[var(--border-subtle)] bg-[var(--accent-softer)] px-[var(--sp-3)] py-[var(--sp-2)]'
+      className='flex flex-wrap items-center gap-[var(--sp-1-5)] border-b border-[var(--border-subtle)] bg-[var(--accent-softer)] px-[var(--sp-3)] py-[var(--sp-2)]'
     >
       <SelectionScope count={selectedIds.length} visibleIds={visibleIds} />
       <span className='flex-1' />

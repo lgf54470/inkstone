@@ -94,7 +94,7 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
       {trigger}
     </span>
     {rect &&
-      createPortal(<div ref={tooltipRef} id={tooltipId} role='tooltip' data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11\\.5)] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
+      createPortal(<div ref={tooltipRef} id={tooltipId} role='tooltip' data-side={position?.side} className='anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-[var(--sp-1-5)] rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-11-5)] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]' style={style}>
         {label}
         {combo && <Kbd combo={combo}/>}
       </div>, document.body)}

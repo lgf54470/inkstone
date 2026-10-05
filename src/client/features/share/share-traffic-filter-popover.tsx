@@ -83,7 +83,7 @@ function FilterTrigger({ buttonRef, isOpen, isFilteringBots, tone, label, onTogg
       aria-label={t('share.filter_traffic_title')}
       aria-haspopup='dialog'
       aria-expanded={isOpen}
-      className={cn('h-[var(--sp-7)] gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border px-[var(--sp-2)] text-[length:var(--text-12)] font-medium', tone)}
+      className={cn('h-[var(--sp-7)] gap-[var(--sp-1-5)] rounded-[var(--r-md)] border px-[var(--sp-2)] text-[length:var(--text-12)] font-medium', tone)}
     >
       <span className='hidden sm:inline'>{label}</span>
     </Button>
@@ -182,12 +182,12 @@ function TrafficFilterPanel() {
       </p>
 
       <div className='space-y-3 pt-[var(--sp-2)]'>
-        <TrafficFilterRow icon={<Bot size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_bots_title')} desc={t('share.filter_bots_desc')} checked={excludeBots} onChange={(checked) => setFilters({ excludeBots: checked })} />
-        <TrafficFilterRow icon={<Globe size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_self_title')} desc={t('share.filter_self_desc')} checked={excludeSelfReferrers} onChange={(checked) => setFilters({ excludeSelfReferrers: checked })} />
-        <TrafficFilterRow icon={<UserCheck size={15} className='mt-[var(--sp-0\\.5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_owner_title')} desc={t('share.filter_owner_desc')} checked={excludeOwner} onChange={(checked) => setFilters({ excludeOwner: checked })} />
+        <TrafficFilterRow icon={<Bot size={15} className='mt-[var(--sp-0-5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_bots_title')} desc={t('share.filter_bots_desc')} checked={excludeBots} onChange={(checked) => setFilters({ excludeBots: checked })} />
+        <TrafficFilterRow icon={<Globe size={15} className='mt-[var(--sp-0-5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_self_title')} desc={t('share.filter_self_desc')} checked={excludeSelfReferrers} onChange={(checked) => setFilters({ excludeSelfReferrers: checked })} />
+        <TrafficFilterRow icon={<UserCheck size={15} className='mt-[var(--sp-0-5)] text-[var(--accent)] shrink-0' />} title={t('share.filter_owner_title')} desc={t('share.filter_owner_desc')} checked={excludeOwner} onChange={(checked) => setFilters({ excludeOwner: checked })} />
       </div>
 
-      <div className="mt-[var(--sp-3\\.5)] flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] bg-[var(--bg-card)] p-[var(--sp-2)] text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+      <div className='mt-[var(--sp-3-5)] flex items-center gap-[var(--sp-1-5)] rounded-[var(--r-sm)] bg-[var(--bg-card)] p-[var(--sp-2)] text-[length:var(--text-10-5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
         <Info size={12} className='text-[var(--accent)] shrink-0' />
         <span>{t('share.filter_persist_hint')}</span>
       </div>
@@ -210,7 +210,7 @@ function TrafficFilterRow({ icon, title, desc, checked, onChange }: {
           <div className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
             {title}
           </div>
-          <div className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] leading-normal">
+          <div className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)] leading-normal'>
             {desc}
           </div>
         </div>

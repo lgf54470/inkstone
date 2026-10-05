@@ -28,7 +28,7 @@ export const KanbanEmptyBoard = memo(function KanbanEmptyBoard({ onAddItem, onAp
       data-kanban-empty
       className='flex h-full w-full flex-col items-center justify-center gap-[var(--sp-4)] overflow-y-auto px-[var(--sp-6)] py-[var(--sp-10)] text-center'
     >
-      <div className='flex flex-col gap-[var(--sp-1\\.5)]'>
+      <div className='flex flex-col gap-[var(--sp-1-5)]'>
         {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
             utility written on it (see the hand-back block in `styles/kanban.css`). */}
         <div className='text-[length:var(--text-15)] font-semibold'>

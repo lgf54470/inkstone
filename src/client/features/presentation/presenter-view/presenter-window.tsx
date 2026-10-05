@@ -106,7 +106,7 @@ function PresenterHeader({
   return (
     <header className='flex h-[var(--sp-12)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-4)]'>
       <div className='flex items-center gap-[var(--sp-3)] min-w-0'>
-        <div className='flex items-center gap-[var(--sp-1\\.5)] min-w-0'>
+        <div className='flex items-center gap-[var(--sp-1-5)] min-w-0'>
           <Presentation size={18} className='shrink-0 text-[var(--accent)]' />
           <span className='truncate font-semibold text-[length:var(--text-14)]'>
             {state.noteTitle || t('workspace.presentation_mode')}

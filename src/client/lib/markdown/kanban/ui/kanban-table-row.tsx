@@ -40,7 +40,7 @@ function SubitemItemRow({
   onDelete: () => void
 }) {
   return (
-    <div className='flex flex-col gap-[var(--sp-0\\.5)] rounded-[var(--r-xs)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-12)] shadow-2xs'>
+    <div className='flex flex-col gap-[var(--sp-0-5)] rounded-[var(--r-xs)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-1)] text-[length:var(--text-12)] shadow-2xs'>
       <div className='flex items-center gap-[var(--sp-2)]'>
         <input
           type='checkbox'
@@ -95,7 +95,7 @@ function SubitemsNestedTable({
   return (
     <div role='row' className='border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]'>
       <div role='cell' aria-colspan={columnCount} className='py-[var(--sp-2)] pl-[var(--sp-12)] pr-[var(--sp-4)]'>
-        <div className='mb-[var(--sp-1\\.5)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
+        <div className='mb-[var(--sp-1-5)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
           {t('preview.kanban_subtasks_count', { count: subtasks.length })}
         </div>
         <div className='flex flex-col gap-[var(--sp-1)]'>
@@ -111,14 +111,14 @@ function SubitemsNestedTable({
               onDelete={() => onUpdateSubtasks(subtasks.filter((s) => s.id !== st.id))}
             />
           ))}
-          <form onSubmit={handleAdd} className='mt-[var(--sp-1)] flex items-center gap-[var(--sp-1\\.5)]'>
+          <form onSubmit={handleAdd} className='mt-[var(--sp-1)] flex items-center gap-[var(--sp-1-5)]'>
             <Plus size={12} className='text-[var(--text-tertiary)]' />
             <input
               type='text'
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder={t('preview.kanban_add_subtask')}
-              className='w-full rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] outline-none focus:border-[var(--accent)]'
+              className='w-full rounded-[var(--r-xs)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] outline-none focus:border-[var(--accent)]'
             />
           </form>
         </div>
@@ -170,7 +170,7 @@ function ItemTitleCell({
         {item.title}
       </button>
       {subtasksCount > 0 && (
-        <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
+        <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           {subtasksCount}
         </span>
       )}
@@ -189,7 +189,7 @@ function ItemTitleCell({
 /** The row's own checkbox: selecting a card is the one thing a row does outside its columns. */
 function RowSelectionCell({ isSelected, onToggleSelect }: { isSelected: boolean; onToggleSelect: () => void }) {
   return (
-    <div role='cell' className='w-[var(--sp-10)] shrink-0 p-[var(--sp-2\\.5)] text-center'>
+    <div role='cell' className='w-[var(--sp-10)] shrink-0 p-[var(--sp-2-5)] text-center'>
       <input
         type='checkbox'
         checked={isSelected}

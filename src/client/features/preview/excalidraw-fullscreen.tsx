@@ -41,7 +41,7 @@ export function ExcalidrawFullscreen({ session, onClose, onOpenLibrary }: { sess
             {session.isEditable() ? t('preview.excalidraw_hint') : t('preview.excalidraw_readonly')}
           </p>
         </div>
-        <div className='flex shrink-0 items-center gap-[var(--sp-0\\.5)]'>
+        <div className='flex shrink-0 items-center gap-[var(--sp-0-5)]'>
           <Tooltip label={t('preview.excalidraw_library')}>
             <IconButton label={t('preview.excalidraw_library')} size='sm' onClick={(event) => onOpenLibrary(event.currentTarget)}><Library size={15} /></IconButton>
           </Tooltip>

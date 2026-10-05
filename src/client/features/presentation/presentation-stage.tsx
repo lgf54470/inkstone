@@ -124,7 +124,7 @@ export function PresentationStage(props: PresentationStageProps) {
         // paints at the tier's own colour; muting it further would need a token that still clears
         // contrast on this surface, not an opacity applied on top of one that already does.
         <div
-          className='pointer-events-none absolute bottom-[var(--sp-4)] right-[var(--sp-4)] z-[var(--z-sticky)] select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] shadow-[var(--shadow-xs)]'
+          className='pointer-events-none absolute bottom-[var(--sp-4)] right-[var(--sp-4)] z-[var(--z-sticky)] select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] shadow-[var(--shadow-xs)]'
           aria-hidden='true'
         >
           <span data-deck-position>{formatDeckPosition({ index, count, subPage, pageCount, step, steps })}</span>

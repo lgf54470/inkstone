@@ -33,7 +33,7 @@ function RenameInput({ value, fallbackName, inputRef, onNameChange, onFinishRena
         if (e.key === 'Enter') commit()
         if (e.key === 'Escape') onFinishRename(fallbackName)
       }}
-      className='flex-1 bg-[var(--bg-surface)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
+      className='flex-1 bg-[var(--bg-surface)] px-[var(--sp-1)] py-[var(--sp-0-5)] text-xs text-[var(--text-primary)] border border-[var(--border-focus)] rounded outline-hidden'
     />
   )
 }
@@ -118,7 +118,7 @@ function FolderLeading({ node, isExpanded, onToggleExpand }: {
         type='button'
         aria-label={isExpanded ? t('sidebar.collapse') : t('sidebar.expand')}
         onClick={onToggleExpand}
-        className='p-[var(--sp-0\\.5)] text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+        className='p-[var(--sp-0-5)] text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
       >
         {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
       </button>
@@ -164,7 +164,7 @@ export function FolderRow({ node, isExpanded, isSelected, isRenaming, isDragOver
         onDrop={handlers.onDrop}
         style={{ paddingLeft: `${TREE_INDENT_BASE + node.depth * TREE_INDENT_STEP}px` }}
         className={cn(
-          'group relative flex h-[var(--row-h-md)] items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] pr-[var(--sp-2)] text-[length:var(--text-12)] font-medium transition-colors',
+          'group relative flex h-[var(--row-h-md)] items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] pr-[var(--sp-2)] text-[length:var(--text-12)] font-medium transition-colors',
           isSelected
             ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',

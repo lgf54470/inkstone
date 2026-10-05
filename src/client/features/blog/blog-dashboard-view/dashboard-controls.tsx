@@ -35,7 +35,7 @@ export function DashboardControls({
         <h3 className='text-[length:var(--text-15)] font-bold text-[var(--text-primary)]'>
           {t('blog.analytics_dashboard_title')}
         </h3>
-        <p className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+        <p className='text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
           {t('blog.analytics_dashboard_subtitle')}
         </p>
       </div>
@@ -78,7 +78,7 @@ function RealVisitorsToggle({ excludeBots, onToggleBots }: { excludeBots: boolea
     <button
       type='button'
       onClick={onToggleBots}
-      className={`inline-flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-11\\.5)] font-medium transition-colors ${
+      className={`inline-flex items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] border px-[var(--sp-2-5)] py-[var(--sp-1)] text-[length:var(--text-11-5)] font-medium transition-colors ${
         excludeBots
           ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
           : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'

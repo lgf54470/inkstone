@@ -22,7 +22,7 @@ export const InspectorSection = memo(function InspectorSection({
         <button
           type='button'
           onClick={() => setIsOpen((o) => !o)}
-          className='flex items-center gap-[var(--sp-1\\.5)] flex-1 text-left'
+          className='flex items-center gap-[var(--sp-1-5)] flex-1 text-left'
         >
           {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           <span>{title}</span>

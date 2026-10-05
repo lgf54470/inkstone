@@ -38,7 +38,7 @@ export function BlogCategoriesModal({
     >
       <CategoriesModalHeader onClose={onClose} />
 
-      <div className="max-h-[70vh] overflow-y-auto p-[var(--sp-5)] space-y-5 text-[length:var(--text-12\.5)]">
+      <div className='max-h-[70vh] overflow-y-auto p-[var(--sp-5)] space-y-5 text-[length:var(--text-12-5)]'>
         <CategoriesForm
           bundle={{
             ...form,
@@ -183,7 +183,7 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
 function CategoryColorField({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
   return (
     <fieldset>
-      <legend className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
+      <legend className='mb-[var(--sp-1)] block text-[length:var(--text-11-5)] font-medium text-[var(--text-secondary)]'>
         {t('blog.category_color')}
       </legend>
       <CategoryColorPicker selected={selected} onSelect={onSelect} />
@@ -257,7 +257,7 @@ function CategoryListItem({
 }) {
   return (
     <div className='flex items-center justify-between p-[var(--sp-3)] transition-colors hover:bg-[var(--bg-hover)]'>
-      <div className='flex items-center gap-[var(--sp-2\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-2-5)]'>
         <span
           className='size-3 rounded-full'
           style={{ backgroundColor: cat.color || 'var(--accent)' }}
@@ -271,7 +271,7 @@ function CategoryListItem({
       </div>
 
       <div className='flex items-center gap-[var(--sp-3)]'>
-        <span className='rounded-full bg-[var(--bg-sunken)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+        <span className='rounded-full bg-[var(--bg-sunken)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           {cat.postsCount ?? 0} {t('blog.posts_count_unit')}
         </span>
         <IconButton label={t('common.edit')} size='sm' onClick={() => onEdit(cat)}>

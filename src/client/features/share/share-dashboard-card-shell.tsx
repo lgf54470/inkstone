@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 export function CardHeader({ icon, title, badge }: { icon: ReactNode; title: string; badge: string }) {
   return (
     <div className='flex items-center justify-between border-b border-[var(--border-subtle)] pb-[var(--sp-3)]'>
-      <h3 className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+      <h3 className='flex items-center gap-[var(--sp-1-5)] text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
         {icon}
         {title}
       </h3>

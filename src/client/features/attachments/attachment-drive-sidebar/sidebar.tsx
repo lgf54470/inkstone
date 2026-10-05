@@ -124,7 +124,7 @@ export function AttachmentDriveSidebar(props: AttachmentDriveSidebarProps) {
   }
 
   return (
-    <div className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-12\\.5)] select-none">
+    <div className='flex h-full w-60 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-12-5)] select-none'>
       <div className='min-h-0 flex-1 overflow-y-auto px-2 py-3 space-y-4'>
         <CategoryList selectedCategory={selectedCategory} selectedFolderId={selectedFolderId} selectedTag={selectedTag} onSelectCategory={onSelectCategory} />
         <FolderSection tree={store.tree} selectedFolderId={selectedFolderId} renamingFolderId={renamingFolderId} expandedFolders={store.expandedFolders} allFoldersExpanded={expansion.allFoldersExpanded} toggleAllFolders={expansion.toggleAllFolders} handleCreateRootFolder={handleCreateRootFolder} toggleFolderExpanded={store.toggleFolderExpanded} setRenamingFolderId={setRenamingFolderId} patchFolder={store.patchFolder} onSelectFolder={onSelectFolder} setMovingFolderId={setMovingFolderId} onDropFilesToFolder={onDropFilesToFolder} createFolder={store.createFolder} deleteFolder={store.deleteFolder} />
@@ -298,7 +298,7 @@ function StatsFooter({ stats }: { stats: AttachmentStats }) {
     <div className='mt-auto shrink-0 border-t border-[var(--border-subtle)] p-3 bg-[var(--bg-sunken)]/40 text-[length:var(--text-11)] space-y-1.5'>
       <div className='flex items-center justify-between font-semibold text-[var(--text-secondary)]'>
         <span>{t('attachments.stats_title')}</span>
-        <span className="font-mono text-[length:var(--text-10\\.5)]">
+        <span className='font-mono text-[length:var(--text-10-5)]'>
           {`${formatFileSize(stats.totalBytes)} / 10 GB`}
         </span>
       </div>

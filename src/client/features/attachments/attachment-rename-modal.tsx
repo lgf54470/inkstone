@@ -39,7 +39,7 @@ export function AttachmentRenameModal(props: AttachmentRenameModalProps) {
           <Input autoFocus value={form.name} onChange={(e) => form.setName(e.target.value)} disabled={form.isSaving} />
         </label>
 
-        <label className="flex items-center gap-[var(--sp-2\\.5)] cursor-pointer text-[length:var(--text-12\\.5)] text-[var(--text-secondary)] select-none">
+        <label className='flex items-center gap-[var(--sp-2-5)] cursor-pointer text-[length:var(--text-12-5)] text-[var(--text-secondary)] select-none'>
           <Checkbox checked={form.isUpdateRefs} onChange={(checked) => form.setIsUpdateRefs(checked)} />
           <span>{t('attachments.sync_note_references')}</span>
         </label>

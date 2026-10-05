@@ -21,7 +21,7 @@
 .ink-prose .excalidraw-block-actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   margin-inline-start: auto;
 }
 .ink-prose .excalidraw-block-btn {
@@ -45,8 +45,8 @@
   box-shadow: var(--shadow-ring);
 }
 .ink-prose .excalidraw-block-btn svg {
-  width: var(--sp-3\.5);
-  height: var(--sp-3\.5);
+  width: var(--sp-3-5);
+  height: var(--sp-3-5);
 }
 .ink-prose .excalidraw-block-placeholder {
   position: relative;
@@ -91,7 +91,7 @@
   align-self: start;
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   color: var(--text-primary);
   background: var(--bg-overlay);
   cursor: pointer;
@@ -143,7 +143,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-2\.5) var(--sp-3);
+  padding: var(--sp-2-5) var(--sp-3);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }

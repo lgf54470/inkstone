@@ -124,7 +124,7 @@ function GraphStats({ data }: { data: GraphResponse }) {
   const counts = graphNodeCounts(data.nodes)
   const linkCount = countWikiLinkEdges(data)
   return (
-    <span className="whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
+    <span className='whitespace-nowrap text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>
       {t('graph.stats_summary', { notes: counts.notes, links: linkCount })}
       {counts.tags > 0 && ` · ${t('graph.stats_tags', { count: counts.tags })}`}
       {counts.unresolved > 0 && ` · ${t('graph.stats_unresolved', { count: counts.unresolved })}`}
@@ -197,7 +197,7 @@ function GraphSearchFeedback({ state, onToggleOnlyMatching, onJumpToFirstMatch }
   const firstHitId = state.firstHitId
   return (
     <div className='flex items-center gap-[var(--sp-1)]'>
-      <span role='status' data-graph-search-status='' className='whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]'>
+      <span role='status' data-graph-search-status='' className='whitespace-nowrap text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>
         {state.hits > 0 ? t('graph.matching_notes', { count: state.hits }) : t('graph.no_matching_notes')}
       </span>
       <Tooltip label={t('graph.only_matching_notes')}>

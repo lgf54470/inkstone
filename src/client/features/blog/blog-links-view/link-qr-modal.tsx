@@ -64,7 +64,7 @@ export function LinkQrModal({ open, onClose, link }: LinkQrModalProps) {
 
 function QrCardHeader({ link }: { link: BlogLink }) {
   return (
-    <div className='flex items-center gap-[var(--sp-2\\.5)] max-w-xs'>
+    <div className='flex items-center gap-[var(--sp-2-5)] max-w-xs'>
       <div className='size-8 flex items-center justify-center rounded-[var(--r-md)] bg-[var(--bg-sunken)] border border-[var(--border-subtle)]'>
         <LinkDynamicIcon icon={link.avatar} name={link.name} size={18} />
       </div>

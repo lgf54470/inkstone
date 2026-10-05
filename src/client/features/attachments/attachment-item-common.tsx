@@ -126,7 +126,7 @@ export function UploadEmptyState({ onUploadClick }: { onUploadClick: () => void 
       <p className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
         {t('attachments.drag_drop_hint')}
       </p>
-      <p className="mt-1 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)] max-w-sm">
+      <p className='mt-1 text-[length:var(--text-11-5)] text-[var(--text-tertiary)] max-w-sm'>
         {t('attachments.upload_guide_hint')}
       </p>
     </div>

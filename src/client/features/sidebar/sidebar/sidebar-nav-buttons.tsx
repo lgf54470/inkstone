@@ -85,7 +85,7 @@ export function BottomNavButton({
       <span className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]')}>
         {icon}
       </span>
-      <span className="truncate text-[length:var(--text-11\.5)] font-medium leading-none">
+      <span className='truncate text-[length:var(--text-11-5)] font-medium leading-none'>
         {label}
       </span>
     </button>
@@ -124,7 +124,7 @@ export function ViewItem({ icon, label, view, count, active, onSelect, }: {
       <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
         {icon}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[length:var(--text-12\.5)] font-medium">{label}</span>
+      <span className='min-w-0 flex-1 truncate text-[length:var(--text-12-5)] font-medium'>{label}</span>
       {count != null && count > 0 && (<span className={countBadgeTone(active)}>{count}</span>)}
     </button>)
 }

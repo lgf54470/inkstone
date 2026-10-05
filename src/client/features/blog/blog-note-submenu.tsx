@@ -22,7 +22,7 @@ export function BlogNoteSubmenu({
 
   return (
     <div
-      className="w-55 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12\.5)]"
+      className='w-55 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none space-y-0.5 text-[length:var(--text-12-5)]'
       onClick={(e) => e.stopPropagation()}
     >
       <SubmenuButton icon={<ExternalLink size={13} className='shrink-0 text-[var(--accent)]' />} label={t('blog.view_in_blog')} onClick={bundle.handleOpenBlog} busy={bundle.isBusy} />

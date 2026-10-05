@@ -59,7 +59,7 @@ function TagPillRemove({
       }}
       className={cn(
         'flex items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/15',
-        isSm ? 'size-3.5 -mr-1 ml-[var(--sp-0\\.5)]' : 'size-4 -mr-1 ml-[var(--sp-0\\.5)]',
+        isSm ? 'size-3.5 -mr-1 ml-[var(--sp-0-5)]' : 'size-4 -mr-1 ml-[var(--sp-0-5)]',
       )}
     >
       <X size={isSm ? 9 : 11} />
@@ -89,7 +89,7 @@ export const TagPill = memo(function TagPill({
       style={pillStyleOf(color)}
       className={cn(
         'group/tag inline-flex items-center rounded-full border transition-all select-none',
-        isSm ? 'h-[var(--sp-5)] gap-[var(--sp-0\\.5)] px-[var(--sp-2)] text-[length:var(--text-10\\.5)] font-medium' : 'h-[var(--sp-6)] gap-[var(--sp-1)] px-[var(--sp-2\\.5)] text-[length:var(--text-12)] font-medium',
+        isSm ? 'h-[var(--sp-5)] gap-[var(--sp-0-5)] px-[var(--sp-2)] text-[length:var(--text-10-5)] font-medium' : 'h-[var(--sp-6)] gap-[var(--sp-1)] px-[var(--sp-2-5)] text-[length:var(--text-12)] font-medium',
         onClick && 'cursor-pointer hover:brightness-95 dark:hover:brightness-110 active:scale-[0.98]',
         className,
       )}

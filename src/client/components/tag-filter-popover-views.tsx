@@ -36,7 +36,7 @@ export function TagList({ tags, selectedTags, query, highlightedRef, onToggle }:
   onToggle: (name: string) => void
 }): JSX.Element {
   if (tags.length === 0)
-    return <div className="px-2 py-3 text-center text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]">{t('notes.no_matching_tags')}</div>
+    return <div className='px-2 py-3 text-center text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('notes.no_matching_tags')}</div>
   return (<div className='max-h-62 overflow-y-auto' role='listbox' aria-multiselectable='true'>
     {tags.map((tag) => {
       const selected = selectedTags.includes(tag.name)
@@ -46,7 +46,7 @@ export function TagList({ tags, selectedTags, query, highlightedRef, onToggle }:
         <span aria-hidden='true' className={cn('size-1.75 shrink-0 rounded-full', !tag.color && 'bg-[var(--text-quaternary)] opacity-40', selected && 'ring-2 ring-[var(--accent)]')} style={tag.color ? { backgroundColor: tag.color } : undefined}/>
         <Hash size={12} className='shrink-0 text-[var(--text-quaternary)]'/>
         <span className='min-w-0 flex-1 truncate'>#<TagNameHighlight name={tag.name} query={query}/></span>
-        <span className="shrink-0 tabular-nums text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{tag.count}</span>
+        <span className='shrink-0 tabular-nums text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{tag.count}</span>
         {selected && <span className='shrink-0 text-[var(--accent)]'>✓</span>}
       </button>)
     })}
@@ -72,7 +72,7 @@ export function TagPickerFooter({ visibleCount, searching, atCap, hasSelection, 
         {searching ? t('command.select_all_matches', { value0: visibleCount }) : t('command.select_all_tags', { value0: visibleCount })}
       </button>
     </div>
-    {atCap && <div className="mt-1.5 flex items-center gap-1.5 px-1 text-[length:var(--text-10\\.5)] font-medium text-[var(--danger)]">
+    {atCap && <div className='mt-1.5 flex items-center gap-1.5 px-1 text-[length:var(--text-10-5)] font-medium text-[var(--danger)]'>
       <TriangleAlert size={11} className='shrink-0'/>
       {t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}
     </div>}

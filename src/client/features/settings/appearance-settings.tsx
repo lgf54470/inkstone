@@ -172,7 +172,7 @@ function BackgroundSwatches({ appearance, setters }: { appearance: AppearanceSet
             type='button'
             onClick={() => setters.setBackground(background.name)}
             aria-pressed={appearance.background === background.name}
-            className={cn('flex h-8 min-w-21 items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11\\.5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
+            className={cn('flex h-8 min-w-21 items-center gap-2 rounded-[var(--r-md)] border px-2.5 text-[length:var(--text-11-5)] transition-[border-color,background-color,box-shadow] duration-[var(--dur-fast)]', appearance.background === background.name ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-ring)]' : 'border-[var(--border-default)] bg-[var(--bg-base)] hover:bg-[var(--bg-hover)]')}
           >
             <span aria-hidden='true' className='size-4 rounded-full border border-black/10 shadow-[var(--shadow-sm)]' style={{ background: background.swatch }} />
             <span>{background.label}</span>
@@ -314,8 +314,8 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
   return (
     <div className='mt-1 mb-3 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2'>
       <div className='mb-1 flex items-center justify-between gap-2'>
-        <span className="text-[length:var(--text-9\.5)] font-medium text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview')}</span>
-        <span className="text-[length:var(--text-9\.5)] text-[var(--text-quaternary)]">{t('settings.year_grid_columns_preview_tip')}</span>
+        <span className='text-[length:var(--text-9-5)] font-medium text-[var(--text-quaternary)]'>{t('settings.year_grid_columns_preview')}</span>
+        <span className='text-[length:var(--text-9-5)] text-[var(--text-quaternary)]'>{t('settings.year_grid_columns_preview_tip')}</span>
       </div>
       <YearGrid
         year={previewYear}

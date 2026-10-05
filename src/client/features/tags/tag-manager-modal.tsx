@@ -35,7 +35,7 @@ function TagManagerPanel({ controller }: { controller: TagManagerController }) {
             aria-label={t('notes.tag_filter_search')}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('notes.tag_filter_search')}
-            className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"
+            className='h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pr-3 pl-9 text-[length:var(--text-12-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'
           />
         </div>
         {controller.removeUnused && unusedTags.length > 0 && !isCreating && (
@@ -85,7 +85,7 @@ function TagCreateForm({ controller, onDone }: { controller: TagManagerControlle
         onChange={(event) => setName(event.target.value)}
         onKeyDown={(event) => { if (event.key === 'Escape') onDone() }}
         placeholder={controller.labels?.createPlaceholder ?? t('tags.new_placeholder')}
-        className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className='h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       />
       <Button variant='primary' size='sm' type='submit' disabled={!name.trim()} className='h-8 shrink-0'>{t('tags.create')}</Button>
       <Tooltip label={t('common.cancel')}>
@@ -111,7 +111,7 @@ function TagManagerList({ controller, query }: { controller: TagManagerControlle
     <div className='max-h-105 space-y-1 divide-y divide-[var(--border-subtle)]/50 overflow-y-auto'>
       {choices.map((tag) => <TagManagerRow key={tag.id} tag={tag} controller={controller} />)}
       {choices.length === 0 && (
-        <div className="py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t('tags.no_match')}</div>
+        <div className='py-10 text-center text-[length:var(--text-12-5)] text-[var(--text-quaternary)]'>{t('tags.no_match')}</div>
       )}
     </div>
   )

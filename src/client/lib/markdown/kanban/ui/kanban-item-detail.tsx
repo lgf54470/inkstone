@@ -74,7 +74,7 @@ function DetailStatusDropdown({
       <button
         type='button'
         onClick={() => setOpen((o) => !o)}
-        className='flex items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
+        className='flex items-center gap-[var(--sp-2)] rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-2-5)] py-[var(--sp-1)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
         aria-haspopup='listbox'
         aria-expanded={open}
         {...(open ? { 'aria-controls': panelId } : {})}
@@ -167,7 +167,7 @@ function DetailHeader({
   const iconPanelId = useId()
 
   return (
-    <div className='flex flex-col gap-[var(--sp-2\\.5)]'>
+    <div className='flex flex-col gap-[var(--sp-2-5)]'>
       <DetailStatusDropdown
         statusCol={statusCol}
         statusVal={statusVal}

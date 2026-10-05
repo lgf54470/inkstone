@@ -163,8 +163,8 @@
   right: 6px;
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.75);
-  padding: var(--sp-0\.5) var(--sp-1);
+  gap: var(--sp-0-75);
+  padding: var(--sp-0-5) var(--sp-1);
   border-radius: var(--r-sm);
   background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
   backdrop-filter: blur(8px);
@@ -185,8 +185,8 @@
 .ink-prose .table-floating-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-0\.75);
-  padding: var(--sp-0\.5) var(--sp-1\.5);
+  gap: var(--sp-0-75);
+  padding: var(--sp-0-5) var(--sp-1-5);
   border-radius: var(--r-xs);
   font-size: var(--text-11);
   font-family: var(--font-ui);
@@ -445,7 +445,7 @@
 }
 .ink-prose .math-block.math-source {
   margin: 0.9em 0;
-  padding: var(--sp-2\.5) var(--sp-3\.5);
+  padding: var(--sp-2-5) var(--sp-3-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-sm);
   background: var(--bg-inset);

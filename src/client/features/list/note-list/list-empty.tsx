@@ -44,7 +44,7 @@ function EmptyActionButton({ icon, label, onClick }: { icon: ReactNode; label: s
     <button
       type='button'
       onClick={onClick}
-      className='inline-flex h-[var(--sp-8)] items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-[var(--sp-3)] text-[length:var(--text-12\\\\.5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+      className='inline-flex h-[var(--sp-8)] items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] px-[var(--sp-3)] text-[length:var(--text-12-5)] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
     >
       {icon}
       {label}
@@ -116,7 +116,7 @@ function PeriodNeighborButton({ label, count, leading, onClick }: { label: strin
     <button
       type='button'
       onClick={onClick}
-      className='inline-flex h-[var(--sp-7)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[length:var(--text-11\\\\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+      className='inline-flex h-[var(--sp-7)] items-center gap-[var(--sp-1)] rounded-[var(--r-md)] border border-[var(--border-default)] px-2.5 text-[length:var(--text-11-5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
     >
       {leading && <ChevronLeft size={12} />}
       {label} · {t('common.value0_notes', { value0: count })}

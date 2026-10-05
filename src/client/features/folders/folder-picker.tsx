@@ -57,7 +57,7 @@ export function FolderPicker({
     <div className='space-y-1 p-[var(--sp-2)]'>
     {allowRoot && !query.trim() && (<FolderChoice label={rootLabel ?? t('folders.top_level')} selected={currentId === null} onClick={() => choose(null)}/>)}
     {choices.map(({ folder, path }) => (<FolderChoice key={folder.id} label={path} icon={folder.icon} color={folder.color} selected={currentId === folder.id} onClick={() => choose(folder.id)}/>))}
-    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className='px-[var(--sp-3)] py-[var(--sp-10)] text-center text-[length:var(--text-12\\.5)] text-[var(--text-quaternary)]'>{t('folders.no_match')}</p>)}
+    {choices.length === 0 && (query.trim() || !allowRoot) && (<p className='px-[var(--sp-3)] py-[var(--sp-10)] text-center text-[length:var(--text-12-5)] text-[var(--text-quaternary)]'>{t('folders.no_match')}</p>)}
     </div>
   </Drawer>)
 }

@@ -65,7 +65,7 @@ function VirtualTree({ ns, rootLabel, rootIcon, filter, filterArg }: {
     }
   }
   return (
-    <div role='tree' aria-label={rootLabel} className='mt-[var(--sp-0\\.5)] space-y-px' onDragOver={blockDrop} onDrop={blockDrop}>
+    <div role='tree' aria-label={rootLabel} className='mt-[var(--sp-0-5)] space-y-px' onDragOver={blockDrop} onDrop={blockDrop}>
       <VirtualRow ns={ns} rootLabel={rootLabel} rootIcon={rootIcon} node={root}/>
     </div>
   )
@@ -145,7 +145,7 @@ function VirtualRowLabel({ active, isRoot, rootLabel, name, tooltip, onOpen }: {
 }) {
   return (
     <Tooltip label={tooltip} side='right'>
-      <button type='button' aria-current={active ? 'page' : undefined} onClick={onOpen} className="min-w-0 flex-1 truncate py-[var(--sp-1)] text-left text-[length:var(--text-12\.5)] font-medium">
+      <button type='button' aria-current={active ? 'page' : undefined} onClick={onOpen} className='min-w-0 flex-1 truncate py-[var(--sp-1)] text-left text-[length:var(--text-12-5)] font-medium'>
         {isRoot ? rootLabel : name}
       </button>
     </Tooltip>

@@ -42,7 +42,7 @@ export function GraphColorRules({ groups, onChange }: GraphColorRulesProps) {
           onRemove={() => onChange(groups.filter((item) => item.id !== group.id))}
         />
       ))}
-      <p className='text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-quaternary)]'>{t('graph.color_rule_hint')}</p>
+      <p className='text-[length:var(--text-10-5)] leading-relaxed text-[var(--text-quaternary)]'>{t('graph.color_rule_hint')}</p>
     </div>
   )
 }
@@ -61,7 +61,7 @@ function GraphColorRuleRow({ group, onChange, onRemove }: {
           placeholder={t('graph.color_rule_query')}
           aria-label={t('graph.color_rule_query')}
           maxLength={COLOR_GROUP_QUERY_MAX}
-          className='h-7 min-w-0 flex-1 text-[length:var(--text-11\.5)]'
+          className='h-7 min-w-0 flex-1 text-[length:var(--text-11-5)]'
         />
         <IconButton size='sm' label={t('graph.color_rule_remove')} onClick={onRemove}>
           <X size={13}/>

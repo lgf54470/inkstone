@@ -61,7 +61,7 @@
     "--shadow-pop",
     "--shadow-sm",
     "--shadow-xs",
-    "--sp-0.625",
+    "--sp-0-625",
     "--success",
     "--syntax-comment",
     "--syntax-constant",
@@ -76,9 +76,9 @@
     "--syntax-type-definition",
     "--syntax-variable",
     "--text-10",
-    "--text-10.5",
+    "--text-10-5",
     "--text-11",
-    "--text-11.5",
+    "--text-11-5",
     "--text-12",
     "--text-13",
     "--text-inverse",
@@ -759,7 +759,7 @@
         "0 1px 2px oklch(0.2 0.01 265 / 0.05)"
       ]
     },
-    "--sp-0.625": {
+    "--sp-0-625": {
       "app": [
         "2.5px"
       ],
@@ -929,7 +929,7 @@
         "10px"
       ]
     },
-    "--text-10.5": {
+    "--text-10-5": {
       "app": [
         "10.5px"
       ],
@@ -945,7 +945,7 @@
         "11px"
       ]
     },
-    "--text-11.5": {
+    "--text-11-5": {
       "app": [
         "11.5px"
       ],

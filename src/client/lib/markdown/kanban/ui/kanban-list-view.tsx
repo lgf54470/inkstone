@@ -60,7 +60,7 @@ function ListRowTagBadges({
               onToggleTag?.(tag)
             }}
             style={getKanbanTagStyle(color)}
-            className={`hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)] font-semibold transition-all ${
+            className={`hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-10)] font-semibold transition-all ${
               isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-bold' : ''
             }`}
           >
@@ -158,7 +158,7 @@ function ListRowSubtasksAndDate({
   return (
     <>
       {subtasks.length > 0 && (
-        <span className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[var(--text-tertiary)]'>
+        <span className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[var(--text-tertiary)]'>
           <CheckSquare size={11} />
           <span>{completedCount}/{subtasks.length}</span>
         </span>
@@ -187,7 +187,7 @@ function ListRowTrailing({
       {statusOpt && (
         <span
           style={getKanbanTagStyle(statusOpt.color)}
-          className='inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] font-medium'
+          className='inline-flex items-center rounded-[var(--r-xs)] px-[var(--sp-2)] py-[var(--sp-0-5)] font-medium'
         >
           {formatKanbanOptionLabel(statusOpt, 'status')}
         </span>
@@ -195,14 +195,14 @@ function ListRowTrailing({
       {priorityOpt && (
         <span
           style={getKanbanTagStyle(priorityOpt.color)}
-          className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium'
+          className='hidden sm:inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-xs)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] font-medium'
         >
           <Flag size={11} />
           <span>{formatKanbanOptionLabel(priorityOpt, 'priority')}</span>
         </span>
       )}
       {filesCount > 0 && (
-        <span className='hidden sm:inline-flex items-center gap-[var(--sp-0\\.5)] text-[var(--text-tertiary)]'>
+        <span className='hidden sm:inline-flex items-center gap-[var(--sp-0-5)] text-[var(--text-tertiary)]'>
           <Paperclip size={11} />
           <span>{filesCount}</span>
         </span>
@@ -269,7 +269,7 @@ function KanbanListRow({
       {/* The row is the board's card stretched sideways (SH-107): a container, and the title it leads
           with is the button that opens the detail. */}
       <div
-        className={`flex items-center justify-between gap-[var(--sp-3)] px-[var(--sp-3)] py-[var(--sp-2\\.5)] transition-colors hover:bg-[var(--bg-hover)] ${
+        className={`flex items-center justify-between gap-[var(--sp-3)] px-[var(--sp-3)] py-[var(--sp-2-5)] transition-colors hover:bg-[var(--bg-hover)] ${
           isSelected ? 'bg-[var(--accent-softer)]' : ''
         }`}
       >
@@ -337,7 +337,7 @@ export const KanbanListView = memo(function KanbanListView({
           <button
             type='button'
             onClick={onAddItem}
-            className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+            className='flex items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1-5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
           >
             <Plus size={13} />
             <span>{t('preview.kanban_new_item')}</span>

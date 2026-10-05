@@ -174,7 +174,7 @@ function SearchBox({ search, onSearchChange }: { search: string; onSearchChange:
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={t('attachments.search_placeholder')}
-        className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pr-7 pl-8 text-[length:var(--text-12\\.5)] outline-none transition-colors placeholder:text-[var(--text-quaternary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
+        className='h-8 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pr-7 pl-8 text-[length:var(--text-12-5)] outline-none transition-colors placeholder:text-[var(--text-quaternary)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]'
       />
       {search && (
         <button

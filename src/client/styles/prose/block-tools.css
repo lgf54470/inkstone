@@ -8,7 +8,7 @@
 }
 .ink-prose .block-head-title {
   font-family: var(--font-ui);
-  font-size: var(--text-10\.5);
+  font-size: var(--text-10-5);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -22,7 +22,7 @@
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   margin-inline-start: auto;
 }
 .ink-prose .js-example-controls > .block-tools {
@@ -49,7 +49,7 @@
 }
 .ink-prose .block-tool-btn--text {
   width: auto;
-  padding-inline: var(--sp-1\.5);
+  padding-inline: var(--sp-1-5);
   font-family: var(--font-ui);
   font-size: var(--text-11);
   line-height: 1;
@@ -109,8 +109,8 @@
 .ink-prose .block-settings {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1\.5);
-  padding: var(--sp-2) var(--sp-2\.5);
+  gap: var(--sp-1-5);
+  padding: var(--sp-2) var(--sp-2-5);
   background: var(--bg-inset);
   border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-ui);
@@ -143,7 +143,7 @@
   flex-wrap: wrap;
 }
 .ink-prose .block-settings-group.is-fields {
-  gap: var(--sp-1\.5);
+  gap: var(--sp-1-5);
 }
 .ink-prose .block-opt-btn {
   padding: 3px 10px;

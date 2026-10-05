@@ -18,7 +18,7 @@ const SELECT_CHEVRON_SIZE = 11
 
 const FIELD_BASE = cn(
   'w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)]',
-  'px-[var(--sp-2\\.5)] text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
+  'px-[var(--sp-2-5)] text-[length:var(--text-13)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)]',
   'transition-[border-color,box-shadow] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
   'focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none',
   'disabled:opacity-50',
@@ -44,7 +44,7 @@ export function Input({
     return (
       <div className='relative flex items-center'>
         {leading && (
-          <span className='pointer-events-none absolute left-[var(--sp-2\\.5)] text-[var(--text-quaternary)]'>
+          <span className='pointer-events-none absolute left-[var(--sp-2-5)] text-[var(--text-quaternary)]'>
             {leading}
           </span>
         )}
@@ -60,7 +60,7 @@ export function Input({
             className,
           )}
         />
-        {trailing && <span className='absolute right-[var(--sp-2\\.5)] flex items-center'>{trailing}</span>}
+        {trailing && <span className='absolute right-[var(--sp-2-5)] flex items-center'>{trailing}</span>}
       </div>
     )
   }
@@ -97,7 +97,7 @@ export function Select({
         viewBox='0 0 12 12'
         width={SELECT_CHEVRON_SIZE}
         height={SELECT_CHEVRON_SIZE}
-        className='pointer-events-none absolute right-[var(--sp-2\\.5)] top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
+        className='pointer-events-none absolute right-[var(--sp-2-5)] top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]'
         aria-hidden='true'
       >
         <path
@@ -145,7 +145,7 @@ export const Switch = memo(function Switch({
       <span
         aria-hidden='true'
         className={cn(
-          'absolute left-[var(--sp-0\\.5)] top-[var(--sp-0\\.5)] size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
+          'absolute left-[var(--sp-0-5)] top-[var(--sp-0-5)] size-5 rounded-full bg-white shadow-[var(--shadow-sm)] md:size-[var(--sp-4)]',
           'transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
           checked ? 'translate-x-5 md:translate-x-3.5' : 'translate-x-0',
         )}
@@ -219,10 +219,10 @@ function SegmentedButton<T extends string>({
         move(index, event.key)
       }}
       className={cn(
-        'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-[var(--sp-1\\.5)] whitespace-nowrap rounded-[var(--r-sm)] font-medium',
+        'relative z-[var(--z-sticky)] inline-flex items-center justify-center gap-[var(--sp-1-5)] whitespace-nowrap rounded-[var(--r-sm)] font-medium',
         'transition-[color,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'disabled:pointer-events-none disabled:opacity-45',
-        size === 'sm' ? 'h-[var(--segment-h-sm)] px-[var(--sp-2\\.5)] text-[length:var(--text-11\\.5)] md:h-[var(--segment-h-sm-compact)] md:px-[var(--sp-2)]' : 'h-[var(--segment-h-md)] px-[var(--sp-3)] text-[length:var(--text-12\\.5)] md:h-[var(--segment-h-md-compact)] md:px-[var(--sp-2\\.5)]',
+        size === 'sm' ? 'h-[var(--segment-h-sm)] px-[var(--sp-2-5)] text-[length:var(--text-11-5)] md:h-[var(--segment-h-sm-compact)] md:px-[var(--sp-2)]' : 'h-[var(--segment-h-md)] px-[var(--sp-3)] text-[length:var(--text-12-5)] md:h-[var(--segment-h-md-compact)] md:px-[var(--sp-2-5)]',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-control)]'
           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]',
@@ -276,7 +276,7 @@ function SegmentedInner<T extends string>({
       aria-required={ariaRequired}
       aria-disabled={disabled || undefined}
       className={cn(
-        'relative inline-flex items-center gap-[var(--sp-0\\.5)] rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[var(--sp-0\\.75)]',
+        'relative inline-flex items-center gap-[var(--sp-0-5)] rounded-[var(--r-md)] bg-[var(--bg-inset)] p-[var(--sp-0-75)]',
         'border border-[var(--border-subtle)]',
         className,
       )}
@@ -412,10 +412,10 @@ export function Field({
     <div className={cn('space-y-1.5', className)}>
       <label id={labelId} htmlFor={controlId} className='block text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {label}
-        {required && <span aria-hidden='true' className='ml-[var(--sp-0\\.5)] text-[var(--danger)]'>*</span>}
+        {required && <span aria-hidden='true' className='ml-[var(--sp-0-5)] text-[var(--danger)]'>*</span>}
       </label>
       <div>{control}</div>
-      {hint && <p id={hintId} className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">{hint}</p>}
+      {hint && <p id={hintId} className='text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-quaternary)]'>{hint}</p>}
     </div>
   )
 }
@@ -442,7 +442,7 @@ export function SettingRow({
       <div className='min-w-0 flex-1'>
         <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>{title}</div>
         {description && (
-          <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <div className='mt-[var(--sp-0-5)] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>
             {description}
           </div>
         )}

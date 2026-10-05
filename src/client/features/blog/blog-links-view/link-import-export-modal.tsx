@@ -204,7 +204,7 @@ function LinkImportTab({
     <div className='space-y-3'>
       <div className='flex items-center justify-between'>
         <span className='text-[length:var(--text-12)] text-[var(--text-secondary)]'>{t('blog.link_import_paste_or_upload')}</span>
-        <label className='cursor-pointer inline-flex items-center gap-[var(--sp-1)] rounded bg-[var(--bg-sunken)] px-[var(--sp-2\\.5)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)]'>
+        <label className='cursor-pointer inline-flex items-center gap-[var(--sp-1)] rounded bg-[var(--bg-sunken)] px-[var(--sp-2-5)] py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)]'>
           <Upload size={12} />
           {t('blog.link_choose_file')}
           <input type='file' accept='.json,.html,.htm,.csv' className='hidden' onChange={handleFileUpload} />
@@ -249,7 +249,7 @@ function FormatSelectButton({ current, target, label, icon, onSelect }: { curren
     <button
       type='button'
       onClick={() => onSelect(target)}
-      className={`flex items-center gap-[var(--sp-1\\.5)] px-[var(--sp-2\\.5)] py-[var(--sp-1\\.5)] rounded-[var(--r-sm)] text-[length:var(--text-11)] border transition-colors ${
+      className={`flex items-center gap-[var(--sp-1-5)] px-[var(--sp-2-5)] py-[var(--sp-1-5)] rounded-[var(--r-sm)] text-[length:var(--text-11)] border transition-colors ${
         isSelected
           ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
           : 'border-[var(--border-subtle)] bg-[var(--bg-sunken)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'

@@ -27,14 +27,14 @@ export function NoteSettings() {
         onChange={(e) => setTemplate(e.target.value)}
         rows={10}
         spellCheck={false}
-        className="w-full font-mono text-[length:var(--text-12\.5)]"
+        className='w-full font-mono text-[length:var(--text-12-5)]'
       />
       <Button size='sm' variant='ghost' onClick={restoreDefault}>
         {t('settings.restore_default_template')}
       </Button>
       </div>
     </SettingRow>
-    <p className="pt-3 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-quaternary)]">
+    <p className='pt-3 text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-quaternary)]'>
       {t('settings.new_note_template_hint')}
     </p>
     <TemplatePreview template={notes.newNoteTemplate} />

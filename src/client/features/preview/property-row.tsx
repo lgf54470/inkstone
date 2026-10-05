@@ -134,7 +134,7 @@ function PropertyKeyCell({ bundle, rowKey, value }: { bundle: NotePropertiesBund
             if (e.key === 'Enter') handleRename(rowKey, renamedKey)
             if (e.key === 'Escape') setEditingKey(null)
           }}
-          className="w-full rounded bg-[var(--surface-primary)] px-1.5 py-0.5 text-[length:var(--text-11\.5)] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]"
+          className='w-full rounded bg-[var(--surface-primary)] px-1.5 py-0.5 text-[length:var(--text-11-5)] text-[var(--text-primary)] outline-none ring-1 ring-[var(--accent)]'
         />
       ) : (
         <span

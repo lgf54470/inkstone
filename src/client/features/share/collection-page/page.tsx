@@ -32,7 +32,7 @@ export function CollectionPage({ slug }: { slug: string }) {
           <span className='flex items-center gap-1.5 text-[var(--accent)]'>
             <Logo size={15} />
           </span>
-          <span className='text-[length:var(--text-12\.5)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>
+          <span className='text-[length:var(--text-12-5)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>
             {bundle.title || t('share.category_collections')}
           </span>
           <span className='flex-1' />
@@ -83,7 +83,7 @@ function CollectionPasswordGate({ bundle }: { bundle: ReturnType<typeof useColle
       <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>
         {t('share.collection_page_requires_password')}
       </h1>
-      <p className='mt-1.5 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]'>
+      <p className='mt-1.5 text-[length:var(--text-12-5)] text-[var(--text-tertiary)]'>
         {t('share.collection_page_passcode_hint')}
       </p>
       <form
@@ -189,7 +189,7 @@ function CollectionDirectory({ title, count, notes, collectionSlug, hasMore, isL
         </div>
       )}
       <footer className='mt-16 border-t border-[var(--border-subtle)] pt-6 text-center'>
-        <span className='inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]'>
+        <span className='inline-flex items-center gap-1.5 text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>
           <LockOpen size={12} />
           {t('share.collection_view_not_snapshot')}
         </span>

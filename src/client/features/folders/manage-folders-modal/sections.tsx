@@ -84,7 +84,7 @@ export function FolderControlsBar({ query, onQueryChange, emptyFolders, isCreati
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={t('folders.search')}
-          className="h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]"
+          className='h-8 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] pl-9 pr-3 text-[length:var(--text-12-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)]'
         />
       </div>
       {emptyFolders.length > 0 && !isCreating && (
@@ -137,7 +137,7 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
           if (e.key === 'Escape') onCancel()
         }}
         placeholder={t('common.new_folder')}
-        className="h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12\.5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+        className='h-8 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 text-[length:var(--text-12-5)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       />
       <Button
         variant='primary'
@@ -164,7 +164,7 @@ export function FolderCreateForm({ value, onChange, onSubmit, onCancel }: {
 
 function FolderListEmpty({ hasQuery }: { hasQuery: boolean }) {
   return (
-    <div className="py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">
+    <div className='py-10 text-center text-[length:var(--text-12-5)] text-[var(--text-quaternary)]'>
       {hasQuery ? t('folders.no_match') : t('folders.no_folders')}
     </div>
   )
@@ -187,7 +187,7 @@ function FolderRenameInput({ value, onChange, onSave, onCancel }: {
           if (e.key === 'Enter') onSave()
           if (e.key === 'Escape') onCancel()
         }}
-        className="h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12\.5)] outline-none"
+        className='h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12-5)] outline-none'
       />
       <Tooltip label={t('common.save')}>
         <IconButton
@@ -224,7 +224,7 @@ function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
           {path}
         </span>
         {isInbox && (
-          <span className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]">
+          <span className='inline-flex items-center gap-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[length:var(--text-10-5)] font-medium text-[var(--accent)]'>
             <Inbox size={10.5} />
             {t('folders.inbox')}
           </span>
@@ -232,7 +232,7 @@ function FolderNameDisplay({ path, isInbox, boundTemplate, count }: {
         {boundTemplate && (
           <span
             title={`${t('folders.default_template')}: ${boundTemplate.name}`}
-            className="inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]"
+            className='inline-flex items-center gap-1 rounded bg-[var(--accent-soft)]/60 px-1.5 py-0.5 text-[length:var(--text-10-5)] font-medium text-[var(--accent)]'
           >
             <LayoutTemplate size={10} />
             <span className='max-w-[100px] truncate'>{boundTemplate.name}</span>

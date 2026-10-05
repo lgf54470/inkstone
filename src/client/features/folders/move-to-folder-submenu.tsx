@@ -42,7 +42,7 @@ function MoveSearchField({
               onSubmitFirst()
             }
           }}
-          className="w-full bg-transparent pr-6 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] outline-none"
+          className='w-full bg-transparent pr-6 text-[length:var(--text-12-5)] text-[var(--text-primary)] outline-none'
         />
         <Search size={14} className='pointer-events-none absolute right-0 text-[var(--text-quaternary)]' />
       </div>
@@ -55,7 +55,7 @@ function RemoveFromFolderRow({ onRemove }: { onRemove: () => void }) {
     <button
       type='button'
       onClick={onRemove}
-      className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\\.5)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      className='flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12-5)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
     >
       <FolderMinus size={13} className='shrink-0 text-[var(--text-tertiary)]' />
       <span className='min-w-0 flex-1 truncate'>{t('notes.remove_from_folder')}</span>
@@ -77,7 +77,7 @@ function FolderChoiceRow({
       type='button'
       onClick={onPick}
       className={cn(
-        'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\\.5)] transition-colors',
+        'group flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12-5)] transition-colors',
         selected
           ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -110,7 +110,7 @@ function SubmenuActions({ onCreateNew, onManageFolders }: { onCreateNew: () => v
       <button
         type='button'
         onClick={onCreateNew}
-        className="flex w-full items-center gap-2 whitespace-nowrap rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\\.5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+        className='flex w-full items-center gap-2 whitespace-nowrap rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12-5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
       >
         <FolderPlus size={13} className='shrink-0 text-[var(--text-tertiary)]' />
         <span className='truncate'>{t('folders.create_new')}</span>
@@ -119,7 +119,7 @@ function SubmenuActions({ onCreateNew, onManageFolders }: { onCreateNew: () => v
       <button
         type='button'
         onClick={onManageFolders}
-        className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12\\.5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
+        className='flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12-5)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
       >
         <Settings2 size={13} className='shrink-0 text-[var(--text-tertiary)]' />
         <span>{t('folders.manage_folders')}</span>
@@ -153,7 +153,7 @@ export function MoveToFolderSubmenu({
       className='w-62 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)] outline-none'
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-2 pt-1 pb-1.5 text-[length:var(--text-12\\.5)] font-medium text-[var(--text-secondary)]">
+      <div className='px-2 pt-1 pb-1.5 text-[length:var(--text-12-5)] font-medium text-[var(--text-secondary)]'>
         {t('folders.move_to_header')}
       </div>
 

@@ -31,12 +31,12 @@ export function KeyboardHelpModal({ onClose }: {
   return (<Modal open onClose={onClose} title={t('templates.keyboard_shortcuts')} width={HELP_MODAL_WIDTH}>
     <div className='divide-y divide-[var(--border-subtle)]'>
       {rows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
-        <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
+        <span className='text-[length:var(--text-12-5)] text-[var(--text-secondary)]'>{row.label}</span>
         <Kbd keys={row.keys}/>
       </div>))}
-      <div className="pt-2.5 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">{t('templates.help_select_section')}</div>
+      <div className='pt-2.5 pb-1 text-[length:var(--text-10-5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('templates.help_select_section')}</div>
       {selectRows.map((row) => (<div key={row.label} className='flex items-center justify-between gap-3 py-2.5'>
-        <span className="text-[length:var(--text-12\.5)] text-[var(--text-secondary)]">{row.label}</span>
+        <span className='text-[length:var(--text-12-5)] text-[var(--text-secondary)]'>{row.label}</span>
         <Kbd keys={row.keys}/>
       </div>))}
     </div>
@@ -81,12 +81,12 @@ export function PublishTemplateDialog({ template, category, onClose, onPublished
       <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-3'>
         <div className='flex items-center gap-1.5'>
           <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>{template.name}</h3>
-          <span className="shrink-0 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{category}</span>
+          <span className='shrink-0 text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{category}</span>
         </div>
         {template.tags.length > 0 && (<div className='mt-1.5 flex flex-wrap items-center gap-1'>
           {template.tags.map((tag) => (<span key={tag} className='rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]'>#{tag}</span>))}
         </div>)}
-        {template.description && <p className="mt-1.5 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>}
+        {template.description && <p className='mt-1.5 text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>{template.description}</p>}
         <pre className='mt-2 max-h-55 overflow-y-auto text-[length:var(--text-11)] leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]'>{template.content}</pre>
       </div>
     </div>

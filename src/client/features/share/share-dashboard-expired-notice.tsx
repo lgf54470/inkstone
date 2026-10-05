@@ -22,7 +22,7 @@ export function ShareExpiredNoticeCard({ expiredLinks, onAcknowledge, onViewExpi
       className='rounded-[var(--r-lg)] border border-[var(--warning)]/30 bg-[var(--warning)]/10 p-[var(--sp-4)]'
     >
       <div className='flex items-center justify-between gap-[var(--sp-2)]'>
-        <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-semibold text-[var(--warning)]'>
+        <p className='flex items-center gap-[var(--sp-1-5)] text-[length:var(--text-12)] font-semibold text-[var(--warning)]'>
           <TriangleAlert size={14} aria-hidden />
           {t('share.expired_notice_title', { count: expiredLinks.total })}
         </p>
@@ -42,7 +42,7 @@ export function ShareExpiredNoticeCard({ expiredLinks, onAcknowledge, onViewExpi
         ))}
       </ul>
       {expiredLinks.total > expiredLinks.items.length && (
-        <p className='pt-[var(--sp-1\\.5)] text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
+        <p className='pt-[var(--sp-1-5)] text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           {t('share.expired_notice_more', { count: expiredLinks.total - expiredLinks.items.length })}
         </p>
       )}

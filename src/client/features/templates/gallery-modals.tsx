@@ -63,7 +63,7 @@ export function TemplateEditorModal({ template, categories, onClose }: {
         <Input value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder={t('templates.description')}/>
       </Field>
       <Field label={t('templates.template_content')} hint={t('templates.template_content_hint')}>
-        <Textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} rows={16} spellCheck={false} className="min-h-70 font-mono text-[length:var(--text-12\.5)]"/>
+        <Textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} rows={16} spellCheck={false} className='min-h-70 font-mono text-[length:var(--text-12-5)]'/>
       </Field>
     </div>
   </Modal>)

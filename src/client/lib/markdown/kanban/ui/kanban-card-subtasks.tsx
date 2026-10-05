@@ -20,7 +20,7 @@ function SubtaskItemRow({
 }) {
   return (
     <div
-      className='group/st flex flex-col gap-[var(--sp-0\\.5)] text-[length:var(--text-12)]'
+      className='group/st flex flex-col gap-[var(--sp-0-5)] text-[length:var(--text-12)]'
       onClick={(e) => e.stopPropagation()}
     >
       <div className='flex items-center gap-[var(--sp-2)]'>
@@ -87,7 +87,7 @@ function AddSubtaskInput({
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={onCancel}
-        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       />
     </div>
   )
@@ -110,7 +110,7 @@ function SubtaskListExpanded({
 }) {
   return (
     <div
-      className='mt-[var(--sp-1\\.5)] flex flex-col gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 p-[var(--sp-2)]'
+      className='mt-[var(--sp-1-5)] flex flex-col gap-[var(--sp-1-5)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 p-[var(--sp-2)]'
       onClick={(e) => e.stopPropagation()}
     >
       {subtasks.map((st) => (
@@ -157,14 +157,14 @@ function SubtaskSummaryBar({
         e.stopPropagation()
         onToggleExpand()
       }}
-      className='flex w-full cursor-pointer items-center justify-between gap-[var(--sp-2)] py-[var(--sp-0\\.5)] text-left text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
+      className='flex w-full cursor-pointer items-center justify-between gap-[var(--sp-2)] py-[var(--sp-0-5)] text-left text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
     >
-      <span className='flex items-center gap-[var(--sp-1\\.5)] font-medium'>
+      <span className='flex items-center gap-[var(--sp-1-5)] font-medium'>
         <ListTodo size={12} className='text-[var(--accent)]' />
         <span>{`${completedCount}/${totalCount}`}</span>
       </span>
       <span className='flex items-center gap-[var(--sp-2)]'>
-        <span className='block h-[var(--sp-1\\.5)] w-[var(--sp-16)] overflow-hidden rounded-full bg-[var(--border-subtle)]'>
+        <span className='block h-[var(--sp-1-5)] w-[var(--sp-16)] overflow-hidden rounded-full bg-[var(--border-subtle)]'>
           <span
             className='block h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
             style={{ width: `${percent}%` }}

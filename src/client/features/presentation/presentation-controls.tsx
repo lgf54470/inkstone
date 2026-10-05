@@ -59,7 +59,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       data-presentation-chrome
       inert={chromeHidden || occluded ? true : undefined}
       className={cn(
-        'absolute bottom-[var(--sp-4)] left-1/2 flex -translate-x-1/2 items-center gap-[var(--sp-0\\.5)] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]',
+        'absolute bottom-[var(--sp-4)] left-1/2 flex -translate-x-1/2 items-center gap-[var(--sp-0-5)] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]',
         'transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)]',
         chromeHidden && 'pointer-events-none opacity-0 invisible',
       )}
@@ -288,7 +288,7 @@ export function SlideStepper({ slideIndex, slideCount, subPage, pageCount, step,
 export function SlideProgress({ page, pageTotal }: { page: number; pageTotal: number }) {
   return (
     <div
-      className='pointer-events-none absolute inset-x-0 bottom-0 h-[var(--sp-0\\.5)] bg-[var(--border-subtle)]'
+      className='pointer-events-none absolute inset-x-0 bottom-0 h-[var(--sp-0-5)] bg-[var(--border-subtle)]'
       aria-hidden='true'
     >
       <div data-slide-progress className='h-full bg-[var(--accent)] transition-[width] duration-[var(--dur-base)] ease-[var(--ease-out)]' style={{ width: `${Math.round((page / pageTotal) * 100)}%` }} />

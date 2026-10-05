@@ -31,7 +31,7 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
       <SectionHead open={open} onToggle={() => setOpen((value) => !value)} onCreate={onCreate} />
 
       {open && (
-        <div className='space-y-0.5 pt-[var(--sp-0\\.5)]'>
+        <div className='space-y-0.5 pt-[var(--sp-0-5)]'>
           {playlists.length === 0
             ? <p className='px-2.5 py-[var(--sp-1)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_playlists')}</p>
             : playlists.map((playlist) => (

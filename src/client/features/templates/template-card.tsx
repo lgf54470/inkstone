@@ -207,10 +207,10 @@ function CardTitleRow({
 function CardMetaFooter({ categoryName, lineCount }: { categoryName: string; lineCount: number }) {
   return (
     <div className='relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5'>
-      <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{categoryName}</span>
-      <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">·</span>
-      <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{t('templates.lines_count', { value0: lineCount })}</span>
-      <span className="ml-auto text-[length:var(--text-10\\.5)] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100">{t('templates.use_template')} →</span>
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{categoryName}</span>
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>·</span>
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{t('templates.lines_count', { value0: lineCount })}</span>
+      <span className='ml-auto text-[length:var(--text-10-5)] font-medium text-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-100'>{t('templates.use_template')} →</span>
     </div>
   )
 }
@@ -315,7 +315,7 @@ export function TemplateCard(props: TemplateCardProps) {
       {selectMode && <SelectionBadge selected={selected} />}
       <CardTitleRow template={template} selectMode={selectMode} menuButtonRef={menuButtonRef} onToggleStar={onToggleStar} onTogglePin={onTogglePin} onOpenMenu={() => setIsMenuOpen(true)} />
       {template.description && (
-        <p className="relative z-[var(--z-sticky)] mt-1.5 line-clamp-2 text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-tertiary)]">{template.description}</p>
+        <p className='relative z-[var(--z-sticky)] mt-1.5 line-clamp-2 text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>{template.description}</p>
       )}
       {template.tags.length > 0 && <CardTagList tags={template.tags} />}
       <CardMetaFooter categoryName={categoryName} lineCount={lineCount} />

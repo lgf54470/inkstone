@@ -50,7 +50,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
         {title && (<h2 id={titleId} className='text-[length:var(--text-15)] font-semibold tracking-[var(--tracking-title)] text-[var(--text-primary)]'>
           {title}
         </h2>)}
-        {description && (<p id={descriptionId} className="mt-[var(--sp-1)] text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        {description && (<p id={descriptionId} className='mt-[var(--sp-1)] text-[length:var(--text-12-5)] leading-relaxed text-[var(--text-tertiary)]'>
           {description}
         </p>)}
       </div>

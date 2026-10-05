@@ -70,7 +70,7 @@ function LayoutCard({
       type='button'
       data-layout-option={layout.id}
       onClick={() => onPick(layout.id)}
-      className='group flex flex-col gap-[var(--sp-1\\.5)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] p-[var(--sp-1\\.5)] text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-hover)]'
+      className='group flex flex-col gap-[var(--sp-1-5)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] p-[var(--sp-1-5)] text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-hover)]'
     >
       <span
         className='pointer-events-none relative block overflow-hidden rounded-[var(--r-sm)]'

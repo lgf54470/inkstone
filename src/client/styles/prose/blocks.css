@@ -150,9 +150,9 @@
 }
 .ink-prose .tab-list {
   display: flex;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   overflow-x: auto;
-  padding: var(--sp-1\.25) var(--sp-1\.5) 0;
+  padding: var(--sp-1-25) var(--sp-1-5) 0;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-inset);
 }
@@ -196,10 +196,10 @@
   flex-direction: column;
   border-bottom: none;
   border-inline-end: 1px solid var(--border-subtle);
-  padding: var(--sp-1\.5) var(--sp-1);
+  padding: var(--sp-1-5) var(--sp-1);
   min-width: 130px;
   max-width: 200px;
-  gap: var(--sp-0\.75);
+  gap: var(--sp-0-75);
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--bg-inset);
@@ -250,7 +250,7 @@
   order: 1;
   border-bottom: none;
   border-top: 1px solid var(--border-subtle);
-  padding: 0 var(--sp-1\.5) var(--sp-1\.25);
+  padding: 0 var(--sp-1-5) var(--sp-1-25);
   padding-inline-end: 132px;
 }
 .ink-prose .markdown-tabs:not([data-tabs-style='vertical'])[data-tabs-position='bottom'] .tab-panel {
@@ -274,7 +274,7 @@
     border-bottom: 1px solid var(--border-subtle);
     min-width: unset;
     max-width: 100%;
-    padding: var(--sp-1\.25) var(--sp-1\.5) 0;
+    padding: var(--sp-1-25) var(--sp-1-5) 0;
     padding-inline-end: 132px;
     order: 0;
   }
@@ -321,7 +321,7 @@
 .ink-prose .markdown-tabs[data-tabs-variant='cards'] .tab-list {
   padding-top: var(--sp-1);
   padding-inline: var(--sp-1);
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
 }
 .ink-prose .markdown-tabs[data-tabs-variant='cards'] [role='tab'] {
   border: 1px solid transparent;
@@ -380,7 +380,7 @@
   right: 6px;
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   padding: 2px 4px;
   border-radius: var(--r-sm);
   background: color-mix(in oklab, var(--bg-inset) 85%, transparent);
@@ -475,7 +475,7 @@
 .ink-prose .markdown-tabs-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-0\.75);
+  gap: var(--sp-0-75);
   padding: 3px 6px;
   border-radius: var(--r-xs);
   font-size: var(--text-11);
@@ -494,8 +494,8 @@
 .ink-prose .markdown-tabs-settings-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1\.5);
-  padding: var(--sp-2) var(--sp-2\.5);
+  gap: var(--sp-1-5);
+  padding: var(--sp-2) var(--sp-2-5);
   background: var(--bg-inset);
   border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-ui);
@@ -511,13 +511,13 @@
 .ink-prose .tabs-settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1\.25);
+  gap: var(--sp-1-25);
 }
 .ink-prose .tabs-settings-section.is-stack {
-  margin-top: var(--sp-0\.5);
-  padding-top: var(--sp-1\.5);
+  margin-top: var(--sp-0-5);
+  padding-top: var(--sp-1-5);
   border-top: 1px solid var(--border-subtle);
-  gap: var(--sp-1\.5);
+  gap: var(--sp-1-5);
 }
 .ink-prose .tabs-settings-row {
   display: flex;

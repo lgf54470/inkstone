@@ -56,7 +56,7 @@ function FilterToggleRow({
         {icon}
         <div>
           <div className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{title}</div>
-          <div className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)] leading-normal">{desc}</div>
+          <div className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)] leading-normal'>{desc}</div>
         </div>
       </div>
       <Switch checked={checked} onChange={onChange} />
@@ -114,7 +114,7 @@ function TrafficFilterPanel() {
 
       <TrafficFilterRows />
 
-      <div className="mt-3.5 flex items-center gap-1.5 rounded-[var(--r-sm)] bg-[var(--bg-card)] p-2 text-[length:var(--text-10\\.5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+      <div className='mt-3.5 flex items-center gap-1.5 rounded-[var(--r-sm)] bg-[var(--bg-card)] p-2 text-[length:var(--text-10-5)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
         <Info size={12} className='text-[var(--accent)] shrink-0' />
         <span>{t('share.filter_persist_hint')}</span>
       </div>

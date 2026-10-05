@@ -51,14 +51,14 @@ describe('PostOutline icon and typography mapping', () => {
 
   it('maps levels 3, 4, and 5 typography', () => {
     const h3 = getHeadingTypography(3, false)
-    expect(h3.fontSize).toBe('var(--text-11\\.5)')
+    expect(h3.fontSize).toBe('var(--text-11-5)')
     expect(h3.iconSize).toBe(11)
 
     const h4 = getHeadingTypography(4, false)
     expect(h4.fontSize).toBe('var(--text-11)')
 
     const h5 = getHeadingTypography(5, false)
-    expect(h5.fontSize).toBe('var(--text-10\\.5)')
+    expect(h5.fontSize).toBe('var(--text-10-5)')
   })
 })
 
@@ -117,7 +117,7 @@ describe('PostOutline rendering', () => {
 
     expect(buttons[2]?.getAttribute('data-heading-level')).toBe('3')
     expect(buttons[2]?.style.paddingLeft).toBe('28px')
-    expect(buttons[2]?.style.fontSize).toBe('var(--text-11\\.5)')
+    expect(buttons[2]?.style.fontSize).toBe('var(--text-11-5)')
 
     expect(buttons[3]?.getAttribute('data-heading-level')).toBe('4')
     expect(buttons[3]?.style.paddingLeft).toBe('38px')

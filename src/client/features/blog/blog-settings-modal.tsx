@@ -41,7 +41,7 @@ export function BlogSettingsModal({
       </div>
 
       <form onSubmit={form.handleSave}>
-        <div className="max-h-[66vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12\.5)]">
+        <div className='max-h-[66vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12-5)]'>
           {form.activeTab === 'traffic' ? (
             <TrafficSettingsTab form={form} />
           ) : (
@@ -139,7 +139,7 @@ function TrafficSettingsTab({ form }: { form: SettingsFormBundle }) {
 
 function TrafficFiltersSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)]'>
       <div className='flex items-center gap-[var(--sp-2)] pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
         <Shield size={15} className='text-[var(--success)]' />
         <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
@@ -170,7 +170,7 @@ function FilterSwitchRow({ label, hint, checked, onChange }: { label: string; hi
 
 function RetentionSection({ form }: { form: SettingsFormBundle }) {
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)]'>
       <div className='flex items-center gap-[var(--sp-2)] pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
         <Database size={15} className='text-[var(--accent)]' />
         <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
@@ -215,7 +215,7 @@ function RetentionField({
   const labelId = useId()
   return (
     <div>
-      <div className='flex items-center justify-between pb-[var(--sp-1\\.5)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-1-5)]'>
         <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{valueLabel}</span>
       </div>

@@ -113,7 +113,7 @@ function SharePageHeader({ siteName, dark, onToggleTheme }: {
         <span className='flex items-center gap-1.5 text-[var(--accent)]'>
           <Logo size={15}/>
         </span>
-        <span className="text-[length:var(--text-12\.5)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]">
+        <span className='text-[length:var(--text-12-5)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>
           {siteName}
         </span>
         <span className='flex-1'/>
@@ -171,7 +171,7 @@ function SharePasswordView({ loadBundle }: {
         <Lock size={20}/>
       </div>
       <h1 className='text-[length:var(--text-16)] font-semibold text-[var(--text-primary)]'>{t('share.this_note_requires_a_password')}</h1>
-      <p className="mt-1.5 text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t('share.ask_the_person_who_shared_this_note_for_its_passcode')}</p>
+      <p className='mt-1.5 text-[length:var(--text-12-5)] text-[var(--text-tertiary)]'>{t('share.ask_the_person_who_shared_this_note_for_its_passcode')}</p>
       <form className='mt-5 space-y-2.5' onSubmit={(event) => {
         event.preventDefault()
         void load(password)
@@ -220,7 +220,7 @@ function ShareNoteView({ note, renderBundle }: {
       />
 
       <footer className='mt-16 border-t border-[var(--border-subtle)] pt-6 text-center'>
-        <a href='/' className="inline-flex items-center gap-1.5 text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:text-[var(--accent)]">
+        <a href='/' className='inline-flex items-center gap-1.5 text-[length:var(--text-11-5)] text-[var(--text-quaternary)] transition-colors hover:text-[var(--accent)]'>
           <Logo size={12}/>{t('share.shared_via_site', { site: note.site.name })}</a>
       </footer>
     </article>

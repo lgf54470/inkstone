@@ -216,7 +216,7 @@ function FileNameBlock({ file, onRename }: { file: AttachmentWithUsage; onRename
           <Pencil size={12} />
         </IconButton>
       </div>
-      <p className="mt-1 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)]">
+      <p className='mt-1 text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
         {formatFileSize(file.size)}
         {file.width && file.height ? ` · ${file.width} × ${file.height}` : ''}
       </p>
@@ -334,9 +334,9 @@ function ReferencingBlock({ openNote, referencingNotes, isLoadingNotes }: {
       </span>
 
       {isLoadingNotes ? (
-        <p className="text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]">{t('common.loading')}</p>
+        <p className='text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
       ) : referencingNotes.length === 0 ? (
-        <p className="text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]">
+        <p className='text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>
           {t('attachments.no_referencing_notes')}
         </p>
       ) : (

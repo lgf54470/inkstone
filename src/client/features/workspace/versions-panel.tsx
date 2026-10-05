@@ -51,7 +51,7 @@ function VersionList({ b }: { b: VersionsPanelBundle }) {
               <History size={11} className='shrink-0 text-[var(--text-quaternary)]' />
               {index === 0 ? t('workspace.latest') : <VersionAge timestamp={version.createdAt} />}
             </div>
-            <div className="mt-0.5 pl-4 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+            <div className='mt-0.5 pl-4 text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>
               {fullTime(version.createdAt)} · {formatBytes(version.size)}
             </div>
           </button>
@@ -88,13 +88,13 @@ function DiffView({ b }: { b: VersionsPanelBundle }) {
   if (!diff) return <LoadingBlock />
   return (
     <>
-      <div className="sticky top-0 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-1.5 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+      <div className='sticky top-0 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)] px-3 py-1.5 text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>
         <span>{t('workspace.differences_from_current_content')}</span>
         <span className='text-[var(--success)]'>+{diff.added}</span>
         <span className='text-[var(--danger)]'>-{diff.removed}</span>
         {diff.simplified && <span>{t('workspace.large_content_using_a_faster_comparison')}</span>}
       </div>
-      <pre className="p-3 font-mono text-[length:var(--text-11\.5)] leading-[1.65] whitespace-pre-wrap">
+      <pre className='p-3 font-mono text-[length:var(--text-11-5)] leading-[1.65] whitespace-pre-wrap'>
         {diff.lines.map((line, i) => (
           <DiffLineRow key={i} line={line} />
         ))}

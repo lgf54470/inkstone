@@ -23,7 +23,7 @@ export function PendingCommentsCard({ pendingComments, totalComments, totalPosts
           {t('blog.pending_comments')}
         </h3>
         {pendingComments.length > 0 && (
-          <span className="rounded-full bg-[var(--danger-soft)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-bold text-[var(--danger)]">
+          <span className='rounded-full bg-[var(--danger-soft)] px-1.5 py-0.2 text-[length:var(--text-10-5)] font-bold text-[var(--danger)]'>
             {pendingComments.length}
           </span>
         )}
@@ -53,7 +53,7 @@ function AllCommentsReviewed({ onSwitchTab, totalPosts }: {
     <div className='flex h-48 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
       <CheckCircle size={28} className='text-[var(--success)] opacity-80' />
       <span>{t('blog.all_comments_reviewed')}</span>
-      <button type='button' onClick={() => onSwitchTab('posts')} className="mt-2 inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline">
+      <button type='button' onClick={() => onSwitchTab('posts')} className='mt-2 inline-flex items-center gap-1 text-[length:var(--text-11-5)] text-[var(--accent)] hover:underline'>
         <FileText size={13} />
         <span>{t('blog.manage_posts_count')} ({totalPosts})</span>
       </button>
@@ -89,7 +89,7 @@ function PendingCommentItem({ comment, updateCommentStatus }: {
             {t('blog.commented_on', { value0: comment.postTitle })}
           </span>
         </div>
-        <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+        <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>
           {shortTime(comment.createdAt)}
         </span>
       </div>

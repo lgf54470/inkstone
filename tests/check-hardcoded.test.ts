@@ -144,7 +144,7 @@ describe('token-family rule (Part 4) via problemsFor', () => {
   })
 
   it('accepts token-referencing spacing constants', () => {
-    expect(problemsFor(rel, String.raw`const W = 'w-[var(--sp-0\\.625)]'`)).toEqual([])
+    expect(problemsFor(rel, `const W = 'w-[var(--sp-0-625)]'`)).toEqual([])
     expect(problemsFor(rel, `const W = 'w-(--spacing-4)'`)).toEqual([])
   })
 
@@ -255,41 +255,52 @@ describe('share keeps every colour on tokens (SH-32, now gated by Part 5)', () =
   })
 })
 
-describe('decimal-token runtime escape via problemsFor', () => {
+describe('decimal-token references must be dot-free via problemsFor', () => {
   const rel = 'probe.tsx'
+  const flag = 'escaped decimal token reference'
 
-  it('flags a lone-backslash decimal ref in a JS string constant', () => {
-    const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11\.5)]'`)
-    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
-  })
-
-  it('flags a lone-backslash decimal ref in a className expression string', () => {
-    const problems = problemsFor(rel, `function P() { return <div className={'w-[var(--sp-0\.625)]'}/> }`)
-    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
-  })
-
-  it('flags a lone-backslash decimal ref in a template literal', () => {
-    const problems = problemsFor(rel, 'const T = `text-[length:var(--text-12\\.5)]`')
-    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
-  })
-
-  it('flags a lone-backslash decimal ref in an inline var() style', () => {
-    const problems = problemsFor(rel, `function P() { return <div style={{ fontSize: 'var(--text-11\.5)' }}/> }`)
-    expect(problems.join('\n')).toContain('unescaped-dot decimal token reference')
-  })
-
-  it('accepts the doubled-backslash spelling in JS strings', () => {
+  it('flags the doubled-backslash spelling this tree once mandated', () => {
+    // source bytes `--text-11\\.5`: Tailwind compiles the candidate from them,
+    // so the selector wants a class with two backslashes while the DOM holds
+    // one, and the compiled value is invalid CSS.
     const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11\\\\.5)]'`)
-    expect(problems).toEqual([])
+    expect(problems.join('\n')).toContain(flag)
   })
 
-  it('accepts the doubled-backslash spelling in inline var() styles', () => {
-    const problems = problemsFor(rel, `function P() { return <div style={{ fontSize: 'var(--text-11\\\\.5)' }}/> }`)
-    expect(problems).toEqual([])
+  it('flags a lone-backslash spelling in a JS string constant', () => {
+    // source bytes `--text-11\.5`: JS cooks the backslash away, so the runtime
+    // class never matches the selector Tailwind compiled for the escaped name.
+    const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11\\.5)]'`)
+    expect(problems.join('\n')).toContain(flag)
   })
 
-  it('accepts a lone backslash in a direct JSX attribute value (verbatim)', () => {
+  it('flags a plain dot in a className expression string', () => {
+    const problems = problemsFor(rel, `function P() { return <div className={'w-[var(--sp-0.625)]'}/> }`)
+    expect(problems.join('\n')).toContain(flag)
+  })
+
+  it('flags a plain dot in a template literal', () => {
+    const problems = problemsFor(rel, 'const T = `text-[length:var(--text-12.5)]`')
+    expect(problems.join('\n')).toContain(flag)
+  })
+
+  it('flags a plain dot in an inline var() style', () => {
+    const problems = problemsFor(rel, `function P() { return <div style={{ fontSize: 'var(--text-11.5)' }}/> }`)
+    expect(problems.join('\n')).toContain(flag)
+  })
+
+  it('flags a verbatim backslash-dot in a direct JSX attribute value', () => {
     const problems = problemsFor(rel, `function P() { return <div className="text-[length:var(--text-11\\.5)]"/> }`)
+    expect(problems.join('\n')).toContain(flag)
+  })
+
+  it('accepts the dot-free token name in a class string', () => {
+    const problems = problemsFor(rel, `const T = 'text-[length:var(--text-11-5)] w-[var(--sp-0-625)]'`)
+    expect(problems).toEqual([])
+  })
+
+  it('accepts the dot-free token name in a JSX attribute and an inline style', () => {
+    const problems = problemsFor(rel, `function P() { return <div className="w-[var(--sp-0-625)]" style={{ width: 'var(--sp-0-625)' }}/> }`)
     expect(problems).toEqual([])
   })
 })
@@ -317,7 +328,7 @@ describe('bare Tailwind scale steps', () => {
   })
 
   it('accepts the token spelling of the same primitive', () => {
-    const problems = problemsFor(scaleRel, `function P() { return <div className='absolute bottom-[var(--sp-4)] py-[var(--sp-0\\.5)] z-[var(--z-sticky)] h-[var(--sp-2)]'/> }`)
+    const problems = problemsFor(scaleRel, `function P() { return <div className='absolute bottom-[var(--sp-4)] py-[var(--sp-0-5)] z-[var(--z-sticky)] h-[var(--sp-2)]'/> }`)
     expect(problems).toEqual([])
   })
 
