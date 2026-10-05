@@ -233,3 +233,35 @@ B6 的第一条边——`app-shell.tsx:15` 的 `editor/commands`——按本文�
 （会话与外壳预取重叠、sync 分页与 outbox 并行、去掉全量快照后的 2 个冗余请求）与 dev 侧的
 图标子块。这两处都不需要动模块边界。
 
+## H. B7 的可行性实测：不可分阶段（2026-10-05）
+
+B7 是这批里唯一还剩真体积的一项，所以先量上限与可分性，再决定动不动。
+
+**上限是真的**：按源码静态闭包算，四个家族树（mindmap 16 文件、excalidraw 12、kanban 126、
+slides 67）在 eager 图里占 **214 文件 / 1357 KiB，即 25.6%**。与此前「断掉 `export-note` 全部
+12 条入边 → −279 KiB gz」的图模拟同向。
+
+**但它不可分阶段。** 两次独立测量：
+
+| 改动 | eager | chunk | 结论 |
+| --- | --- | --- | --- |
+| 基线 | 3484.5 KiB | 303 | — |
+| 只把 `enhance/index.ts` 的 4 处家族 import 改动态 | 3490.4 KiB | 306 | **+5.9 KiB，净负** |
+| 再加上 `preview.tsx` 六个家族面（mindmap/excalidraw 全屏与菜单、kanban/slides 全屏）改 `lazy()` | 3482.5 KiB | 304 | **−2.0 KiB** |
+
+关掉 24 道门里的 7 道，只换来 2 KiB（上限的 0.15%）——而且那次构建还是会在运行时崩的，因为
+`lazy()` 没有包 `Suspense`，纯为测量。
+
+**成因**：家族进 eager 有约 24 道静态门（`features/preview/` 下 `use-{kanban,mindmap,excalidraw,bento-slides}-blocks.ts`、
+`markdown-tabs.ts`、`{mindmap,excalidraw,slides}-sync.ts`、`mindmap-outline.ts`、`wiki-link-hover-card/`、
+`preview.tsx`，加 `features/presentation/slide-canvas.tsx`、`use-workspace.ts`、`live-preview.ts` 与
+`enhance/index.ts` 的 4 处）。只要还剩一道，字节的 100% 都还在图里。分组配置帮不上忙——
+`codeSplitting.groups` 改的是 chunk 归属，不是可达性。
+
+**因此 B7 的实际形状是**：一次覆盖约 24 处、其中若干是渲染期同步用的组件与 effect 内同步调用的
+hook 的大改；中间态净负、不可单独交付；验收必须过 `e2e-visual.mjs`（918 条断言，含思维导图全屏、
+看板八视图、幻灯片）与 `check-contrast.mjs`，两者都要活实例且期间不能改文件。
+
+**建议**：B7 单开一次工作，不要塞进本轮。若要做，先只做一个**行为等价的验证底座**（把五种块的
+全屏/快照路径在 e2e-visual 里逐条钉住），再一次性换完 24 处，用 `measure-boot.mjs` 的
+`open→5` 与最长任务两列确认没有把「点开笔记」变慢。
