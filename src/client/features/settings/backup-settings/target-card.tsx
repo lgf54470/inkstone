@@ -32,7 +32,7 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
     : String(target.config.url ?? '')
   return (<div className={cn('rounded-[var(--r-lg)] border bg-[var(--bg-base)] p-[var(--sp-3)] transition-colors', target.enabled ? 'border-[var(--border-subtle)]' : 'border-[var(--border-subtle)] opacity-60')}>
     <div className='flex items-start gap-[var(--sp-3)]'>
-    <span className={cn('mt-[var(--sp-0\\.5)] flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>
+    <span className={cn('mt-[var(--sp-0-5)] flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)]', 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]')}>
       {target.type === 's3' ? <HardDrive size={15}/> : <Server size={15}/>}
     </span>
 
@@ -43,7 +43,7 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
       </span>
       <Badge tone='neutral'>{target.type === 's3' ? 'S3' : 'WebDAV'}</Badge>
       </div>
-      <div className="mt-[var(--sp-0\\.5)] truncate text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{location}</div>
+      <div className='mt-[var(--sp-0-5)] truncate text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{location}</div>
       <TargetStatus target={target} lastRunTime={lastRunTime} result={result}/>
     </div>
 
@@ -70,13 +70,13 @@ export function TargetCard({ target, onEdit, onChanged, onPatch, onRemove, onRes
 function TargetStatus({ target, lastRunTime, result }: { target: BackupTarget; lastRunTime: string; result: TestConnectionResult | null }) {
   return (
     <>
-      {target.lastRunAt && (<div className={cn('mt-[var(--sp-1\\.5)] flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)]', target.lastStatus === 'success' ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>
+      {target.lastRunAt && (<div className={cn('mt-[var(--sp-1-5)] flex items-center gap-[var(--sp-1-5)] text-[length:var(--text-11)]', target.lastStatus === 'success' ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>
         {target.lastStatus === 'success' ? (<CheckCircle2 size={11}/>) : (<AlertCircle size={11}/>)}
         {target.lastStatus === 'success' ? t('settings.last_backup_succeeded') : translateServiceMessage(target.lastError) || t('settings.last_backup_failed')}
         <span className='text-[var(--text-quaternary)]'>· {lastRunTime}</span>
       </div>)}
 
-      {result && (<div className={cn('mt-[var(--sp-1\\.5)] flex items-start gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-11)]', result.ok
+      {result && (<div className={cn('mt-[var(--sp-1-5)] flex items-start gap-[var(--sp-1-5)] rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1-5)] text-[length:var(--text-11)]', result.ok
         ? 'bg-[color-mix(in_oklab,var(--success)_12%,transparent)] text-[var(--success)]'
         : 'bg-[color-mix(in_oklab,var(--danger)_11%,transparent)] text-[var(--danger)]')}>
         {result.ok ? <CheckCircle2 size={11} className='mt-px'/> : <AlertCircle size={11} className='mt-px'/>}

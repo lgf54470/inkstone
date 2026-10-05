@@ -81,7 +81,7 @@ function ChannelSplit({ rows, onOpenLogs }: {
   const hasMarker = rows.some((row) => !isReservedChannelName(row.name))
   return (
     <div className='mt-[var(--sp-3)] space-y-2.5 border-t border-[var(--border-subtle)] pt-[var(--sp-3)]'>
-      <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
+      <p className='flex items-center gap-[var(--sp-1-5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
         <Tag size={12} aria-hidden />
         {t('share.channel_section_title')}
       </p>

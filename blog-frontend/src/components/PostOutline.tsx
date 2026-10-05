@@ -24,12 +24,7 @@ const SCROLL_TARGET_BUFFER = 16
 const OUTLINE_INDENT_BASE = 8
 const OUTLINE_INDENT_STEP = 10
 
-// Dotted token names (--sp-0.625, --text-11.5, ...) cannot be referenced from
-// Tailwind arbitrary classes in this Astro toolchain: the CSS scanner only
-// extracts odd-backslash candidates while JS/SSR drops the backslash from
-// `\.`, so no source spelling survives both ends. Inline var() styles bypass
-// candidate extraction entirely and resolve against the escaped token names.
-const ACTIVE_BAR_STYLE: CSSProperties = { width: 'var(--sp-0\\.625)' }
+const ACTIVE_BAR_STYLE: CSSProperties = { width: 'var(--sp-0-625)' }
 
 const HEADING_ICONS: Record<number, ComponentType<LucideProps>> = {
   1: Heading1,
@@ -66,7 +61,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     case 3:
       return {
-        fontSize: 'var(--text-11\\.5)',
+        fontSize: 'var(--text-11-5)',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
         iconSize: 11,
@@ -84,7 +79,7 @@ export function getHeadingTypography(level: number, isActive: boolean) {
       }
     default:
       return {
-        fontSize: 'var(--text-10\\.5)',
+        fontSize: 'var(--text-10-5)',
         fontWeight: isActive ? 'font-medium' : 'font-normal',
         textColor: isActive ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
         iconSize: 10,
@@ -255,7 +250,7 @@ export default function PostOutline({ headings, locale = DEFAULT_LOCALE, classNa
     <nav ref={navRef} className={`w-full ${className}`} aria-label={t('common.outline', {}, locale)}>
       <div
         className='mb-2 flex items-center gap-1.5 px-2 font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'
-        style={{ fontSize: 'var(--text-10\\.5)' }}
+        style={{ fontSize: 'var(--text-10-5)' }}
       >
         <ListTree size={11} aria-hidden='true' />
         <span>{t('common.outline', {}, locale)}</span>

@@ -28,8 +28,9 @@ const DECL_RE = /(--[A-Za-z0-9_.\\-]+)\s*:\s*([^;]*);/g
 function normalizeName(name) {
   let out = name
   let last = null
-  // A class string in JS may carry the dot escape twice (TS source `\\.`
-  // becomes Tailwind's `\.` at runtime), so unescape until stable.
+  // Names reach here straight out of the stylesheet, so one written with a
+  // doubled escape (`--x\\\\.5`) must still compare equal to the same token
+  // written once; unescape until the text stops changing.
   while (last !== out) {
     last = out
     out = out
@@ -277,7 +278,6 @@ const PREEXISTING_UNDEFINED_USES = new Set([
   '--code-font-size',
   '--code-line-height',
   '--danger-softer',
-  '--sp-0.25',
   '--sp-11',
   '--surface-hover',
   '--surface-primary',

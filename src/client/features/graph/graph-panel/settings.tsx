@@ -72,7 +72,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           {GRAPH_FORCE_RANGES.map((control) => (
             <GraphRange key={control.prefKey} label={t(control.labelKey)} min={control.min} max={control.max} step={control.step} value={prefs[control.prefKey]} onCommit={(value) => onChange(control.prefKey, value)}/>
           ))}
-          <Button type='button' variant='secondary' size='sm' onClick={onRestoreDefaults} className="mt-1 flex h-8 w-full items-center justify-center gap-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</Button>
+          <Button type='button' variant='secondary' size='sm' onClick={onRestoreDefaults} className='mt-1 flex h-8 w-full items-center justify-center gap-2 text-[length:var(--text-11-5)] text-[var(--text-secondary)]'><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</Button>
         </GraphSection>
       </DrawerShell>
     </>
@@ -107,11 +107,11 @@ function GraphFilterSection({ prefs, onChange, folders, tags, selectedTags, isLi
           <p className='text-[length:var(--text-11)] font-medium leading-relaxed text-[var(--danger)]'>{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
           <Button type='button' variant='ghost' size='sm' onClick={onResetTagFilters} className='h-6 shrink-0 px-1.5 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-transparent hover:underline'>{t('common.clear_selection')}</Button>
         </div>
-        <Button type='button' variant='ghost' size='sm' onClick={onToggleLimit} className="mt-1 h-6 gap-1 px-1 text-[length:var(--text-10\.5)] font-medium text-[var(--text-quaternary)] hover:bg-transparent hover:text-[var(--text-secondary)]">
+        <Button type='button' variant='ghost' size='sm' onClick={onToggleLimit} className='mt-1 h-6 gap-1 px-1 text-[length:var(--text-10-5)] font-medium text-[var(--text-quaternary)] hover:bg-transparent hover:text-[var(--text-secondary)]'>
           <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (isLimitOpen ? 'rotate-90' : '')}/>
           {isLimitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
         </Button>
-        {isLimitOpen && <p className="mt-1 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
+        {isLimitOpen && <p className='mt-1 text-[length:var(--text-10-5)] leading-relaxed text-[var(--text-tertiary)]'>{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
       </div>}
       {GRAPH_SHOW_TOGGLES.map((control) => (
         <GraphToggle key={control.prefKey} label={t(control.labelKey)} checked={prefs[control.prefKey]} onChange={(value) => onChange(control.prefKey, value)}/>
@@ -138,7 +138,7 @@ function GraphSelect({ label, value, onChange, options }: { label: string; value
   return (
     <label className='flex items-center justify-between gap-3 text-[length:var(--text-12)] text-[var(--text-secondary)]'>
       <span>{label}</span>
-      <Select value={value} onChange={(event) => onChange(event.target.value)} className="h-8 max-w-40 text-[length:var(--text-11\.5)]">
+      <Select value={value} onChange={(event) => onChange(event.target.value)} className='h-8 max-w-40 text-[length:var(--text-11-5)]'>
         {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
       </Select>
     </label>

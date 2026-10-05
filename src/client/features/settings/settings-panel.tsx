@@ -104,9 +104,9 @@ export function SettingsPanel({ onClose }: {
 function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { section: Section; onSelect: (section: Section) => void; onClose: () => void; openPanel: (panel: PanelName) => void; titleId: string }) {
   return (
     <nav className='flex w-full shrink-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2 md:w-43 md:border-r md:border-b-0'>
-      <div id={titleId} className="px-2 py-1.5 text-[length:var(--text-13\.5)] font-semibold tracking-[var(--tracking-title)] md:py-2.5">{t('common.settings')}</div>
+      <div id={titleId} className='px-2 py-1.5 text-[length:var(--text-13-5)] font-semibold tracking-[var(--tracking-title)] md:py-2.5'>{t('common.settings')}</div>
       <div className='flex gap-1 overflow-x-auto pb-1 md:block md:space-y-px md:overflow-visible md:pb-0'>
-      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\\.5)] md:h-7.5 md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
+      {SECTIONS.map((item) => (<button key={item.id} type='button' aria-current={section === item.id ? 'page' : undefined} onClick={() => onSelect(item.id)} className={cn('flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12-5)] md:h-7.5 md:w-full md:gap-2.5 md:px-2', 'transition-colors duration-[var(--dur-fast)]', section === item.id
         ? 'bg-[var(--accent-soft)] font-medium text-[var(--text-primary)]'
         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]')}>
         <span className={cn('shrink-0', section === item.id ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')}>
@@ -117,7 +117,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
       <button type='button' onClick={() => {
         onClose()
         openPanel('shortcuts')
-      }} className="flex h-10 shrink-0 items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:hidden">
+      }} className='flex h-10 shrink-0 items-center gap-2.5 rounded-[var(--r-md)] px-2.5 text-left text-[length:var(--text-12-5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:hidden'>
         <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}
       </button>
       </div>
@@ -126,7 +126,7 @@ function SettingsNav({ section, onSelect, onClose, openPanel, titleId }: { secti
       <button type='button' onClick={() => {
       onClose()
       openPanel('shortcuts')
-    }} className="hidden h-7.5 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12\.5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex">
+    }} className='hidden h-7.5 w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left text-[length:var(--text-12-5)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] md:flex'>
       <Keyboard size={14}/>{t('settings.keyboard_shortcuts')}</button>
     </nav>
   )
@@ -150,7 +150,7 @@ function SettingsHeader({ section, onClose }: { section: Section; onClose: () =>
 function SectionLoadError({ onRetry }: { onRetry: () => void }) {
   return (
     <div role='alert' className='flex flex-col items-center gap-3 py-10 text-center'>
-      <p className="text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">{t('settings.section_unavailable')}</p>
+      <p className='text-[length:var(--text-12-5)] text-[var(--text-tertiary)]'>{t('settings.section_unavailable')}</p>
       <Button size='sm' variant='secondary' onClick={onRetry}>{t('common.retry')}</Button>
     </div>
   )

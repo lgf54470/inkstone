@@ -128,7 +128,7 @@ function PinRow({ form }: { form: PublishForm }) {
     <div className='flex items-center justify-between rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)]'>
       <div>
         <span className='block font-medium text-[var(--text-secondary)]'>{t('blog.pin_to_top')}</span>
-        <span className="text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">
+        <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>
           {t('blog.pin_to_top_hint')}
         </span>
       </div>
@@ -156,7 +156,7 @@ function AvailableTagPicker({ form }: { form: PublishForm }) {
   if (availableTags.length === 0) return null
   return (
     <div className='flex flex-wrap items-center gap-[var(--sp-1)] mb-[var(--sp-2)]'>
-      <span className='text-[length:var(--text-10\\\\.5)] text-[var(--text-quaternary)] mr-[var(--sp-1)]'>{t('blog.tags')}:</span>
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)] mr-[var(--sp-1)]'>{t('blog.tags')}:</span>
       {availableTags.map((at) => {
         const isSelected = tags.includes(at.name)
         return (
@@ -165,7 +165,7 @@ function AvailableTagPicker({ form }: { form: PublishForm }) {
             type='button'
             onClick={() => toggleTag(tags, at.name, setTags)}
             className={cn(
-              'inline-flex items-center gap-[var(--sp-0\\.5)] rounded px-1.5 py-[var(--sp-0\\.5)] text-[length:var(--text-10\\.5)] transition-colors',
+              'inline-flex items-center gap-[var(--sp-0-5)] rounded px-1.5 py-[var(--sp-0-5)] text-[length:var(--text-10-5)] transition-colors',
               isSelected
                 ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
                 : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
@@ -187,7 +187,7 @@ function SelectedTagList({ form }: { form: PublishForm }) {
       {tags.map((tag) => (
         <span
           key={tag}
-          className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--accent)]'
+          className='inline-flex items-center gap-[var(--sp-1)] rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--accent)]'
         >
           <Hash size={10} />
           {tag}
@@ -338,7 +338,7 @@ export function BlogPublishModal({
         </IconButton>
       </div>
 
-      <div className='max-h-[75vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12\\\\.5)]'>
+      <div className='max-h-[75vh] overflow-y-auto p-[var(--sp-5)] space-y-4 text-[length:var(--text-12-5)]'>
         <TitleField form={form} />
         <SlugField form={form} />
         <CoverField

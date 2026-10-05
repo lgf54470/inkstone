@@ -210,7 +210,7 @@ function TextContent({ bundle, content }: { bundle: FilePreviewBundle; content: 
   if (isMarkdown && textMode === 'rendered') {
     return (
       <div
-        className="p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[length:var(--text-13\.5)] leading-relaxed select-text"
+        className='p-5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] prose dark:prose-invert max-w-none text-[length:var(--text-13-5)] leading-relaxed select-text'
         dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
       />
     )

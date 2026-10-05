@@ -37,7 +37,7 @@ export function ColumnHeaderTitle({
       <KanbanColumnCount
         count={count}
         limit={wipLimit}
-        className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium'
+        className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] font-medium'
       />
       {sum !== undefined && sumWords && (
         // Same surface recipe as the count pill, so the two read as one family. The glyph and figure
@@ -46,7 +46,7 @@ export function ColumnHeaderTitle({
         <span
           data-kanban-sum=''
           title={sumWords}
-          className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium tabular-nums text-[var(--text-tertiary)]'
+          className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] font-medium tabular-nums text-[var(--text-tertiary)]'
         >
           <span aria-hidden='true'>{t('preview.kanban_column_sum_figure', { count: formatKanbanSum(sum) })}</span>
           <span className='sr-only'>{sumWords}</span>
@@ -81,7 +81,7 @@ function ColumnMenuButton({
       ref={buttonRef}
       type='button'
       onClick={onToggle}
-      className={`rounded-[var(--r-xs)] p-[var(--sp-0\\.5)] hover:bg-[var(--bg-hover)] ${
+      className={`rounded-[var(--r-xs)] p-[var(--sp-0-5)] hover:bg-[var(--bg-hover)] ${
         isTinted ? 'hover:text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
       }`}
       aria-label={label}
@@ -138,7 +138,7 @@ function ColumnHeaderBand({
       style={tint}
       data-kanban-column-head=''
       data-kanban-column-tint={tint ? color : undefined}
-      className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] active:cursor-grabbing'
+      className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-[var(--sp-2)] py-[var(--sp-1-5)] active:cursor-grabbing'
     >
       <ColumnHeaderTitle label={label} count={count} wipLimit={wipLimit} sum={sum} sumName={sumName} isTinted={tint !== undefined} />
       <ColumnMenuButton
@@ -278,7 +278,7 @@ export function CollapsedColumn({
         <KanbanColumnCount
           count={group.items.length}
           limit={group.wipLimit}
-          className='rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-1)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)]'
+          className='rounded-[var(--r-full)] bg-[var(--bg-inset)] px-[var(--sp-1)] py-[var(--sp-0-5)] text-[length:var(--text-10)]'
         />
       </span>
       <span className='mt-[var(--sp-4)] flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>

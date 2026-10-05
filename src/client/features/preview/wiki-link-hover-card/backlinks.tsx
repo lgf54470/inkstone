@@ -31,8 +31,8 @@ export function CardBacklinks({ links, onOpen }: {
                 onClick={() => onOpen(link.id)}
                 className='group w-full rounded-[var(--r-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--bg-hover)]'
               >
-                <span className="block truncate text-[length:var(--text-11\.5)] font-medium text-[var(--text-primary)]">{link.title}</span>
-                <span className="mt-0.5 block truncate-2 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{link.context}</span>
+                <span className='block truncate text-[length:var(--text-11-5)] font-medium text-[var(--text-primary)]'>{link.title}</span>
+                <span className='mt-0.5 block truncate-2 text-[length:var(--text-10-5)] leading-relaxed text-[var(--text-tertiary)]'>{link.context}</span>
               </button>
             </li>
           ))}

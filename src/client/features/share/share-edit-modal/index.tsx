@@ -40,7 +40,7 @@ export function ShareEditModal({
         width={MODAL_WIDTH}
         footer={<EditModalFooter b={b} onClose={onClose} />}
       >
-        <div className='flex flex-col gap-[var(--sp-3\\.5)] py-[var(--sp-1)]'>
+        <div className='flex flex-col gap-[var(--sp-3-5)] py-[var(--sp-1)]'>
           <ShareLinkCard b={b} onClose={onClose} />
           <ShareStatusCard b={b} />
           <ShareFolderCard b={b} />

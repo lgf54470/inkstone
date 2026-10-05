@@ -123,7 +123,7 @@ function BatchCategorySelect({
     <Select
       onChange={(e) => void batchSetCategory(batchPosts, e.target.value)}
       defaultValue=''
-      className="h-[var(--sp-7)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"
+      className='h-[var(--sp-7)] text-[length:var(--text-11-5)] text-[var(--text-secondary)]'
     >
       <option value='' disabled>
         {t('blog.change_category')}

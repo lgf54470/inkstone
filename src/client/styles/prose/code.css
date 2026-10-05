@@ -27,13 +27,13 @@
   align-items: center;
   justify-content: space-between;
   height: 28px;
-  padding: 0 var(--sp-1\.75) 0 12px;
+  padding: 0 var(--sp-1-75) 0 12px;
   border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in oklab, var(--bg-inset) 60%, var(--bg-base));
 }
 .ink-prose .code-lang {
   font-family: var(--font-mono);
-  font-size: var(--text-10\.5);
+  font-size: var(--text-10-5);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -51,9 +51,9 @@
 .ink-prose .code-copy {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1\.25);
+  gap: var(--sp-1-25);
   height: 20px;
-  padding: 0 var(--sp-1\.75);
+  padding: 0 var(--sp-1-75);
   border-radius: var(--r-sm);
   font-size: var(--text-11);
   color: var(--text-tertiary);
@@ -77,7 +77,7 @@
 }
 .ink-prose .code-collapse {
   margin-left: auto;
-  padding: 0 var(--sp-1\.75);
+  padding: 0 var(--sp-1-75);
   border-radius: var(--r-sm);
   color: var(--text-tertiary);
   font-size: var(--text-11);
@@ -92,7 +92,7 @@
 
 .ink-prose pre {
   margin: 0;
-  padding: var(--sp-2\.5) var(--sp-3\.5);
+  padding: var(--sp-2-5) var(--sp-3-5);
   overflow-x: auto;
   color: var(--code-fg);
   font-size: var(--code-size, 15px);

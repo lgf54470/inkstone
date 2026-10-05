@@ -154,7 +154,7 @@ function FolderSubtitle({ view, folderId, todoTagText }: { view: ViewKind; folde
       ? t('sidebar.todo_folder_hint_value0', { value0: todoTagText })
       : t('sidebar.calendar_folder_hint')
     : t('folders.includes_subfolders')
-  return <p className="mt-0.5 truncate text-[length:var(--text-10\\.5)] text-[var(--text-quaternary)]">{hint}</p>
+  return <p className='mt-0.5 truncate text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{hint}</p>
 }
 
 function handleSearchKeyDown(
@@ -200,7 +200,7 @@ function NoteSearchField({
         placeholder={t('notes.filter_in_this_view')}
         className={cn(
           'h-10 w-full rounded-[var(--r-md)] border border-transparent bg-[var(--bg-inset)] md:h-7.5',
-          'pr-9 pl-8 text-[length:var(--text-12\\.5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7',
+          'pr-9 pl-8 text-[length:var(--text-12-5)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] md:pr-7 md:pl-7',
           'transition-[border-color,box-shadow] duration-[var(--dur-fast)]',
           'focus:border-[var(--accent)] focus:shadow-[var(--shadow-focus)] focus:outline-none',
         )}
@@ -420,7 +420,7 @@ function EmptyTrashButton({ notes, isEmptyingTrash, emptyTrash }: { notes: NoteS
       disabled={isEmptyingTrash}
       aria-busy={isEmptyingTrash}
       onClick={() => void emptyTrash()}
-      className="mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50"
+      className='mt-2 w-full rounded-[var(--r-md)] border border-[var(--border-subtle)] py-1.5 text-[length:var(--text-11-5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)] disabled:pointer-events-none disabled:opacity-50'
     >
       {t('notes.empty_trash')}
       {notes.length}
@@ -439,7 +439,7 @@ export function NoteListHeader(props: NoteListHeaderProps) {
     <header className='shrink-0 px-3 pt-3 pb-2'>
       <div className='mb-2.5 flex items-center justify-between gap-2'>
         <div className='min-w-0'>
-          <h2 className={`truncate text-[length:var(--text-14\\.5)] font-semibold ${TRACKING_TITLE} text-[var(--text-primary)]`}>{title}</h2>
+          <h2 className={`truncate text-[length:var(--text-14-5)] font-semibold ${TRACKING_TITLE} text-[var(--text-primary)]`}>{title}</h2>
           <FolderSubtitle view={view} folderId={folderId} todoTagText={todoTagText} />
         </div>
         <ListHeaderActions view={view} breakpoint={props.breakpoint} toggleNavDrawer={props.toggleNavDrawer} sortButtonRef={props.sortButtonRef} setIsSortMenuOpen={props.setIsSortMenuOpen} favButtonRef={props.favButtonRef} setIsFavMenuOpen={props.setIsFavMenuOpen} />

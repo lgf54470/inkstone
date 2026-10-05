@@ -68,7 +68,7 @@ function SectionHeader({ icon, title }: {
 function TrafficFilterSection({ bundle }: { bundle: SettingsBundle }) {
   const { bots, setBots, selfRef, setSelfRef, owner, setOwner } = bundle
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)]'>
       <SectionHeader icon={<Shield size={15} className='text-[var(--success)]' />} title={t('share.settings_traffic_filter_title')} />
       <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <SettingsSwitchRow title={t('share.filter_exclude_bots')} hint={t('share.filter_exclude_bots_hint')} checked={bots} onChange={setBots} />
@@ -115,7 +115,7 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
     { value: '0', label: t('share.retention_unlimited') },
   ]
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)]'>
       <SectionHeader icon={<Database size={15} className='text-[var(--accent)]' />} title={t('share.settings_retention_title')} />
       <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <RetentionField
@@ -151,7 +151,7 @@ function HygieneSection({ bundle }: { bundle: SettingsBundle }) {
     label: days === 0 ? t('share.stale_days_off') : t('share.stale_days_val', { days }),
   }))
   return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)]'>
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)]'>
       <SectionHeader icon={<MoonStar size={15} className='text-[var(--warning)]' />} title={t('share.settings_hygiene_title')} />
       <div className='flex flex-col gap-[var(--sp-3)] pt-[var(--sp-3)]'>
         <RetentionField
@@ -179,7 +179,7 @@ function RetentionField({ label, valueText, value, onChange, options }: {
   const labelId = useId()
   return (
     <div>
-      <div className='flex items-center justify-between pb-[var(--sp-1\\.5)]'>
+      <div className='flex items-center justify-between pb-[var(--sp-1-5)]'>
         <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
           {label}
         </span>

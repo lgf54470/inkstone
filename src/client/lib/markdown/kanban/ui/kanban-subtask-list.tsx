@@ -27,7 +27,7 @@ function SubtaskDescInput({
         value={description}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t('preview.kanban_card_description_placeholder')}
-        className='w-full rounded-[var(--r-xs)] border-none bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-secondary)] placeholder:text-[var(--text-quaternary)] outline-none focus:ring-1 focus:ring-[var(--accent)]'
+        className='w-full rounded-[var(--r-xs)] border-none bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-secondary)] placeholder:text-[var(--text-quaternary)] outline-none focus:ring-1 focus:ring-[var(--accent)]'
       />
     </div>
   )
@@ -53,12 +53,12 @@ function SubtaskTrailingActions({
   const panelId = useId()
 
   return (
-    <div className='flex items-center gap-[var(--sp-0\\.5)]'>
+    <div className='flex items-center gap-[var(--sp-0-5)]'>
       <button
         type='button'
         onClick={onToggleDesc}
         title={t('preview.kanban_card_description')}
-        className={`opacity-0 transition-opacity p-[var(--sp-0\\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100 ${
+        className={`opacity-0 transition-opacity p-[var(--sp-0-5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100 ${
           hasDescription ? '!opacity-100 text-[var(--accent)]' : ''
         }`}
       >
@@ -70,7 +70,7 @@ function SubtaskTrailingActions({
           ref={menuBtnRef}
           type='button'
           onClick={() => setMenuOpen((o) => !o)}
-          className='opacity-0 transition-opacity p-[var(--sp-0\\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100'
+          className='opacity-0 transition-opacity p-[var(--sp-0-5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100'
           aria-label={t('common.more_actions')}
           aria-haspopup='menu'
           aria-expanded={menuOpen}
@@ -154,7 +154,7 @@ function SubtaskMainRow({
   onDelete: () => void
 }) {
   return (
-    <div className='flex items-center gap-[var(--sp-1\\.5)]'>
+    <div className='flex items-center gap-[var(--sp-1-5)]'>
       <button
         type='button'
         onClick={onToggle}
@@ -218,7 +218,7 @@ function SubtaskRow({
   const [showDesc, setShowDesc] = useState(Boolean(subtask.description))
 
   return (
-    <div className='group/sub flex flex-col rounded-[var(--r-xs)] px-[var(--sp-1\\.5)] py-[var(--sp-1)] text-[length:var(--text-12)] hover:bg-[var(--bg-hover)]'>
+    <div className='group/sub flex flex-col rounded-[var(--r-xs)] px-[var(--sp-1-5)] py-[var(--sp-1)] text-[length:var(--text-12)] hover:bg-[var(--bg-hover)]'>
       <SubtaskMainRow
         subtask={subtask}
         onToggle={onToggle}
@@ -252,7 +252,7 @@ function AddSubtaskForm({ onAdd }: { onAdd: (title: string) => void }) {
   }
 
   return (
-    <form onSubmit={handleAdd} className='mt-[var(--sp-0\\.5)] flex items-center gap-[var(--sp-1\\.5)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)]'>
+    <form onSubmit={handleAdd} className='mt-[var(--sp-0-5)] flex items-center gap-[var(--sp-1-5)] px-[var(--sp-1-5)] py-[var(--sp-0-5)]'>
       <Plus size={12} className='shrink-0 text-[var(--text-tertiary)]' />
       <input
         type='text'
@@ -291,7 +291,7 @@ export function KanbanSubtaskList({
   }
 
   return (
-    <div className='flex flex-col gap-[var(--sp-0\\.5)] pt-[var(--sp-1)]'>
+    <div className='flex flex-col gap-[var(--sp-0-5)] pt-[var(--sp-1)]'>
       {subtasks.map((st) => (
         <SubtaskRow
           key={st.id}

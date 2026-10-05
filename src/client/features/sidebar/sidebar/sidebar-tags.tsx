@@ -46,7 +46,7 @@ export function TagSection() {
     <section className='mt-[var(--sp-4)]'>
       <TagSectionHeader canToggleTags={tree.canToggle} allTagsExpanded={tree.allExpanded} onToggleAll={tree.toggleAll} onCreate={draft.startRoot} onManage={() => openPanel('tags')} />
       {sortedTags.length > 0 && <TagSearchBox query={search.query} setQuery={search.setQuery} setActiveIndex={search.setActiveIndex} searching={search.searching} visibleTags={search.visibleTags} highlightedIndex={search.highlightedIndex} />}
-      <div className='mt-[var(--sp-0\\.5)] space-y-px'>
+      <div className='mt-[var(--sp-0-5)] space-y-px'>
         {draft.isCreating && (
           <TagDraftRow initialValue={draft.draftPrefix} onFinish={draft.finish} onCancel={draft.cancel} />
         )}
@@ -112,7 +112,7 @@ function TagSectionHeader({ canToggleTags, allTagsExpanded, onToggleAll, onCreat
   return (
     <div className='group/head flex items-center justify-between pr-[var(--sp-1)]'>
       <SectionLabel>{t('navigation.tag')}</SectionLabel>
-      <div className='flex items-center gap-[var(--sp-0\\.5)]'>
+      <div className='flex items-center gap-[var(--sp-0-5)]'>
         {canToggleTags && (
           <Tooltip label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')} side='left'>
             <IconButton label={allTagsExpanded ? t('tags.collapse_all') : t('tags.expand_all')} size='sm' onClick={onToggleAll} className={actionClass}>
@@ -144,7 +144,7 @@ function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags,
   highlightedIndex: number
 }) {
   return (
-    <div className='relative mt-[var(--sp-1\\.5)]'>
+    <div className='relative mt-[var(--sp-1-5)]'>
       <Search size={12} className='pointer-events-none absolute top-1/2 left-[var(--sp-2)] -translate-y-1/2 text-[var(--text-quaternary)]' />
       <input
         aria-label={t('notes.tag_filter_search')}
@@ -156,7 +156,7 @@ function TagSearchBox({ query, setQuery, setActiveIndex, searching, visibleTags,
         className='h-[var(--sp-7)] w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-[var(--sp-7)] pl-[var(--sp-6)] text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'
       />
       {searching && (
-        <span className="pointer-events-none absolute top-1/2 right-[var(--sp-2)] -translate-y-1/2 tabular-nums text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
+        <span className='pointer-events-none absolute top-1/2 right-[var(--sp-2)] -translate-y-1/2 tabular-nums text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>
           {visibleTags.length}
         </span>
       )}
@@ -230,7 +230,7 @@ function UntaggedRow({ onOpen }: { onOpen: () => void }) {
 
 function CreateFirstTagButton({ onCreate }: { onCreate: () => void }) {
   return (
-    <button type='button' onClick={onCreate} className="flex h-[var(--sp-10)] w-full items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5">
+    <button type='button' onClick={onCreate} className='flex h-[var(--sp-10)] w-full items-center gap-[var(--sp-2)] rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11-5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-7.5'>
       <Plus size={13} />{t('tags.create_first')}
     </button>
   )
@@ -240,8 +240,8 @@ function TagSearchEmpty({ onClear }: { onClear: () => void }) {
   return (
     <div className='mt-[var(--sp-1)] flex flex-col items-center gap-[var(--sp-1)] rounded-[var(--r-md)] bg-[var(--bg-inset)] px-[var(--sp-2)] py-[var(--sp-3)] text-center'>
       <SearchX size={14} className='text-[var(--text-quaternary)]' />
-      <span className="text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">{t('notes.no_matching_tags')}</span>
-      <button type='button' onClick={onClear} className="text-[length:var(--text-10\.5)] font-medium text-[var(--accent)] transition-colors hover:underline">
+      <span className='text-[length:var(--text-11-5)] font-medium text-[var(--text-secondary)]'>{t('notes.no_matching_tags')}</span>
+      <button type='button' onClick={onClear} className='text-[length:var(--text-10-5)] font-medium text-[var(--accent)] transition-colors hover:underline'>
         {t('notes.clear_tag_search')}
       </button>
     </div>
@@ -250,7 +250,7 @@ function TagSearchEmpty({ onClear }: { onClear: () => void }) {
 
 function ShowMoreTagsButton({ isExpanded, count, onToggle }: { isExpanded: boolean; count: number; onToggle: () => void }) {
   return (
-    <button type='button' onClick={onToggle} className="h-[var(--sp-10)] w-full rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11\.5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5">
+    <button type='button' onClick={onToggle} className='h-[var(--sp-10)] w-full rounded-[var(--r-md)] px-[var(--sp-2)] text-left text-[length:var(--text-11-5)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] md:h-6.5'>
       {isExpanded ? t('common.collapse') : t('sidebar.show_all_value0_tags', { value0: count })}
     </button>
   )
@@ -262,7 +262,7 @@ function SelectedTagsBar() {
   const openPanel = useUi((s) => s.openPanel)
   if (selectedTags.length === 0) return null
   return (
-    <div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+    <div className='rounded-[var(--r-md)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-1-5)] text-[length:var(--text-11)] text-[var(--text-secondary)]'>
       <div className='flex h-[var(--sp-5)] items-center justify-between gap-[var(--sp-2)]'>
         <span className='truncate'>{t('sidebar.tags_selected', { value0: selectedTags.length })}</span>
         <div className='flex shrink-0 items-center gap-[var(--sp-2)]'>
@@ -276,9 +276,9 @@ function SelectedTagsBar() {
           </button>
         </div>
       </div>
-      <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-10\.5)] text-[var(--text-tertiary)]">{t('sidebar.tags_selected_hint')}</div>
+      <div className='mt-[var(--sp-0-5)] text-[length:var(--text-10-5)] text-[var(--text-tertiary)]'>{t('sidebar.tags_selected_hint')}</div>
       {selectedTags.length >= LIMITS.tagSelectionMax && (
-        <div className="mt-[var(--sp-0\\.5)] text-[length:var(--text-10\.5)] font-medium text-[var(--danger)]">{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</div>
+        <div className='mt-[var(--sp-0-5)] text-[length:var(--text-10-5)] font-medium text-[var(--danger)]'>{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</div>
       )}
       <div className='mt-[var(--sp-1)] flex flex-wrap gap-[var(--sp-1)]'>
         {selectedTags.map((name) => (

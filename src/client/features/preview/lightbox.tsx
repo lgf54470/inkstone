@@ -67,7 +67,7 @@ function ZoomInButton({ scale, isFailed, onZoomIn }: { scale: number; isFailed: 
 
 function ZoomPercent({ scale }: { scale: number }) {
   return (
-    <span aria-live='polite' className="w-11 text-center text-[length:var(--text-11\\.5)] tabular text-white/60">
+    <span aria-live='polite' className='w-11 text-center text-[length:var(--text-11-5)] tabular text-white/60'>
       {Math.round(scale * 100)}%
     </span>
   )

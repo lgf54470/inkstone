@@ -282,7 +282,7 @@ function SubmitButton({ flow }: { flow: LoginFlow }) {
       disabled={flow.isBusy}
       className={cn(
         'flex h-11 w-full items-center justify-center gap-2.5 rounded-[var(--r-lg)]',
-        'bg-[var(--accent)] text-[length:var(--text-13\\.5)] font-medium text-[var(--accent-contrast)]',
+        'bg-[var(--accent)] text-[length:var(--text-13-5)] font-medium text-[var(--accent-contrast)]',
         'transition-[transform,opacity,background-color] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'hover:bg-[var(--accent-hover)] active:translate-y-px disabled:opacity-50',
       )}
@@ -359,7 +359,7 @@ function LoginFooter({ registrationClosed }: { registrationClosed: boolean }) {
   return (
     <div className='mt-6 space-y-2 text-center md:mt-8'>
       {registrationClosed && (
-        <p className="text-[length:var(--text-11\\.5)] leading-relaxed text-[var(--text-quaternary)]">
+        <p className='text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-quaternary)]'>
           {t('auth.this_is_a_private_instance_registration_is_closed_so_only_existing_accou')}
         </p>
       )}

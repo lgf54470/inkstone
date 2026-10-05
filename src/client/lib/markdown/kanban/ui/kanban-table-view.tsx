@@ -47,7 +47,7 @@ function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggle
   const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
     <div role='row' className='flex items-center border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
-      <div role='columnheader' className='w-[var(--sp-10)] shrink-0 p-[var(--sp-2\\.5)] text-center'>
+      <div role='columnheader' className='w-[var(--sp-10)] shrink-0 p-[var(--sp-2-5)] text-center'>
         <input
           type='checkbox'
           checked={isAllSelected}
@@ -164,7 +164,7 @@ function TableGroupList({
           <button
             type='button'
             onClick={onAddColumn}
-            className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-[var(--sp-3)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
+            className='flex items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] border border-dashed border-[var(--border-default)] px-[var(--sp-3)] py-[var(--sp-1-5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]'
           >
             <Plus size={14} />
             <span>+ {t('preview.kanban_add_new_group')}</span>

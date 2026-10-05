@@ -54,7 +54,7 @@ export function TagDraftRow({ onFinish, onCancel, initialValue = '' }: {
         onCancel()
       }
       event.stopPropagation()
-    }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12\.5)] outline-none"/>
+    }} className='min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12-5)] outline-none'/>
   </div>)
 }
 
@@ -105,7 +105,7 @@ export function TagRow({ tag, displayName, depth = 0, hasChildren = false, isExp
     onFinishRename(value)
   }
   const menuItems = buildTagMenuItems(tag, onStartRename, actions)
-  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-[var(--sp-10)] items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2)] md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
+  return (<div ref={rowRef} onContextMenu={(event) => { setIsMenuOpen(false); menu.onContextMenu(event); }} style={depth > 0 ? { paddingLeft: `${depth * TAG_INDENT_STEP + TAG_INDENT_BASE}px` } : undefined} className={cn('group relative flex h-[var(--sp-10)] items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] px-[var(--sp-2)] md:h-7.5', 'transition-colors duration-[var(--dur-fast)]', active || selected ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]', highlighted && 'ring-1 ring-[var(--accent)]')}>
     <TagRowChevron hasChildren={hasChildren} depth={depth} isExpanded={isExpanded} onToggleExpand={onToggleExpand}/>
     <Hash size={13} className='shrink-0' style={{ color: tag.color ?? (active || selected ? 'var(--accent)' : 'var(--text-quaternary)') }}/>
     <TagRowLabel tag={tag} displayLabel={displayLabel} searchQuery={searchQuery} active={active} selected={selected} renaming={renaming} finishedRef={finishedRef} onOpen={onOpen} onStartRename={onStartRename} onCancelRename={onCancelRename} onCommitRename={commitRename}/>
@@ -151,9 +151,9 @@ function TagRowLabel({ tag, displayLabel, searchQuery, active, selected, renamin
       onCancelRename()
     }
     event.stopPropagation()
-  }} className="min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12\.5)] outline-none"/>)
+  }} className='min-w-0 flex-1 rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-surface)] px-[var(--sp-1)] py-px text-[length:var(--text-12-5)] outline-none'/>)
   return (<Tooltip label={t('sidebar.cmd_click_selects_multiple')} side='right'>
-    <button type='button' aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-[var(--sp-1\\.5)] py-[var(--sp-1)] text-left text-[length:var(--text-12\.5)] font-medium truncate">
+    <button type='button' aria-current={active ? 'page' : undefined} aria-pressed={selected || undefined} onClick={onOpen} onDoubleClick={onStartRename} className='flex min-w-0 flex-1 items-center gap-[var(--sp-1-5)] py-[var(--sp-1)] text-left text-[length:var(--text-12-5)] font-medium truncate'>
       <span className='truncate'><TagNameHighlight name={displayLabel} query={searchQuery}/></span>
       {tag.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--accent)] opacity-80'/>}
     </button>

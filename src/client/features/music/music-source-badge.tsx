@@ -27,7 +27,7 @@ export function MusicSourceBadge({ source, className }: { source: MusicSource; c
     <span
       className={cn(
         // The label wraps inside a narrow column and inflates the row, so it never breaks.
-        'inline-flex items-center gap-[var(--sp-1)] whitespace-nowrap rounded-[var(--r-full)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-10)]',
+        'inline-flex items-center gap-[var(--sp-1)] whitespace-nowrap rounded-[var(--r-full)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-10)]',
         isRemote
           ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
           : 'bg-[var(--bg-inset)] text-[var(--text-secondary)]',

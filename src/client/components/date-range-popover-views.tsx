@@ -36,8 +36,8 @@ export function EndpointToggle({ editing, onSelect }: {
   onSelect: (endpoint: 'start' | 'end') => void
 }): JSX.Element {
   return (<div role='group' aria-label={t('notes.range_editor_endpoint')} className='mt-1.5 flex items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg-inset)] p-0.5'>
-    <button type='button' aria-pressed={editing === 'start'} onClick={() => onSelect('start')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.range_editor_start')}</button>
-    <button type='button' aria-pressed={editing === 'end'} onClick={() => onSelect('end')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10\\.5)] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.range_editor_end')}</button>
+    <button type='button' aria-pressed={editing === 'start'} onClick={() => onSelect('start')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10-5)] transition-colors', editing === 'start' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.range_editor_start')}</button>
+    <button type='button' aria-pressed={editing === 'end'} onClick={() => onSelect('end')} className={cn('h-6 flex-1 rounded-[var(--r-sm)] text-[length:var(--text-10-5)] transition-colors', editing === 'end' ? 'bg-[var(--bg-overlay)] font-medium text-[var(--accent)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]')}>{t('notes.range_editor_end')}</button>
   </div>)
 }
 
@@ -73,13 +73,13 @@ export function PresetEditor({ presets, drag, onUpdate, onRemove, onAdd, onClose
   return (<div className='mt-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-1.5'>
     <div className='flex items-center justify-between px-0.5 pb-1'>
       <span className='text-[length:var(--text-10)] font-medium text-[var(--text-secondary)]'>{t('notes.range_preset_editor_title')}</span>
-      <button type='button' onClick={onClose} className="rounded px-1 py-0.5 text-[length:var(--text-9\\.5)] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]">{t('notes.range_preset_done')}</button>
+      <button type='button' onClick={onClose} className='rounded px-1 py-0.5 text-[length:var(--text-9-5)] text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)]'>{t('notes.range_preset_done')}</button>
     </div>
     <div className='space-y-1'>
       {presets.map((preset, presetIndex) => (<PresetRow key={preset.id} preset={preset} presetIndex={presetIndex} total={presets.length} drag={drag} onUpdate={onUpdate} onRemove={onRemove} onMove={drag.movePreset}/>))}
     </div>
     <div className='mt-1.5 flex items-center gap-1 px-0.5'>
-      <button type='button' disabled={presets.length >= RANGE_PRESET_MAX} onClick={onAdd} className="flex h-6 min-w-0 flex-1 items-center justify-center gap-1 rounded-[var(--r-sm)] text-[length:var(--text-9\\.5)] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40">
+      <button type='button' disabled={presets.length >= RANGE_PRESET_MAX} onClick={onAdd} className='flex h-6 min-w-0 flex-1 items-center justify-center gap-1 rounded-[var(--r-sm)] text-[length:var(--text-9-5)] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40'>
         <Plus size={10}/>{t('notes.range_preset_add')}
       </button>
     </div>
@@ -117,8 +117,8 @@ function PresetRow({ preset, presetIndex, total, drag, onUpdate, onRemove, onMov
         onUpdate(preset.id, { days: Math.min(365, Math.max(1, parsed)) })
     }} className='h-6 w-11 rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-1 text-center text-[length:var(--text-10)] tabular text-[var(--text-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]'/>
     <div role='group' aria-label={t('notes.range_preset_direction')} className='flex min-w-0 flex-1 overflow-hidden rounded-[var(--r-sm)] border border-[var(--border-subtle)]'>
-      <button type='button' aria-pressed={preset.direction === 'edit'} onClick={() => onUpdate(preset.id, { direction: 'edit' })} className={cn('h-6 min-w-0 flex-1 truncate px-1 text-[length:var(--text-8\\.5)] transition-colors', preset.direction === 'edit' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t('notes.range_preset_follow_edit')}</button>
-      <button type='button' aria-pressed={preset.direction === 'today'} onClick={() => onUpdate(preset.id, { direction: 'today' })} className={cn('h-6 min-w-0 flex-1 truncate border-l border-[var(--border-subtle)] px-1 text-[length:var(--text-8\\.5)] transition-colors', preset.direction === 'today' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t('notes.range_preset_anchor_today')}</button>
+      <button type='button' aria-pressed={preset.direction === 'edit'} onClick={() => onUpdate(preset.id, { direction: 'edit' })} className={cn('h-6 min-w-0 flex-1 truncate px-1 text-[length:var(--text-8-5)] transition-colors', preset.direction === 'edit' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t('notes.range_preset_follow_edit')}</button>
+      <button type='button' aria-pressed={preset.direction === 'today'} onClick={() => onUpdate(preset.id, { direction: 'today' })} className={cn('h-6 min-w-0 flex-1 truncate border-l border-[var(--border-subtle)] px-1 text-[length:var(--text-8-5)] transition-colors', preset.direction === 'today' ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]')}>{t('notes.range_preset_anchor_today')}</button>
     </div>
     <button type='button' aria-label={t('notes.range_preset_delete')} onClick={() => onRemove(preset.id)} className='flex size-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]'>
       <X size={10}/>
@@ -159,7 +159,7 @@ export function RangeMonthGrid({ gridRef, cursor, weekStart, weekdayLabels, toda
 }
 
 export function RangeHint(): JSX.Element {
-  return (<div className="mt-1.5 flex items-center gap-1.5 px-0.5 text-[length:var(--text-9\\.5)] text-[var(--text-quaternary)]">
+  return (<div className='mt-1.5 flex items-center gap-1.5 px-0.5 text-[length:var(--text-9-5)] text-[var(--text-quaternary)]'>
     <CalendarDays size={10} className='shrink-0'/>
     <span className='truncate'>{t('notes.range_editor_hint')}</span>
   </div>)

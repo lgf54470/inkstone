@@ -27,7 +27,7 @@
   font-size: var(--text-10);
   font-weight: 800;
   line-height: 1;
-  padding: var(--sp-0\.5) var(--sp-1\.25);
+  padding: var(--sp-0-5) var(--sp-1-25);
   border-radius: var(--r-xs);
   background: var(--js-badge-bg);
   color: var(--js-badge-ink);
@@ -92,9 +92,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   border-radius: var(--r-sm);
-  font-size: var(--text-11\.5);
+  font-size: var(--text-11-5);
   font-weight: 600;
   color: var(--accent-contrast);
   background: var(--accent);
@@ -156,7 +156,7 @@
   font-size: var(--text-11);
   font-family: var(--font-mono);
   font-weight: 600;
-  padding: var(--sp-0\.25) var(--sp-1\.25);
+  padding: var(--sp-0-25) var(--sp-1-25);
   border-radius: var(--r-3);
 }
 
@@ -172,7 +172,7 @@
 
 .ink-prose .js-example-output-body {
   flex: 1;
-  padding: var(--sp-2\.5) var(--sp-3\.5);
+  padding: var(--sp-2-5) var(--sp-3-5);
   font-family: var(--font-mono);
   font-size: max(12px, calc(var(--code-size, 15px) - 1.5px));
   line-height: 1.5;
@@ -197,7 +197,7 @@
   display: flex;
   align-items: baseline;
   gap: 0.45em;
-  padding: var(--sp-0\.5) 0;
+  padding: var(--sp-0-5) 0;
   border-bottom: 1px solid color-mix(in oklab, var(--border-subtle) 40%, transparent);
 }
 

@@ -1,6 +1,6 @@
 .ink-prose .mermaid-block {
   margin: 1em 0;
-  padding: var(--sp-3\.5);
+  padding: var(--sp-3-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--bg-inset);
@@ -64,7 +64,7 @@
   align-self: start;
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   color: var(--text-primary);
   background: var(--bg-overlay);
   cursor: pointer;
@@ -84,14 +84,14 @@
   background: var(--accent-soft);
   color: var(--text-primary);
   border-radius: var(--r-3);
-  padding: 0 var(--sp-0\.25);
+  padding: 0 var(--sp-0-25);
   box-decoration-break: clone;
 }
 
 .ink-prose .chartjs-block,
 .ink-prose .echarts-block {
   margin: 1em 0;
-  padding: var(--sp-3\.5);
+  padding: var(--sp-3-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-lg);
   background: var(--bg-inset);
@@ -111,7 +111,7 @@
 .ink-prose .graph-block-source {
   margin: 0 0 var(--sp-1);
   max-height: 260px;
-  padding: var(--sp-2\.5) var(--sp-3\.5);
+  padding: var(--sp-2-5) var(--sp-3-5);
   overflow: auto;
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-sm);

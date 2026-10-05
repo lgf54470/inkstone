@@ -10,7 +10,7 @@ export function PasswordInput(props: {
 }) {
   return (
     <label className='block'>
-      <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+      <span className='mb-[var(--sp-1)] block text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
         {t('settings.current_password')}
       </span>
       <Input

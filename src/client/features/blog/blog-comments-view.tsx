@@ -20,7 +20,7 @@ export function BlogCommentsView() {
   const view = useBlogCommentsView()
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden text-[length:var(--text-12\.5)]">
+    <div className='flex flex-1 flex-col overflow-hidden text-[length:var(--text-12-5)]'>
       <CommentsToolbar
         commentStatusFilter={view.commentStatusFilter}
         setCommentStatusFilter={view.setCommentStatusFilter}
@@ -301,7 +301,7 @@ function CommentCard({ bundle }: { bundle: CommentCardBundle }) {
     >
       <CommentCardHeader bundle={bundle} />
 
-      <div className="mt-3 ml-6 rounded-[var(--r-md)] bg-[var(--bg-base)] p-3 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-secondary)]">
+      <div className='mt-3 ml-6 rounded-[var(--r-md)] bg-[var(--bg-base)] p-3 text-[length:var(--text-12-5)] leading-relaxed text-[var(--text-secondary)]'>
         {comment.content}
       </div>
 
@@ -384,7 +384,7 @@ function CommentPostLink({ comment, postUrl }: { comment: BlogComment; postUrl: 
       href={postUrl}
       target='_blank'
       rel='noopener noreferrer'
-      className="hidden sm:inline-flex items-center gap-1 text-[length:var(--text-11\.5)] text-[var(--accent)] hover:underline max-w-50 truncate"
+      className='hidden sm:inline-flex items-center gap-1 text-[length:var(--text-11-5)] text-[var(--accent)] hover:underline max-w-50 truncate'
       title={comment.postTitle}
     >
       <span className='truncate'>{comment.postTitle}</span>

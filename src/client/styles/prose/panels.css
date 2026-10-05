@@ -156,7 +156,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-0\.5) var(--sp-2);
+  gap: var(--sp-0-5) var(--sp-2);
 }
 .ink-prose .markdown-timeline-time {
   font-size: var(--text-12);
@@ -173,7 +173,7 @@
   color: var(--text-tertiary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-full);
-  padding-inline: var(--sp-1\.5);
+  padding-inline: var(--sp-1-5);
 }
 .ink-prose .panel-block:last-child > .markdown-align,
 .ink-prose .panel-block:last-child > .markdown-cols {

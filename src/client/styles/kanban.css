@@ -27,7 +27,7 @@
 
 .ink-prose .kanban-block-mode {
   flex: none;
-  padding: var(--sp-0\.5) var(--sp-1\.5);
+  padding: var(--sp-0-5) var(--sp-1-5);
   border-radius: var(--r-sm);
   background: var(--bg-hover);
   font-size: var(--text-10);
@@ -39,7 +39,7 @@
 .ink-prose .kanban-block-actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   margin-inline-start: auto;
 }
 
@@ -67,8 +67,8 @@
 }
 
 .ink-prose .kanban-block-btn svg {
-  width: var(--sp-3\.5);
-  height: var(--sp-3\.5);
+  width: var(--sp-3-5);
+  height: var(--sp-3-5);
 }
 
 .ink-prose .kanban-block-placeholder {
@@ -220,7 +220,7 @@
 }
 
 .ink-prose .kanban-snapshot-board .kanban-snapshot-card-tags li {
-  padding: var(--sp-0\.5) var(--sp-1);
+  padding: var(--sp-0-5) var(--sp-1);
   border-radius: var(--r-xs);
   font-size: var(--text-14);
   font-weight: 600;
@@ -229,7 +229,7 @@
 
 .ink-prose .kanban-snapshot-board .kanban-snapshot-card-priority {
   align-self: flex-start;
-  padding: var(--sp-0\.5) var(--sp-1);
+  padding: var(--sp-0-5) var(--sp-1);
   border-radius: var(--r-xs);
   font-size: var(--text-14);
   font-weight: 600;
@@ -364,7 +364,7 @@
   align-self: start;
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   color: var(--text-primary);
   background: var(--bg-overlay);
   cursor: pointer;

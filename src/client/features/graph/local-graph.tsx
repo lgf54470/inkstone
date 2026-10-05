@@ -45,7 +45,7 @@ function LocalGraphHeader({
       <div className='flex items-center gap-1.5'>
         <Waypoints size={12} />
         <span>{t('graph.local_graph')}</span>
-        {count !== undefined && <span className='tabular text-[length:var(--text-10\.5)]'>· {count}</span>}
+        {count !== undefined && <span className='tabular text-[length:var(--text-10-5)]'>· {count}</span>}
       </div>
       <div className='flex items-center gap-0.5'>
         <Tooltip label={t('graph.depth')}>
@@ -53,7 +53,7 @@ function LocalGraphHeader({
             aria-label={t('graph.depth')}
             value={String(depth)}
             onChange={(event) => onDepthChange(Number(event.target.value))}
-            className='h-6 max-w-16 md:h-6 text-[length:var(--text-10\.5)]'
+            className='h-6 max-w-16 md:h-6 text-[length:var(--text-10-5)]'
           >
             {GRAPH_DEPTHS.map((option) => <option key={option} value={String(option)}>{option}</option>)}
           </Select>

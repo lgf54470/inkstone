@@ -49,8 +49,8 @@ const VARIANTS: Record<Variant, string> = {
 }
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-[var(--btn-h-sm)] px-[var(--sp-3)] text-[length:var(--text-12)] gap-[var(--sp-1\\.5)] rounded-[var(--r-sm)] md:h-[var(--btn-h-sm-compact)] md:px-[var(--sp-2\\.5)]',
-  md: 'h-[var(--btn-h-md)] px-[var(--sp-3\\.5)] text-[length:var(--text-13)] gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] md:h-[var(--btn-h-md-compact)] md:px-[var(--sp-3)]',
+  sm: 'h-[var(--btn-h-sm)] px-[var(--sp-3)] text-[length:var(--text-12)] gap-[var(--sp-1-5)] rounded-[var(--r-sm)] md:h-[var(--btn-h-sm-compact)] md:px-[var(--sp-2-5)]',
+  md: 'h-[var(--btn-h-md)] px-[var(--sp-3-5)] text-[length:var(--text-13)] gap-[var(--sp-1-5)] rounded-[var(--r-md)] md:h-[var(--btn-h-md-compact)] md:px-[var(--sp-3)]',
   lg: 'h-[var(--btn-h-lg)] px-[var(--sp-4)] text-[length:var(--text-14)] gap-[var(--sp-2)] rounded-[var(--r-md)] md:h-[var(--btn-h-lg-compact)]',
 }
 
@@ -171,14 +171,14 @@ export function Spinner({ size = 14, className }: { size?: number; className?: s
 export function Kbd({ combo, keys }: { combo?: string; keys?: string[] }) {
   const parts = keys ?? (combo ? prettyCombo(combo) : [])
   return (
-    <span className='inline-flex shrink-0 items-center gap-[var(--sp-0\\.75)]'>
+    <span className='inline-flex shrink-0 items-center gap-[var(--sp-0-75)]'>
       {parts.map((key, i) => (
         <kbd
           key={`${key}-${i}`}
           className={cn(
             'inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[var(--r-5)] px-1.25',
             'border border-[var(--border-default)] bg-[var(--bg-raised)]',
-            'text-[length:var(--text-10\\.5)] font-medium text-[var(--text-tertiary)]',
+            'text-[length:var(--text-10-5)] font-medium text-[var(--text-tertiary)]',
           )}
         >
           {key}
@@ -275,7 +275,7 @@ export function SectionLabel({ children, className }: { children: ReactNode; cla
   return (
     <div
       className={cn(
-        `px-[var(--sp-2)] pt-[var(--sp-1)] pb-[var(--sp-1)] text-[length:var(--text-10\\.5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
+        `px-[var(--sp-2)] pt-[var(--sp-1)] pb-[var(--sp-1)] text-[length:var(--text-10-5)] font-semibold uppercase ${TRACKING_GROUP} text-[var(--text-quaternary)]`,
         className,
       )}
     >

@@ -40,7 +40,7 @@ export function KpiCard({
 
         {delta !== undefined && (
           <span
-            className={`inline-flex items-center gap-[var(--sp-0\\.5)] text-[length:var(--text-11)] font-medium ${
+            className={`inline-flex items-center gap-[var(--sp-0-5)] text-[length:var(--text-11)] font-medium ${
               delta === 0 ? 'text-[var(--text-tertiary)]' : delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >

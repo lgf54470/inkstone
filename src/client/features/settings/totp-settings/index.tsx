@@ -167,7 +167,7 @@ function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => vo
           {t('common.copy')}
         </Button>
       </div>
-      <code className={`mt-[var(--sp-1\\.5)] block break-all font-mono text-[length:var(--text-12)] ${TRACKING_CODE} text-[var(--text-primary)]`}>
+      <code className={`mt-[var(--sp-1-5)] block break-all font-mono text-[length:var(--text-12)] ${TRACKING_CODE} text-[var(--text-primary)]`}>
         {secret.match(/.{1,4}/g)?.join(' ')}
       </code>
     </div>
@@ -177,7 +177,7 @@ function ManualSecretCard({ secret, onCopy }: { secret: string; onCopy: () => vo
 function ConfirmCodeField({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (next: string) => void }) {
   return (
     <label className='block'>
-      <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+      <span className='mb-[var(--sp-1)] block text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
         {t('settings.totp_confirm_code')}
       </span>
       <Input
@@ -222,13 +222,13 @@ function RecoveryPanel({ s, codes }: { s: TotpSettingsState; codes: string[] }) 
 
 function RecoveryWarning() {
   return (
-    <div className='flex items-start gap-[var(--sp-2\\.5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--warning)_8%,transparent)] p-[var(--sp-3)]'>
-      <TriangleAlert size={15} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--warning)]' />
+    <div className='flex items-start gap-[var(--sp-2-5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--warning)_8%,transparent)] p-[var(--sp-3)]'>
+      <TriangleAlert size={15} className='mt-[var(--sp-0-5)] shrink-0 text-[var(--warning)]' />
       <div>
-        <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
+        <p className='text-[length:var(--text-12-5)] font-semibold text-[var(--text-primary)]'>
           {t('settings.totp_save_recovery_codes')}
         </p>
-        <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        <p className='mt-[var(--sp-1)] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>
           {t('settings.totp_recovery_codes_once')}
         </p>
       </div>
@@ -257,10 +257,10 @@ function RegeneratePanel({ s }: { s: TotpSettingsState }) {
     <PanelForm onSubmit={s.regenerate}>
       <div className='flex items-start justify-between gap-[var(--sp-3)]'>
         <div>
-          <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
+          <p className='text-[length:var(--text-12-5)] font-semibold text-[var(--text-primary)]'>
             {t('settings.totp_recovery_codes')}
           </p>
-          <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <p className='mt-[var(--sp-1)] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>
             {t('settings.totp_regenerate_description')}
           </p>
         </div>
@@ -275,7 +275,7 @@ function RegeneratePanel({ s }: { s: TotpSettingsState }) {
           {t('settings.totp_disable')}
         </Button>
       </div>
-      <div className='grid grid-cols-1 gap-[var(--sp-2\\.5)] md:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-2-5)] md:grid-cols-2'>
         <PasswordInput value={s.password} isBusy={s.isBusy} onChange={s.setPassword} autoFocus />
         <CodeInput value={s.code} isBusy={s.isBusy} onChange={s.setCode} />
       </div>
@@ -288,21 +288,21 @@ function RegeneratePanel({ s }: { s: TotpSettingsState }) {
 function DisablePanel({ s }: { s: TotpSettingsState }) {
   return (
     <PanelForm onSubmit={s.disable}>
-      <div className='flex items-start gap-[var(--sp-2\\.5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] bg-[color-mix(in_oklab,var(--danger)_7%,transparent)] p-[var(--sp-3)]'>
-        <ShieldOff size={15} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]' />
+      <div className='flex items-start gap-[var(--sp-2-5)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_30%,transparent)] bg-[color-mix(in_oklab,var(--danger)_7%,transparent)] p-[var(--sp-3)]'>
+        <ShieldOff size={15} className='mt-[var(--sp-0-5)] shrink-0 text-[var(--danger)]' />
         <div>
-          <p className="text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">
+          <p className='text-[length:var(--text-12-5)] font-semibold text-[var(--text-primary)]'>
             {t('settings.totp_disable_title')}
           </p>
-          <p className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">
+          <p className='mt-[var(--sp-1)] text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>
             {t('settings.totp_disable_description')}
           </p>
         </div>
       </div>
-      <div className='grid grid-cols-1 gap-[var(--sp-2\\.5)] md:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-[var(--sp-2-5)] md:grid-cols-2'>
         <PasswordInput value={s.password} isBusy={s.isBusy} onChange={s.setPassword} autoFocus />
         <label className='block'>
-          <span className="mb-[var(--sp-1)] block text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
+          <span className='mb-[var(--sp-1)] block text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
             {t('settings.totp_code_or_recovery')}
           </span>
           <Input

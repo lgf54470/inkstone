@@ -28,7 +28,7 @@ export function BlogDashboardView({
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
   return (
-    <div className='flex-1 overflow-y-auto bg-[var(--bg-base)] p-[var(--sp-5)] space-y-5 text-[length:var(--text-12\\.5)]'>
+    <div className='flex-1 overflow-y-auto bg-[var(--bg-base)] p-[var(--sp-5)] space-y-5 text-[length:var(--text-12-5)]'>
       <DashboardWelcomeBanner
         siteName={view.settings?.siteName}
         subtitle={view.settings?.subtitle}
@@ -122,7 +122,7 @@ function DashboardWelcomeBanner({
         <h2 className='text-[length:var(--text-18)] font-bold text-[var(--text-primary)]'>
           {siteName || t('blog.hub_title')}
         </h2>
-        <p className='mt-[var(--sp-1)] text-[length:var(--text-12\\.5)] text-[var(--text-tertiary)]'>
+        <p className='mt-[var(--sp-1)] text-[length:var(--text-12-5)] text-[var(--text-tertiary)]'>
           {subtitle || t('blog.default_subtitle')}
         </p>
       </div>
@@ -152,7 +152,7 @@ function DashboardWelcomeBanner({
  */
 function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; owner: number }) {
   return (
-    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]'>
+    <div className='flex flex-wrap items-center justify-between gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11-5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center gap-[var(--sp-2)]'>
         <span className='flex h-[var(--sp-2)] w-[var(--sp-2)] rounded-full bg-[var(--success)]' />
         <span>

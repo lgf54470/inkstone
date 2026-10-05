@@ -59,7 +59,7 @@ export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
   return createPortal(<div ref={popoverRef} role='dialog' aria-label={t('command.filter_by_tags')} className='anim-pop fixed z-[var(--z-hover-card)] rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]' style={{ top: position.top, left: position.left, width: POPOVER_WIDTH, transformOrigin: position.origin }}>
     <TagSearchInput inputRef={inputRef} value={query} onChange={setQuery}/>
     <TagMatchToggle match={selectedTagsMatch} onChange={setSelectedTagsMatch}/>
-    <div className='mt-[var(--sp-1\\.5)] mb-[var(--sp-1)] h-px bg-[var(--border-subtle)]'/>
+    <div className='mt-[var(--sp-1-5)] mb-[var(--sp-1)] h-px bg-[var(--border-subtle)]'/>
     <TagList tags={visibleTags} selectedTags={selectedTags} query={query} highlightedRef={highlightedRef} onToggle={toggleTagSelection}/>
     {visibleTags.length > 0 && <TagPickerFooter visibleCount={visibleTags.length} searching={searching} atCap={atCap} hasSelection={selectedTags.length > 0} onSelectAll={selectAll}/>}
   </div>, document.body)

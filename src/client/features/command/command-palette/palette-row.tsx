@@ -20,7 +20,7 @@ export const PaletteRow = memo(function PaletteRow({ item, active, index, listId
   return (<button id={`${listId}-option-${index}`} type='button' role='option' aria-selected={active} tabIndex={-1} data-index={index} onMouseEnter={() => {
     onPointerNav()
     onActivate(index)
-  }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-[var(--sp-2\\.5)] rounded-[var(--r-md)] px-[var(--sp-2\\.5)] py-[var(--sp-2)] text-left', isKeyboardNav && 'transition-colors duration-[var(--dur-xs)]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
+  }} onClick={() => onSelect(item)} className={cn('flex w-full items-center gap-[var(--sp-2-5)] rounded-[var(--r-md)] px-[var(--sp-2-5)] py-[var(--sp-2)] text-left', isKeyboardNav && 'transition-colors duration-[var(--dur-xs)]', active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]')}>
     <span className={cn('shrink-0', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>
     {item.icon}
     </span>
@@ -30,7 +30,7 @@ export const PaletteRow = memo(function PaletteRow({ item, active, index, listId
         {part.text}
         </mark>) : (<span key={i}>{part.text}</span>))}
     </span>
-    {item.detail && (<span className={cn('mt-[var(--sp-0\\.5)] block truncate text-[length:var(--text-11)]', active ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]')}>
+    {item.detail && (<span className={cn('mt-[var(--sp-0-5)] block truncate text-[length:var(--text-11)]', active ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]')}>
       {item.detail}
       </span>)}
     </span>

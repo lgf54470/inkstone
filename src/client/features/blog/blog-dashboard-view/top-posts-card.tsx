@@ -16,7 +16,7 @@ export function TopPostsCard({ posts, frontendBase, onSelectPost }: TopPostsCard
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
-        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
+        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1-5)]'>
           <BarChart3 size={15} className='text-[var(--accent)]' />
           {t('blog.top_posts_title')}
         </h3>
@@ -56,7 +56,7 @@ function TopPostRow({ post, index, maxViews, frontendBase, onSelect }: {
 }) {
   const pct = Math.max(2, Math.round((post.views / maxViews) * 100))
   return (
-    <div className='flex items-center gap-[var(--sp-3)] py-[var(--sp-2\\.5)] hover:bg-[var(--bg-hover)] -mx-2 px-[var(--sp-2)] rounded-[var(--r-md)] transition-colors'>
+    <div className='flex items-center gap-[var(--sp-3)] py-[var(--sp-2-5)] hover:bg-[var(--bg-hover)] -mx-2 px-[var(--sp-2)] rounded-[var(--r-md)] transition-colors'>
       <span className={cn('flex h-[var(--sp-5)] w-[var(--sp-5)] items-center justify-center rounded-full text-[length:var(--text-10)] font-bold', index < 3 ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]')}>
         {index + 1}
       </span>
@@ -71,7 +71,7 @@ function TopPostRow({ post, index, maxViews, frontendBase, onSelect }: {
             </span>
           </span>
         </div>
-        <div className='mt-[var(--sp-1)] h-[var(--sp-1\\.5)] w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
+        <div className='mt-[var(--sp-1)] h-[var(--sp-1-5)] w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
           <div className='h-full rounded-full bg-[var(--accent)] transition-all' style={{ width: `${pct}%` }} />
         </div>
       </div>

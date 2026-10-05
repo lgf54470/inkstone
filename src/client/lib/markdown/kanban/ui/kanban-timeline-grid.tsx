@@ -138,7 +138,7 @@ export function TimelineDayHeader({ days, dayWidth }: { days: TimelineRange['day
             <span
               className={
                 day.isToday
-                  ? 'rounded-full bg-[var(--accent)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-bold text-[var(--accent-contrast)]'
+                  ? 'rounded-full bg-[var(--accent)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] font-bold text-[var(--accent-contrast)]'
                   : 'truncate text-[var(--text-tertiary)]'
               }
             >

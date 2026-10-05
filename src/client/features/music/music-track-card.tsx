@@ -41,7 +41,7 @@ function CardArtwork({
           picture is a background no one can measure — axe reports it as "the element contains an image
           node", which made the contrast gate's verdict about the instance's data rather than the card.
           The card's own buttons already answer with an opaque overlay; the pill does too. */}
-      <span className='tabular absolute right-[var(--sp-1\\.5)] bottom-[var(--sp-1\\.5)] rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--text-primary)]'>
+      <span className='tabular absolute right-[var(--sp-1-5)] bottom-[var(--sp-1-5)] rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-[var(--sp-1)] text-[length:var(--text-12)] text-[var(--text-primary)]'>
         {durationCellText(track.durationMs)}
       </span>
     </button>
@@ -119,7 +119,7 @@ function CardSelectCheckbox({
 
 function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurrent: boolean }) {
   return (
-    <div className='min-w-0 px-[var(--sp-0\\.5)]'>
+    <div className='min-w-0 px-[var(--sp-0-5)]'>
       <div className='flex items-center gap-[var(--sp-1)]'>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
         <span className={cn('truncate text-[length:var(--text-13)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>

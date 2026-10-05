@@ -71,21 +71,19 @@ describe('what each menu surface adds to the row', () => {
   })
 
   it('lets each surface add its own tone and say how tight the row sits', () => {
-    // The class these read is now the token form (`gap-[var(--sp-2\\.5)]` is the runtime string; the
-    // source keeps the double backslash because CSS escapes the dot in the custom property's name).
-    // What the case judges is unchanged: a menu row sits looser than a submenu row, and a surface can
-    // still add its own tone on top.
+    // A menu row sits looser than a submenu row, and a surface can still add
+    // its own tone on top; both are read off the token-form gap class.
     const menu = render({ id: 'g', label: 'Plain' }, { className: 'bg-[var(--bg-hover)]' })
     const classes = menu.container.querySelector('button')!.className.split(/\s+/)
     expect(classes).toContain('bg-[var(--bg-hover)]')
-    expect(classes).toContain('gap-[var(--sp-2\\.5)]')
+    expect(classes).toContain('gap-[var(--sp-2-5)]')
     menu.unmount()
 
     const submenu = render({ id: 'h', label: 'Plain', tone: 'danger' }, { tight: true, className: 'text-[var(--danger)]' })
     const tight = submenu.container.querySelector('button')!.className.split(/\s+/)
     expect(tight).toContain('text-[var(--danger)]')
     expect(tight).toContain('gap-[var(--sp-2)]')
-    expect(tight).not.toContain('gap-[var(--sp-2\\.5)]')
+    expect(tight).not.toContain('gap-[var(--sp-2-5)]')
     submenu.unmount()
   })
 })

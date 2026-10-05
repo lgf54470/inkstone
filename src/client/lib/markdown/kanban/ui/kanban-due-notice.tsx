@@ -38,7 +38,7 @@ export function KanbanDueNotice({
         <button
           type='button'
           onClick={() => onApplyFilters([{ propertyId: notice.propertyId, operator: 'is_overdue' }])}
-          className='rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]'
+          className='rounded-[var(--r-sm)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]'
         >
           {t('preview.kanban_due_overdue', { count: notice.overdue.length })}
         </button>
@@ -47,7 +47,7 @@ export function KanbanDueNotice({
         <button
           type='button'
           onClick={() => onApplyFilters([{ propertyId: notice.propertyId, operator: 'equals', value: dateKey(new Date()) }])}
-          className='rounded-[var(--r-sm)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
+          className='rounded-[var(--r-sm)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
         >
           {t('preview.kanban_due_today', { count: notice.dueToday.length })}
         </button>

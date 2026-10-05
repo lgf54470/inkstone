@@ -83,7 +83,7 @@
   padding-inline-end: 4px;
 }
 .ink-editor .cm-lineNumbers .cm-gutterElement {
-  padding: 0 var(--sp-1\.5) 0 var(--sp-3);
+  padding: 0 var(--sp-1-5) 0 var(--sp-3);
   min-width: 36px;
 }
 .ink-editor .cm-activeLineGutter {
@@ -281,7 +281,7 @@
   overflow: hidden;
   padding: var(--sp-1);
   font-family: var(--font-ui);
-  font-size: var(--text-12\.5);
+  font-size: var(--text-12-5);
   animation: ink-pop var(--dur-fast) var(--ease-out) both;
 }
 .cm-tooltip.cm-tooltip-autocomplete > ul {
@@ -289,12 +289,12 @@
   font-family: inherit;
 }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li {
-  padding: var(--sp-1\.25) var(--sp-2\.25);
+  padding: var(--sp-1-25) var(--sp-2-25);
   border-radius: var(--r-sm);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: var(--sp-1\.75);
+  gap: var(--sp-1-75);
   line-height: 1.4;
 }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
@@ -333,13 +333,13 @@
   border-bottom: 1px solid var(--border-default);
 }
 .ink-editor .cm-panel.cm-search {
-  padding: var(--sp-2\.25) var(--sp-3);
+  padding: var(--sp-2-25) var(--sp-3);
   font-family: var(--font-ui);
-  font-size: var(--text-12\.5);
+  font-size: var(--text-12-5);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-1\.5);
+  gap: var(--sp-1-5);
 }
 .ink-editor .cm-panel.cm-search input {
   background: var(--bg-inset);
@@ -359,7 +359,7 @@
   background: var(--bg-raised);
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   color: var(--text-secondary);
   font-size: var(--text-12);
   transition: background-color var(--dur-fast) var(--ease-out);
@@ -377,7 +377,7 @@
 .ink-editor .cm-panel.cm-search [name='close'] {
   color: var(--text-tertiary);
   font-size: var(--text-18);
-  padding: 0 var(--sp-1\.5);
+  padding: 0 var(--sp-1-5);
   right: 8px;
   top: 6px;
 }
@@ -433,7 +433,7 @@
     font-size: max(16px, var(--editor-size, 15px));
   }
   .ink-editor .cm-line {
-    padding: 0 var(--sp-3\.5);
+    padding: 0 var(--sp-3-5);
   }
   .ink-editor .cm-scroller {
     padding-bottom: 30vh;

@@ -47,7 +47,7 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
 /** How many shares are live right now, against how many exist — the one share-shaped KPI. */
 function ActiveSharesCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
   return (
-    <div className='flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3\\.5)] shadow-[var(--shadow-soft)]'>
+    <div className='flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3-5)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center justify-between text-[var(--text-tertiary)]'>
         <span className='text-[length:var(--text-12)] font-medium'>{t('share.active_shares_count')}</span>
         <Globe2 size={16} className='text-[var(--accent)]' />
@@ -55,7 +55,7 @@ function ActiveSharesCard({ analytics }: { analytics: ShareGlobalAnalytics | nul
       <div className='pt-[var(--sp-2)]'>
         <div className='text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]'>
           {analytics?.activeShares ?? 0}
-          <span className='ml-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)]'>
+          <span className='ml-[var(--sp-1-5)] text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)]'>
             / {analytics?.totalShares ?? 0} {t('share.shares_unit')}
           </span>
         </div>

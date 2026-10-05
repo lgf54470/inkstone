@@ -32,7 +32,7 @@ function AudienceCard({ icon, title, trailing, children }: { icon: ReactNode; ti
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
-        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
+        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1-5)]'>
           {icon}
           {title}
         </h3>
@@ -75,7 +75,7 @@ function DevicesCard({ analytics }: { analytics: AudienceBreakdowns | null }) {
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-4)] shadow-[var(--shadow-soft)]'>
       <div className='flex items-center justify-between pb-[var(--sp-3)] border-b border-[var(--border-subtle)]'>
-        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1\\.5)]'>
+        <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] flex items-center gap-[var(--sp-1-5)]'>
           <Laptop size={15} className='text-[var(--accent)]' />
           {t('blog.devices_and_os')}
         </h3>

@@ -16,7 +16,7 @@ export function MusicQueueBrowser({ className }: { className?: string }) {
 
   return (
     <div className={cn('flex flex-col', className)}>
-      <div className='relative shrink-0 pb-[var(--sp-1\\.5)]'>
+      <div className='relative shrink-0 pb-[var(--sp-1-5)]'>
         <Input
           leading={<Search size={12} className='text-[var(--text-quaternary)]' />}
           trailing={query

@@ -280,10 +280,10 @@ function OverviewSection({ d }: { d: DataState }) {
 function StatsLoadError({ d }: { d: DataState }) {
   return (
     <div role='alert' className='flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-3)]'>
-      <AlertCircle size={14} className='mt-[var(--sp-0\\.5)] shrink-0 text-[var(--danger)]'/>
+      <AlertCircle size={14} className='mt-[var(--sp-0-5)] shrink-0 text-[var(--danger)]'/>
       <div className='min-w-0 flex-1'>
-      <div className="text-[length:var(--text-12\.5)] font-medium text-[var(--text-primary)]">{t('settings.could_not_load_data_overview')}</div>
-      <p className="mt-[var(--sp-0\\.5)] break-words text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{d.statsError}</p>
+      <div className='text-[length:var(--text-12-5)] font-medium text-[var(--text-primary)]'>{t('settings.could_not_load_data_overview')}</div>
+      <p className='mt-[var(--sp-0-5)] break-words text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>{d.statsError}</p>
       </div>
       <Button size='sm' variant='secondary' onClick={() => void d.loadStats()}>{t('common.retry')}</Button>
     </div>
@@ -292,8 +292,8 @@ function StatsLoadError({ d }: { d: DataState }) {
 
 function InlineStatsError({ d }: { d: DataState }) {
   return (
-    <div role='alert' className="mb-[var(--sp-2)] flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--danger)]">
-      <AlertCircle size={13} className='mt-[var(--sp-0\\.5)] shrink-0'/>
+    <div role='alert' className='mb-[var(--sp-2)] flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[color-mix(in_oklab,var(--danger)_25%,var(--border-subtle))] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-11-5)] text-[var(--danger)]'>
+      <AlertCircle size={13} className='mt-[var(--sp-0-5)] shrink-0'/>
       <span className='min-w-0 flex-1 break-words'>{d.statsError}</span>
       <button type='button' className='shrink-0 font-medium underline underline-offset-2' onClick={() => void d.loadStats()}>{t('common.retry')}</button>
     </div>
@@ -315,15 +315,15 @@ function StatsGrid({ stats }: { stats: Record<string, number> }) {
     <>
       <div className='grid grid-cols-2 gap-[var(--sp-2)] md:grid-cols-4'>
       {items.map((item) => (
-        <div key={item.label} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2\\.5)]'>
+        <div key={item.label} className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-[var(--sp-3)] py-[var(--sp-2-5)]'>
         <div className={`text-[length:var(--text-17)] font-semibold tabular ${TRACKING_STAT} text-[var(--text-primary)]`}>
           {formatNumber(item.value)}
         </div>
-        <div className='mt-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{item.label}</div>
+        <div className='mt-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{item.label}</div>
         </div>
       ))}
       </div>
-      {stats.attachmentBytes ? (<p className="mt-[var(--sp-2)] text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
+      {stats.attachmentBytes ? (<p className='mt-[var(--sp-2)] text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('settings.attachment_storage')}{formatBytes(stats.attachmentBytes)}
       </p>) : null}
     </>
   )

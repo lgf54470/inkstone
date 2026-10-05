@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <h2 className='text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]'>
           {t('app.something_went_wrong')}
         </h2>
-        <p className="max-w-80 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
+        <p className='max-w-80 text-[length:var(--text-12-5)] leading-relaxed text-[var(--text-tertiary)]'>
           {t('app.error_boundary_description')}
         </p>
         <Button
@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           onClick={this.handleReload}
           // The crash screen is the one place a button has no surrounding scale to match, so it
           // keeps the taller phone-sized box on both breakpoints.
-          className="mt-2 h-9 px-4 text-[length:var(--text-12\.5)] font-semibold md:h-9 md:px-4 focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+          className='mt-2 h-9 px-4 text-[length:var(--text-12-5)] font-semibold md:h-9 md:px-4 focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]'
         >
           {t('app.reload')}
         </Button>
@@ -71,7 +71,7 @@ export function InlineErrorBoundary({ children, label }: {
   return (
     <ErrorBoundary
       fallback={
-        <div className="flex h-full min-h-30 items-center justify-center px-4 text-center text-[length:var(--text-12\.5)] text-[var(--text-tertiary)]">
+        <div className='flex h-full min-h-30 items-center justify-center px-4 text-center text-[length:var(--text-12-5)] text-[var(--text-tertiary)]'>
           {label ?? t('app.section_unavailable')}
         </div>
       }

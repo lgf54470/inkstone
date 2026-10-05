@@ -156,7 +156,7 @@ export const InspectorElement = memo(function InspectorElement({
 
             <div>
               <label className='block font-medium mb-[var(--sp-1)] text-[var(--text-secondary)] text-[length:var(--text-11)]'>{t('slides.text_align')}</label>
-              <div className='flex rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-0\\.5)]'>
+              <div className='flex rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--sp-0-5)]'>
                 {/* Three icon-only buttons in a group: the name says which alignment each one is,
                     and the pressed state says which one the text is on. */}
                 <button
@@ -291,7 +291,7 @@ export const InspectorElement = memo(function InspectorElement({
             <button
               type='button'
               onClick={() => onReorder('up')}
-              className='flex-1 flex items-center justify-center gap-[var(--sp-1)] py-[var(--sp-1\\.5)] rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+              className='flex-1 flex items-center justify-center gap-[var(--sp-1)] py-[var(--sp-1-5)] rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
             >
               <ChevronUp size={13} />
               <span>{t('slides.bring_forward')}</span>
@@ -299,7 +299,7 @@ export const InspectorElement = memo(function InspectorElement({
             <button
               type='button'
               onClick={() => onReorder('down')}
-              className='flex-1 flex items-center justify-center gap-[var(--sp-1)] py-[var(--sp-1\\.5)] rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+              className='flex-1 flex items-center justify-center gap-[var(--sp-1)] py-[var(--sp-1-5)] rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
             >
               <ChevronDown size={13} />
               <span>{t('slides.send_backward')}</span>
@@ -314,7 +314,7 @@ export const InspectorElement = memo(function InspectorElement({
           <button
             type='button'
             onClick={onDelete}
-            className='flex w-full items-center justify-center gap-1.5 py-[var(--sp-1\\.5)] rounded border border-[color-mix(in_oklab,var(--danger)_30%,var(--border-subtle))] bg-[color-mix(in_oklab,var(--danger)_11%,transparent)] text-[var(--text-primary)] hover:bg-[color-mix(in_oklab,var(--danger)_18%,transparent)] transition-colors'
+            className='flex w-full items-center justify-center gap-1.5 py-[var(--sp-1-5)] rounded border border-[color-mix(in_oklab,var(--danger)_30%,var(--border-subtle))] bg-[color-mix(in_oklab,var(--danger)_11%,transparent)] text-[var(--text-primary)] hover:bg-[color-mix(in_oklab,var(--danger)_18%,transparent)] transition-colors'
           >
             <Trash2 size={13} className='text-[var(--danger)]' />
             <span>{t('common.delete')}</span>

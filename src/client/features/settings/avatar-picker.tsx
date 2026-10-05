@@ -149,7 +149,7 @@ function SelectedAvatarCard({ picker }: { picker: PickerState }) {
         <div className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('settings.selected_avatar')}
         </div>
-        <div className="mt-[var(--sp-1)] text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">{picker.selectionLabel}</div>
+        <div className='mt-[var(--sp-1)] text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>{picker.selectionLabel}</div>
       </div>
       <Button size='sm' variant='secondary' icon={<RotateCcw size={12} />} onClick={() => picker.setSelected('')} disabled={picker.isBusy || picker.isProcessing}>
         {t('settings.use_name_avatar')}
@@ -161,7 +161,7 @@ function SelectedAvatarCard({ picker }: { picker: PickerState }) {
 function RandomAvatarGrid({ picker }: { picker: PickerState }) {
   return (
     <section>
-      <div className='mb-[var(--sp-2\\.5)] flex items-center justify-between gap-[var(--sp-3)]'>
+      <div className='mb-[var(--sp-2-5)] flex items-center justify-between gap-[var(--sp-3)]'>
         <h3 className='text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
           {t('settings.random_avatars')}
         </h3>
@@ -169,7 +169,7 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
           {t('settings.refresh_avatars')}
         </Button>
       </div>
-      <div className='grid grid-cols-5 gap-[var(--sp-2\\.5)]'>
+      <div className='grid grid-cols-5 gap-[var(--sp-2-5)]'>
         {picker.choices.map((choice, index) => {
           const active = picker.selected === choice
           return (
@@ -188,7 +188,7 @@ function RandomAvatarGrid({ picker }: { picker: PickerState }) {
             >
               <Avatar src={choice} name={picker.displayName} size={42} className='md:!size-15' />
               {active && (
-                <span className='absolute right-[var(--sp-1\\.5)] bottom-[var(--sp-1\\.5)] flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
+                <span className='absolute right-[var(--sp-1-5)] bottom-[var(--sp-1-5)] flex size-4 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)]'>
                   <Check size={10} strokeWidth={3} />
                 </span>
               )}

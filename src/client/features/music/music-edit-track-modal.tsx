@@ -159,7 +159,7 @@ function TagPicker({
     return <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_tags')}</p>
   }
   return (
-    <div className='flex flex-wrap gap-[var(--sp-1\\.5)]'>
+    <div className='flex flex-wrap gap-[var(--sp-1-5)]'>
       {tags.map((tag) => {
         const active = selected.includes(tag.id)
         return (

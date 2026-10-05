@@ -170,11 +170,11 @@ function TableRowStatusCell({ post }: { post: BlogPostSummary }) {
   return (
     <td className='px-3 py-2.5 text-center whitespace-nowrap'>
       {post.isPublished ? (
-        <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--success)_12%,transparent)] px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--success)] whitespace-nowrap shrink-0">
+        <span className='inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--success)_12%,transparent)] px-2 py-0.5 text-[length:var(--text-10-5)] font-medium text-[var(--success)] whitespace-nowrap shrink-0'>
           {t('blog.published')}
         </span>
       ) : (
-        <span className="inline-flex items-center rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--text-tertiary)] whitespace-nowrap shrink-0">
+        <span className='inline-flex items-center rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10-5)] font-medium text-[var(--text-tertiary)] whitespace-nowrap shrink-0'>
           {t('blog.draft')}
         </span>
       )}

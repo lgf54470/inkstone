@@ -77,7 +77,7 @@ export function KanbanRenderTail({ hiddenCount, setTailElement, onReveal, column
       ref={setTailElement}
       onClick={onReveal}
       data-kanban-render-more
-      className='flex items-center gap-[var(--sp-1\\.5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1\\.5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      className='flex items-center gap-[var(--sp-1-5)] rounded-[var(--r-md)] px-[var(--sp-2)] py-[var(--sp-1-5)] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
     >
       {t('preview.kanban_show_more', { count: hiddenCount })}
     </button>

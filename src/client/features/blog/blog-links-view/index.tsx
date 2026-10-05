@@ -27,7 +27,7 @@ export function BlogLinksView() {
   const view = useBlogLinksView()
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden text-[length:var(--text-12\.5)]'>
+    <div className='flex flex-1 flex-col overflow-hidden text-[length:var(--text-12-5)]'>
       <LinksHeader
         onOpenAdd={view.handleOpenAdd}
         onOpenCategories={() => view.setIsCategoryModalOpen(true)}

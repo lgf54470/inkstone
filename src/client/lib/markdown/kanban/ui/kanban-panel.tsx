@@ -37,7 +37,7 @@ import { cn } from '../../../../lib/cn'
  * afford is not the height a rule row can. Everything else — the border, the surface, the focus — comes
  * from the shared component, so a panel control and a settings control cannot drift apart.
  */
-export const PANEL_FIELD = 'h-[var(--sp-7)] md:h-[var(--sp-7)] pl-[var(--sp-1\\.5)] text-[length:var(--text-11)]'
+export const PANEL_FIELD = 'h-[var(--sp-7)] md:h-[var(--sp-7)] pl-[var(--sp-1-5)] text-[length:var(--text-11)]'
 
 /** The gap a panel leaves between itself and its control, and the clearance it keeps from an edge. */
 const PANEL_GAP = 6

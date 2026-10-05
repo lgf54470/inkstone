@@ -346,8 +346,8 @@ function PaletteResultsList({ listRef, listId, labelId, groups, cursor, isKeyboa
   let flatIndex = -1
   return (
     <div ref={listRef} id={listId} role='listbox' aria-labelledby={labelId} className='min-h-0 flex-1 overflow-y-auto p-1.5 md:max-h-[54vh] md:flex-none'>
-      {groups.length === 0 ? (<div className="px-3 py-10 text-center text-[length:var(--text-12\.5)] text-[var(--text-quaternary)]">{t('command.no_matching_results')}</div>) : (groups.map(([group, groupItems]) => (<div key={group} role='group' aria-label={group} className='mb-1'>
-        <div className="px-2.5 pt-2 pb-1 text-[length:var(--text-10\.5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]">
+      {groups.length === 0 ? (<div className='px-3 py-10 text-center text-[length:var(--text-12-5)] text-[var(--text-quaternary)]'>{t('command.no_matching_results')}</div>) : (groups.map(([group, groupItems]) => (<div key={group} role='group' aria-label={group} className='mb-1'>
+        <div className='px-2.5 pt-2 pb-1 text-[length:var(--text-10-5)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>
           {group}
         </div>
         {groupItems.map((item) => {
@@ -363,7 +363,7 @@ function PaletteResultsList({ listRef, listId, labelId, groups, cursor, isKeyboa
 
 function PaletteFooterHints() {
   return (
-    <div className="hidden items-center gap-4 border-t border-[var(--border-subtle)] px-4 py-2 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)] md:flex">
+    <div className='hidden items-center gap-4 border-t border-[var(--border-subtle)] px-4 py-2 text-[length:var(--text-10-5)] text-[var(--text-quaternary)] md:flex'>
       <span className='flex items-center gap-1.5'>
         <Kbd keys={['↑', '↓']}/>{t('command.select')}</span>
       <span className='flex items-center gap-1.5'>

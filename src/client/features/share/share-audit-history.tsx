@@ -17,7 +17,7 @@ export function ShareAuditHistory({ noteId }: { noteId: string }) {
   const { entries, isLoading, error, reload } = useShareAuditLog(noteId)
   return (
     <section className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-[var(--sp-3)]' aria-label={t('share.audit_history_title')}>
-      <p className='flex items-center gap-[var(--sp-1\\.5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
+      <p className='flex items-center gap-[var(--sp-1-5)] text-[length:var(--text-11)] font-semibold uppercase tracking-wider text-[var(--text-quaternary)]'>
         <History size={12} aria-hidden />
         {t('share.audit_history_title')}
       </p>
@@ -61,7 +61,7 @@ function AuditEntryList({ entries }: { entries: ShareAuditLogEntry[] }) {
             </time>
           </div>
           {entry.changed.length > 0 && (
-            <ul className='mt-[var(--sp-0\\.5)] space-y-0.5'>
+            <ul className='mt-[var(--sp-0-5)] space-y-0.5'>
               {entry.changed.map((change) => (
                 <li key={change.field} className='text-[var(--text-tertiary)]'>{auditChangeLine(change)}</li>
               ))}

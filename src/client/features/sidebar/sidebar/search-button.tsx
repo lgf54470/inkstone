@@ -29,7 +29,7 @@ export function SearchButton({ variant = 'row' }: {
       type='button'
       aria-label={label}
       onClick={open}
-      className='flex h-[var(--sp-9)] w-full min-w-0 shrink-0 items-center gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-[var(--sp-2\\.5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
+      className='flex h-[var(--sp-9)] w-full min-w-0 shrink-0 items-center gap-[var(--sp-2)] rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-[var(--sp-2-5)] text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
     >
       <Search size={14} className='shrink-0' />
       <span className='min-w-0 flex-1 truncate text-left'>{t('shell.search')}</span>

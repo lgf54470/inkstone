@@ -44,7 +44,7 @@ function GroupCard({ group, kind, onOpen }: { group: MusicGroup; kind: MusicGrou
     <button
       type='button'
       onClick={onOpen}
-      className='flex min-w-0 flex-col gap-[var(--sp-1\\.5)] rounded-[var(--r-lg)] p-[var(--sp-2)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
+      className='flex min-w-0 flex-col gap-[var(--sp-1-5)] rounded-[var(--r-lg)] p-[var(--sp-2)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
     >
       <MusicArtwork url={group.coverUrl} alt='' className='aspect-square w-full rounded-[var(--r-md)]' iconSize={28} />
       <span className='truncate text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>{groupNameLabel(group, kind)}</span>

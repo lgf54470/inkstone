@@ -21,12 +21,12 @@ import type { MenuItem } from './use-menu'
  * phone-height touch target and a tighter one on a pointer device.
  */
 const ROW_CLASS = cn(
-  'flex h-[var(--sp-10)] w-full items-center rounded-[var(--r-sm)] px-[var(--sp-2)] text-left text-[length:var(--text-12\\.5)] md:h-7.5',
+  'flex h-[var(--sp-10)] w-full items-center rounded-[var(--r-sm)] px-[var(--sp-2)] text-left text-[length:var(--text-12-5)] md:h-7.5',
   'transition-colors duration-[var(--dur-xs)] disabled:pointer-events-none disabled:opacity-40',
 )
 
 /** The gap the dropped-down menu leaves between its slots, and the tighter one a nested list uses. */
-const MENU_GAP = 'gap-[var(--sp-2\\.5)]'
+const MENU_GAP = 'gap-[var(--sp-2-5)]'
 const SUBMENU_GAP = 'gap-[var(--sp-2)]'
 
 interface MenuRowProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'role' | 'aria-checked' | 'type' | 'children'> {

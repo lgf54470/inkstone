@@ -168,7 +168,7 @@ function AudienceBar({ wheel, deckCount, feed, following, onFollowChange }: {
   return (
     <div
       data-audience-bar
-      className='flex flex-wrap items-center justify-center gap-[var(--sp-0\\.5)] self-center rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]'
+      className='flex flex-wrap items-center justify-center gap-[var(--sp-0-5)] self-center rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]'
     >
       <SlideStepper slideIndex={wheel.index} slideCount={deckCount} subPage={wheel.sub} pageCount={wheel.pageCount} step={wheel.step} steps={wheel.steps} onPrev={wheel.goPrev} onNext={wheel.goNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />

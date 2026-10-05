@@ -29,11 +29,11 @@ export function CommunityPanel({ items, loading, isError, myId, onRefresh, onUse
     return (<div className='flex h-full min-h-60 flex-col items-center justify-center gap-2 text-center'>
       <Globe size={26} className='text-[var(--text-quaternary)]'/>
       <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>{t('templates.community_empty')}</p>
-      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_empty_hint')}</p>
+      <p className='text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('templates.community_empty_hint')}</p>
     </div>)
   return (<div className='space-y-2.5'>
     <div className='flex items-center justify-between gap-2'>
-      <p className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('templates.community_count_value0', { value0: items.length })}</p>
+      <p className='text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('templates.community_count_value0', { value0: items.length })}</p>
       <Button size='sm' variant='ghost' icon={<RotateCw size={13}/>} disabled={loading} onClick={onRefresh}>{t('common.refresh')}</Button>
     </div>
     <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
@@ -57,14 +57,14 @@ function CommunityCard({ item, mine, onUse, onImport, onUnpublish }: {
       <h3 className='min-w-0 flex-1 truncate text-[length:var(--text-13)] font-semibold tracking-[var(--tracking-heading)] text-[var(--text-primary)]'>{item.name}</h3>
       {mine && <span className='shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-px text-[length:var(--text-10)] font-medium text-[var(--accent)]'>{t('templates.community_mine')}</span>}
     </div>
-    {item.description && <p className="mt-1.5 line-clamp-2 text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{item.description}</p>}
+    {item.description && <p className='mt-1.5 line-clamp-2 text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>{item.description}</p>}
     {item.tags.length > 0 && (<div className='mt-1.5 flex min-w-0 flex-wrap items-center gap-1'>
       {item.tags.map((tag) => (<span key={tag} className='rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[length:var(--text-10)] text-[var(--text-tertiary)]'>#{tag}</span>))}
     </div>)}
     <div className='relative z-[var(--z-sticky)] mt-auto flex items-center gap-2 pt-2.5'>
-      <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">{item.authorName}</span>
-      {item.category && <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">· {item.category}</span>}
-      <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">· {t('templates.lines_count', { value0: lineCount })} · {date}</span>
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>{item.authorName}</span>
+      {item.category && <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>· {item.category}</span>}
+      <span className='text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>· {t('templates.lines_count', { value0: lineCount })} · {date}</span>
     </div>
     <div className='mt-2 flex items-center gap-1.5'>
       <Button size='sm' variant='primary' icon={<FilePlus2 size={13}/>} onClick={onUse} className='min-w-0 flex-1'>{t('templates.use_template')}</Button>

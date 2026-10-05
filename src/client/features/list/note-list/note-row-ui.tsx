@@ -146,7 +146,7 @@ function NoteRowMeta({ state }: { state: NoteRowState }) {
           folder={noteFolder}
           folders={folders}
           size={10}
-          pillClass="inline-flex max-w-35 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10\.5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+          pillClass='inline-flex max-w-35 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-sunken)] px-2 py-0.5 text-[length:var(--text-10-5)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]'
         />
       )}
       {note.tags.map((tag) => (
@@ -176,7 +176,7 @@ function NoteRowMain({ state }: { state: NoteRowState }) {
     <div className='flex items-start gap-1.5'>
       <div className='min-w-0 flex-1'>
         <NoteRowTitleLine state={state}/>
-        {density === 'comfortable' && note.excerpt && (<p className="truncate-2 mt-1 text-[length:var(--text-11\.5)] leading-[1.5] text-[var(--text-tertiary)]">
+        {density === 'comfortable' && note.excerpt && (<p className='truncate-2 mt-1 text-[length:var(--text-11-5)] leading-[1.5] text-[var(--text-tertiary)]'>
           {note.excerpt}
         </p>)}
         {density === 'comfortable' && (note.tags.length > 0 || (showFolderPill && noteFolder)) && (

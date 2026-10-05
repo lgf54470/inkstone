@@ -116,8 +116,8 @@ function AccountButton({ rail, buttonRef, user, displayName, showUpdateDot, onOp
     <button ref={buttonRef} type='button' onClick={onOpenMenu} aria-label={t('sidebar.account_and_settings')} className='flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-l-[var(--r-md)] pl-2 text-left'>
       {avatar}
       <span className='min-w-0 flex-1'>
-        <span className="block truncate text-[length:var(--text-12\.5)] font-semibold text-[var(--text-primary)]">{displayName}</span>
-        <span className="block truncate text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">@{user.username}</span>
+        <span className='block truncate text-[length:var(--text-12-5)] font-semibold text-[var(--text-primary)]'>{displayName}</span>
+        <span className='block truncate text-[length:var(--text-10-5)] text-[var(--text-quaternary)]'>@{user.username}</span>
       </span>
     </button>
     <Tooltip label={t('music.hub_title')} side='top'>

@@ -63,7 +63,7 @@ function CardRenameButton({ onStartEditing }: { onStartEditing: () => void }) {
       aria-label={t('preview.kanban_rename_card')}
       title={t('preview.kanban_rename_card')}
       data-kanban-rename-card=''
-      className='shrink-0 rounded-[var(--r-xs)] p-[var(--sp-0\\.5)] text-[var(--text-tertiary)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:opacity-100 group-hover/card:opacity-100 pointer-coarse:!opacity-100'
+      className='shrink-0 rounded-[var(--r-xs)] p-[var(--sp-0-5)] text-[var(--text-tertiary)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:opacity-100 group-hover/card:opacity-100 pointer-coarse:!opacity-100'
     >
       <Pencil size={12} aria-hidden />
     </button>
@@ -85,7 +85,7 @@ function CardTitleEditor({
   onCancel: () => void
 }) {
   return (
-    <div className='flex items-center gap-[var(--sp-1\\.5)]'>
+    <div className='flex items-center gap-[var(--sp-1-5)]'>
       {icon && <KanbanIconBadge icon={icon} size={15} />}
       <input
         type='text'
@@ -99,7 +99,7 @@ function CardTitleEditor({
           if (e.key === 'Enter') onBlur()
           if (e.key === 'Escape') onCancel()
         }}
-        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-[var(--sp-1\\.5)] py-[var(--sp-0\\.5)] text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
+        className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-[var(--sp-1-5)] py-[var(--sp-0-5)] text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
       />
     </div>
   )
@@ -135,10 +135,10 @@ function CardTitleView({
   onTitleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void
 }) {
   return (
-    <div className='flex items-start gap-[var(--sp-1\\.5)] text-[var(--text-primary)]'>
-      <h3 className='flex min-w-0 items-start gap-[var(--sp-1\\.5)]'>
+    <div className='flex items-start gap-[var(--sp-1-5)] text-[var(--text-primary)]'>
+      <h3 className='flex min-w-0 items-start gap-[var(--sp-1-5)]'>
         {icon && (
-          <span className='mt-[var(--sp-0\\.5)] shrink-0'>
+          <span className='mt-[var(--sp-0-5)] shrink-0'>
             <KanbanIconBadge icon={icon} size={15} />
           </span>
         )}

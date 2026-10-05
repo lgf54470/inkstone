@@ -85,7 +85,7 @@ function ServerRow({ server }: { server: MusicServerSourceView }) {
       {verdict && (
         <p
           role='status'
-          className='flex items-center gap-[var(--sp-1)] pl-[var(--sp-6)] pt-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'
+          className='flex items-center gap-[var(--sp-1)] pl-[var(--sp-6)] pt-[var(--sp-0-5)] text-[length:var(--text-11)] text-[var(--text-tertiary)]'
         >
           {verdict.state === 'ok' ? <Check size={11} aria-hidden='true' /> : null}
           {verdict.state === 'ok'

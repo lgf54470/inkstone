@@ -78,13 +78,13 @@ function ProfileCard({ user, isLoggingOut, onExit }: { user: PublicUser | null; 
         </span>
         {user?.role === 'owner' && <Badge tone='accent'>{t('common.owner')}</Badge>}
         </div>
-        <div className='mt-[var(--sp-0\\.5)] flex items-center gap-1.5 text-[length:var(--text-11\\.5)] text-[var(--text-tertiary)]'>
+        <div className='mt-[var(--sp-0-5)] flex items-center gap-1.5 text-[length:var(--text-11-5)] text-[var(--text-tertiary)]'>
         <UserRound size={11}/>@{user?.username}
         </div>
       </div>
       <Button size='sm' variant='ghost' icon={<LogOut size={13}/>} loading={isLoggingOut} disabled={isLoggingOut} onClick={onExit}>{t('common.exit')}</Button>
       </div>
-      {user && (<p className='mt-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]'>{t('settings.joined')}{fullTime(user.createdAt)}
+      {user && (<p className='mt-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('settings.joined')}{fullTime(user.createdAt)}
       </p>)}
     </section>
   )
@@ -102,7 +102,7 @@ function AccessControlSection({ site }: { site: SiteInfo | null }) {
       </SettingRow>
       <div className='mt-[var(--sp-3)] flex items-start gap-2.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-inset)] p-[var(--sp-3)]'>
       <Shield size={14} className='mt-px shrink-0 text-[var(--text-tertiary)]'/>
-      <div className="text-[length:var(--text-11\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('settings.to_add_users_open_registration_under_settings_account_they_can_then_crea')}</div>
+      <div className='text-[length:var(--text-11-5)] leading-relaxed text-[var(--text-tertiary)]'>{t('settings.to_add_users_open_registration_under_settings_account_they_can_then_crea')}</div>
       </div>
     </section>
   )
@@ -123,7 +123,7 @@ function UpdateSection({ site, updateStatus, updateInfo, updateAvailable, checkF
         : updateInfo?.latestVersion ?? t('settings.update_check_unavailable')}
       </Badge>
       </SettingRow>
-      {!updateAvailable && updateInfo?.latestVersion && (<p className='mt-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-11\\.5)] text-[var(--text-quaternary)]'>
+      {!updateAvailable && updateInfo?.latestVersion && (<p className='mt-[var(--sp-2)] px-[var(--sp-1)] text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>
       {t('settings.up_to_date')}
       </p>)}
       <div className='mt-[var(--sp-3)] flex flex-wrap justify-end gap-[var(--sp-2)]'>
@@ -182,7 +182,7 @@ function ReferenceSection() {
       href={OTTER_MUSIC_REPOSITORY_URL}
       target='_blank'
       rel='noopener noreferrer'
-      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11\\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11-5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
       >
       <GitFork size={14}/>{t('settings.reference_source')}
       </a>
@@ -190,7 +190,7 @@ function ReferenceSection() {
       href={OTTER_MUSIC_DEMO_URL}
       target='_blank'
       rel='noopener noreferrer'
-      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11\\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11-5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
       >
       <ExternalLink size={14}/>{t('settings.reference_demo')}
       </a>
@@ -209,7 +209,7 @@ function FooterSection({ site }: { site: SiteInfo | null }) {
       </span>
       <div>
         <div className='text-[length:var(--text-13)] font-semibold'>{t('common.product_name')}</div>
-        <div className="text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">{t('settings.version')} {site?.version ?? '—'}</div>
+        <div className='text-[length:var(--text-11-5)] text-[var(--text-quaternary)]'>{t('settings.version')} {site?.version ?? '—'}</div>
       </div>
       </div>
       <a
@@ -217,7 +217,7 @@ function FooterSection({ site }: { site: SiteInfo | null }) {
       target='_blank'
       rel='noopener noreferrer'
       aria-label={t('settings.open_github_repository')}
-      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11\\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+      className='inline-flex h-[var(--sp-8)] shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11-5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
       >
       <GitFork size={14}/>
       {t('common.github')}

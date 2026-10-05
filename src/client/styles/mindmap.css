@@ -19,7 +19,7 @@
   color: var(--text-secondary);
 }
 .ink-prose .mindmap-block-mode {
-  padding: 0 var(--sp-1\.5);
+  padding: 0 var(--sp-1-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-full);
   color: var(--text-secondary);
@@ -29,12 +29,12 @@
 .ink-prose .mindmap-block-actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-0\.5);
+  gap: var(--sp-0-5);
   margin-inline-start: auto;
 }
 .ink-prose .mindmap-block-theme {
   height: var(--sp-5);
-  padding: 0 var(--sp-1\.5);
+  padding: 0 var(--sp-1-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-full);
   color: var(--text-secondary);
@@ -76,8 +76,8 @@
   box-shadow: var(--shadow-ring);
 }
 .ink-prose .mindmap-block-btn svg {
-  width: var(--sp-3\.5);
-  height: var(--sp-3\.5);
+  width: var(--sp-3-5);
+  height: var(--sp-3-5);
 }
 .ink-prose .mindmap-block-placeholder {
   min-height: var(--sp-16);
@@ -121,7 +121,7 @@
   align-self: start;
   border: 1px solid var(--border-default);
   border-radius: var(--r-sm);
-  padding: var(--sp-0\.75) var(--sp-2\.25);
+  padding: var(--sp-0-75) var(--sp-2-25);
   color: var(--text-primary);
   background: var(--bg-overlay);
   cursor: pointer;
@@ -167,7 +167,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-2\.5) var(--sp-3);
+  padding: var(--sp-2-5) var(--sp-3);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
@@ -182,7 +182,7 @@
   width: min(100% - var(--sp-6), calc(var(--sp-16) * 8));
   max-height: calc(100% - var(--sp-6));
   overflow-y: auto;
-  padding: var(--sp-2\.5) var(--sp-3);
+  padding: var(--sp-2-5) var(--sp-3);
   border: 1px solid var(--border-default);
   border-radius: var(--r-lg);
   background: var(--bg-overlay);
@@ -192,7 +192,7 @@
 .mindmap-shortcuts ul {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-1\.5) var(--sp-4);
+  gap: var(--sp-1-5) var(--sp-4);
   margin: 0;
   padding: 0;
   list-style: none;
