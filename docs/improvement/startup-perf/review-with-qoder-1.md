@@ -186,15 +186,33 @@ preview（构建产物、冷缓存、SW 摘除）同一脚本读到的是 shell 
 
 **这把尺子刻意不报字节数**：页面里汇总 `transferSize` 不可信（SW 应答报 0、资源计时缓冲截断、共享浏览器缓存逐场景命中不同），实测两次运行同一场景差到 60 倍。体积归 `check-bundle-budget` 从构建产物量，那才是权威口径。
 
+## 9.3 dev 请求数的成分（`MEASURE_URL_TALLY=1`，按包内真实图标名归因）
+
+```
+anonymous: 2658 requests = 1797 prebundled deps (1341 lucide icons) + 850 app sources
+authed:    2644 requests = 1794 prebundled deps (1342 lucide icons) + 837 app sources
+blocks:    2778 requests = 1821 prebundled deps (1343 lucide icons) + 932 app sources
+```
+
+**dev 启动请求数的一半是 lucide 图标模块。** 上一轮记的是「~1 700 个」（CDP initiator 的读数），本轮按 `node_modules/lucide-react/dist/esm/icons/` 的真实文件名逐个匹配，收敛到 **1 341**——同一量级，这个数是可复现的口径。
+
+成因不是本项目写错：`lucide-react@1.28.0` 的 package.json **没有 exports map**，主入口是 1 756 个导出的 barrel，`sideEffects: false`。dev 不打包，所以 `import { X } from 'lucide-react'` 要经过预打包入口，而该入口静态再导出全部图标子块。生产不受影响——`vite.config.ts:37-40` 故意不把图标成组，rolldown 逐图标 tree-shake，实测 prod 未登录只有 **111** 个请求。
+
+因此 B8 是**纯开发体验问题**，修它要动依赖优化器的分块行为，与用户感知的「网站打开慢」无关。已降级为独立遗留项。
+
 ## 10. 未验证与局限
 
 **10.1 本轮完全没量的**：任何墙钟（本轮零时序采样，§9 是上一轮的）、`createOAuthProvider` 每请求开销、`migrateLegacyData` 在真实库上的耗时、FTS5 缺失实例的实际发生比例、300 个请求在 HTTP/2 下的真实并发表现、`/api/*` 各请求的串并行总账（§5 只标了「串行」这一结构性事实，没算毫秒）。**因此方案里的收益一律标成「字节 / 请求数 / 往返次数」而不是「毫秒」**；B0 之前不接受任何「省了几秒」的说法。
 
 **10.2 口径粗糙处**：「首屏 = 外壳 ∪ workspace 静态闭包」依据实读 `app.tsx:158-171`、`app-shell.tsx:112/157-161`，**没有在浏览器里按真实路径点开确认**。分享页 / 集合页 / 放映页 / 播放列表页各有独立 lazy 分支（`app.tsx:182-211`），它们的闭包本轮**一个都没量**——若用户说的「打开慢」其实发生在 `/s/xxx`，本文结论不适用。
 
-**10.3 本轮已明确作废的两个归因**（记下来防重犯）：
+**10.3 本轮已明确作废的归因与已量后放弃的改动**（记下来防重犯）：
 - 「`export-note-*.js` 675 KiB 是导出管线，改懒就省 185 KiB」——内容复核后作废，见 §4.1。
 - 「首屏 1.06 MiB 主要是 workspace 造成的」——`AppShell` 自己就是 919 KiB gz，见 §2。
+- **B6（逐桶断静态边）已实测否决**：断 `app-shell.tsx:15` 的 `editor/commands` 边，eager 3475.2 → 3475.9 KiB，**0 收益**。首屏图是密网不是链，`vendor-editor` 还从 `workspace-*` 可达。
+- **B11（dicebear 出 eager）已实测放弃**：把 `lib/avatar.ts` 的 `@dicebear/*` 摘掉重建，eager 3484.5 → 3451.0 KiB，只值 **33.5 KiB raw**。而 `resolveAvatarSource` 是同步的、在渲染期被 `components/primitives.tsx:204` 与博客评论每行调用，改懒等于头像先空后现。为 1% 的体积换一处可见的行为变化，不做。
+- **B3（文档 TTFB 的 2 次 D1）已下调为未证疑点**，见 §7.1。
+- **墙钟实测反过来支持这些「不做」**：五种块从点击到画完只 1 064 ms，而外壳可用是 4 676 ms（§9.2）——用户等的时间几乎全在启动本身，不在画块。
 
 - 「文档首字节前每次导航都付 2 次串行 D1 往返」——本文件初稿把 §7.1 写成确定缺陷并据此排了 B3。复核后下调：那取决于 `env.DB` 是否跨请求同一，仓库与本轮都无法证明，且那个 `await` 是有意的 schema 就绪屏障。**B3 已从计划撤销**。
 

@@ -28,6 +28,7 @@
  * source anyway.
  */
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
@@ -39,6 +40,15 @@ const PASSWORD = process.env.INKSTONE_VISUAL_PASSWORD ?? 'boot-password-1'
 // `MEASURE_WARM_SW=1` keeps the service worker and its caches in place, so the second and third
 // scenarios measure a reload served by the precache instead of a cold start.
 const COLD_SW = process.env.MEASURE_WARM_SW !== '1'
+// `MEASURE_URL_TALLY=1` keeps every same-origin URL so a run can be attributed to the packages that
+// asked for them. Dev serves one request per module, so "how many requests is one package" is the
+// only way to see what the request count is actually made of.
+const URL_TALLY = process.env.MEASURE_URL_TALLY === '1'
+const URL_TALLY_ICONS = URL_TALLY
+  ? fs.readdirSync(path.resolve(import.meta.dirname, '../node_modules/lucide-react/dist/esm/icons'))
+    .filter((name) => name.endsWith('.mjs'))
+    .map((name) => name.replace(/\.mjs$/, ''))
+  : []
 const CEILINGS = {
   anonMs: Number(process.env.ANON_MS_MAX ?? 0),
   shellMs: Number(process.env.SHELL_MS_MAX ?? 0),
@@ -177,9 +187,11 @@ async function newMeasuredPage(browser, base, doneSelector) {
       await Promise.all(keys.map((k) => caches.delete(k)))
     })
   }
-  const tally = { requests: 0 }
+  const tally = { requests: 0, urls: [] }
   page.on('response', (response) => {
-    if (response.url().startsWith(base)) tally.requests++
+    if (!response.url().startsWith(base)) return
+    tally.requests++
+    if (URL_TALLY) tally.urls.push(response.url().slice(base.length))
   })
   await page.evaluateOnNewDocument(bootObserverSource, BLOCK_MARKERS, doneSelector ?? '')
   await page.setViewport({ width: 1440, height: 900 })
@@ -270,8 +282,7 @@ async function runScenario(browser, base, { label, url, expectBlocks, timeoutMs,
       : Boolean(doneSelector ? state.marks.done : state.marks.shell),
     // Kept so a run that never reached its marker says what the page did contain, instead of the
     // script having to be re-run with probes bolted on to find out.
-    swServed: nav.fromServiceWorker,
-    resourceEntries: nav.entries,
+    urls: tally.urls,
     shape: nav,
   }
 }
@@ -374,6 +385,36 @@ try {
 
 console.log(`\nboot measurement (${USE_PREVIEW ? 'preview of the built output' : 'dev server'}, ${COLD_SW ? 'cold cache, service worker unhooked' : 'service worker left in place'}, ${base})`)
 console.log('scenario    requests     FCP     DCL  bootDone   shell   blocks  open→5  bySW  tasks  total/max')
+if (URL_TALLY) {
+  for (const row of rows) {
+    if (!row.urls) continue
+    const groups = new Map()
+    for (const url of row.urls) {
+      const clean = url.slice(1).split('?')[0]
+      const key = clean.startsWith('.vite/deps/')
+        // Pre-bundled dependency: name the package it came from, because "how many requests is one
+        // package" is the only way to see what the dev request count is made of.
+        ? `deps/${clean.slice('.vite/deps/'.length).replace(/-[A-Za-z0-9_-]{6,}\.(js|map)$/, '')}`
+        : clean.startsWith('src/')
+        ? `src/${clean.split('/').slice(0, 3).join('/')}`
+        : clean.replace(/\/[A-Za-z0-9_.-]*$/, '/')
+      groups.set(key, (groups.get(key) ?? 0) + 1)
+    }
+    // Attribute the dependency sub-chunks by name against the icon list the package actually ships,
+    // so "how much of the dev request count is lucide" is a measured number, not an impression.
+    const iconNames = new Set(URL_TALLY_ICONS)
+    const isIcon = (url) => {
+      const file = url.split('/').pop()?.split('?')[0] ?? ''
+      return iconNames.has(file.replace(/-[A-Za-z0-9_-]{6,}\.(js|map)$/, ''))
+    }
+    const iconRequests = row.urls.filter(isIcon).length
+    const depRequests = row.urls.filter((u) => u.includes('/deps/')).length
+    console.log(`\n${row.label}: ${row.urls.length} requests = ${depRequests} prebundled deps (${iconRequests} lucide icons) + ${row.urls.filter((u) => u.startsWith('/src/')).length} app sources`)
+    console.log(`  top groups of ${row.urls.length}`)
+    for (const [key, count] of [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14))
+      console.log(`  ${String(count).padStart(5)}  ${key}`)
+  }
+}
 for (const row of rows) {
   console.log(
     row.label.padEnd(11),
