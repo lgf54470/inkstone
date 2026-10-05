@@ -20,12 +20,27 @@ const OPTIONAL_PUBLIC_ASSETS = [
 
 const PUBLIC_ASSETS = [...CORE_PUBLIC_ASSETS, ...OPTIONAL_PUBLIC_ASSETS] as const
 
+/**
+ * The modules the signed-in boot walks through, matched by **membership** rather than by a chunk's
+ * facade: the bundler gives the shell chunk no facade at all (it is a merged chunk named after one
+ * of its modules), so a `facadeModuleId` test could never see it no matter how the path was spelled.
+ * Verified against the 2026-10-05 build: `shell-*.js` carries `workspaceSplitRatio` and is absent
+ * from the facade list entirely, while `assets/shell-D1H5cajP.js` — the only chunk whose facade does
+ * contain "shell" — is a lucide icon.
+ *
+ * These used to be written as `App.tsx` / `AppShell.tsx` / `Workspace.tsx` and flat locale files.
+ * None of those paths exist (real names are kebab-case, the shell and workspace are reached through
+ * their directory barrels, and a locale is a directory of 44 namespace files), and the match was a
+ * case-sensitive `endsWith`, so all five silently matched nothing: the offline shell covered only
+ * the 12 document chunks and every surface past `main.tsx` — including the two awaited locale
+ * bundles — went to the network on every start.
+ */
 const CORE_LAZY_MODULES = [
-  '/src/client/App.tsx',
-  '/src/client/features/shell/AppShell.tsx',
-  '/src/client/features/workspace/Workspace.tsx',
-  '/src/shared/locales/en-US.ts',
-  '/src/shared/locales/zh-CN.ts',
+  '/src/client/app.tsx',
+  '/src/client/features/shell/',
+  '/src/client/features/workspace/',
+  '/src/shared/locales/en-US/',
+  '/src/shared/locales/zh-CN/',
 ] as const
 
 // Cap for the per-track offline audio cache inside the service worker: when a
@@ -39,6 +54,7 @@ type BuildChunk = {
   isEntry: boolean
   imports: string[]
   facadeModuleId: string | null
+  moduleIds: string[]
   viteMetadata?: {
     importedCss?: Set<string>
   }
@@ -106,7 +122,7 @@ export function inkstonePwa(): Plugin {
   }
 }
 
-function collectCoreFiles(bundle: BuildBundle): string[] {
+export function collectCoreFiles(bundle: BuildBundle): string[] {
   const files = new Set<string>(['index.html', ...CORE_PUBLIC_ASSETS])
   const matchedCoreLazy = new Set<string>()
   const pending = Object.values(bundle)
@@ -115,20 +131,16 @@ function collectCoreFiles(bundle: BuildBundle): string[] {
       if (entry.isEntry) return true
       const matched = isCoreLazyChunk(entry)
       if (matched) {
-        const moduleId = entry.facadeModuleId?.replaceAll('\\', '/')
-        for (const suffix of CORE_LAZY_MODULES) {
-          if (moduleId?.endsWith(suffix)) {
-            matchedCoreLazy.add(suffix)
-          }
-        }
+        for (const prefix of coreLazyPrefixes(entry)) matchedCoreLazy.add(prefix)
       }
       return matched
     })
 
-  for (const suffix of CORE_LAZY_MODULES) {
-    if (!matchedCoreLazy.has(suffix)) {
-      console.warn(`[inkstone:pwa] Warning: core lazy module '${suffix}' was not matched in build chunks`)
-    }
+  // A core module that matches no chunk means the boot path is not being precached — the failure
+  // that went unnoticed for releases because it only printed a warning. Stop the build instead.
+  const unmatched = CORE_LAZY_MODULES.filter((prefix) => !matchedCoreLazy.has(prefix))
+  if (unmatched.length) {
+    throw new Error(`[inkstone:pwa] core boot module(s) matched no chunk: ${unmatched.join(', ')} — the offline shell no longer covers the boot path`)
   }
 
   while (pending.length) {
@@ -159,8 +171,13 @@ function collectCoreFiles(bundle: BuildBundle): string[] {
 }
 
 function isCoreLazyChunk(chunk: BuildChunk): boolean {
-  const moduleId = chunk.facadeModuleId?.replaceAll('\\', '/')
-  return Boolean(moduleId && CORE_LAZY_MODULES.some((suffix) => moduleId.endsWith(suffix)))
+  return coreLazyPrefixes(chunk).length > 0
+}
+
+/** Which of the boot modules this chunk holds a piece of. */
+function coreLazyPrefixes(chunk: BuildChunk): string[] {
+  const modules = (chunk.moduleIds ?? []).map((id) => id.replaceAll('\\', '/'))
+  return CORE_LAZY_MODULES.filter((prefix) => modules.some((id) => id.includes(prefix)))
 }
 
 export function serviceWorkerSource(

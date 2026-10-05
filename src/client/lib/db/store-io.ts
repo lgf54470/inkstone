@@ -1,5 +1,5 @@
 import { get, getMany, set, setMany } from 'idb-keyval'
-import { delMany, entries, store, KEY, supportsUserNamespaces } from './keys'
+import { delMany, entries, readAllKeys, store, KEY, supportsUserNamespaces } from './keys'
 import type { MusicPendingWrite, OutboxItem } from './types'
 import { dbState } from './keys'
 export function normalizeOutbox(value: unknown): OutboxItem[] {
@@ -65,17 +65,31 @@ function isLegacyDataKey(key: unknown): key is string {
 }
 export async function migrateLegacyData(userId: string): Promise<void> {
   if (!supportsUserNamespaces || !entries || !delMany) return
-  const legacy = (await entries<string, unknown>(store)).filter(([key]) => isLegacyDataKey(key))
-  if (!legacy.length) return
-  const scopedKeys = await getMany(legacy.map(([key]) => userScopedKey(key, userId)), store)
+  const legacyKeys = await legacyDataKeys()
+  if (!legacyKeys.length) return
+  const legacyValues = await getMany(legacyKeys, store)
+  const scopedValues = await getMany(legacyKeys.map((key) => userScopedKey(key, userId)), store)
   const writes: [string, unknown][] = []
-  for (let index = 0; index < legacy.length; index++) {
-    if (scopedKeys[index] === undefined) {
-      writes.push([userScopedKey(legacy[index]![0], userId), legacy[index]![1]])
-    }
+  for (let index = 0; index < legacyKeys.length; index++) {
+    if (scopedValues[index] === undefined)
+      writes.push([userScopedKey(legacyKeys[index] as string, userId), legacyValues[index]])
   }
   if (writes.length) await setMany(writes, store)
-  await delMany(legacy.map(([key]) => key), store)
+  await delMany(legacyKeys, store)
+}
+
+/**
+ * Which pre-namespace keys this database holds, without reading their values where the store can
+ * list keys at all. `entries` deserializes every cached note body to answer a question the key
+ * string already answers, and `bindLocalUser` calls this on every page load's first bind — behind
+ * the boot splash.
+ *
+ * The `entries` branch stays because a store shim without `keys` must still migrate rather than
+ * silently keep a legacy cache nobody ever moves.
+ */
+async function legacyDataKeys(): Promise<string[]> {
+  if (readAllKeys) return (await readAllKeys(store)).filter(isLegacyDataKey)
+  return (await entries!<string, unknown>(store)).filter(([key]) => isLegacyDataKey(key)).map(([key]) => key)
 }
 export async function mergedNoteIds(userId: string | null, targetIds: string[], removedIds: Set<string>): Promise<string[]> {
   // An offline tab never sees another tab's brand-new notes; merging with the

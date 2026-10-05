@@ -10,12 +10,22 @@ import { initializeDatabase } from '../src/worker/db/schema/runtime'
 import { drainFtsQueue } from '../src/worker/db/fts'
 import type { Env } from '../src/worker/env'
 import type { D1Database } from '@cloudflare/workers-types'
-import { createD1Database, queryFirst, queryRows, runSql } from './d1-harness'
+import { captureSql, createD1Database, queryFirst, queryRows, runSql } from './d1-harness'
 
 function makeEnv(db: unknown): Env {
   return {
     DB: db as D1Database,
   } as unknown as Env
+}
+
+/** Rewrites the cached database-state row the way a stale or hand-edited one would look. */
+async function tamperState(
+  db: ReturnType<typeof createD1Database>,
+  edit: (value: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  const row = await queryFirst(db, `SELECT value FROM app_meta WHERE key = ?`, DATABASE_STATE_KEY)
+  const stored = JSON.parse((row as { value: string }).value) as Record<string, unknown>
+  await runSql(db, `UPDATE app_meta SET value = ? WHERE key = ?`, JSON.stringify(edit(stored)), DATABASE_STATE_KEY)
 }
 
 describe('schema migrations and convergence', () => {
@@ -369,5 +379,92 @@ describe('schema migrations and convergence', () => {
     await expect(initializeDatabase(freshEnv)).rejects.toThrow(
       /(no such column|The database schema is incompatible)/,
     )
+  })
+
+  /**
+   * The convergence pass is skipped whenever the cached schema fingerprint matches — but that cache
+   * used to be written only by a database that got FTS5 running, so an account on a D1 without it
+   * re-ran every table, migration, index and `PRAGMA` check on each cold isolate, inside the user's
+   * first request. These cases hold the fix from both sides: the pass must not repeat, a cached
+   * state must still be one this build wrote, and a missing FTS5 must not be latched off forever.
+   */
+  function withoutFts5(db: ReturnType<typeof createD1Database>) {
+    const ftsStatements = new WeakSet<object>()
+    let blocked = true
+    const realPrepare = db.prepare.bind(db)
+    db.prepare = (sql: string) => {
+      const statement = realPrepare(sql)
+      if (/CREATE VIRTUAL TABLE/i.test(sql)) ftsStatements.add(statement)
+      return statement
+    }
+    const realBatch = db.batch.bind(db)
+    db.batch = async (statements) => {
+      if (blocked && statements.some((statement) => ftsStatements.has(statement as object)))
+        throw new Error('D1_ERROR: no such module: fts5')
+      return realBatch(statements)
+    }
+    return { unblock: () => { blocked = false } }
+  }
+
+  /** A distinct binding object is a distinct isolate: `initializeDatabase` memoizes per `env.DB`. */
+  function isolate(db: ReturnType<typeof createD1Database>) {
+    return makeEnv({ prepare: db.prepare.bind(db), batch: db.batch.bind(db) })
+  }
+
+  /** The SQL one `initializeDatabase` call prepared, and nothing before it. */
+  async function pass<T>(prepared: string[], run: () => Promise<T>): Promise<{ result: T, sql: string[] }> {
+    const before = prepared.length
+    const result = await run()
+    return { result, sql: prepared.slice(before) }
+  }
+
+  const converged = (sql: string[]) => sql.filter((statement) => /FROM schema_migrations|PRAGMA table_info/i.test(statement))
+
+  it('does not re-converge the schema on a cold isolate when the database has no FTS5', async () => {
+    const db = createD1Database()
+    withoutFts5(db)
+    const prepared = captureSql(db)
+
+    const cold = await pass(prepared, () => initializeDatabase(isolate(db)))
+    expect(cold.result.ftsEnabled).toBe(false)
+    expect(converged(cold.sql).length).toBeGreaterThan(0)
+
+    const warm = await pass(prepared, () => initializeDatabase(isolate(db)))
+    expect(warm.result.ftsEnabled).toBe(false)
+    expect(converged(warm.sql)).toEqual([])
+    expect(warm.sql.some((sql) => /CREATE VIRTUAL TABLE/i.test(sql))).toBe(true)
+  })
+
+  it('ignores a cached state written by a different schema', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+    await tamperState(db, (value) => ({ ...value, schema: 'deadbeef' }))
+    const prepared = captureSql(db)
+
+    const warm = await pass(prepared, () => initializeDatabase(isolate(db)))
+    expect(warm.result.ftsEnabled).toBe(true)
+    expect(converged(warm.sql).length).toBeGreaterThan(0)
+  })
+
+  it('ignores a cached state whose ftsEnabled is not a boolean', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+    // A hand-written or half-migrated row must not be read as "FTS is off": that would quietly drop
+    // every account onto LIKE search with nothing failing anywhere.
+    await tamperState(db, (value) => ({ ...value, ftsEnabled: 'false' }))
+    const prepared = captureSql(db)
+
+    const warm = await pass(prepared, () => initializeDatabase(isolate(db)))
+    expect(warm.result.ftsEnabled).toBe(true)
+    expect(converged(warm.sql).length).toBeGreaterThan(0)
+  })
+
+  it('turns FTS5 back on for a later isolate once the database supports it', async () => {
+    const db = createD1Database()
+    const gate = withoutFts5(db)
+    expect((await initializeDatabase(isolate(db))).ftsEnabled).toBe(false)
+
+    gate.unblock()
+    expect((await initializeDatabase(isolate(db))).ftsEnabled).toBe(true)
   })
 })

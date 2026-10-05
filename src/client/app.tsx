@@ -4,7 +4,7 @@ import { Toaster } from './components/feedback'
 import { Spinner } from './components/primitives'
 import { ErrorBoundary } from './components/error-boundary'
 import { LoginPage } from './features/auth'
-import { dismissBootScreen } from './lib/boot'
+import { dismissBootScreen, prefetchAppShell } from './lib/boot'
 import { t, useLocale } from './lib/i18n'
 import { initializePwa, requestOfflineWarmup } from './store/pwa'
 import { useSession, watchSystemTheme } from './store/session'
@@ -72,6 +72,25 @@ function useAppBoot(shareSlug: string | null) {
     if (shareSlug) return
     void load()
   }, [load, shareSlug])
+
+  useEffect(() => {
+    if (shareSlug) return
+    prefetchAppShell()
+  }, [shareSlug])
+
+  useEffect(() => {
+    console.log('[mD] prefetch effect, route=', JSON.stringify(shareSlug))
+    // Nothing about *downloading* the shell depends on who is signed in, but until now it was
+    // fetched only after `load()` resolved and `persistSession` had committed its IndexedDB
+    // transaction — because that is when `AuthedShell` stops rendering an empty div and `lazy()`
+    // first asks for it. Starting the import here overlaps the shell's chunk graph with that
+    // round trip; the module registry answers the later `lazy()` call from cache.
+    void import('./features/shell').catch(() => {
+      // Best-effort prefetch. The load that matters goes through `lazy()`, which has its own
+      // failure path (`vite:preloadError` and the boot reload guard), so a prefetch that fails
+      // here must not report the same chunk error a second time.
+    })
+  }, [shareSlug])
 
   useEffect(() => watchSystemTheme(), [])
 
