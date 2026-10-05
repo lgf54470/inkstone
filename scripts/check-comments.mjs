@@ -3115,10 +3115,22 @@ const allowed = new Map([
   ['scripts/sync-comments-allowlist.mjs', [
     '/**\n * One-off regeneration of the comment allowlist inside check-comments.mjs.\n * Reads the comments through the same scanner the checker uses\n * (`scripts/lib/comment-scan.mjs`), so the allowlist stays an exact inventory of\n * every comment in the scanned files. Run: node scripts/sync-comments-allowlist.mjs\n */',
   ]],
+  ['src/client/app-boot.test.ts', [
+    '/**\n * Until now the signed-in boot was strictly serial: `main.tsx` awaited the locale bundles, `App`\n * mounted, and only after `api.session()` resolved *and* `persistSession` had committed an\n * IndexedDB transaction did `AuthedShell` stop rendering an empty div — at which point the shell\'s\n * own chunk graph (919 KiB gzip measured 2026-10-05) started downloading. The two are independent:\n * nothing about fetching the shell depends on knowing who is signed in.\n *\n * The seam is spied rather than observed through the module registry because `vi.resetModules()`\n * does not re-run a mock\'s factory for a module already resolved in an earlier case, which made a\n * counting factory blind to the second case no matter what the code did — verified by mutation.\n */',
+    '// A session that never answers keeps `status === \'loading\'` for the whole case.',
+  ]],
   ['src/client/app.tsx', [
     '// The audience\'s seat is the same shared page with one thing written on it: which show they are watching',
     '// (ADR-0006). The token is read once from the URL the speaker handed out and never leaves this tab — it',
     '// is not written into a cache key, a fingerprint, or anything the owner is told about.',
+    '// Nothing about *downloading* the shell depends on who is signed in, but until now it was',
+    '// fetched only after `load()` resolved and `persistSession` had committed its IndexedDB',
+    '// transaction — because that is when `AuthedShell` stops rendering an empty div and `lazy()`',
+    '// first asks for it. Starting the import here overlaps the shell\'s chunk graph with that',
+    '// round trip; the module registry answers the later `lazy()` call from cache.',
+    '// Best-effort prefetch. The load that matters goes through `lazy()`, which has its own',
+    '// failure path (`vite:preloadError` and the boot reload guard), so a prefetch that fails',
+    '// here must not report the same chunk error a second time.',
   ]],
   ['src/client/components/activity-calendar.test.ts', [
     '// The same month total spread over thirty days keeps every one of them on the lightest level.',
@@ -11392,6 +11404,18 @@ const allowed = new Map([
     '/**\n * A promise that must not be waited on forever, with the sentence the caller wants in the rejection.\n * A lazy library that never arrives — a dropped request, a worker that will not start — otherwise\n * leaves its block spinning with no answer for the reader.\n */',
     '/**\n * Runs `fn` over the items with at most `limit` in flight at once. Results stay in input\n * order no matter which work finishes first. The first rejected item fails the whole call;\n * callers that must survive individual failures catch inside `fn`.\n */',
     '/**\n * Progress callbacks land far faster than anyone reads a bar, and each store write copies\n * the whole task list. The terminal update must be written outside this wrapper.\n */',
+  ]],
+  ['src/client/lib/boot-prefetch.test.ts', [
+    '/**\n * The companion to `app-boot.test.ts`, which pins *when* the shell is prefetched. This one pins\n * *what* is fetched: a seam that counts calls would happily count a call that imports the wrong\n * module, so the fetch itself has to be observed. Counting the mock\'s factory works here because\n * this is the first and only resolution of `./features/shell` in the file — the reason\n * `app-boot.test.ts` cannot use the same technique is documented there.\n */',
+    '// No assertion on purpose: an unhandled rejection fails this file by itself, which is the same',
+    '// mechanism the locale preloader relies on (see the comment in lib/i18n.ts). Reaching the next',
+    '// macrotask without one is the result.',
+  ]],
+  ['src/client/lib/boot.ts', [
+    '/**\n * Start downloading the signed-in shell while the session request is still in flight.\n *\n * `AuthedShell` renders an empty div until `api.session()` resolves and `persistSession` commits,\n * and `lazy()` only asks for the shell at that point — so the shell\'s chunk graph (919 KiB gzip\n * measured 2026-10-05) began downloading strictly after a round trip nothing about it depends on.\n * Fetched here, the module registry answers the later `lazy()` call from cache.\n */',
+    '// Best-effort prefetch. The load that matters goes through `lazy()`, which has its own failure',
+    '// path (`vite:preloadError` and the boot reload guard), so a prefetch that fails must not',
+    '// report the same chunk error a second time.',
   ]],
   ['src/client/lib/calendar-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the defaults below.',

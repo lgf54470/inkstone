@@ -1,4 +1,20 @@
 
+/**
+ * Start downloading the signed-in shell while the session request is still in flight.
+ *
+ * `AuthedShell` renders an empty div until `api.session()` resolves and `persistSession` commits,
+ * and `lazy()` only asks for the shell at that point — so the shell's chunk graph (919 KiB gzip
+ * measured 2026-10-05) began downloading strictly after a round trip nothing about it depends on.
+ * Fetched here, the module registry answers the later `lazy()` call from cache.
+ */
+export function prefetchAppShell(): void {
+  void import('../features/shell').catch(() => {
+    // Best-effort prefetch. The load that matters goes through `lazy()`, which has its own failure
+    // path (`vite:preloadError` and the boot reload guard), so a prefetch that fails must not
+    // report the same chunk error a second time.
+  })
+}
+
 export function dismissBootScreen(): void {
   const boot = document.getElementById('boot')
   if (!boot) return
